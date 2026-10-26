@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OCLR 直播 UI 第一轮空间布局评审：1920×1080 低保真线框，仅使用示例数据。">
+  <title>OCLR直播UI布局规划</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="review-app" id="reviewApp">
+    <header class="review-chrome" id="reviewChrome">
+      <div class="review-topline">
+        <div class="review-brand">
+          <span class="review-kicker">OCLR / BROADCAST LAYOUT</span>
+          <span class="review-title">直播 UI 空间评审 <span class="review-version">layout-v1</span></span>
+        </div>
+
+        <nav class="scene-tabs" aria-label="核心直播场景">
+          <button class="scene-tab is-active" type="button" data-scene-target="waiting" aria-pressed="true">
+            <span class="scene-tab-no">01</span>
+            <span class="scene-tab-label">等待选手</span>
+            <span class="scene-tab-now" aria-hidden="true">当前</span>
+          </button>
+          <button class="scene-tab" type="button" data-scene-target="mappool" aria-pressed="false">
+            <span class="scene-tab-no">02</span>
+            <span class="scene-tab-label">Mappool Ban/Pick</span>
+            <span class="scene-tab-now" aria-hidden="true">当前</span>
+          </button>
+          <button class="scene-tab" type="button" data-scene-target="playing" aria-pressed="false">
+            <span class="scene-tab-no">03</span>
+            <span class="scene-tab-label">Playing</span>
+            <span class="scene-tab-now" aria-hidden="true">当前</span>
+          </button>
+          <button class="scene-tab" type="button" data-scene-target="map-result" aria-pressed="false">
+            <span class="scene-tab-no">04</span>
+            <span class="scene-tab-label">单图结算</span>
+            <span class="scene-tab-now" aria-hidden="true">当前</span>
+          </button>
+          <button class="scene-tab" type="button" data-scene-target="victory" aria-pressed="false">
+            <span class="scene-tab-no">05</span>
+            <span class="scene-tab-label">全场胜利</span>
+            <span class="scene-tab-now" aria-hidden="true">当前</span>
+          </button>
+          <button class="scene-tab" type="button" data-scene-target="pause" aria-pressed="false">
+            <span class="scene-tab-no">06</span>
+            <span class="scene-tab-label">暂停 / 技术处理</span>
+            <span class="scene-tab-now" aria-hidden="true">当前</span>
+          </button>
+        </nav>
+
+        <div class="review-actions">
+          <button class="clean-button" id="cleanButton" type="button" aria-pressed="false">进入干净输出</button>
+        </div>
+      </div>
+
+      <div class="review-tools">
+        <div class="control-group">
+          <span class="control-label">上场人数 <em>未定案</em></span>
+          <div class="segmented" role="group" aria-label="上场人数方案">
+            <button class="mode-button is-active" type="button" data-mode-target="4v4" aria-pressed="true">4v4</button>
+            <button class="mode-button" type="button" data-mode-target="3v3" aria-pressed="false">3v3</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">游戏源比例 <em>默认 4:3 · contain</em></span>
+          <div class="segmented" role="group" aria-label="游戏源比例">
+            <button class="mode-button is-active" type="button" data-source-target="4x3" aria-pressed="true">4:3</button>
+            <button class="mode-button" type="button" data-source-target="16x9" aria-pressed="false">16:9</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">比分演示 <em>仅 Playing · 本地示意</em></span>
+          <div class="segmented segmented--lead" role="group" aria-label="比分演示状态">
+            <button class="mode-button" type="button" data-lead-target="left-small" aria-pressed="false">左小领先</button>
+            <button class="mode-button" type="button" data-lead-target="left-large" aria-pressed="false">左大领先</button>
+            <button class="mode-button is-active" type="button" data-lead-target="equal" aria-pressed="true">平分</button>
+            <button class="mode-button" type="button" data-lead-target="right-small" aria-pressed="false">右小领先</button>
+            <button class="mode-button" type="button" data-lead-target="right-large" aria-pressed="false">右大领先</button>
+          </div>
+        </div>
+
+        <div class="control-group control-group--wide">
+          <span class="control-label">等待演示 <em>仅影响等待场景</em></span>
+          <div class="demo-buttons" role="group" aria-label="选手到场演示">
+            <button class="demo-button is-active" type="button" data-arrival="none" aria-pressed="true">全部等待</button>
+            <button class="demo-button" type="button" data-arrival="a" aria-pressed="false">示例A队到场</button>
+            <button class="demo-button" type="button" data-arrival="both" aria-pressed="false">双方到场</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">图池演示 <em>仅影响 Mappool 场景</em></span>
+          <div class="demo-map-row">
+            <button class="demo-button" id="mapCycleButton" type="button">切换焦点谱面状态</button>
+            <span class="control-readout" id="mapReadout" aria-live="polite">禁用 · 示例A队</span>
+          </div>
+        </div>
+
+        <div class="review-note">
+          <span>非正式赛事数据 · 仅本地内存 · 设计说明见 layout-plan.md</span>
+          <span>3v3 空白为构图保留，非掉线位</span>
+          <span>数字键 1–6 切场景 · C 切换干净输出 · Esc 退出 · URL 可恢复</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="canvas-stage" id="canvasStage">
+      <div class="canvas-sizer" id="canvasSizer">
+        <div class="broadcast-canvas mode-4v4 source-4x3" id="broadcastCanvas" aria-label="1920×1080 OCLR 直播布局示意画布">
+          <header class="broadcast-header">
+            <section class="team-block team-block--a" aria-label="左队：示例A队">
+              <span class="team-side">左队 / A SIDE</span>
+              <span class="team-name">示例A队</span>
+              <div class="series-row">
+                <span class="series-label">赢图</span>
+                <span class="win-stars" aria-hidden="true">☆ ☆ ☆ ☆ ☆</span>
+              </div>
+            </section>
+
+            <section class="event-block">
+              <span class="layout-mark">布局示意</span>
+              <span class="event-title">OCLR · 阶段占位</span>
+              <span class="event-context"><span data-header-scene>等待选手</span> · <span data-mode-label>4v4</span></span>
+            </section>
+
+            <section class="team-block team-block--b" aria-label="右队：示例B队">
+              <span class="team-side">右队 / B SIDE</span>
+              <span class="team-name">示例B队</span>
+              <div class="series-row">
+                <span class="series-label">赢图</span>
+                <span class="win-stars" aria-hidden="true">☆ ☆ ☆ ☆ ☆</span>
+              </div>
+            </section>
+          </header>
+
+          <div class="scene-stack">
+            <section class="scene is-active" data-scene-panel="waiting" aria-labelledby="waiting-title">
+              <div class="scene-body waiting-body">
+                <div class="waiting-head">
+                  <div class="title-line">
+                    <h2 id="waiting-title">等待选手</h2>
+                    <span class="state-badge">未就绪</span>
+                  </div>
+                </div>
+
+                <div class="waiting-main">
+                  <section class="team-roster" data-team-panel="a" aria-label="示例A队在场槽位">
+                    <header class="roster-head">
+                      <span class="roster-team"><strong>示例A队</strong></span>
+                      <span class="roster-count" data-arrival-count="a">0 / 4 已到场</span>
+                    </header>
+                    <div class="roster-grid" data-roster="a"></div>
+                  </section>
+
+                  <aside class="readiness-column" aria-label="对阵与就绪状态">
+                    <div class="versus-bar">
+                      <span>示例A队</span>
+                      <b>VS</b>
+                      <span>示例B队</span>
+                    </div>
+                    <div class="readiness-card" aria-live="polite">
+                      <span class="readiness-kicker">到场 / 就绪</span>
+                      <p class="readiness-headline" id="readinessHeadline">等待选手到场</p>
+                      <p class="readiness-count"><strong id="readinessCount">0 / 8</strong><span>人已到场</span></p>
+                      <p class="readiness-copy" id="readinessCopy">等待双方选手入场。</p>
+                      <div class="readiness-state">
+                        <span>就绪</span>
+                        <span class="state-badge">未确认</span>
+                      </div>
+                    </div>
+                  </aside>
+
+                  <section class="team-roster" data-team-panel="b" aria-label="示例B队在场槽位">
+                    <header class="roster-head">
+                      <span class="roster-team"><strong>示例B队</strong></span>
+                      <span class="roster-count" data-arrival-count="b">0 / 4 已到场</span>
+                    </header>
+                    <div class="roster-grid" data-roster="b"></div>
+                  </section>
+                </div>
+              </div>
+
+              <footer class="scene-footer waiting-footer">
+                <section class="footer-cell">
+                  <span class="footer-kicker">现场解说</span>
+                  <p data-waiting-commentary>等待双方选手入场。</p>
+                </section>
+                <section class="footer-cell footer-cell--lead">
+                  <span class="footer-kicker">当前阶段</span>
+                  <p class="footer-lead">等待选手</p>
+                </section>
+                <section class="footer-cell">
+                  <span class="footer-kicker">本场对阵</span>
+                  <p>示例A队 <span class="versus-inline">vs</span> 示例B队</p>
+                </section>
+              </footer>
+            </section>
+
+            <section class="scene" data-scene-panel="mappool" aria-labelledby="mappool-title" hidden>
+              <div class="scene-body mappool-body">
+                <div class="scene-head mappool-head">
+                  <div class="title-line">
+                    <h2 id="mappool-title">Mappool Ban/Pick</h2>
+                  </div>
+                </div>
+                <div class="mappool-columns" data-mappool-columns></div>
+              </div>
+
+              <footer class="scene-footer chat-footer">
+                <div class="chat-heading">
+                  <span class="footer-kicker">场间互动</span>
+                  <strong>聊天</strong>
+                </div>
+                <div class="chat-messages" aria-label="聊天消息占位">
+                  <article class="chat-message">
+                    <span class="chat-author">示例观众 01</span>
+                    <p>聊天内容占位</p>
+                  </article>
+                  <article class="chat-message">
+                    <span class="chat-author">示例观众 02</span>
+                    <p>聊天内容占位</p>
+                  </article>
+                  <article class="chat-message">
+                    <span class="chat-author">示例观众 03</span>
+                    <p>聊天内容占位</p>
+                  </article>
+                </div>
+              </footer>
+            </section>
+
+            <section class="scene" data-scene-panel="playing" aria-label="Playing" hidden>
+              <div class="scene-body playing-body">
+                <div class="playfield" data-playfield aria-label="上场选手游戏画面占位"></div>
+              </div>
+
+              <footer class="scene-footer playing-footer">
+                <div class="score-stage" id="scoreStage" data-lead="equal" role="group" aria-label="示例A队 1,000,000，示例B队 1,000,000，平分">
+                  <span class="score-center-anchor" aria-hidden="true"></span>
+                  <span class="score-fill" aria-hidden="true"></span>
+                  <div class="score-readout score-readout--a">
+                    <span class="score-side" aria-hidden="true">A</span>
+                    <strong class="score-number" id="scoreValueA">1,000,000</strong>
+                  </div>
+                  <div class="score-readout score-readout--b">
+                    <span class="score-side" aria-hidden="true">B</span>
+                    <strong class="score-number" id="scoreValueB">1,000,000</strong>
+                  </div>
+                </div>
+                <div class="map-row">
+                  <div class="current-map">
+                    <span class="map-kicker">当前谱面</span>
+                    <strong>谱面标题占位</strong>
+                    <span class="map-sub">艺术家 / 难度</span>
+                  </div>
+                  <div class="map-params" aria-label="谱面参数">
+                    <span><b>CS</b> —</span>
+                    <span><b>AR</b> —</span>
+                    <span><b>OD</b> —</span>
+                    <span><b>BPM</b> —</span>
+                    <span><b>时长</b> —</span>
+                  </div>
+                </div>
+              </footer>
+            </section>
+
+            <section class="scene" data-scene-panel="map-result" aria-label="单图结算" hidden>
+              <div class="scene-body playing-body">
+                <div class="playfield" data-result-playfield aria-label="单图结算游戏画面占位"></div>
+              </div>
+
+              <footer class="scene-footer playing-footer">
+                <div class="score-stage score-stage--result" id="resultScoreStage" data-lead="left-small" role="group" aria-label="示例A队 队伍总分 1,250,000，示例B队 队伍总分 1,190,000">
+                  <span class="score-center-anchor" aria-hidden="true"></span>
+                  <span class="score-fill" aria-hidden="true"></span>
+                  <div class="score-readout score-readout--a">
+                    <span class="score-side" aria-hidden="true">A · 队伍总分</span>
+                    <strong class="score-number" id="resultTotalA">1,250,000</strong>
+                  </div>
+                  <div class="score-readout score-readout--b">
+                    <span class="score-side" aria-hidden="true">B · 队伍总分</span>
+                    <strong class="score-number" id="resultTotalB">1,190,000</strong>
+                  </div>
+                </div>
+                <div class="map-row">
+                  <div class="current-map">
+                    <span class="map-kicker">本图谱面</span>
+                    <strong>谱面标题占位 02</strong>
+                    <span class="map-sub">艺术家 / 难度</span>
+                  </div>
+                  <div class="map-params" aria-label="谱面参数">
+                    <span><b>CS</b> —</span>
+                    <span><b>AR</b> —</span>
+                    <span><b>OD</b> —</span>
+                    <span><b>BPM</b> —</span>
+                    <span><b>时长</b> —</span>
+                  </div>
+                </div>
+              </footer>
+            </section>
+
+            <section class="scene" data-scene-panel="victory" aria-labelledby="victory-title" hidden>
+              <div class="scene-body victory-body">
+                <div class="scene-head result-head">
+                  <div class="title-line">
+                    <h2 id="victory-title">全场胜利</h2>
+                  </div>
+                </div>
+
+                <div class="victory-hero">
+                  <div class="victory-mark" aria-hidden="true">A</div>
+                  <div class="victory-copy">
+                    <span class="victory-kicker">OCLR · 阶段占位</span>
+                    <h3>示例A队</h3>
+                    <p class="victory-status">全场胜者</p>
+                  </div>
+                  <div class="victory-result">
+                    <span>最终赢图</span>
+                    <strong>—</strong>
+                  </div>
+                </div>
+
+                <div class="victory-supports">
+                  <div>
+                    <span>本场对手</span>
+                    <strong>示例B队</strong>
+                  </div>
+                  <div>
+                    <span>上场方案</span>
+                    <strong data-mode-short>4v4</strong>
+                  </div>
+                  <div>
+                    <span>系列赛星位</span>
+                    <strong aria-label="赢图星位占位">☆ ☆ ☆ ☆ ☆</strong>
+                  </div>
+                  <div>
+                    <span>下一张图</span>
+                    <strong>无</strong>
+                  </div>
+                </div>
+              </div>
+
+              <footer class="scene-footer">
+                <section class="footer-cell">
+                  <span class="footer-kicker">全场胜者</span>
+                  <p class="footer-lead">示例A队</p>
+                </section>
+                <section class="footer-cell">
+                  <span class="footer-kicker">系列赛赢图</span>
+                  <p class="win-stars" aria-hidden="true">☆ ☆ ☆ ☆ ☆</p>
+                </section>
+                <section class="footer-cell">
+                  <span class="footer-kicker">本场对手</span>
+                  <p>示例B队</p>
+                </section>
+              </footer>
+            </section>
+
+            <section class="scene" data-scene-panel="pause" aria-labelledby="pause-title" hidden>
+              <div class="scene-body pause-body">
+                <div class="scene-head pause-head">
+                  <div class="title-line">
+                    <h2 id="pause-title">暂停 / 技术处理中</h2>
+                  </div>
+                </div>
+
+                <div class="pause-layout">
+                  <section class="pause-primary">
+                    <div class="pause-mark" aria-hidden="true"><span></span><span></span></div>
+                    <h3>比赛暂停</h3>
+                    <p class="pause-time">恢复时间：未确认</p>
+                  </section>
+
+                  <section class="pause-side">
+                    <div class="pause-row"><span>当前对局</span><strong>示例A队 vs 示例B队</strong></div>
+                    <div class="pause-row"><span>当前比分</span><strong>— : —</strong></div>
+                    <div class="pause-row"><span>当前谱面</span><strong>谱面标题占位</strong></div>
+                    <div class="pause-row"><span>系列赛</span><strong>—</strong></div>
+                  </section>
+                </div>
+              </div>
+
+              <footer class="scene-footer">
+                <section class="footer-cell">
+                  <span class="footer-kicker">比赛状态</span>
+                  <p class="footer-lead">暂停中</p>
+                </section>
+                <section class="footer-cell">
+                  <span class="footer-kicker">恢复时间</span>
+                  <p class="footer-lead">未确认</p>
+                </section>
+                <section class="footer-cell">
+                  <span class="footer-kicker">当前谱面</span>
+                  <p>谱面标题占位</p>
+                </section>
+              </footer>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
