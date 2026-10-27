@@ -3300,3 +3300,104 @@ body.is-clean .canvas-stage {
 .map-kicker-row {
   gap: 6px;
 }
+
+/* --------------------------------------------------------------------------
+   Confirmed EX active layout: both sides lose one player.
+   Base mode stays in .mode-*; the effective geometry uses .layout-*.
+   -------------------------------------------------------------------------- */
+
+/* Waiting two slots per side: balanced pair, centered vertically, no fake gap. */
+.layout-2v2 .roster-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+}
+
+.layout-2v2 .roster-grid .player-card {
+  height: calc(50% - 6px);
+}
+
+/* Effective 4v4 / 3v3 geometry, positioned by team+slot rather than player ID. */
+.layout-4v4 .pov-cell[data-team="a"][data-slot="1"] { grid-column: 1; grid-row: 1; }
+.layout-4v4 .pov-cell[data-team="a"][data-slot="2"] { grid-column: 2; grid-row: 1; }
+.layout-4v4 .pov-cell[data-team="a"][data-slot="3"] { grid-column: 1; grid-row: 2; }
+.layout-4v4 .pov-cell[data-team="a"][data-slot="4"] { grid-column: 2; grid-row: 2; }
+.layout-4v4 .pov-cell[data-team="b"][data-slot="1"] { grid-column: 3; grid-row: 1; }
+.layout-4v4 .pov-cell[data-team="b"][data-slot="2"] { grid-column: 4; grid-row: 1; }
+.layout-4v4 .pov-cell[data-team="b"][data-slot="3"] { grid-column: 3; grid-row: 2; }
+.layout-4v4 .pov-cell[data-team="b"][data-slot="4"] { grid-column: 4; grid-row: 2; }
+
+.layout-3v3 .pov-cell[data-team="a"][data-slot="1"] { grid-column: 1; grid-row: 1; }
+.layout-3v3 .pov-cell[data-team="a"][data-slot="2"] { grid-column: 2; grid-row: 1; }
+.layout-3v3 .pov-cell[data-team="a"][data-slot="3"],
+.layout-3v3 .pov-cell[data-team="b"][data-slot="3"] {
+  justify-self: center;
+  width: calc(50% - 3px);
+  grid-row: 2;
+}
+.layout-3v3 .pov-cell[data-team="a"][data-slot="3"] { grid-column: 1 / 3; }
+.layout-3v3 .pov-cell[data-team="b"][data-slot="1"] { grid-column: 3; grid-row: 1; }
+.layout-3v3 .pov-cell[data-team="b"][data-slot="2"] { grid-column: 4; grid-row: 1; }
+.layout-3v3 .pov-cell[data-team="b"][data-slot="3"] { grid-column: 3 / 5; }
+
+/* Confirmed EX under regular 3v3: explicit 2v2 row, team columns separated. */
+.layout-2v2 .playfield {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 18px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+}
+
+.layout-2v2 .pov-cell {
+  align-self: center;
+  height: calc(50% - 3px);
+}
+
+.layout-2v2 .pov-cell[data-team="a"][data-slot="1"] {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: stretch;
+  width: 100%;
+}
+
+.layout-2v2 .pov-cell[data-team="a"][data-slot="2"] {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: stretch;
+  width: 100%;
+}
+
+.layout-2v2 .pov-cell[data-team="b"][data-slot="1"] {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: stretch;
+  width: 100%;
+}
+
+.layout-2v2 .pov-cell[data-team="b"][data-slot="2"] {
+  grid-column: 5;
+  grid-row: 1;
+  justify-self: stretch;
+  width: 100%;
+}
+
+.layout-3v3 .roster-grid .player-card:nth-child(3) {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc(50% - 6px);
+}
+
+/* Keep base and active formats legible without stretching the fixed anchor. */
+.event-context {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.event-context-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}

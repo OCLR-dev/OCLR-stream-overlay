@@ -356,13 +356,41 @@
     return LEGACY_LEAD_STATES[value] || 'equal';
   }
 
-  function countForMode() {
+  function basePlayerCount() {
     return TEAM_COUNTS[state.mode] || 4;
   }
 
+  function isExActive() {
+    return currentFormat() === 'ex';
+  }
+
+  function activePlayerCount() {
+    const base = basePlayerCount();
+    return isExActive() ? Math.max(2, base - 1) : base;
+  }
+
+  function activeModeLabel() {
+    const count = activePlayerCount();
+    return isExActive() ? `EX ${count}v${count}` : `${count}v${count}`;
+  }
+
   function rosterForTeam(team) {
-    const count = countForMode();
-    return Array.from({ length: count }, (_, index) => `${team.toUpperCase()}${index + 1}`);
+    const base = basePlayerCount();
+    if (isExActive()) {
+      const count = activePlayerCount();
+      return Array.from({ length: count }, (_, index) => ({
+        id: `${team.toUpperCase()}${index + 3}`,
+        role: `T${index + 2}`,
+        slot: index + 1,
+        syntheticEx: true
+      }));
+    }
+    return Array.from({ length: base }, (_, index) => ({
+      id: `${team.toUpperCase()}${index + 1}`,
+      role: PLAYER_ROLES[index] || `T${index}`,
+      slot: index + 1,
+      syntheticEx: false
+    }));
   }
 
   function teamIsArrived(team) {
@@ -373,9 +401,31 @@
     document.querySelectorAll('[data-mode-label]').forEach(el => {
       el.textContent = state.mode;
     });
+    document.querySelectorAll('[data-active-mode-label]').forEach(el => {
+      el.textContent = activeModeLabel();
+    });
     document.querySelectorAll('[data-mode-short]').forEach(el => {
       el.textContent = state.mode;
     });
+  }
+
+  function applyActiveLayoutClasses() {
+    const count = activePlayerCount();
+    elements.canvas.classList.toggle('layout-4v4', count === 4);
+    elements.canvas.classList.toggle('layout-3v3', count === 3);
+    elements.canvas.classList.toggle('layout-2v2', count === 2);
+    elements.canvas.classList.toggle('mode-4v4', state.mode === '4v4');
+    elements.canvas.classList.toggle('mode-3v3', state.mode === '3v3');
+    elements.canvas.dataset.mode = state.mode;
+    elements.canvas.dataset.baseMode = state.mode;
+    elements.canvas.dataset.activeMode = `${count}v${count}`;
+    elements.canvas.dataset.exLayout = isExActive() ? '1' : '0';
+    elements.canvas.setAttribute(
+      'aria-label',
+      `1920×1080 OCLR S11 直播布局示意画布，当前场景：${SCENE_LABELS[state.scene]}，常规 ${state.mode}，当前 ${activeModeLabel()}`
+    );
+    document.body.dataset.mode = state.mode;
+    document.body.dataset.activeMode = `${count}v${count}`;
   }
 
   function stageMeta() {
@@ -669,17 +719,19 @@
     });
   }
 
-  function playerCardMarkup(team, playerId, index) {
+  function playerCardMarkup(team, player) {
     const teamName = TEAM_NAMES[team];
     const arrived = teamIsArrived(team);
-    const slotNumber = index + 1;
-    const role = PLAYER_ROLES[index] || `T${index}`;
+    const playerId = player.id;
+    const role = player.role;
+    const slotNumber = player.slot;
     const statusText = arrived ? '已到场' : '等待中';
     const statusSymbol = arrived ? '✓' : '◇';
     const stateClass = arrived ? 'is-arrived' : 'is-waiting';
+    const syntheticNote = player.syntheticEx ? 'EX 后排示例 · ' : '';
 
     return `
-      <article class="player-card ${stateClass}" data-player-id="${playerId}" data-arrival-state="${arrived ? 'arrived' : 'waiting'}" aria-label="${teamName}，选手${playerId}，${statusText}，就绪未确认">
+      <article class="player-card ${stateClass}" data-team="${team}" data-slot="${slotNumber}" data-player-id="${playerId}" data-synthetic-ex="${player.syntheticEx ? 'true' : 'false'}" data-arrival-state="${arrived ? 'arrived' : 'waiting'}" aria-label="${teamName}，${syntheticNote}选手${playerId}，${role}，${statusText}，就绪未确认">
         <div class="player-card-top">
           <span class="player-slot">${playerId} / SLOT ${String(slotNumber).padStart(2, '0')}</span>
           <span class="arrival-chip" aria-hidden="true">${statusSymbol} ${statusText}</span>
@@ -688,7 +740,7 @@
           <span class="player-avatar" aria-hidden="true">${playerId}</span>
           <div class="player-copy">
             <p class="player-name">选手${playerId}<span class="role-chip">${role}</span></p>
-            <p class="player-sub">${teamName} · 本场上场位 ${slotNumber} / ${countForMode()}</p>
+            <p class="player-sub">${teamName} · ${syntheticNote}本场上场位 ${slotNumber} / ${activePlayerCount()}</p>
           </div>
         </div>
         <div class="player-bottom">
@@ -706,7 +758,7 @@
   }
 
   function renderWaiting() {
-    const count = countForMode();
+    const count = activePlayerCount();
 
     ['a', 'b'].forEach(team => {
       const arrived = teamIsArrived(team);
@@ -716,7 +768,7 @@
       const countEl = document.querySelector(`[data-arrival-count="${team}"]`);
 
       roster.innerHTML = rosterForTeam(team)
-        .map((playerId, index) => playerCardMarkup(team, playerId, index))
+        .map(player => playerCardMarkup(team, player))
         .join('');
 
       if (countEl) {
@@ -754,18 +806,18 @@
 
   function renderPlaying() {
     const cards = [];
+    const count = activePlayerCount();
 
     ['a', 'b'].forEach(team => {
-      rosterForTeam(team).forEach((playerId, index) => {
-        const role = PLAYER_ROLES[index] || `T${index}`;
+      rosterForTeam(team).forEach(player => {
         cards.push(`
-          <article class="pov-cell" data-player="${playerId}" aria-label="${TEAM_NAMES[team]} 选手${playerId} ${role} 游戏画面占位">
+          <article class="pov-cell" data-team="${team}" data-slot="${player.slot}" data-player="${player.id}" aria-label="${TEAM_NAMES[team]} ${player.syntheticEx ? 'EX 后排示例 ' : ''}选手${player.id} ${player.role} 游戏画面占位">
             <div class="pov-frame">
               <div class="pov-source"><span>游戏画面占位</span></div>
             </div>
             <div class="pov-label">
-              <span class="pov-player">${playerId}</span>
-              <span class="pov-name">${TEAM_NAMES[team]} · 选手${playerId}<span class="role-chip role-chip--pov">${role}</span></span>
+              <span class="pov-player">${player.id}</span>
+              <span class="pov-name">${TEAM_NAMES[team]} · 选手${player.id}<span class="role-chip role-chip--pov">${player.role}</span></span>
             </div>
           </article>
         `);
@@ -775,26 +827,22 @@
     elements.playfield.innerHTML = cards.join('');
     elements.playfield.setAttribute(
       'aria-label',
-      state.mode === '4v4'
-        ? '四对四，八路上场选手游戏画面占位'
-        : '三对三候选，六路上场选手游戏画面占位'
+      isExActive()
+        ? `EX ${count} 对 ${count}，${count * 2} 路上场选手游戏画面占位`
+        : (count === 4
+          ? '四对四，八路上场选手游戏画面占位'
+          : '三对三候选，六路上场选手游戏画面占位')
     );
-
-    elements.canvas.classList.toggle('mode-4v4', state.mode === '4v4');
-    elements.canvas.classList.toggle('mode-3v3', state.mode === '3v3');
-    elements.canvas.dataset.mode = state.mode;
-    document.body.dataset.mode = state.mode;
   }
 
   function renderMapResult() {
-    const count = countForMode();
+    const count = activePlayerCount();
     const cards = [];
 
     ['a', 'b'].forEach(team => {
-      rosterForTeam(team).forEach((playerId, index) => {
-        const role = PLAYER_ROLES[index] || `T${index}`;
+      rosterForTeam(team).forEach(player => {
         cards.push(`
-          <article class="pov-cell" data-player="${playerId}" aria-label="${TEAM_NAMES[team]} 选手${playerId} ${role}，osu!原生结算画面占位">
+          <article class="pov-cell" data-team="${team}" data-slot="${player.slot}" data-player="${player.id}" aria-label="${TEAM_NAMES[team]} ${player.syntheticEx ? 'EX 后排示例 ' : ''}选手${player.id} ${player.role}，osu!原生结算画面占位">
             <div class="pov-frame">
               <div class="pov-source pov-source--result">
                 <span class="result-source-title">osu!原生结算画面</span>
@@ -802,8 +850,8 @@
               </div>
             </div>
             <div class="pov-label">
-              <span class="pov-player">${playerId}</span>
-              <span class="pov-name">${TEAM_NAMES[team]} · 选手${playerId}<span class="role-chip role-chip--pov">${role}</span></span>
+              <span class="pov-player">${player.id}</span>
+              <span class="pov-name">${TEAM_NAMES[team]} · 选手${player.id}<span class="role-chip role-chip--pov">${player.role}</span></span>
             </div>
           </article>
         `);
@@ -818,7 +866,11 @@
     elements.resultPlayfield.innerHTML = cards.join('');
     elements.resultPlayfield.setAttribute(
       'aria-label',
-      count === 4 ? '四对四，八路单图结算画面占位' : '三对三，六路单图结算画面占位'
+      isExActive()
+        ? `EX ${count} 对 ${count}，${count * 2} 路单图结算画面占位`
+        : (count === 4
+          ? '四对四，八路单图结算画面占位'
+          : '三对三，六路单图结算画面占位')
     );
     elements.resultScoreStage.dataset.lead = 'left-small';
     elements.resultScoreStage.setAttribute(
@@ -827,6 +879,13 @@
     );
     elements.resultTotalA.textContent = displayA;
     elements.resultTotalB.textContent = displayB;
+  }
+
+  function renderLineupScenes() {
+    applyActiveLayoutClasses();
+    renderWaiting();
+    renderPlaying();
+    renderMapResult();
   }
 
   function mapStatusFor(index) {
@@ -946,7 +1005,7 @@
     elements.canvas.dataset.currentScene = state.scene;
     elements.canvas.setAttribute(
       'aria-label',
-      `1920×1080 OCLR 直播布局示意画布，当前场景：${SCENE_LABELS[state.scene]}`
+      `1920×1080 OCLR S11 直播布局示意画布，当前场景：${SCENE_LABELS[state.scene]}，常规 ${state.mode}，当前 ${activeModeLabel()}`
     );
   }
 
@@ -967,9 +1026,7 @@
     updateArrivalControls();
     updateSceneVisibility();
     updateCleanControls();
-    renderWaiting();
-    renderPlaying();
-    renderMapResult();
+    renderLineupScenes();
     renderMappool();
     elements.mapReadout.textContent = MAP_LABELS[state.map];
     updateHeader();
@@ -994,10 +1051,7 @@
     }
     state.mode = mode;
     updateModeControls();
-    syncModeLabels();
-    renderWaiting();
-    renderPlaying();
-    renderMapResult();
+    renderLineupScenes();
     writeLocationState();
   }
 
@@ -1026,6 +1080,7 @@
     if (mapType === 'tb') {
       state.exTeam = 'none';
     }
+    renderLineupScenes();
     updateHeader();
     syncS11Controls();
     updateMapInfo();
@@ -1048,6 +1103,7 @@
       return;
     }
     state.exTeam = team;
+    renderLineupScenes();
     updateHeader();
     updateMapInfo();
     updateMappoolStatus();

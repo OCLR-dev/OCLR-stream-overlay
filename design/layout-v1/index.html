@@ -78,7 +78,7 @@
 
         <div class="review-note">
           <span>OCLR S11 · 非正式本地演示 · 不接真实数据</span>
-          <span>规则口径见 <a href="./s11-rules.md">s11-rules.md</a> · EX 当前仅展示</span>
+          <span>规则口径见 <a href="./s11-rules.md">s11-rules.md</a> · EX 窗口联动 2v2/3v3</span>
           <span>数字键 1–6 切场景 · C 干净输出 · Esc 退出</span>
         </div>
       </div>
@@ -141,7 +141,7 @@
             </div>
 
             <p class="s11-feedback" id="bpFeedback" role="status" aria-live="polite">Ban 槽默认未确认。</p>
-            <p class="s11-help">同队两次 Ban 不得同 mod（NM/FM 例外）；TB 不可 Ban、禁 EX。EX 仅显示开启方与剩余次数，不做首 Pick/对方 Pick 规则引擎，也不自动扣减；EX 窗口/阵容联动待最终赛事规模确定。</p>
+            <p class="s11-help">同队两次 Ban 不得同 mod（NM/FM 例外）；TB 不可 Ban、禁 EX。EX 按双方常规人数各减 1 路（常规3v3→EX2v2，常规4v4→EX3v3），不改 EX 剩余次数/星位；后排标签为合成示例，不接真实阵容；不做首 Pick/对方 Pick 规则引擎。</p>
           </section>
 
           <section class="s11-group">
@@ -205,7 +205,7 @@
 
     <main class="canvas-stage" id="canvasStage">
       <div class="canvas-sizer" id="canvasSizer">
-        <div class="broadcast-canvas mode-4v4 source-4x3" id="broadcastCanvas" aria-label="1920×1080 OCLR 直播布局示意画布">
+        <div class="broadcast-canvas mode-4v4 layout-4v4 source-4x3" id="broadcastCanvas" aria-label="1920×1080 OCLR S11 直播布局示意画布，常规 4v4，当前 4v4">
           <header class="broadcast-header">
             <section class="team-block team-block--a" aria-label="左队：示例A队">
               <span class="team-side">左队 / A SIDE</span>
@@ -220,7 +220,10 @@
               <span class="layout-mark">布局示意</span>
               <span class="event-title">OCLR S11</span>
               <span class="event-meta"><span data-stage-label>小组赛</span> · <span data-series-target>BO11 · 先 6</span></span>
-              <span class="event-context"><span data-header-scene>等待选手</span> · <span class="format-chip" data-format-label>普通</span> · 常规 <span data-mode-label>4v4</span></span>
+              <span class="event-context">
+                <span class="event-context-line"><span data-header-scene>等待选手</span> · <span class="format-chip" data-format-label>普通</span></span>
+                <span class="event-context-line">常规 <span data-mode-label>4v4</span> · 当前 <span data-active-mode-label>4v4</span></span>
+              </span>
             </section>
 
             <section class="team-block team-block--b" aria-label="右队：示例B队">
