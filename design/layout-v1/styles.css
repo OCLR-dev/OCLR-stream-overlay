@@ -2689,3 +2689,614 @@ body.is-clean .canvas-stage {
 .score-stage--result .score-side {
   letter-spacing: 0.02em;
 }
+
+/* --------------------------------------------------------------------------
+   S11 review controls, stage anchors, Ban/EX markers, and display-only scope
+   -------------------------------------------------------------------------- */
+
+.review-tools--core {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 8px;
+}
+
+.review-note a {
+  color: #d6d6d6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.s11-panel {
+  border-top: 1px solid #383838;
+  background: #191919;
+}
+
+.s11-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  color: #d6d6d6;
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.s11-summary::-webkit-details-marker {
+  display: none;
+}
+
+.s11-summary::before {
+  content: "+";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #555555;
+  color: #d0d0d0;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.s11-panel[open] .s11-summary::before {
+  content: "−";
+}
+
+.s11-summary-main {
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.s11-summary-sub,
+.s11-summary-note {
+  color: #8f8f8f;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.s11-summary-note {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.s11-panel-body {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 18px 13px;
+}
+
+.s11-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid #3a3a3a;
+  background: #202020;
+  padding: 9px 10px 10px;
+}
+
+.s11-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #353535;
+  padding-bottom: 6px;
+}
+
+.s11-group-head h3 {
+  margin: 0;
+  color: #e1e1e1;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.s11-group-head span {
+  color: #898989;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.s11-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 8px;
+}
+
+.s11-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  color: #a5a5a5;
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.s11-select {
+  width: 100%;
+  min-height: 27px;
+  border: 1px solid #4b4b4b;
+  border-radius: 0;
+  background: #141414;
+  color: #e3e3e3;
+  padding: 3px 5px;
+  font: 500 10px/1.2 var(--sans);
+  color-scheme: dark;
+}
+
+.s11-select:hover {
+  border-color: #777777;
+}
+
+.s11-select:disabled {
+  opacity: 0.45;
+}
+
+.s11-ban-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 5px 6px;
+  border-top: 1px solid #333333;
+  padding-top: 7px;
+}
+
+.s11-ban-label {
+  color: #9c9c9c;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.s11-feedback {
+  min-height: 26px;
+  margin: 0;
+  border-left: 2px solid #6e6e6e;
+  background: #171717;
+  padding: 4px 7px;
+  color: #cccccc;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.s11-help {
+  margin: 0;
+  color: #858585;
+  font-size: 8.5px;
+  line-height: 1.4;
+}
+
+.s11-demo-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.s11-demo-stack .control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.s11-demo-stack .control-label {
+  font-size: 9px;
+}
+
+.s11-demo-stack .control-label em {
+  display: inline;
+  margin-left: 4px;
+  font-size: 8px;
+}
+
+.s11-demo-stack .demo-buttons,
+.s11-demo-stack .segmented {
+  flex-wrap: wrap;
+}
+
+.s11-demo-stack .mode-button,
+.s11-demo-stack .demo-button {
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 9px;
+}
+
+.s11-demo-stack .control-readout {
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 9px;
+}
+
+@media (max-width: 1600px) {
+  .s11-panel-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .s11-panel-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .s11-summary-note {
+    display: none;
+  }
+}
+
+/* Top fixed anchor */
+
+.event-meta {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.event-context .format-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  padding: 1px 6px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.event-context .format-chip[data-format="ex"],
+.event-context .format-chip[data-format="tb"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.win-stars {
+  min-height: 20px;
+  white-space: nowrap;
+}
+
+/* Player role labels stay independent from the EX display marker. */
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 7px;
+  border: 1px solid var(--line);
+  background: var(--fill);
+  padding: 2px 5px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.role-chip--pov {
+  margin-left: 5px;
+  border-color: var(--hairline);
+  background: var(--paper);
+  padding: 1px 4px;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+/* Mappool Ban / EX status strip */
+
+.mappool-body {
+  gap: 0;
+}
+
+.mappool-status {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  padding: 7px 11px;
+}
+
+.mappool-team-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.mappool-team-status--b {
+  justify-content: flex-end;
+}
+
+.mappool-team-name {
+  margin-right: 2px;
+  font-size: 11px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.ban-slot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 3px 5px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ban-slot-chip[data-state="empty"] {
+  border-style: dashed;
+  background: var(--fill);
+  color: var(--muted);
+}
+
+.ban-slot-chip[data-state="used"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.ban-slot-index {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.ban-slot-chip[data-state="used"] .ban-slot-index {
+  color: #cfcfcf;
+}
+
+.ban-slot-chip b {
+  font-weight: 700;
+}
+
+.ex-counter {
+  border-left: 1px solid var(--hairline);
+  margin-left: 2px;
+  padding-left: 7px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ex-counter b {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.mappool-mid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px 13px;
+  border-inline: 1px solid var(--hairline);
+  padding-inline: 17px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mappool-mid b {
+  color: var(--ink-soft);
+  font-weight: 750;
+}
+
+.map-ex-mark {
+  border: 1px dashed var(--line);
+  padding: 2px 5px;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.mappool-columns {
+  margin-top: 8px;
+}
+
+.map-entry {
+  grid-template-columns: 34px 32px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0 9px;
+}
+
+.map-mod {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* Current map mode/mod/EX near the map in Playing and single-map result. */
+
+.current-map {
+  gap: 2px;
+}
+
+.map-kicker-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.map-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 1px 5px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.map-chip--ex {
+  border-style: dashed;
+  font-family: var(--sans);
+  font-size: 9px;
+}
+
+.current-map strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.map-kicker {
+  font-size: 9px;
+}
+
+.map-sub {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.map-rule {
+  display: block;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pause distinction. Duration is a static provisional label, never a timer. */
+
+.pause-recovery {
+  margin: 8px 0 0;
+  color: #c7c7c7;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.pause-time[hidden] {
+  display: none !important;
+}
+
+.pause-side [data-rematch-status] {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+/* S11 readability pass: the in-canvas EX/Ban status must read on stream. */
+
+.mappool-status {
+  min-height: 92px;
+  padding: 11px 14px;
+  gap: 20px;
+}
+
+.mappool-team-status {
+  gap: 8px;
+}
+
+.mappool-team-name {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.ban-slot-chip {
+  gap: 6px;
+  padding: 4px 7px;
+  font-size: 16px;
+  line-height: 1.05;
+}
+
+.ban-slot-index {
+  font-size: 16px;
+}
+
+.ex-counter {
+  margin-left: 4px;
+  padding-left: 10px;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.ex-counter b {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.mappool-mid {
+  gap: 6px 18px;
+  padding-inline: 20px;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.map-ex-mark {
+  padding: 3px 8px;
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+.playing-footer .map-row {
+  padding: 4px 32px;
+}
+
+.map-chip--ex {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.map-kicker-row {
+  gap: 6px;
+}

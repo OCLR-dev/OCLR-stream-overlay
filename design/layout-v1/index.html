@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="OCLR 直播 UI 第一轮空间布局评审：1920×1080 低保真线框，仅使用示例数据。">
-  <title>OCLR直播UI布局规划</title>
+  <meta name="description" content="OCLR S11 直播 UI 空间布局评审：1920×1080 低保真线框，仅使用本地示例数据。">
+  <title>OCLR S11 直播 UI · 空间布局评审</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -12,40 +12,28 @@
     <header class="review-chrome" id="reviewChrome">
       <div class="review-topline">
         <div class="review-brand">
-          <span class="review-kicker">OCLR / BROADCAST LAYOUT</span>
-          <span class="review-title">直播 UI 空间评审 <span class="review-version">layout-v1</span></span>
+          <span class="review-kicker">OCLR / S11 BROADCAST LAYOUT</span>
+          <span class="review-title">S11 直播 UI 空间评审 <span class="review-version">layout-v1</span></span>
         </div>
 
         <nav class="scene-tabs" aria-label="核心直播场景">
           <button class="scene-tab is-active" type="button" data-scene-target="waiting" aria-pressed="true">
-            <span class="scene-tab-no">01</span>
-            <span class="scene-tab-label">等待选手</span>
-            <span class="scene-tab-now" aria-hidden="true">当前</span>
+            <span class="scene-tab-no">01</span><span class="scene-tab-label">等待选手</span><span class="scene-tab-now" aria-hidden="true">当前</span>
           </button>
           <button class="scene-tab" type="button" data-scene-target="mappool" aria-pressed="false">
-            <span class="scene-tab-no">02</span>
-            <span class="scene-tab-label">Mappool Ban/Pick</span>
-            <span class="scene-tab-now" aria-hidden="true">当前</span>
+            <span class="scene-tab-no">02</span><span class="scene-tab-label">Mappool Ban/Pick</span><span class="scene-tab-now" aria-hidden="true">当前</span>
           </button>
           <button class="scene-tab" type="button" data-scene-target="playing" aria-pressed="false">
-            <span class="scene-tab-no">03</span>
-            <span class="scene-tab-label">Playing</span>
-            <span class="scene-tab-now" aria-hidden="true">当前</span>
+            <span class="scene-tab-no">03</span><span class="scene-tab-label">Playing</span><span class="scene-tab-now" aria-hidden="true">当前</span>
           </button>
           <button class="scene-tab" type="button" data-scene-target="map-result" aria-pressed="false">
-            <span class="scene-tab-no">04</span>
-            <span class="scene-tab-label">单图结算</span>
-            <span class="scene-tab-now" aria-hidden="true">当前</span>
+            <span class="scene-tab-no">04</span><span class="scene-tab-label">单图结算</span><span class="scene-tab-now" aria-hidden="true">当前</span>
           </button>
           <button class="scene-tab" type="button" data-scene-target="victory" aria-pressed="false">
-            <span class="scene-tab-no">05</span>
-            <span class="scene-tab-label">全场胜利</span>
-            <span class="scene-tab-now" aria-hidden="true">当前</span>
+            <span class="scene-tab-no">05</span><span class="scene-tab-label">全场胜利</span><span class="scene-tab-now" aria-hidden="true">当前</span>
           </button>
           <button class="scene-tab" type="button" data-scene-target="pause" aria-pressed="false">
-            <span class="scene-tab-no">06</span>
-            <span class="scene-tab-label">暂停 / 技术处理</span>
-            <span class="scene-tab-now" aria-hidden="true">当前</span>
+            <span class="scene-tab-no">06</span><span class="scene-tab-label">暂停 / 技术处理</span><span class="scene-tab-now" aria-hidden="true">当前</span>
           </button>
         </nav>
 
@@ -54,12 +42,29 @@
         </div>
       </div>
 
-      <div class="review-tools">
+      <div class="review-tools review-tools--core">
         <div class="control-group">
-          <span class="control-label">上场人数 <em>未定案</em></span>
-          <div class="segmented" role="group" aria-label="上场人数方案">
+          <span class="control-label">常规人数 <em>最终待定</em></span>
+          <div class="segmented" role="group" aria-label="常规上场人数">
             <button class="mode-button is-active" type="button" data-mode-target="4v4" aria-pressed="true">4v4</button>
             <button class="mode-button" type="button" data-mode-target="3v3" aria-pressed="false">3v3</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">阶段 <em>BO11 / BO13</em></span>
+          <div class="segmented" role="group" aria-label="S11 阶段">
+            <button class="mode-button is-active" type="button" data-stage-target="group" aria-pressed="true">小组赛</button>
+            <button class="mode-button" type="button" data-stage-target="elimination" aria-pressed="false">淘汰赛</button>
+            <button class="mode-button" type="button" data-stage-target="final" aria-pressed="false">决赛</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">谱面类型 <em>普通 / TB</em></span>
+          <div class="segmented" role="group" aria-label="谱面类型">
+            <button class="mode-button is-active" type="button" data-maptype-target="normal" aria-pressed="true">普通</button>
+            <button class="mode-button" type="button" data-maptype-target="tb" aria-pressed="false">TB</button>
           </div>
         </div>
 
@@ -71,40 +76,131 @@
           </div>
         </div>
 
-        <div class="control-group">
-          <span class="control-label">比分演示 <em>仅 Playing · 本地示意</em></span>
-          <div class="segmented segmented--lead" role="group" aria-label="比分演示状态">
-            <button class="mode-button" type="button" data-lead-target="left-small" aria-pressed="false">左小领先</button>
-            <button class="mode-button" type="button" data-lead-target="left-large" aria-pressed="false">左大领先</button>
-            <button class="mode-button is-active" type="button" data-lead-target="equal" aria-pressed="true">平分</button>
-            <button class="mode-button" type="button" data-lead-target="right-small" aria-pressed="false">右小领先</button>
-            <button class="mode-button" type="button" data-lead-target="right-large" aria-pressed="false">右大领先</button>
-          </div>
-        </div>
-
-        <div class="control-group control-group--wide">
-          <span class="control-label">等待演示 <em>仅影响等待场景</em></span>
-          <div class="demo-buttons" role="group" aria-label="选手到场演示">
-            <button class="demo-button is-active" type="button" data-arrival="none" aria-pressed="true">全部等待</button>
-            <button class="demo-button" type="button" data-arrival="a" aria-pressed="false">示例A队到场</button>
-            <button class="demo-button" type="button" data-arrival="both" aria-pressed="false">双方到场</button>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <span class="control-label">图池演示 <em>仅影响 Mappool 场景</em></span>
-          <div class="demo-map-row">
-            <button class="demo-button" id="mapCycleButton" type="button">切换焦点谱面状态</button>
-            <span class="control-readout" id="mapReadout" aria-live="polite">禁用 · 示例A队</span>
-          </div>
-        </div>
-
         <div class="review-note">
-          <span>非正式赛事数据 · 仅本地内存 · 设计说明见 layout-plan.md</span>
-          <span>3v3 空白为构图保留，非掉线位</span>
-          <span>数字键 1–6 切场景 · C 切换干净输出 · Esc 退出 · URL 可恢复</span>
+          <span>OCLR S11 · 非正式本地演示 · 不接真实数据</span>
+          <span>规则口径见 <a href="./s11-rules.md">s11-rules.md</a> · EX 当前仅展示</span>
+          <span>数字键 1–6 切场景 · C 干净输出 · Esc 退出</span>
         </div>
       </div>
+
+      <details class="s11-panel">
+        <summary class="s11-summary">
+          <span class="s11-summary-main">S11 规则演示</span>
+          <span class="s11-summary-sub">系列星位 · Ban / EX · 暂停 · 画面演示</span>
+          <span class="s11-summary-note">点击展开设置 · 不自动扣次数或加星</span>
+        </summary>
+
+        <div class="s11-panel-body">
+          <section class="s11-group">
+            <header class="s11-group-head"><h3>系列星位</h3><span>人工演示 · 默认未知</span></header>
+            <div class="s11-fields">
+              <label class="s11-field">A 队赢图<select class="s11-select" id="seriesASelect"></select></label>
+              <label class="s11-field">B 队赢图<select class="s11-select" id="seriesBSelect"></select></label>
+            </div>
+            <p class="s11-help">星位上限随阶段：小组/淘汰 6，决赛 7。切场景、单图结算和 EX 标记不会自动加星。</p>
+          </section>
+
+          <section class="s11-group s11-group--bp">
+            <header class="s11-group-head"><h3>BP / EX</h3><span>本地示意 · 不猜顺序</span></header>
+            <div class="s11-fields">
+              <label class="s11-field">当前谱面模组
+                <select class="s11-select" id="mapModSelect">
+                  <option value="NM">NM</option><option value="HD">HD</option><option value="HR">HR</option><option value="FM">FM</option>
+                </select>
+              </label>
+              <label class="s11-field">EX 开启方
+                <select class="s11-select" id="exTeamSelect">
+                  <option value="none">未开启</option><option value="a">示例A队</option><option value="b">示例B队</option>
+                </select>
+              </label>
+              <label class="s11-field">先 Pick
+                <select class="s11-select" id="pickFirstSelect">
+                  <option value="unknown">未确认</option><option value="a">示例A队</option><option value="b">示例B队</option>
+                </select>
+              </label>
+              <label class="s11-field">先 Ban
+                <select class="s11-select" id="banFirstSelect">
+                  <option value="unknown">未确认</option><option value="a">示例A队</option><option value="b">示例B队</option>
+                </select>
+              </label>
+              <label class="s11-field">A 队 EX 剩余
+                <select class="s11-select" id="exRemainingA"><option value="2">2</option><option value="1">1</option><option value="0">0</option></select>
+              </label>
+              <label class="s11-field">B 队 EX 剩余
+                <select class="s11-select" id="exRemainingB"><option value="2">2</option><option value="1">1</option><option value="0">0</option></select>
+              </label>
+            </div>
+
+            <div class="s11-ban-grid">
+              <span class="s11-ban-label">A Ban</span>
+              <select class="s11-select s11-ban-select" data-ban-slot="a0" aria-label="示例A队 Ban 1"></select>
+              <select class="s11-select s11-ban-select" data-ban-slot="a1" aria-label="示例A队 Ban 2"></select>
+              <span class="s11-ban-label">B Ban</span>
+              <select class="s11-select s11-ban-select" data-ban-slot="b0" aria-label="示例B队 Ban 1"></select>
+              <select class="s11-select s11-ban-select" data-ban-slot="b1" aria-label="示例B队 Ban 2"></select>
+            </div>
+
+            <p class="s11-feedback" id="bpFeedback" role="status" aria-live="polite">Ban 槽默认未确认。</p>
+            <p class="s11-help">同队两次 Ban 不得同 mod（NM/FM 例外）；TB 不可 Ban、禁 EX。EX 仅显示开启方与剩余次数，不做首 Pick/对方 Pick 规则引擎，也不自动扣减；EX 窗口/阵容联动待最终赛事规模确定。</p>
+          </section>
+
+          <section class="s11-group">
+            <header class="s11-group-head"><h3>暂停演示</h3><span>人工状态</span></header>
+            <div class="segmented" role="group" aria-label="暂停类型">
+              <button class="mode-button is-active" type="button" data-pause-type-target="tactical" aria-pressed="true">战术暂停</button>
+              <button class="mode-button" type="button" data-pause-type-target="technical" aria-pressed="false">技术处理</button>
+            </div>
+            <div class="s11-fields">
+              <label class="s11-field">A 队战术暂停
+                <select class="s11-select" id="tacticalASelect"><option value="available">可用</option><option value="used">已用</option></select>
+              </label>
+              <label class="s11-field">B 队战术暂停
+                <select class="s11-select" id="tacticalBSelect"><option value="available">可用</option><option value="used">已用</option></select>
+              </label>
+              <label class="s11-field">A 队重赛机会
+                <select class="s11-select" id="rematchASelect"><option value="unknown">未确认</option><option value="available">可用（人工确认）</option><option value="used">已用</option></select>
+              </label>
+              <label class="s11-field">B 队重赛机会
+                <select class="s11-select" id="rematchBSelect"><option value="unknown">未确认</option><option value="available">可用（人工确认）</option><option value="used">已用</option></select>
+              </label>
+            </div>
+            <p class="s11-help">战术暂停暂定 3:00；恢复时间未确认，不做倒计时。技术处理不自动消耗战术暂停；30 秒后重赛机会须人工确认，不自动判罚。</p>
+          </section>
+
+          <section class="s11-group s11-group--demos">
+            <header class="s11-group-head"><h3>画面演示</h3><span>既有控件</span></header>
+            <div class="s11-demo-stack">
+              <div class="control-group control-group--wide">
+                <span class="control-label">等待演示 <em>仅等待场景</em></span>
+                <div class="demo-buttons" role="group" aria-label="选手到场演示">
+                  <button class="demo-button is-active" type="button" data-arrival="none" aria-pressed="true">全部等待</button>
+                  <button class="demo-button" type="button" data-arrival="a" aria-pressed="false">示例A队到场</button>
+                  <button class="demo-button" type="button" data-arrival="both" aria-pressed="false">双方到场</button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <span class="control-label">比分演示 <em>仅 Playing</em></span>
+                <div class="segmented segmented--lead" role="group" aria-label="比分演示状态">
+                  <button class="mode-button" type="button" data-lead-target="left-small" aria-pressed="false">左小领先</button>
+                  <button class="mode-button" type="button" data-lead-target="left-large" aria-pressed="false">左大领先</button>
+                  <button class="mode-button is-active" type="button" data-lead-target="equal" aria-pressed="true">平分</button>
+                  <button class="mode-button" type="button" data-lead-target="right-small" aria-pressed="false">右小领先</button>
+                  <button class="mode-button" type="button" data-lead-target="right-large" aria-pressed="false">右大领先</button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <span class="control-label">图池焦点 <em>仅 Mappool</em></span>
+                <div class="demo-map-row">
+                  <button class="demo-button" id="mapCycleButton" type="button">切换焦点谱面状态</button>
+                  <span class="control-readout" id="mapReadout" aria-live="polite">禁用 · 示例A队</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </details>
     </header>
 
     <main class="canvas-stage" id="canvasStage">
@@ -116,14 +212,15 @@
               <span class="team-name">示例A队</span>
               <div class="series-row">
                 <span class="series-label">赢图</span>
-                <span class="win-stars" aria-hidden="true">☆ ☆ ☆ ☆ ☆</span>
+                <span class="win-stars" data-series-stars="a" aria-label="赢图未知"></span>
               </div>
             </section>
 
             <section class="event-block">
               <span class="layout-mark">布局示意</span>
-              <span class="event-title">OCLR · 阶段占位</span>
-              <span class="event-context"><span data-header-scene>等待选手</span> · <span data-mode-label>4v4</span></span>
+              <span class="event-title">OCLR S11</span>
+              <span class="event-meta"><span data-stage-label>小组赛</span> · <span data-series-target>BO11 · 先 6</span></span>
+              <span class="event-context"><span data-header-scene>等待选手</span> · <span class="format-chip" data-format-label>普通</span> · 常规 <span data-mode-label>4v4</span></span>
             </section>
 
             <section class="team-block team-block--b" aria-label="右队：示例B队">
@@ -131,7 +228,7 @@
               <span class="team-name">示例B队</span>
               <div class="series-row">
                 <span class="series-label">赢图</span>
-                <span class="win-stars" aria-hidden="true">☆ ☆ ☆ ☆ ☆</span>
+                <span class="win-stars" data-series-stars="b" aria-label="赢图未知"></span>
               </div>
             </section>
           </header>
@@ -206,6 +303,28 @@
                     <h2 id="mappool-title">Mappool Ban/Pick</h2>
                   </div>
                 </div>
+
+                <div class="mappool-status" aria-label="S11 本地选图状态">
+                  <div class="mappool-team-status">
+                    <span class="mappool-team-name">示例A队</span>
+                    <span class="ban-slot-chip"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="a0">未确认</b></span>
+                    <span class="ban-slot-chip"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="a1">未确认</b></span>
+                    <span class="ex-counter">EX 剩余 <b data-ex-remaining="a">2</b></span>
+                  </div>
+                  <div class="mappool-mid">
+                    <span>先Pick <b data-pick-first>未确认</b></span>
+                    <span>先Ban <b data-ban-first>未确认</b></span>
+                    <span>当前 <b data-mappool-format>普通</b> · <b data-mappool-mod>NM</b></span>
+                    <span class="map-ex-mark" data-mappool-ex>EX 未开启</span>
+                  </div>
+                  <div class="mappool-team-status mappool-team-status--b">
+                    <span class="mappool-team-name">示例B队</span>
+                    <span class="ban-slot-chip"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="b0">未确认</b></span>
+                    <span class="ban-slot-chip"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="b1">未确认</b></span>
+                    <span class="ex-counter">EX 剩余 <b data-ex-remaining="b">2</b></span>
+                  </div>
+                </div>
+
                 <div class="mappool-columns" data-mappool-columns></div>
               </div>
 
@@ -251,9 +370,15 @@
                 </div>
                 <div class="map-row">
                   <div class="current-map">
-                    <span class="map-kicker">当前谱面</span>
+                    <span class="map-kicker-row">
+                      <span class="map-kicker">当前谱面</span>
+                      <span class="map-chip" data-map-format>普通</span>
+                      <span class="map-chip" data-map-mod>NM</span>
+                      <span class="map-chip map-chip--ex" data-map-ex>EX 未开启</span>
+                    </span>
                     <strong>谱面标题占位</strong>
                     <span class="map-sub">艺术家 / 难度</span>
+                    <span class="map-rule" data-map-rule hidden></span>
                   </div>
                   <div class="map-params" aria-label="谱面参数">
                     <span><b>CS</b> —</span>
@@ -286,9 +411,15 @@
                 </div>
                 <div class="map-row">
                   <div class="current-map">
-                    <span class="map-kicker">本图谱面</span>
+                    <span class="map-kicker-row">
+                      <span class="map-kicker">本图谱面</span>
+                      <span class="map-chip" data-map-format>普通</span>
+                      <span class="map-chip" data-map-mod>NM</span>
+                      <span class="map-chip map-chip--ex" data-map-ex>EX 未开启</span>
+                    </span>
                     <strong>谱面标题占位 02</strong>
                     <span class="map-sub">艺术家 / 难度</span>
+                    <span class="map-rule" data-map-rule hidden></span>
                   </div>
                   <div class="map-params" aria-label="谱面参数">
                     <span><b>CS</b> —</span>
@@ -310,11 +441,11 @@
                 </div>
 
                 <div class="victory-hero">
-                  <div class="victory-mark" aria-hidden="true">A</div>
+                  <div class="victory-mark" aria-hidden="true">?</div>
                   <div class="victory-copy">
-                    <span class="victory-kicker">OCLR · 阶段占位</span>
-                    <h3>示例A队</h3>
-                    <p class="victory-status">全场胜者</p>
+                    <span class="victory-kicker">OCLR S11 · <span data-victory-stage>小组赛</span></span>
+                    <h3>全场胜者</h3>
+                    <p class="victory-status">待确认</p>
                   </div>
                   <div class="victory-result">
                     <span>最终赢图</span>
@@ -324,16 +455,16 @@
 
                 <div class="victory-supports">
                   <div>
-                    <span>本场对手</span>
-                    <strong>示例B队</strong>
+                    <span>赛制目标</span>
+                    <strong data-victory-target>BO11 · 先 6</strong>
                   </div>
                   <div>
-                    <span>上场方案</span>
+                    <span>比赛阶段</span>
+                    <strong data-victory-stage>小组赛</strong>
+                  </div>
+                  <div>
+                    <span>常规人数</span>
                     <strong data-mode-short>4v4</strong>
-                  </div>
-                  <div>
-                    <span>系列赛星位</span>
-                    <strong aria-label="赢图星位占位">☆ ☆ ☆ ☆ ☆</strong>
                   </div>
                   <div>
                     <span>下一张图</span>
@@ -345,15 +476,15 @@
               <footer class="scene-footer">
                 <section class="footer-cell">
                   <span class="footer-kicker">全场胜者</span>
-                  <p class="footer-lead">示例A队</p>
+                  <p class="footer-lead">待确认</p>
                 </section>
                 <section class="footer-cell">
-                  <span class="footer-kicker">系列赛赢图</span>
-                  <p class="win-stars" aria-hidden="true">☆ ☆ ☆ ☆ ☆</p>
+                  <span class="footer-kicker">赛制目标</span>
+                  <p class="footer-lead" data-victory-target>BO11 · 先 6</p>
                 </section>
                 <section class="footer-cell">
-                  <span class="footer-kicker">本场对手</span>
-                  <p>示例B队</p>
+                  <span class="footer-kicker">比赛阶段</span>
+                  <p data-victory-stage>小组赛</p>
                 </section>
               </footer>
             </section>
@@ -362,30 +493,32 @@
               <div class="scene-body pause-body">
                 <div class="scene-head pause-head">
                   <div class="title-line">
-                    <h2 id="pause-title">暂停 / 技术处理中</h2>
+                    <h2 id="pause-title" data-pause-title>战术暂停</h2>
                   </div>
                 </div>
 
                 <div class="pause-layout">
                   <section class="pause-primary">
                     <div class="pause-mark" aria-hidden="true"><span></span><span></span></div>
-                    <h3>比赛暂停</h3>
-                    <p class="pause-time">恢复时间：未确认</p>
+                    <h3 data-pause-headline>战术暂停</h3>
+                    <p class="pause-time" data-pause-duration>暂定 3:00</p>
+                    <p class="pause-recovery">恢复时间：未确认</p>
                   </section>
 
                   <section class="pause-side">
-                    <div class="pause-row"><span>当前对局</span><strong>示例A队 vs 示例B队</strong></div>
-                    <div class="pause-row"><span>当前比分</span><strong>— : —</strong></div>
+                    <div class="pause-row"><span>暂停类型</span><strong data-pause-type-label>战术暂停</strong></div>
+                    <div class="pause-row"><span>A 队战术暂停</span><strong data-pause-a-status>可用</strong></div>
+                    <div class="pause-row"><span>B 队战术暂停</span><strong data-pause-b-status>可用</strong></div>
+                    <div class="pause-row"><span>断线重赛机会</span><strong data-rematch-status>A 未确认 · B 未确认</strong></div>
                     <div class="pause-row"><span>当前谱面</span><strong>谱面标题占位</strong></div>
-                    <div class="pause-row"><span>系列赛</span><strong>—</strong></div>
                   </section>
                 </div>
               </div>
 
               <footer class="scene-footer">
                 <section class="footer-cell">
-                  <span class="footer-kicker">比赛状态</span>
-                  <p class="footer-lead">暂停中</p>
+                  <span class="footer-kicker">暂停类型</span>
+                  <p class="footer-lead" data-pause-footer-type>战术暂停</p>
                 </section>
                 <section class="footer-cell">
                   <span class="footer-kicker">恢复时间</span>
