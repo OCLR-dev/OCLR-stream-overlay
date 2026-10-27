@@ -404,7 +404,13 @@ body.is-clean .canvas-stage {
 }
 
 .team-block--b .series-row {
-  justify-content: flex-end;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.team-block--b .win-stars {
+  direction: rtl;
+  unicode-bidi: bidi-override;
 }
 
 .series-label {
