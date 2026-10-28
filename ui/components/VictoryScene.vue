@@ -9,20 +9,21 @@ const { state, view } = useOverlay();
     <div class="scene-body victory-body">
       <div class="scene-head result-head">
         <div class="title-line">
+          <span class="scene-eyebrow">SERIES RESULT / 05</span>
           <h2 id="victory-title">全场胜利</h2>
         </div>
       </div>
 
       <div class="victory-hero">
-        <div class="victory-mark" aria-hidden="true">?</div>
+        <div class="victory-mark" aria-hidden="true">WINNER</div>
         <div class="victory-copy">
           <span class="victory-kicker">OCLR S11 · <span data-victory-stage>{{ view.meta.label }}</span></span>
-          <h3>全场胜者</h3>
-          <p class="victory-status">待确认</p>
+          <h3>全场胜者待确认</h3>
+          <p class="victory-status">示例A队 <span>VS</span> 示例B队</p>
         </div>
         <div class="victory-result">
           <span>最终赢图</span>
-          <strong>—</strong>
+          <strong><span>—</span><i>:</i><span>—</span></strong>
         </div>
       </div>
 

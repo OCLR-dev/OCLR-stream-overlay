@@ -9,6 +9,7 @@ const { state, view } = useOverlay();
     <div class="scene-body pause-body">
       <div class="scene-head pause-head">
         <div class="title-line">
+          <span class="scene-eyebrow">MATCH ON HOLD / 06</span>
           <h2 id="pause-title" data-pause-title>{{ view.pauseTitle }}</h2>
         </div>
       </div>

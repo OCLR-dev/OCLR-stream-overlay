@@ -1,0 +1,261 @@
+{
+  "layout": {
+    "cards": [
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "NM",
+        "titleClipped": false,
+        "width": 330.00001716613724,
+        "x": 153.99998708452534,
+        "y": 333.9999821799147
+      },
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "NM",
+        "titleClipped": false,
+        "width": 329.99997792925217,
+        "x": 497.99999950953895,
+        "y": 333.9999821799147
+      },
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "NM",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 842.0000119345526,
+        "y": 333.9999821799147
+      },
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "NM",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 1185.9999851226812,
+        "y": 333.9999821799147
+      },
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "NM",
+        "titleClipped": false,
+        "width": 330.00009563990744,
+        "x": 1529.9999583108097,
+        "y": 333.9999821799147
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HD",
+        "titleClipped": false,
+        "width": 330.00001716613724,
+        "x": 153.99998708452534,
+        "y": 426.3281395414042
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HD",
+        "titleClipped": false,
+        "width": 329.99997792925217,
+        "x": 497.99999950953895,
+        "y": 426.3281395414042
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HD",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 842.0000119345526,
+        "y": 426.3281395414042
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HD",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 1185.9999851226812,
+        "y": 426.3281395414042
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HR",
+        "titleClipped": false,
+        "width": 330.00001716613724,
+        "x": 153.99998708452534,
+        "y": 518.6640658061418
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HR",
+        "titleClipped": false,
+        "width": 329.99997792925217,
+        "x": 497.99999950953895,
+        "y": 518.6640658061418
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HR",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 842.0000119345526,
+        "y": 518.6640658061418
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "HR",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 1185.9999851226812,
+        "y": 518.6640658061418
+      },
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "DT",
+        "titleClipped": false,
+        "width": 330.00001716613724,
+        "x": 153.99998708452534,
+        "y": 610.9999920708794
+      },
+      {
+        "height": 84.3281488601644,
+        "metaClipped": false,
+        "mod": "DT",
+        "titleClipped": false,
+        "width": 329.99997792925217,
+        "x": 497.99999950953895,
+        "y": 610.9999920708794
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "FM",
+        "titleClipped": false,
+        "width": 330.00001716613724,
+        "x": 153.99998708452534,
+        "y": 703.328149432369
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "FM",
+        "titleClipped": false,
+        "width": 329.99997792925217,
+        "x": 497.99999950953895,
+        "y": 703.328149432369
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "FM",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 842.0000119345526,
+        "y": 703.328149432369
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "FM",
+        "titleClipped": false,
+        "width": 329.99993869236704,
+        "x": 1185.9999851226812,
+        "y": 703.328149432369
+      },
+      {
+        "height": 84.33591776341254,
+        "metaClipped": false,
+        "mod": "TB",
+        "titleClipped": false,
+        "width": 330.00001716613724,
+        "x": 153.99998708452534,
+        "y": 795.6640756971067
+      }
+    ],
+    "chat": {
+      "height": 80.3984178707009,
+      "width": 1800.000107901434,
+      "x": 60.00000490461064,
+      "y": 950.2968752643892
+    },
+    "currentMod": "DT",
+    "groups": [
+      {
+        "entries": 5,
+        "height": 84.3281488601644,
+        "mod": "NM",
+        "width": 1800.000107901434,
+        "x": 60.00000490461064,
+        "y": 333.9999821799147
+      },
+      {
+        "entries": 4,
+        "height": 84.33591776341254,
+        "mod": "HD",
+        "width": 1800.000107901434,
+        "x": 60.00000490461064,
+        "y": 426.3281395414042
+      },
+      {
+        "entries": 4,
+        "height": 84.33591776341254,
+        "mod": "HR",
+        "width": 1800.000107901434,
+        "x": 60.00000490461064,
+        "y": 518.6640658061418
+      },
+      {
+        "entries": 2,
+        "height": 84.3281488601644,
+        "mod": "DT",
+        "width": 1800.000107901434,
+        "x": 60.00000490461064,
+        "y": 610.9999920708794
+      },
+      {
+        "entries": 4,
+        "height": 84.33591776341254,
+        "mod": "FM",
+        "width": 1800.000107901434,
+        "x": 60.00000490461064,
+        "y": 703.328149432369
+      },
+      {
+        "entries": 1,
+        "height": 84.33591776341254,
+        "mod": "TB",
+        "width": 1800.000107901434,
+        "x": 60.00000490461064,
+        "y": 795.6640756971067
+      }
+    ]
+  },
+  "rules": {
+    "ban": "DT",
+    "currentMod": "DT",
+    "duplicateValue": "unknown",
+    "feedback": "示例A队 同一 mod 不可重复 Ban（NM/FM 例外），已阻止 DT。",
+    "options": [
+      "NM",
+      "HD",
+      "HR",
+      "DT",
+      "FM"
+    ],
+    "restored": {
+      "ban": "DT",
+      "currentMod": "DT"
+    }
+  },
+  "logs": []
+}

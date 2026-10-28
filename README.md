@@ -1,8 +1,10 @@
 # OCLR 直播 Overlay
 
-OCLR 赛事直播项目，前端已迁移至 **Vue 3 + Vite + TypeScript**，采用 **Violet Orbit** 浅紫主题和左红右蓝队色。六场景、S11 本地演示交互、URL 恢复及窗口几何沿用 layout-v1。数据基础层与画面仍分离，尚未接入真实数据，也未完成真实 tosu / osu! tourney / OBS 联调。
+OCLR 赛事直播项目，前端已迁移至 **Vue 3 + Vite + TypeScript**，按用户提供的 HTML 重构为 **Neon Broadcast** 深紫电竞视觉：红蓝斜切横幅、中央盾牌、大比分、模组横排图池与紧凑谱面卡。保留六场景、S11 本地演示交互、URL 恢复及 Playing / 单图结算共用窗口。数据基础层与画面仍分离，尚未接入真实数据，也未完成真实 tosu / osu! tourney / OBS 联调。
 
 ## 当前内容
+
+后续开发路线见 [直播员控制台与浏览器播出方案](docs/design/operator-console-plan.md)：优先完成独立控制台、共享状态与“到场 → Roll → BP → Playing 循环 → Winner”流程。OBS 保持同一个浏览器源，由控制台直接驱动网页换画面，不切 OBS 场景或增加 OBS 确认步骤。该方案目前为设计提案。
 
 | 路径 | 内容 |
 | --- | --- |
@@ -13,7 +15,7 @@ OCLR 赛事直播项目，前端已迁移至 **Vue 3 + Vite + TypeScript**，采
 | `dist/` | Vite 生成的生产资源，已忽略，不提交 |
 | [`design/layout-v1/`](design/layout-v1/layout-plan.md) | 迁移前的 S11 视觉参考、布局决策及截图 |
 | [`docs/verification/vue-migration/`](docs/verification/vue-migration/README.md) | Vue 迁移检查记录、布局比对与新版截图 |
-| [`design/layout-v1/art/`](design/layout-v1/art/violet-orbit.svg) | Violet Orbit 本地 SVG 背景；Mappool / Playing / 单图结算共用 |
+| `ui/broadcast.css` | 当前深紫背景与直播视觉；本地字体位于 `ui/assets/fonts/` |
 | [`design/layout-v1/s11-rules.md`](design/layout-v1/s11-rules.md) | S11 v1.6 规则映射、UI 边界及待定项 |
 
 构建后，数据服务的 `/`、`/index.html`、`/overlay` 提供 Vue UI；`/api/health` 返回服务状态 JSON。默认画面仍使用明确标注的本地演示数据。
@@ -40,34 +42,20 @@ npm start
 
 `npm run check` 执行 Vue/TypeScript 类型检查，`npm test` 执行数据层、UI 状态及静态服务隔离测试。未构建时访问本机 UI 会返回 `UI_BUILD_REQUIRED`，先执行 `npm run build`。
 
-## 原版布局参考
+## 当前视觉预览
 
-在项目根目录运行：
+打开 <http://127.0.0.1:3003/#scene=playing&clean=1&lead=left-small> 查看 Gameplay；按 `1`–`6` 切换等待、图池、Playing、单图结算、全场胜利、暂停。按 `C` 进入干净输出，`Esc` 恢复外部演示控件。
 
-```sh
-python3 -m http.server 3002 --bind 127.0.0.1 --directory design/layout-v1
-```
+- 样式直接以用户提供的 `osu! 組隊賽直播界面.html` 为主：深紫细网格、红蓝斜切横幅、中央赛事盾牌、白色大比分、菱形赢图位和模组横排卡片。
+- 融合 S11 的 BO11/BO13、6/7 赢图位、双方各两个 Ban 槽、EX 剩余次数与开启方、TB 禁 EX/不可 Ban、FM 提示及战术/技术暂停。参考稿的 BO9、示例队伍和结果不作为比赛数据。
+- 常规 3v3/4v4 仍待最终确认；EX 对双方各减一人，3v3→2v2、4v4→3v3。Playing 与单图结算共用同位同尺寸游戏窗口，按 4:3 / 16:9 contain，不显示窗底姓名/角色栏。
+- 顶部显示本图队伍分数；分差条以固定中线向领先侧延伸，数字位于外端。结算总分按有效人数求和，独立于 Playing 演示领先状态。
+- 当前 NM/HD/HR/DT/FM/TB 六类的 20 个谱面条目、队伍、选手和分数均为本地演示；模组分布不是正式图池。未知参数/星数/胜者保持未知，不借用其他赛季数据。
+- 字体、图形与背景全部本地提供；低强度背景光动画支持减少动态偏好。画布外规则演示抽屉默认收起。
 
-打开 <http://127.0.0.1:3002/>。只提供该线框目录，**不要把项目根目录作为静态 HTTP 根目录**。
+![Neon Broadcast Gameplay](docs/verification/neon-broadcast/playing.png)
 
-- 六个场景：等待选手、Mappool Ban/Pick、Playing、单图结算、全场胜利、暂停 / 技术处理。
-- S11 顶部锚点：`OCLR S11`、小组赛/淘汰赛/决赛、BO11 先 6 / BO13 先 7、当前普通/EX/TB、双方 6/7 个赢图星位。阶段与赢图星数均可由外部人工演示；默认未知空星。
-- 常规人数 3v3 / 4v4（最终待定）独立切换。用户于 2026-10-27 确认：EX 激活时双方各减 1 路，常规 3v3 → EX 2v2，常规 4v4 → EX 3v3；清除 EX / TB 恢复常规窗口数。EX 剩余次数与星位不自动变化。
-- Mappool 保留三列和聊天，增加双方各 2 个 Ban 槽、未确认/空Ban、先 Pick/先 Ban、FM/TB 占位和本地 Ban 校验。TB 禁 EX、TB 不可 Ban；不实现完整 BP 引擎，不推断行动顺序。
-- Playing 与单图结算在谱面附近显示当前普通/EX/TB、模组、FM 要求和 EX 开启队伍；等待页常规选手卡显示 Captain/T1/T2…，EX 示例使用后排合成标签 T2/T3/T4，不显示 Captain/T1；Playing/结算已移除窗底姓名与角色栏。单图结算复用 Playing 的同位同尺寸窗口，只保留 osu! 原生结算占位，不制作逐人成绩表。
-- Playing 分差带从固定中线向领先一侧延伸；单图结算总分只按当前有效上场人数求和（常规 3/4 原值保留，EX2/EX3 取现有数组前 2/3 项），独立于 Playing 领先按钮。暂停区分战术暂停/技术处理，外置人工控制，无自动倒计时。
-- 全场胜利为独立占位，显示阶段和赛制目标，不造正式冠军。
-- 支持 4:3 / 16:9 游戏源比例、干净输出与 URL 状态恢复。S11 规则详情见[规则映射](design/layout-v1/s11-rules.md)，布局决策见[布局规划](design/layout-v1/layout-plan.md)。
-- **Violet Orbit 浅紫视觉（light only）**：瓷白与淡紫的日间广播场，配深紫轨道线、细网格和雾面淡紫面板。左队 / A = **RED**、右队 / B = **BLUE**；红蓝已增强到顶部两侧的浅色铺色、队名/星位、窗口边框、图池队伍状态区、等待页标题/头像和比分区域；中央品牌与共用背景保留浅紫。Mappool、Playing、单图结算共用 [violet-orbit.svg](design/layout-v1/art/violet-orbit.svg) 背景；等待、全场胜利、暂停仅在同一背景上叠加各自的浅色场景光层。这是单一浅色主题，不提供深色变体。背景、面板与标识均为本地 CSS/SVG，不使用外部字体或网络素材；此外只有缓慢的环境光漂移与颜色/比分状态过渡，并在 `prefers-reduced-motion` 下关闭。游戏源区域内不覆盖装饰。
-- 当前所有分数、星位、Ban/EX 状态均为本地演示，游戏与原生结算画面均为占位。OCLR 是赛事品牌，OWC 2019 仅是布局参考。
-- 按 `1`–`6` 切场景、`C` 切换干净输出、`Esc` 退出干净输出。外置 S11 演示抽屉默认收起，以免压缩画布。
-- 样式与脚本带 revision query（`?v=20261027-light-v2`），已有预览标签页刷新后会加载当前浅紫 + 红蓝队伍标记视觉层。
-
-![Playing 加强红蓝队色、移除窗底信息栏后的预览](docs/verification/team-colors/playing.jpg)
-
-最新视觉调整和八种布局检查见[红蓝队色与窗口收束记录](docs/verification/team-colors/README.md)。
-
-原版六场景截图与检查见[视觉验收记录](design/layout-v1/visual-verification.md)；Vue 版本的对应记录见[迁移验收](docs/verification/vue-migration/README.md)。后续修改 Vue 组件，不再维护原版 DOM 脚本。
+本轮六场景截图与验证见 [Neon Broadcast 验收](docs/verification/neon-broadcast/README.md)，设计与规则边界见 [DESIGN.md](DESIGN.md)。旧版布局与浅紫截图保留在 `design/layout-v1/`、`docs/verification/vue-migration/` 和 `docs/verification/team-colors/`，仅作历史对照；后续视觉修改以 `ui/` 为准。
 
 ## 数据来源
 

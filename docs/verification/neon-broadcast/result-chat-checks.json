@@ -1,0 +1,94 @@
+{
+  "checks": [
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "none",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "a",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "none",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "a",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "none",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "a",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "none",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "a",
+      "geometryEqual": true,
+      "playingMap": true,
+      "playingChat": 0,
+      "resultMap": false,
+      "resultChat": 1,
+      "resultMessages": 3
+    }
+  ],
+  "mappoolChat": true,
+  "logs": []
+}

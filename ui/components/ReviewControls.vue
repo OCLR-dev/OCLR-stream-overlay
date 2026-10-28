@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import rulesUrl from '../assets/s11-rules.md?url';
 import { useOverlay } from '../useOverlay';
-const banOptions = ['unknown', 'empty', 'NM', 'HD', 'HR', 'FM', 'TB'].map(value => ({ value, label: value === 'unknown' ? '未确认' : value === 'empty' ? '空Ban' : value === 'TB' ? 'TB（不可 Ban）' : value }));
+import { regularMods } from '../model';
+const banOptions = ['unknown', 'empty', ...regularMods, 'TB'].map(value => ({ value, label: value === 'unknown' ? '未确认' : value === 'empty' ? '空Ban' : value === 'TB' ? 'TB（不可 Ban）' : value }));
 
 const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLabels } = useOverlay();
 </script>
@@ -10,8 +11,8 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
   <header class="review-chrome" id="reviewChrome">
     <div class="review-topline">
       <div class="review-brand">
-        <span class="review-kicker">OCLR / S11 VIOLET ORBIT · LIGHT</span>
-        <span class="review-title">S11 直播 UI 浅紫视觉评审 <span class="review-version">layout-v1</span></span>
+        <span class="review-kicker">OCLR / S11 · NEON BROADCAST</span>
+        <span class="review-title">S11 直播 UI <span class="review-version">视觉改版 v2</span></span>
       </div>
 
       <nav class="scene-tabs" aria-label="核心直播场景">
@@ -103,7 +104,7 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
           <div class="s11-fields">
             <label class="s11-field">当前谱面模组
               <select class="s11-select" id="mapModSelect" :value="state.mapMod" @change="select('mapMod', $event)" :disabled="state.mapType === 'tb'">
-                <option value="NM">NM</option><option value="HD">HD</option><option value="HR">HR</option><option value="FM">FM</option>
+                <option v-for="mod in regularMods" :key="mod" :value="mod">{{ mod }}</option>
               </select>
             </label>
             <label class="s11-field">EX 开启方

@@ -43,7 +43,7 @@ export function createOverlay() {
       scene: state.scene, clean: String(state.clean), mode: state.mode,
       activeMode: `${view.value.count}v${view.value.count}`, lead: state.lead
     });
-    document.title = state.clean ? '干净输出 · Esc 退出 · OCLR S11 Violet Orbit · Light' : 'OCLR S11 直播 UI · Vue 浅紫视觉评审';
+    document.title = state.clean ? '干净输出 · Esc 退出 · OCLR S11 Neon Broadcast' : 'OCLR S11 直播 UI · Neon Broadcast 视觉评审';
   }, { immediate: true, flush: 'sync' });
   onMounted(() => {
     window.addEventListener('keydown', onKeydown);

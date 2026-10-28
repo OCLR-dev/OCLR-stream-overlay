@@ -10,6 +10,7 @@ const { state, view } = useOverlay();
     <div class="scene-body waiting-body">
       <div class="waiting-head">
         <div class="title-line">
+          <span class="scene-eyebrow">PRE-MATCH / 01</span>
           <h2 id="waiting-title">等待选手</h2>
           <span class="state-badge">未就绪</span>
         </div>

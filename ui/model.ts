@@ -3,7 +3,9 @@
 export const scenes = ['waiting', 'mappool', 'playing', 'map-result', 'victory', 'pause'] as const;
 export type Scene = typeof scenes[number];
 export type Team = 'a' | 'b';
-export type Ban = 'unknown' | 'empty' | 'NM' | 'HD' | 'HR' | 'FM';
+export const regularMods = ['NM', 'HD', 'HR', 'DT', 'FM'] as const;
+export type Ban = 'unknown' | 'empty' | typeof regularMods[number];
+const singleBanMods = ['HD', 'HR', 'DT'];
 export const sceneLabels: Record<Scene, string> = {
   waiting: '等待选手', mappool: 'Mappool Ban/Pick', playing: 'Playing',
   'map-result': '单图结算', victory: '全场胜利', pause: '暂停 / 技术处理'
@@ -22,7 +24,7 @@ export const leadDemos = {
 } as const;
 export const mapLabels = { open: '未选', banned: '禁用 · 示例A队', picked: '选用 · 示例B队' };
 export const mapIcons = { open: '○', banned: '×', picked: '✓' };
-export const mapMods = ['NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'TB'];
+export const mapMods = ['NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'DT', 'DT', 'TB'];
 export interface OverlayState {
   scene: Scene;
   mode: '3v3' | '4v4';
@@ -33,7 +35,7 @@ export interface OverlayState {
   map: keyof typeof mapLabels;
   stage: keyof typeof stages;
   mapType: 'normal' | 'tb';
-  mapMod: 'NM' | 'HD' | 'HR' | 'FM';
+  mapMod: typeof regularMods[number];
   exTeam: 'none' | Team;
   exA: number;
   exB: number;
@@ -79,9 +81,9 @@ export function parseLocation(search = '', hash = ''): OverlayState {
   const stage = known(get('stage'), ['group', 'elimination', 'final'], 'group');
   const mapType = known(get('maptype'), ['normal', 'tb'], 'normal');
   const readBans = (team: 'A' | 'B'): [Ban, Ban] => {
-    const options = ['unknown', 'empty', 'NM', 'HD', 'HR', 'FM'] as const;
+    const options = ['unknown', 'empty', ...regularMods] as const;
     const pair: [Ban, Ban] = [known(get(`ban${team}1`), options, 'unknown'), known(get(`ban${team}2`), options, 'unknown')];
-    if (pair[0] === pair[1] && ['HD', 'HR'].includes(pair[0])) pair[1] = 'unknown';
+    if (pair[0] === pair[1] && singleBanMods.includes(pair[0])) pair[1] = 'unknown';
     return pair;
   };
   let lead = get('lead');
@@ -93,7 +95,7 @@ export function parseLocation(search = '', hash = ''): OverlayState {
     clean: ['1', 'true'].includes(get('clean') || ''),
     arrival: known(get('arrival'), ['none', 'a', 'both'], 'none'),
     map: known(get('map'), ['open', 'banned', 'picked'], 'banned'), stage, mapType,
-    mapMod: known(get('mod'), ['NM', 'HD', 'HR', 'FM'], 'NM'),
+    mapMod: known(get('mod'), regularMods, 'NM'),
     exTeam: mapType === 'tb' ? 'none' : known(get('exTeam'), ['none', 'a', 'b'], 'none'),
     exA: exRemaining(get('exA')), exB: exRemaining(get('exB')),
     seriesA: series(get('starA'), stages[stage].target), seriesB: series(get('starB'), stages[stage].target),
@@ -124,10 +126,10 @@ export function changeField(state: OverlayState, field: Field, value: string): O
 }
 export function changeBan(state: OverlayState, team: Team, index: 0 | 1, value: string): { state: OverlayState; feedback: string } {
   if (value === 'TB') return { state, feedback: 'TB 不可 Ban，已阻止该选择。' };
-  if (['HD', 'HR'].includes(value) && state.banSlots[team][1 - index] === value) {
+  if (singleBanMods.includes(value) && state.banSlots[team][1 - index] === value) {
     return { state, feedback: `${teamNames[team]} 同一 mod 不可重复 Ban（NM/FM 例外），已阻止 ${value}。` };
   }
-  if (!['unknown', 'empty', 'NM', 'HD', 'HR', 'FM'].includes(value)) return { state, feedback: '无效的 Ban 状态。' };
+  if (!['unknown', 'empty', ...regularMods].includes(value)) return { state, feedback: '无效的 Ban 状态。' };
   const next = parseLocation('', serializeState(state));
   next.banSlots[team][index] = value as Ban;
   return { state: next, feedback: `${teamNames[team]} Ban ${index + 1}：${banLabel(value as Ban)}${value === 'unknown' ? '。' : '（本地演示）。'}` };

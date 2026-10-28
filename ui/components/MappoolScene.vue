@@ -2,6 +2,7 @@
 import { useOverlay } from '../useOverlay';
 import { banLabel } from '../model';
 import MapColumns from './MapColumns.vue';
+import ChatPanel from './ChatPanel.vue';
 
 const { state, view } = useOverlay();
 </script>
@@ -11,7 +12,8 @@ const { state, view } = useOverlay();
     <div class="scene-body mappool-body">
       <div class="scene-head mappool-head">
         <div class="title-line">
-          <h2 id="mappool-title">Mappool Ban/Pick</h2>
+          <span class="scene-eyebrow">BAN / PICK · 02</span>
+          <h2 id="mappool-title">MAPPOOL</h2>
         </div>
       </div>
 
@@ -40,24 +42,7 @@ const { state, view } = useOverlay();
     </div>
 
     <footer class="scene-footer chat-footer">
-      <div class="chat-heading">
-        <span class="footer-kicker">场间互动</span>
-        <strong>聊天</strong>
-      </div>
-      <div class="chat-messages" aria-label="聊天消息占位">
-        <article class="chat-message">
-          <span class="chat-author">示例观众 01</span>
-          <p>聊天内容占位</p>
-        </article>
-        <article class="chat-message">
-          <span class="chat-author">示例观众 02</span>
-          <p>聊天内容占位</p>
-        </article>
-        <article class="chat-message">
-          <span class="chat-author">示例观众 03</span>
-          <p>聊天内容占位</p>
-        </article>
-      </div>
+      <ChatPanel />
     </footer>
   </section>
 </template>

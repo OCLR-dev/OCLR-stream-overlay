@@ -6,6 +6,7 @@ const { view } = useOverlay();
 
 <template>
   <div class="map-row">
+    <div class="map-cover" aria-label="谱面封面占位"><span>OCLR</span><b>{{ view.mod }}</b></div>
     <div class="current-map">
       <span class="map-kicker-row">
         <span class="map-kicker">{{ result ? '本图谱面' : '当前谱面' }}</span>
@@ -18,7 +19,8 @@ const { view } = useOverlay();
       <span class="map-rule" data-map-rule :hidden="!view.mapRule">{{ view.mapRule }}</span>
     </div>
     <div class="map-params" aria-label="谱面参数">
-      <span v-for="label in ['CS', 'AR', 'OD', 'BPM', '时长']" :key="label"><b>{{ label }}</b> —</span>
+      <span v-for="label in ['★', 'CS', 'AR', 'OD', 'BPM', '时长']" :key="label"><b>{{ label }}</b> —</span>
     </div>
+    <div class="map-slot"><span>{{ result ? 'MAP RESULT' : 'NOW PLAYING' }}</span><b>{{ view.mod }}</b><span>{{ view.formatLabel }} · {{ view.modeLabel }}</span></div>
   </div>
 </template>
