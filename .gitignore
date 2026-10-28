@@ -3,6 +3,8 @@
 !.env.example
 node_modules/
 coverage/
+dist/
+*.tsbuildinfo
 *.log
 .DS_Store
 

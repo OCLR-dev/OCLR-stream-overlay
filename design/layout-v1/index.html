@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="OCLR S11 直播 UI 空间布局评审：1920×1080 低保真线框，仅使用本地示例数据。">
-  <title>OCLR S11 直播 UI · 空间布局评审</title>
-  <link rel="stylesheet" href="./styles.css">
+  <meta name="description" content="OCLR S11 直播 UI 浅紫主题视觉评审：1920×1080，Violet Orbit 共用背景，仅使用本地示例数据。">
+  <meta name="theme-color" content="#faf6ff">
+  <title>OCLR S11 直播 UI · Violet Orbit 浅紫视觉评审</title>
+  <link rel="stylesheet" href="./styles.css?v=20261027-light-v2">
 </head>
 <body>
   <div class="review-app" id="reviewApp">
     <header class="review-chrome" id="reviewChrome">
       <div class="review-topline">
         <div class="review-brand">
-          <span class="review-kicker">OCLR / S11 BROADCAST LAYOUT</span>
-          <span class="review-title">S11 直播 UI 空间评审 <span class="review-version">layout-v1</span></span>
+          <span class="review-kicker">OCLR / S11 VIOLET ORBIT · LIGHT</span>
+          <span class="review-title">S11 直播 UI 浅紫视觉评审 <span class="review-version">layout-v1</span></span>
         </div>
 
         <nav class="scene-tabs" aria-label="核心直播场景">
@@ -207,8 +208,8 @@
       <div class="canvas-sizer" id="canvasSizer">
         <div class="broadcast-canvas mode-4v4 layout-4v4 source-4x3" id="broadcastCanvas" aria-label="1920×1080 OCLR S11 直播布局示意画布，常规 4v4，当前 4v4">
           <header class="broadcast-header">
-            <section class="team-block team-block--a" aria-label="左队：示例A队">
-              <span class="team-side">左队 / A SIDE</span>
+            <section class="team-block team-block--a" aria-label="左队（RED）：示例A队">
+              <span class="team-side">左队 / RED · A SIDE</span>
               <span class="team-name">示例A队</span>
               <div class="series-row">
                 <span class="series-label">赢图</span>
@@ -226,8 +227,8 @@
               </span>
             </section>
 
-            <section class="team-block team-block--b" aria-label="右队：示例B队">
-              <span class="team-side">右队 / B SIDE</span>
+            <section class="team-block team-block--b" aria-label="右队（BLUE）：示例B队">
+              <span class="team-side">右队 / BLUE · B SIDE</span>
               <span class="team-name">示例B队</span>
               <div class="series-row">
                 <span class="series-label">赢图</span>
@@ -363,11 +364,11 @@
                   <span class="score-center-anchor" aria-hidden="true"></span>
                   <span class="score-fill" aria-hidden="true"></span>
                   <div class="score-readout score-readout--a">
-                    <span class="score-side" aria-hidden="true">A</span>
+                    <span class="score-side" aria-hidden="true">A · RED</span>
                     <strong class="score-number" id="scoreValueA">1,000,000</strong>
                   </div>
                   <div class="score-readout score-readout--b">
-                    <span class="score-side" aria-hidden="true">B</span>
+                    <span class="score-side" aria-hidden="true">B · BLUE</span>
                     <strong class="score-number" id="scoreValueB">1,000,000</strong>
                   </div>
                 </div>
@@ -404,11 +405,11 @@
                   <span class="score-center-anchor" aria-hidden="true"></span>
                   <span class="score-fill" aria-hidden="true"></span>
                   <div class="score-readout score-readout--a">
-                    <span class="score-side" aria-hidden="true">A · 队伍总分</span>
+                    <span class="score-side" aria-hidden="true">A · RED · 队伍总分</span>
                     <strong class="score-number" id="resultTotalA">1,250,000</strong>
                   </div>
                   <div class="score-readout score-readout--b">
-                    <span class="score-side" aria-hidden="true">B · 队伍总分</span>
+                    <span class="score-side" aria-hidden="true">B · BLUE · 队伍总分</span>
                     <strong class="score-number" id="resultTotalB">1,190,000</strong>
                   </div>
                 </div>
@@ -539,6 +540,6 @@
     </main>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=20261027-light-v2"></script>
 </body>
 </html>

@@ -644,9 +644,11 @@
     const rule = currentMapRule();
     elements.mapInfoFormats.forEach(el => {
       el.textContent = format;
+      el.dataset.format = currentFormat();
     });
     elements.mapInfoMods.forEach(el => {
       el.textContent = mod;
+      el.dataset.mod = mod;
     });
     elements.mapInfoEx.forEach(el => {
       el.textContent = ex;
@@ -875,7 +877,7 @@
     elements.resultScoreStage.dataset.lead = 'left-small';
     elements.resultScoreStage.setAttribute(
       'aria-label',
-      `示例A队 队伍总分 ${displayA}，示例B队 队伍总分 ${displayB}`
+      `左队 RED 示例A队 队伍总分 ${displayA}，右队 BLUE 示例B队 队伍总分 ${displayB}`
     );
     elements.resultTotalA.textContent = displayA;
     elements.resultTotalB.textContent = displayB;
@@ -907,7 +909,7 @@
         const mod = MAP_ROW_MODS[index] || 'NM';
 
         return `
-          <li class="map-entry${entryClass}" data-map-index="${index}" data-map-state="${status.type}">
+          <li class="map-entry${entryClass}" data-map-index="${index}" data-map-state="${status.type}" data-mod="${mod}">
             <span class="map-index" aria-hidden="true">${mapNumber}</span>
             <span class="map-mod" aria-hidden="true">${mod}</span>
             <span class="map-copy">
@@ -971,7 +973,7 @@
     elements.scoreValueB.textContent = demo.b;
     elements.scoreStage.setAttribute(
       'aria-label',
-      `示例A队 ${demo.a}，示例B队 ${demo.b}`
+      `左队 RED 示例A队 ${demo.a}，右队 BLUE 示例B队 ${demo.b}`
     );
     document.body.dataset.lead = state.lead;
   }
@@ -1015,8 +1017,8 @@
     elements.cleanButton.textContent = state.clean ? '退出干净输出' : '进入干净输出';
     document.body.dataset.clean = state.clean ? 'true' : 'false';
     document.title = state.clean
-      ? '干净输出 · Esc 退出 · OCLR S11 布局评审'
-      : 'OCLR S11 直播 UI · 空间布局评审';
+      ? '干净输出 · Esc 退出 · OCLR S11 Violet Orbit · Light'
+      : 'OCLR S11 直播 UI · Violet Orbit 浅紫视觉评审';
   }
 
   function renderAll() {

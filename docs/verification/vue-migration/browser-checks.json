@@ -1,0 +1,186 @@
+{
+  "geometry": [
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "none",
+      "count": 8,
+      "maxDelta": 0.000047345457915071165,
+      "passed": true
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "a",
+      "count": 6,
+      "maxDelta": 0.000047345457915071165,
+      "passed": true
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "none",
+      "count": 8,
+      "maxDelta": 0.0001348359207327121,
+      "passed": true
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "a",
+      "count": 6,
+      "maxDelta": 0.0001348359207327121,
+      "passed": true
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "none",
+      "count": 6,
+      "maxDelta": 0.000047345457915071165,
+      "passed": true
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "a",
+      "count": 4,
+      "maxDelta": 0.000057367978797628894,
+      "passed": true
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "none",
+      "count": 6,
+      "maxDelta": 0.0001348359207327121,
+      "passed": true
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "a",
+      "count": 4,
+      "maxDelta": 0.00008235658691546632,
+      "passed": true
+    }
+  ],
+  "resultMatchesPlaying": [
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "none",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "a",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "none",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "a",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "none",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "a",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "none",
+      "resultMatchesPlaying": true
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "a",
+      "resultMatchesPlaying": true
+    }
+  ],
+  "scenes": [
+    {
+      "animation": "oclr-ambient-drift",
+      "bg": "url(\"http://localhost:3004/assets/violet-orbit-fDwLVY8j.svg\")",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "duration": "52s",
+      "scene": "waiting",
+      "sourceCount": 0
+    },
+    {
+      "animation": "oclr-ambient-drift",
+      "bg": "url(\"http://localhost:3004/assets/violet-orbit-fDwLVY8j.svg\")",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "duration": "52s",
+      "scene": "mappool",
+      "sourceCount": 0
+    },
+    {
+      "animation": "oclr-ambient-drift",
+      "bg": "url(\"http://localhost:3004/assets/violet-orbit-fDwLVY8j.svg\")",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "duration": "52s",
+      "scene": "playing",
+      "sourceCount": 8
+    },
+    {
+      "animation": "oclr-ambient-drift",
+      "bg": "url(\"http://localhost:3004/assets/violet-orbit-fDwLVY8j.svg\")",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "duration": "52s",
+      "scene": "map-result",
+      "sourceCount": 8
+    },
+    {
+      "animation": "oclr-ambient-drift",
+      "bg": "url(\"http://localhost:3004/assets/violet-orbit-fDwLVY8j.svg\")",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "duration": "52s",
+      "scene": "victory",
+      "sourceCount": 0
+    },
+    {
+      "animation": "oclr-ambient-drift",
+      "bg": "url(\"http://localhost:3004/assets/violet-orbit-fDwLVY8j.svg\")",
+      "canvas": [
+        1920,
+        1080
+      ],
+      "duration": "52s",
+      "scene": "pause",
+      "sourceCount": 0
+    }
+  ]
+}

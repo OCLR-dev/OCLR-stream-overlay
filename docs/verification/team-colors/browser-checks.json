@@ -1,0 +1,82 @@
+[
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "exTeam": "none",
+    "count": 8,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "exTeam": "a",
+    "count": 6,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "exTeam": "none",
+    "count": 8,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "exTeam": "a",
+    "count": 6,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "exTeam": "none",
+    "count": 6,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "exTeam": "a",
+    "count": 4,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "exTeam": "none",
+    "count": 6,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "exTeam": "a",
+    "count": 4,
+    "noNameplates": true,
+    "matchingScenes": true,
+    "contained": true,
+    "correctRatio": true
+  }
+]

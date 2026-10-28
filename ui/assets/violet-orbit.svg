@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">OCLR Violet Orbit light broadcast backdrop</title>
+  <desc id="desc">A light lavender broadcast field with fine violet orbital rings, a soft porcelain sun, pale rose side light, star dust and a faint instrument grid. Static local art for the OCLR S11 overlay.</desc>
+
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0.38" y2="1">
+      <stop offset="0" stop-color="#fcf9ff"/>
+      <stop offset="0.36" stop-color="#f5effd"/>
+      <stop offset="0.68" stop-color="#eee4f8"/>
+      <stop offset="1" stop-color="#f8f2ff"/>
+    </linearGradient>
+
+    <radialGradient id="porcelainSun" cx="50%" cy="46%" r="58%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.68"/>
+      <stop offset="0.72" stop-color="#f1e5ff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#e3d4f5" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="leftAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b095ef" stop-opacity="0.25"/>
+      <stop offset="0.48" stop-color="#c8b2f4" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#e7dcf8" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="rightAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#efa6ce" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#f3bddb" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#f3dcea" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="arcLight" x1="0" y1="0" x2="1" y2="0.25">
+      <stop offset="0" stop-color="#8562c9" stop-opacity="0"/>
+      <stop offset="0.22" stop-color="#8562c9" stop-opacity="0.18"/>
+      <stop offset="0.52" stop-color="#67459f" stop-opacity="0.38"/>
+      <stop offset="0.78" stop-color="#aa74bf" stop-opacity="0.19"/>
+      <stop offset="1" stop-color="#aa74bf" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="warmArc" x1="1" y1="0" x2="0" y2="0.5">
+      <stop offset="0" stop-color="#bf638f" stop-opacity="0"/>
+      <stop offset="0.44" stop-color="#b75484" stop-opacity="0.23"/>
+      <stop offset="1" stop-color="#b75484" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="horizon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#74519c" stop-opacity="0"/>
+      <stop offset="0.24" stop-color="#74519c" stop-opacity="0.19"/>
+      <stop offset="0.5" stop-color="#8356b8" stop-opacity="0.4"/>
+      <stop offset="0.76" stop-color="#b9689d" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#b9689d" stop-opacity="0"/>
+    </linearGradient>
+
+    <radialGradient id="horizonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#c2a5ed" stop-opacity="0.24"/>
+      <stop offset="0.6" stop-color="#e1ccf0" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#f6effc" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="edgeVeil" cx="50%" cy="44%" r="74%">
+      <stop offset="0.42" stop-color="#f7f1fe" stop-opacity="0"/>
+      <stop offset="0.78" stop-color="#ddcaee" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#c4aadd" stop-opacity="0.32"/>
+    </radialGradient>
+
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M80 0H0V80" fill="none" stroke="#74519c" stroke-opacity="0.075" stroke-width="1"/>
+    </pattern>
+
+    <radialGradient id="gridFade" cx="50%" cy="45%" r="62%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="0.56" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="0.88" stop-color="#ffffff" stop-opacity="0.62"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.1"/>
+    </radialGradient>
+
+    <mask id="gridMask">
+      <rect width="1920" height="1080" fill="url(#gridFade)"/>
+    </mask>
+
+    <linearGradient id="leftBeam" x1="0" y1="0" x2="1" y2="0.8">
+      <stop offset="0" stop-color="#9876d6" stop-opacity="0.085"/>
+      <stop offset="0.45" stop-color="#9876d6" stop-opacity="0.022"/>
+      <stop offset="1" stop-color="#9876d6" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="rightBeam" x1="1" y1="0" x2="0" y2="0.9">
+      <stop offset="0" stop-color="#d37ba9" stop-opacity="0.075"/>
+      <stop offset="0.5" stop-color="#d37ba9" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#d37ba9" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="tinyGlow" x="-160%" y="-160%" width="420%" height="420%">
+      <feGaussianBlur stdDeviation="1.6"/>
+    </filter>
+  </defs>
+
+  <!-- Shared field: Mappool / Playing / map-result all sit on this same backdrop. -->
+  <rect width="1920" height="1080" fill="url(#base)"/>
+  <ellipse cx="960" cy="448" rx="860" ry="600" fill="url(#porcelainSun)"/>
+  <ellipse cx="148" cy="430" rx="430" ry="480" fill="url(#leftAura)"/>
+  <ellipse cx="1782" cy="574" rx="410" ry="430" fill="url(#rightAura)"/>
+  <path d="M0 0H470L142 1080H0Z" fill="url(#leftBeam)"/>
+  <path d="M1920 0H1500L1786 1080H1920Z" fill="url(#rightBeam)"/>
+
+  <rect width="1920" height="1080" fill="url(#grid)" mask="url(#gridMask)"/>
+
+  <!-- Orbit architecture -->
+  <g fill="none" transform="rotate(-7 960 430)">
+    <ellipse cx="960" cy="430" rx="1204" ry="592" stroke="#73539e" stroke-opacity="0.09" stroke-width="1"/>
+    <ellipse cx="960" cy="430" rx="1006" ry="486" stroke="#73539e" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="2 13"/>
+    <ellipse cx="960" cy="430" rx="790" ry="354" stroke="#674a90" stroke-opacity="0.22" stroke-width="1.2"/>
+    <ellipse cx="960" cy="430" rx="612" ry="264" stroke="#845fae" stroke-opacity="0.13" stroke-width="1" stroke-dasharray="1 9"/>
+    <ellipse cx="960" cy="430" rx="438" ry="184" stroke="#7a559e" stroke-opacity="0.1" stroke-width="1"/>
+
+    <path d="M226 430A734 354 0 0 1 960 76" stroke="url(#arcLight)" stroke-width="2"/>
+    <path d="M1694 430A734 354 0 0 1 960 784" stroke="url(#warmArc)" stroke-width="1.4"/>
+    <path d="M960 76A734 354 0 0 1 1694 430" stroke="#6d4d97" stroke-opacity="0.16" stroke-width="1"/>
+  </g>
+
+  <g fill="#5e427f">
+    <circle cx="139" cy="215" r="1.2" opacity="0.4"/>
+    <circle cx="219" cy="354" r="1.8" opacity="0.26"/>
+    <circle cx="291" cy="148" r="1" opacity="0.44"/>
+    <circle cx="356" cy="258" r="1.4" opacity="0.25"/>
+    <circle cx="438" cy="119" r="1.1" opacity="0.35"/>
+    <circle cx="527" cy="207" r="1.8" opacity="0.16"/>
+    <circle cx="591" cy="87" r="1.2" opacity="0.38"/>
+    <circle cx="684" cy="157" r="1" opacity="0.24"/>
+    <circle cx="765" cy="56" r="1.5" opacity="0.3"/>
+    <circle cx="842" cy="235" r="1.1" opacity="0.2"/>
+    <circle cx="1088" cy="96" r="1.3" opacity="0.3"/>
+    <circle cx="1184" cy="186" r="1" opacity="0.26"/>
+    <circle cx="1271" cy="111" r="1.8" opacity="0.3"/>
+    <circle cx="1368" cy="242" r="1.2" opacity="0.22"/>
+    <circle cx="1451" cy="138" r="1.1" opacity="0.36"/>
+    <circle cx="1538" cy="301" r="1.6" opacity="0.2"/>
+    <circle cx="1647" cy="185" r="1.2" opacity="0.34"/>
+    <circle cx="1751" cy="276" r="1.4" opacity="0.2"/>
+    <circle cx="1814" cy="141" r="1" opacity="0.3"/>
+    <circle cx="86" cy="745" r="1.3" opacity="0.28"/>
+    <circle cx="175" cy="876" r="1.1" opacity="0.22"/>
+    <circle cx="271" cy="810" r="1.7" opacity="0.2"/>
+    <circle cx="339" cy="982" r="1.2" opacity="0.3"/>
+    <circle cx="479" cy="923" r="1" opacity="0.18"/>
+    <circle cx="1602" cy="908" r="1.2" opacity="0.22"/>
+    <circle cx="1681" cy="798" r="1.8" opacity="0.2"/>
+    <circle cx="1780" cy="914" r="1.1" opacity="0.3"/>
+    <circle cx="1852" cy="815" r="1.4" opacity="0.24"/>
+    <circle cx="1518" cy="1034" r="1.1" opacity="0.27"/>
+    <circle cx="1041" cy="1014" r="1.2" opacity="0.2"/>
+    <circle cx="882" cy="1045" r="1.5" opacity="0.22"/>
+    <circle cx="738" cy="1004" r="1" opacity="0.18"/>
+  </g>
+
+  <g fill="#a6537f">
+    <circle cx="1212" cy="304" r="1.4" opacity="0.24"/>
+    <circle cx="1296" cy="472" r="1" opacity="0.2"/>
+    <circle cx="1742" cy="430" r="1.2" opacity="0.25"/>
+    <circle cx="1618" cy="514" r="1.5" opacity="0.16"/>
+    <circle cx="212" cy="588" r="1.1" opacity="0.2"/>
+    <circle cx="586" cy="726" r="1.2" opacity="0.16"/>
+  </g>
+
+  <!-- A few magnified stars and constellation ticks keep the field from reading as a flat gradient. -->
+  <g fill="none" stroke="#6e4d97" stroke-opacity="0.26" stroke-width="1">
+    <path d="M329 407v14M322 414h14"/>
+    <path d="M1580 622v12M1574 628h12"/>
+    <path d="M1120 963v10M1115 968h10"/>
+  </g>
+  <g fill="none" stroke="#6b4b91" stroke-opacity="0.16" stroke-width="1">
+    <path d="M1690 672L1788 635L1834 694"/>
+    <path d="M303 684L236 647L178 708"/>
+  </g>
+  <g fill="#ffffff">
+    <path d="M468 340l2.5 7.5L478 350l-7.5 2.5L468 360l-2.5-7.5L458 350l7.5-2.5z" opacity="0.85" filter="url(#tinyGlow)"/>
+    <path d="M1483 247l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" opacity="0.8" filter="url(#tinyGlow)"/>
+  </g>
+  <g fill="#6c4a94">
+    <path d="M1305 835l2.5 7.5 7.5 2.5-7.5 2.5-2.5 7.5-2.5-7.5-7.5-2.5 7.5-2.5z" opacity="0.3"/>
+    <path d="M592 894l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" opacity="0.25"/>
+  </g>
+
+  <!-- Horizon glow anchors the lower information band without touching the POV field. -->
+  <ellipse cx="960" cy="1054" rx="900" ry="220" fill="url(#horizonGlow)"/>
+  <path d="M0 1008H1920" stroke="url(#horizon)" stroke-width="1.2" opacity="0.7"/>
+  <path d="M300 930A690 190 0 0 0 1620 930" fill="none" stroke="#684a8e" stroke-opacity="0.12" stroke-width="1"/>
+
+  <g stroke="#6b4b91" stroke-opacity="0.18" stroke-width="1">
+    <path d="M40 826h46M40 832h28M1880 826h-46M1880 832h-28"/>
+    <path d="M40 248h26M1880 248h-26"/>
+  </g>
+
+  <rect width="1920" height="1080" fill="url(#edgeVeil)"/>
+</svg>

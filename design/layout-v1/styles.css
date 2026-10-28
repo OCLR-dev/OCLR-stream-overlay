@@ -3407,3 +3407,1818 @@ body.is-clean .canvas-stage {
   gap: 6px;
   white-space: nowrap;
 }
+
+/* --------------------------------------------------------------------------
+   VIOLET ORBIT — light-only art direction
+   A porcelain broadcast field: warm white, lilac atmosphere, fine violet
+   orbital lines and smoked-lilac glass. Geometry and behaviour are unchanged.
+   Mappool, Playing and map-result share art/violet-orbit.svg.
+   -------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+  --review-bg: #f1e9fa;
+  --review-panel: #fbf8ff;
+  --review-line: #d9c8ec;
+  --review-ink: #2b193e;
+  --review-muted: #705b84;
+
+  --canvas: #f9f4ff;
+  --paper: #fffdfd;
+  --fill: #f3eafb;
+  --fill-2: #e8daf4;
+  --ink: #2a173c;
+  --ink-soft: #4b375d;
+  --muted: #705d83;
+  --line: #9c7fb5;
+  --hairline: #ddd0e9;
+
+  --violet: #64429d;
+  --violet-strong: #523281;
+  --violet-soft: #8b67c0;
+  --orchid: #a24878;
+  --team-a: #5c4599;
+  --team-b: #a14979;
+  --panel-border: rgba(90, 59, 125, 0.22);
+  --panel-border-strong: rgba(90, 59, 125, 0.45);
+  --panel-top: rgba(255, 253, 255, 0.92);
+  --panel-bottom: rgba(247, 240, 253, 0.9);
+  --glass: rgba(255, 253, 255, 0.78);
+  --glow: rgba(106, 73, 157, 0.2);
+  --shadow-deep: 0 18px 42px rgba(75, 44, 108, 0.12);
+
+  --display: "Avenir Next", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --sans: "Avenir Next", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mono: "SFMono-Regular", "Cascadia Mono", "Menlo", "Consolas", monospace;
+}
+
+::selection {
+  background: rgba(101, 67, 156, 0.2);
+  color: #241235;
+}
+
+button:focus-visible {
+  outline-color: #604094;
+}
+
+/* Review chrome: a light plum control desk around the broadcast. */
+
+body {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -10%, rgba(177, 143, 222, 0.28), transparent 70%),
+    var(--review-bg);
+  color: var(--review-ink);
+}
+
+.review-chrome {
+  border-bottom-color: #dccceb;
+  background:
+    radial-gradient(ellipse 42% 100% at 14% 0%, rgba(207, 179, 242, 0.25), transparent 72%),
+    linear-gradient(180deg, #fcf9ff 0%, #f7f0fd 100%);
+  box-shadow: 0 16px 42px rgba(78, 47, 109, 0.08);
+}
+
+.review-kicker {
+  color: #866b9d;
+}
+
+.review-title {
+  color: #2b193e;
+  font-family: var(--display);
+  font-weight: 760;
+  letter-spacing: 0.005em;
+}
+
+.review-version {
+  color: #8c739f;
+}
+
+.scene-tabs {
+  scrollbar-color: #c6adde transparent;
+}
+
+.scene-tab {
+  border-color: #d9c7e8;
+  background: rgba(255, 253, 255, 0.72);
+  color: #57426a;
+}
+
+.scene-tab:hover {
+  border-color: #a884c5;
+  background: #ffffff;
+  color: #2a173c;
+}
+
+.scene-tab-no {
+  color: #947da7;
+}
+
+.scene-tab.is-active {
+  border-color: #5d3c92;
+  background: linear-gradient(145deg, #7452aa 0%, #60408f 52%, #4f327d 100%);
+  color: #fffaff;
+  box-shadow: 0 7px 20px rgba(82, 50, 129, 0.22);
+}
+
+.scene-tab.is-active .scene-tab-no {
+  color: #ddcef0;
+}
+
+.scene-tab.is-active .scene-tab-now {
+  border-color: rgba(255, 255, 255, 0.58);
+  color: #fbf7ff;
+}
+
+.clean-button {
+  border-color: #5d3c92;
+  background: linear-gradient(145deg, #7654ad 0%, #5d3c92 56%, #4e317c 100%);
+  color: #fffaff;
+  box-shadow: 0 6px 18px rgba(82, 50, 129, 0.2);
+}
+
+.clean-button:hover {
+  border-color: #4f317d;
+  background: #4f317d;
+}
+
+.clean-button[aria-pressed="true"] {
+  border-color: #bca5d3;
+  background: rgba(255, 253, 255, 0.55);
+  color: #4e3567;
+}
+
+.review-tools {
+  border-top-color: #e2d5ef;
+}
+
+.control-label {
+  color: #4a365e;
+}
+
+.control-label em {
+  color: #806b94;
+}
+
+.mode-button,
+.demo-button {
+  border-color: #d2c0e4;
+  background: rgba(255, 253, 255, 0.54);
+  color: #59436c;
+}
+
+.mode-button:hover,
+.demo-button:hover {
+  border-color: #a685c2;
+  background: #ffffff;
+  color: #2a173c;
+}
+
+.mode-button.is-active,
+.demo-button.is-active {
+  border-color: #5d3c92;
+  background: linear-gradient(145deg, #7452aa, #58378a);
+  color: #fffaff;
+  box-shadow: 0 4px 13px rgba(82, 50, 129, 0.18);
+}
+
+.demo-button:active {
+  background: #4f327d;
+}
+
+.control-readout {
+  border-color: #dac9e9;
+  background: #fffaff;
+  color: #5a446e;
+}
+
+.review-note {
+  color: #7c678f;
+}
+
+.review-note a {
+  color: #5c3c91;
+}
+
+.s11-panel {
+  border-top-color: #e2d5ee;
+  background: #f9f3ff;
+}
+
+.s11-summary {
+  color: #4f3a63;
+}
+
+.s11-summary::before {
+  border-color: #c9b2df;
+  color: #5b4075;
+}
+
+.s11-summary-sub,
+.s11-summary-note {
+  color: #836e96;
+}
+
+.s11-group {
+  border-color: #dccdea;
+  background: rgba(255, 253, 255, 0.78);
+}
+
+.s11-group-head {
+  border-bottom-color: #e5d8ef;
+}
+
+.s11-group-head h3 {
+  color: #3f2b54;
+}
+
+.s11-group-head span,
+.s11-field,
+.s11-help {
+  color: #806b92;
+}
+
+.s11-select {
+  border-color: #d6c4e6;
+  background: #ffffff;
+  color: #3d2951;
+  color-scheme: light;
+}
+
+.s11-select:hover {
+  border-color: #a586c1;
+}
+
+.s11-ban-label {
+  color: #675276;
+}
+
+.s11-feedback {
+  border-left-color: #9b77bf;
+  background: #fcf8ff;
+  color: #5b466b;
+}
+
+.canvas-stage {
+  border-top-color: #e0d2ee;
+  background:
+    radial-gradient(ellipse 64% 58% at 50% 44%, rgba(255, 255, 255, 0.8), transparent 74%),
+    radial-gradient(ellipse 28% 35% at 10% 90%, rgba(193, 160, 225, 0.18), transparent 70%),
+    linear-gradient(140deg, #e9dff5 0%, #f2eafa 48%, #e4d8f1 100%);
+}
+
+/* The single shared OCLR broadcast field. */
+
+.broadcast-canvas {
+  isolation: isolate;
+  background-color: #f9f4ff;
+  background-image: url("./art/violet-orbit.svg?v=20261027-light");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  color: var(--ink);
+  font-family: var(--sans);
+  box-shadow: 0 0 0 1px rgba(91, 61, 126, 0.12), 0 26px 80px rgba(72, 43, 104, 0.18);
+}
+
+/* Waiting, victory and pause receive a quiet scene-specific light wash above
+   the shared field. Mappool / Playing / map-result keep the field untouched. */
+
+body[data-scene="waiting"] .broadcast-canvas::before,
+body[data-scene="victory"] .broadcast-canvas::before,
+body[data-scene="pause"] .broadcast-canvas::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+}
+
+body[data-scene="waiting"] .broadcast-canvas::before {
+  background:
+    radial-gradient(ellipse 26% 52% at 18% 46%, rgba(156, 119, 214, 0.18), transparent 72%),
+    radial-gradient(ellipse 26% 52% at 82% 46%, rgba(222, 146, 187, 0.14), transparent 72%),
+    linear-gradient(90deg, transparent 49.82%, rgba(123, 88, 170, 0.1) 50%, transparent 50.18%);
+}
+
+body[data-scene="victory"] .broadcast-canvas::before {
+  background:
+    radial-gradient(ellipse 32% 44% at 50% 42%, rgba(255, 255, 255, 0.82), transparent 62%),
+    radial-gradient(ellipse 52% 42% at 50% 45%, rgba(197, 164, 236, 0.23), transparent 72%),
+    linear-gradient(101deg, transparent 26%, rgba(130, 93, 178, 0.08) 47%, transparent 68%);
+}
+
+body[data-scene="pause"] .broadcast-canvas::before {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 34px, rgba(104, 76, 137, 0.035) 34px 35px, transparent 35px 69px),
+    radial-gradient(ellipse 48% 52% at 50% 42%, rgba(220, 208, 234, 0.28), transparent 70%),
+    rgba(250, 246, 255, 0.16);
+}
+
+.broadcast-header,
+.scene-stack {
+  position: relative;
+  z-index: 1;
+}
+
+/* Masthead */
+
+.broadcast-header {
+  border-bottom: 0;
+  background:
+    radial-gradient(ellipse 35% 120% at 50% 0%, rgba(140, 103, 196, 0.12), transparent 70%),
+    linear-gradient(180deg, rgba(255, 253, 255, 0.91) 0%, rgba(249, 243, 255, 0.79) 100%);
+  box-shadow: 0 16px 46px rgba(63, 35, 93, 0.09);
+}
+
+.broadcast-header::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent 0%, rgba(109, 79, 151, 0.24) 16%, rgba(92, 60, 132, 0.55) 50%, rgba(171, 91, 135, 0.24) 84%, transparent 100%);
+  box-shadow: 0 2px 10px rgba(85, 52, 121, 0.12);
+}
+
+.team-block {
+  position: relative;
+  isolation: isolate;
+}
+
+.team-block::before {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  color: rgba(90, 59, 125, 0.035);
+  font-family: var(--display);
+  font-size: 208px;
+  font-weight: 800;
+  letter-spacing: -0.1em;
+  line-height: 0.72;
+  pointer-events: none;
+  transform: translateY(-50%);
+  -webkit-text-stroke: 1px rgba(90, 59, 125, 0.16);
+}
+
+.team-block--a::before {
+  left: 12px;
+  content: "A";
+}
+
+.team-block--b::before {
+  right: 12px;
+  content: "B";
+  color: rgba(161, 73, 121, 0.03);
+  -webkit-text-stroke-color: rgba(161, 73, 121, 0.14);
+}
+
+.team-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #7d6692;
+  font-size: 12px;
+  letter-spacing: 0.19em;
+}
+
+.team-side::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--team-a);
+  box-shadow: 0 0 10px rgba(92, 69, 153, 0.42);
+  content: "";
+}
+
+.team-block--b .team-side {
+  flex-direction: row-reverse;
+}
+
+.team-block--b .team-side::before {
+  background: var(--team-b);
+  box-shadow: 0 0 10px rgba(161, 73, 121, 0.34);
+}
+
+.team-name {
+  color: #28163a;
+  font-family: var(--display);
+  font-size: 51px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.team-block--a .team-name {
+  text-shadow: 0 10px 32px rgba(92, 69, 153, 0.08);
+}
+
+.team-block--b .team-name {
+  text-shadow: 0 10px 32px rgba(161, 73, 121, 0.08);
+}
+
+.series-row {
+  color: #806a93;
+}
+
+.series-label {
+  color: #7f6a92;
+  letter-spacing: 0.16em;
+}
+
+.win-stars {
+  color: var(--team-a);
+  letter-spacing: 0.16em;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.team-block--b .win-stars {
+  color: var(--team-b);
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.series-note {
+  border-color: #d8c8e7;
+  color: #7f6a91;
+}
+
+.event-block {
+  position: relative;
+  border-inline-color: rgba(94, 63, 128, 0.16);
+}
+
+.event-block::before,
+.event-block::after {
+  position: absolute;
+  left: 50%;
+  width: 40px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(102, 70, 145, 0.32), transparent);
+  transform: translateX(-50%);
+}
+
+.event-block::before {
+  top: 20px;
+}
+
+.event-block::after {
+  bottom: 20px;
+}
+
+.layout-mark {
+  color: #816b95;
+  letter-spacing: 0.2em;
+}
+
+.event-title {
+  color: #2a173c;
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 24px rgba(102, 71, 146, 0.12);
+}
+
+.event-meta {
+  color: #6f5a82;
+  letter-spacing: 0.07em;
+}
+
+.event-context {
+  color: #735e86;
+}
+
+.event-context .format-chip {
+  border-color: rgba(97, 66, 137, 0.3);
+  background: rgba(255, 253, 255, 0.8);
+  color: #4f3962;
+}
+
+.event-context .format-chip[data-format="ex"] {
+  border-color: rgba(161, 73, 121, 0.45);
+  background: rgba(245, 219, 235, 0.8);
+  color: #81375d;
+}
+
+.event-context .format-chip[data-format="tb"] {
+  border-color: rgba(84, 50, 122, 0.6);
+  background: rgba(94, 59, 137, 0.09);
+  color: #4b2b70;
+}
+
+/* Lower information band and shared panel language. */
+
+.scene-footer {
+  border-top: 1px solid rgba(94, 63, 128, 0.28);
+  background:
+    radial-gradient(ellipse 42% 100% at 50% 100%, rgba(206, 183, 232, 0.18), transparent 75%),
+    linear-gradient(180deg, rgba(255, 253, 255, 0.89) 0%, rgba(247, 240, 253, 0.94) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.footer-cell {
+  border-right-color: rgba(118, 87, 153, 0.22);
+}
+
+.footer-kicker {
+  color: #7f6a92;
+  letter-spacing: 0.16em;
+}
+
+.footer-cell p {
+  color: #4f3a62;
+}
+
+.footer-cell .footer-muted {
+  color: #7b668e;
+}
+
+.footer-cell .footer-lead {
+  color: #2a173c;
+  font-family: var(--display);
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.scene-head h2 {
+  color: #2a173c;
+  font-family: var(--display);
+  font-weight: 800;
+  text-shadow: 0 2px 18px rgba(103, 69, 145, 0.08);
+}
+
+.state-badge {
+  border-color: rgba(94, 63, 128, 0.33);
+  background: rgba(255, 253, 255, 0.72);
+  color: #4d3762;
+}
+
+.state-badge--strong {
+  border-color: #5b3d89;
+  background: #5b3d89;
+  color: #fffaff;
+}
+
+/* Shared smoked-lilac surface language, applied without moving geometry. */
+
+.team-roster,
+.readiness-card,
+.mappool-column,
+.player-card,
+.map-entry,
+.pause-side,
+.victory-supports {
+  background-color: var(--paper);
+  background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.78), rgba(246, 238, 252, 0.36));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), var(--shadow-deep);
+}
+
+/* Waiting room */
+
+.team-roster {
+  border: 2px solid var(--panel-border);
+  border-top-color: var(--panel-border-strong);
+  background:
+    linear-gradient(160deg, rgba(255, 253, 255, 0.95) 0%, rgba(247, 240, 253, 0.9) 76%),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff, 0 16px 38px rgba(73, 43, 104, 0.1);
+}
+
+.team-roster::after {
+  position: absolute;
+  top: -2px;
+  right: 22px;
+  left: 22px;
+  height: 2px;
+  border-radius: 2px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(92, 69, 153, 0.46) 50%, transparent);
+}
+
+.team-roster[data-team-panel="b"]::after {
+  background: linear-gradient(90deg, transparent, rgba(161, 73, 121, 0.38) 50%, transparent);
+}
+
+.roster-head {
+  border-bottom-color: rgba(112, 79, 150, 0.22);
+  background:
+    linear-gradient(90deg, rgba(196, 173, 227, 0.24), transparent 78%),
+    rgba(252, 248, 255, 0.9);
+}
+
+.roster-team strong {
+  color: #301b44;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 760;
+  letter-spacing: 0.02em;
+}
+
+.roster-count {
+  color: #6d587f;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.player-card {
+  position: relative;
+  border-color: rgba(114, 81, 151, 0.3);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 242, 253, 0.88) 78%),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.player-card[data-team="a"] {
+  --team-tint: var(--team-a);
+  --team-wash: rgba(207, 194, 238, 0.28);
+}
+
+.player-card[data-team="b"] {
+  --team-tint: var(--team-b);
+  --team-wash: rgba(238, 203, 222, 0.26);
+}
+
+.player-card.is-waiting {
+  border-color: rgba(117, 85, 153, 0.28);
+  border-style: dashed;
+  background:
+    linear-gradient(150deg, rgba(255, 253, 255, 0.78) 0%, rgba(247, 240, 252, 0.66) 78%),
+    var(--paper);
+}
+
+.player-card.is-arrived {
+  border-style: solid;
+  border-color: var(--team-tint);
+  background:
+    radial-gradient(ellipse 90% 80% at 12% 10%, var(--team-wash), transparent 70%),
+    linear-gradient(150deg, rgba(255, 254, 255, 0.98) 0%, rgba(247, 241, 252, 0.9) 80%),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff, 0 8px 24px rgba(79, 49, 111, 0.13);
+}
+
+.player-slot {
+  color: var(--team-tint);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.arrival-chip {
+  border-color: #d8c7e8;
+  background: rgba(255, 253, 255, 0.76);
+  color: #6e5a82;
+  letter-spacing: 0.04em;
+}
+
+.player-card.is-arrived .arrival-chip {
+  border-color: transparent;
+  background: var(--team-tint);
+  color: #fffaff;
+  box-shadow: 0 4px 12px rgba(78, 48, 110, 0.14);
+}
+
+.player-avatar {
+  position: relative;
+  border: 1px solid rgba(111, 79, 148, 0.27);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.96), transparent 34%),
+    linear-gradient(145deg, #eee4f9 0%, #d9c6ec 100%);
+  color: #3a224f;
+  font-size: 19px;
+  box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.44), 0 6px 18px rgba(75, 44, 107, 0.09);
+}
+
+.player-card.is-arrived .player-avatar {
+  border-color: var(--team-tint);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.98), transparent 34%),
+    linear-gradient(145deg, #f4ecfc 0%, #dbc9ec 100%);
+}
+
+.player-name {
+  color: #2b173e;
+  font-family: var(--display);
+  font-weight: 760;
+}
+
+.player-sub {
+  color: #806a93;
+}
+
+.player-bottom {
+  border-top-color: rgba(118, 86, 153, 0.2);
+}
+
+.player-status span {
+  color: #866f99;
+}
+
+.player-status strong {
+  color: #574067;
+}
+
+.player-card.is-arrived .player-status strong {
+  color: var(--team-tint);
+}
+
+.role-chip {
+  border-color: rgba(105, 74, 142, 0.28);
+  background: rgba(244, 236, 251, 0.9);
+  color: #5a426d;
+}
+
+.versus-bar {
+  border-color: var(--panel-border);
+  background:
+    linear-gradient(90deg, rgba(184, 158, 220, 0.14), transparent 48%, rgba(231, 185, 209, 0.12)),
+    rgba(255, 253, 255, 0.9);
+  color: #5d4870;
+}
+
+.versus-bar span:first-child {
+  color: var(--team-a);
+}
+
+.versus-bar span:last-child {
+  color: var(--team-b);
+}
+
+.versus-bar b {
+  border-color: rgba(91, 59, 126, 0.32);
+  background: rgba(255, 253, 255, 0.9);
+  color: #4a2f63;
+}
+
+.readiness-card {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--panel-border);
+  background:
+    radial-gradient(ellipse 72% 60% at 78% 12%, rgba(207, 184, 238, 0.38), transparent 70%),
+    linear-gradient(160deg, rgba(255, 253, 255, 0.98) 0%, rgba(245, 237, 252, 0.92) 78%),
+    var(--paper);
+}
+
+.readiness-card::before {
+  position: absolute;
+  top: -86px;
+  right: -82px;
+  width: 210px;
+  height: 210px;
+  border: 1px solid rgba(102, 69, 143, 0.14);
+  border-radius: 50%;
+  content: "";
+  box-shadow: 0 0 0 28px rgba(135, 98, 180, 0.035), 0 0 0 29px rgba(102, 69, 143, 0.09);
+  pointer-events: none;
+}
+
+.readiness-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.readiness-kicker {
+  color: #826c95;
+  letter-spacing: 0.16em;
+}
+
+.readiness-headline {
+  color: #2b173f;
+  font-family: var(--display);
+  font-weight: 800;
+}
+
+.readiness-count strong {
+  color: #2a173c;
+  font-family: var(--mono);
+  font-weight: 800;
+  text-shadow: 0 2px 18px rgba(107, 72, 151, 0.12);
+}
+
+.readiness-count span {
+  color: #7c668e;
+}
+
+.readiness-copy {
+  color: #786289;
+}
+
+.readiness-state {
+  border-top-color: rgba(116, 85, 151, 0.22);
+  border-bottom-color: rgba(116, 85, 151, 0.22);
+  color: #5a426d;
+}
+
+.waiting-head .state-badge {
+  background: rgba(255, 253, 255, 0.72);
+}
+
+/* Mappool: the BP instrument panel */
+
+.mappool-head h2 {
+  text-shadow: 0 2px 20px rgba(101, 67, 146, 0.08);
+}
+
+.mappool-status {
+  border-color: var(--panel-border);
+  border-top-color: var(--panel-border-strong);
+  background:
+    linear-gradient(90deg, rgba(190, 167, 223, 0.16), transparent 31%, transparent 69%, rgba(234, 193, 214, 0.13)),
+    linear-gradient(160deg, rgba(255, 253, 255, 0.94) 0%, rgba(247, 240, 253, 0.9) 100%);
+  box-shadow: inset 0 1px 0 #ffffff, 0 10px 28px rgba(73, 43, 104, 0.08);
+}
+
+.mappool-team-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #39204d;
+}
+
+.mappool-team-status .mappool-team-name {
+  color: #4f367a;
+}
+
+.mappool-team-status--b .mappool-team-name {
+  color: #823459;
+}
+
+.mappool-team-status .mappool-team-name::before,
+.mappool-team-status--b .mappool-team-name::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--team-a);
+  box-shadow: 0 0 0 3px rgba(92, 69, 153, 0.1);
+  content: "";
+}
+
+.mappool-team-status--b .mappool-team-name::before {
+  background: var(--team-b);
+  box-shadow: 0 0 0 3px rgba(161, 73, 121, 0.1);
+}
+
+.ban-slot-chip {
+  border-color: rgba(104, 73, 141, 0.28);
+  background: rgba(255, 253, 255, 0.78);
+  color: #4d3762;
+}
+
+.ban-slot-chip[data-state="empty"] {
+  border-color: rgba(115, 84, 149, 0.25);
+  background: rgba(247, 241, 252, 0.54);
+  color: #79668a;
+}
+
+.ban-slot-chip[data-state="used"] {
+  border-color: transparent;
+  background: linear-gradient(135deg, #68469f 0%, #5a378d 56%, #4e2f7a 100%);
+  color: #fffaff;
+  box-shadow: 0 5px 14px rgba(84, 51, 121, 0.2);
+}
+
+.ban-slot-index {
+  color: #826b95;
+}
+
+.ban-slot-chip[data-state="used"] .ban-slot-index {
+  color: #dbcaf0;
+}
+
+.ex-counter {
+  border-left-color: rgba(109, 77, 146, 0.24);
+  color: #76608a;
+}
+
+.ex-counter b {
+  color: #3e2554;
+}
+
+.mappool-mid {
+  border-inline-color: rgba(113, 81, 149, 0.2);
+  color: #756087;
+}
+
+.mappool-mid b {
+  color: #422b58;
+}
+
+.map-ex-mark {
+  border-color: rgba(102, 69, 142, 0.3);
+  color: #5a426d;
+}
+
+.mappool-column {
+  overflow: hidden;
+  border: 2px solid var(--panel-border);
+  border-top-color: var(--panel-border-strong);
+  border-radius: 3px;
+  background:
+    linear-gradient(160deg, rgba(255, 253, 255, 0.96) 0%, rgba(246, 239, 252, 0.92) 76%),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff, 0 15px 36px rgba(74, 44, 105, 0.09);
+}
+
+.map-group-head {
+  border-bottom-color: rgba(112, 80, 148, 0.24);
+  background:
+    linear-gradient(90deg, rgba(195, 169, 226, 0.22), transparent 70%),
+    rgba(251, 247, 255, 0.9);
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.map-group-head::before {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--violet);
+  box-shadow: 0 0 0 3px rgba(100, 66, 157, 0.09);
+  content: "";
+}
+
+.map-group-head strong {
+  color: #39234d;
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.015em;
+}
+
+.map-group-head span {
+  color: #806b92;
+}
+
+.mappool-column:nth-child(2) .map-group-head::before {
+  background: #875ba9;
+  box-shadow: 0 0 0 3px rgba(135, 91, 169, 0.09);
+}
+
+.mappool-column:nth-child(3) .map-group-head::before {
+  background: var(--orchid);
+  box-shadow: 0 0 0 3px rgba(162, 72, 120, 0.09);
+}
+
+.map-entry {
+  border-color: rgba(108, 76, 145, 0.24);
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.97), rgba(248, 242, 253, 0.86) 72%),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.map-entry.is-banned {
+  border-color: rgba(161, 73, 121, 0.28);
+  background:
+    repeating-linear-gradient(135deg, transparent 0 16px, rgba(161, 73, 121, 0.035) 16px 17px, transparent 17px 34px),
+    linear-gradient(120deg, rgba(253, 244, 249, 0.9), rgba(247, 237, 245, 0.88));
+}
+
+.map-entry.is-banned .map-title {
+  color: #735b70;
+  text-decoration: line-through;
+  text-decoration-color: rgba(161, 73, 121, 0.38);
+  text-decoration-thickness: 1px;
+}
+
+.map-entry.is-picked {
+  border-color: #68479f;
+  background:
+    radial-gradient(ellipse 65% 130% at 8% 50%, rgba(204, 181, 234, 0.34), transparent 72%),
+    linear-gradient(115deg, rgba(251, 247, 255, 0.98), rgba(239, 228, 249, 0.94));
+  box-shadow: inset 3px 0 0 #5d3c92, 0 8px 20px rgba(81, 49, 117, 0.11);
+}
+
+.map-entry.is-picked .map-title {
+  color: #2e1940;
+}
+
+.map-index {
+  border-color: rgba(112, 80, 148, 0.26);
+  color: #7d678f;
+}
+
+.map-entry.is-picked .map-index {
+  border-color: rgba(96, 62, 143, 0.38);
+  color: #493069;
+}
+
+.map-entry.is-banned .map-index {
+  color: #8e6d83;
+}
+
+.map-mod {
+  border-color: rgba(107, 76, 144, 0.3);
+  color: #52396a;
+}
+
+.map-entry[data-mod="NM"] .map-mod {
+  border-color: rgba(100, 66, 157, 0.36);
+  background: rgba(218, 204, 240, 0.42);
+  color: #4e3080;
+}
+
+.map-entry[data-mod="HD"] .map-mod {
+  border-color: rgba(75, 117, 160, 0.3);
+  background: rgba(216, 230, 246, 0.62);
+  color: #3c5d80;
+}
+
+.map-entry[data-mod="HR"] .map-mod {
+  border-color: rgba(161, 73, 121, 0.3);
+  background: rgba(245, 220, 232, 0.66);
+  color: #813656;
+}
+
+.map-entry[data-mod="FM"] .map-mod {
+  border-color: rgba(145, 108, 48, 0.29);
+  background: rgba(247, 236, 212, 0.72);
+  color: #765321;
+}
+
+.map-entry[data-mod="TB"] .map-mod {
+  border-color: rgba(83, 56, 112, 0.36);
+  background: rgba(232, 222, 242, 0.82);
+  color: #432b5b;
+}
+
+.map-title {
+  color: #3a244e;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+}
+
+.map-meta {
+  color: #806a93;
+}
+
+.map-entry .map-status {
+  border-color: rgba(110, 78, 147, 0.27);
+  background: rgba(255, 253, 255, 0.8);
+  color: #614974;
+}
+
+.map-status.state-banned {
+  border-color: rgba(161, 73, 121, 0.37);
+  background: rgba(249, 231, 241, 0.82);
+  color: #8a3a62;
+}
+
+.map-status.state-picked {
+  border-color: transparent;
+  background: linear-gradient(135deg, #6b49a4, #553486);
+  color: #fffaff;
+}
+
+.map-entry.is-banned .map-status span {
+  color: #a5567e;
+}
+
+.map-entry.is-picked .map-status span {
+  color: #e4d6f5;
+}
+
+.chat-heading {
+  border-right-color: rgba(112, 80, 148, 0.22);
+}
+
+.chat-heading strong {
+  color: #321d46;
+  font-family: var(--display);
+  letter-spacing: -0.02em;
+}
+
+.chat-message {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(112, 80, 148, 0.22);
+  background:
+    linear-gradient(145deg, rgba(255, 253, 255, 0.94), rgba(248, 242, 253, 0.84)),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.chat-message::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, rgba(94, 63, 128, 0.3), transparent 62%);
+}
+
+.chat-message:nth-child(2)::before {
+  background: linear-gradient(90deg, rgba(135, 91, 169, 0.26), transparent 62%);
+}
+
+.chat-message:nth-child(3)::before {
+  background: linear-gradient(90deg, rgba(162, 72, 120, 0.25), transparent 62%);
+}
+
+.chat-author {
+  color: #725b86;
+}
+
+.chat-message:nth-child(2) .chat-author {
+  color: #7b568b;
+}
+
+.chat-message:nth-child(3) .chat-author {
+  color: #8f4d70;
+}
+
+.chat-message p {
+  color: #4e385f;
+}
+
+/* Playing and single-map result: one arena, eight / six / four native feeds */
+
+.playfield {
+  isolation: isolate;
+}
+
+.playfield::after {
+  width: 1px;
+  border-left: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(98, 67, 139, 0.16) 16%, rgba(72, 45, 104, 0.38) 50%, rgba(152, 77, 119, 0.18) 84%, transparent 100%);
+}
+
+.pov-cell {
+  border-color: rgba(100, 68, 141, 0.3);
+  background:
+    linear-gradient(160deg, rgba(255, 254, 255, 0.99) 0%, rgba(247, 241, 253, 0.94) 78%),
+    var(--paper);
+  box-shadow: inset 0 1px 0 #ffffff, 0 8px 20px rgba(74, 44, 105, 0.1);
+}
+
+.pov-cell[data-team="a"] {
+  --team-tint: var(--team-a);
+  --team-wash: rgba(200, 187, 233, 0.22);
+  border-color: rgba(92, 69, 153, 0.46);
+  border-top-color: var(--team-tint);
+}
+
+.pov-cell[data-team="b"] {
+  --team-tint: var(--team-b);
+  --team-wash: rgba(235, 198, 220, 0.22);
+  border-color: rgba(161, 73, 121, 0.4);
+  border-top-color: var(--team-tint);
+}
+
+.pov-cell[data-team="a"] .pov-frame,
+.pov-cell[data-team="b"] .pov-frame {
+  background:
+    radial-gradient(ellipse 70% 76% at 50% 42%, var(--team-wash), transparent 74%),
+    linear-gradient(145deg, #f3edf8, #e8deef);
+}
+
+.pov-source {
+  border-color: rgba(112, 81, 147, 0.26);
+  background:
+    radial-gradient(ellipse 82% 74% at 50% 38%, rgba(255, 255, 255, 0.74), transparent 75%),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgba(104, 74, 138, 0.04) 39px 40px),
+    linear-gradient(145deg, #f4eef8 0%, #e6ddec 100%);
+  color: #695577;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.source-4x3 .pov-source {
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+.source-16x9 .pov-source {
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.pov-label {
+  border-top-color: rgba(109, 78, 145, 0.22);
+  background:
+    linear-gradient(90deg, rgba(221, 207, 239, 0.38), transparent 56%),
+    rgba(255, 253, 255, 0.93);
+}
+
+.pov-player {
+  color: var(--team-tint);
+}
+
+.pov-name {
+  color: #4e385f;
+}
+
+.role-chip--pov {
+  border-color: rgba(112, 80, 147, 0.25);
+  background: rgba(255, 253, 255, 0.86);
+  color: #634b75;
+}
+
+.pov-source--result {
+  background:
+    radial-gradient(ellipse 82% 74% at 50% 38%, rgba(255, 255, 255, 0.82), transparent 75%),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgba(104, 74, 138, 0.04) 39px 40px),
+    linear-gradient(145deg, #f6f0fa 0%, #e7ddec 100%);
+}
+
+.result-source-title {
+  color: #4d3562;
+  font-size: 15px;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.result-source-meta {
+  color: #77618a;
+}
+
+/* The score/probe band stays pale so the numbers and fixed difference band do
+   the contrast work. */
+
+.playing-footer {
+  border-top: 0;
+}
+
+.score-stage {
+  border-bottom-color: rgba(105, 73, 141, 0.3);
+  background:
+    radial-gradient(ellipse 24% 140% at 50% 0%, rgba(213, 192, 239, 0.48), transparent 72%),
+    linear-gradient(90deg, rgba(194, 171, 224, 0.1), transparent 28%, transparent 72%, rgba(232, 190, 212, 0.1)),
+    rgba(252, 248, 255, 0.86);
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.score-center-anchor {
+  background: linear-gradient(180deg, rgba(93, 60, 136, 0.18), #51337a 44%, rgba(161, 73, 121, 0.3));
+}
+
+.score-fill {
+  background: linear-gradient(90deg, #58378b 0%, #724ea8 52%, #a04979 100%);
+  box-shadow: 0 2px 14px rgba(84, 49, 123, 0.2);
+}
+
+.score-side {
+  color: #806b92;
+}
+
+.score-stage[data-lead] .score-readout--a .score-side {
+  color: #5d4699;
+}
+
+.score-stage[data-lead] .score-readout--b .score-side {
+  color: #9c4775;
+}
+
+.score-number {
+  color: #2a173c;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.score-stage[data-lead^="left"] .score-readout--a .score-number,
+.score-stage[data-lead^="right"] .score-readout--b .score-number {
+  color: #241334;
+  text-shadow: 0 2px 16px rgba(76, 44, 108, 0.12);
+}
+
+.score-stage[data-lead^="left"] .score-readout--b .score-number,
+.score-stage[data-lead^="right"] .score-readout--a .score-number {
+  color: #8a7799;
+  text-shadow: none;
+}
+
+.score-stage[data-lead="equal"] .score-readout .score-number {
+  color: #3a244e;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.score-stage--result {
+  background:
+    radial-gradient(ellipse 28% 140% at 50% 0%, rgba(231, 190, 211, 0.22), transparent 74%),
+    linear-gradient(90deg, rgba(195, 172, 224, 0.11), transparent 28%, transparent 72%, rgba(232, 190, 212, 0.13)),
+    rgba(252, 248, 255, 0.88);
+}
+
+.score-stage--result .score-side {
+  color: #806b93;
+}
+
+.playing-footer .map-row {
+  background:
+    linear-gradient(90deg, rgba(255, 253, 255, 0.94), rgba(250, 245, 254, 0.9) 55%, rgba(255, 253, 255, 0.94)),
+    rgba(255, 253, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.map-kicker {
+  color: #806b92;
+  letter-spacing: 0.12em;
+}
+
+.map-chip {
+  border-color: rgba(108, 76, 143, 0.27);
+  background: rgba(255, 253, 255, 0.82);
+  color: #5a416c;
+}
+
+.map-chip[data-format="ex"] {
+  border-color: rgba(161, 73, 121, 0.4);
+  background: rgba(247, 225, 238, 0.84);
+  color: #833a5d;
+}
+
+.map-chip[data-format="tb"] {
+  border-color: rgba(89, 56, 126, 0.52);
+  background: rgba(95, 60, 135, 0.08);
+  color: #4b2f68;
+}
+
+.map-chip[data-mod="HD"] {
+  color: #3f5f82;
+}
+
+.map-chip[data-mod="HR"] {
+  color: #833a5d;
+}
+
+.map-chip[data-mod="FM"] {
+  color: #75531f;
+}
+
+.map-chip[data-mod="TB"] {
+  color: #4b2e67;
+}
+
+.map-chip--ex {
+  border-color: rgba(99, 66, 139, 0.32);
+  background: rgba(255, 253, 255, 0.78);
+  color: #5b436e;
+}
+
+.current-map strong {
+  color: #2b173f;
+  font-family: var(--display);
+}
+
+.map-sub {
+  color: #7d688f;
+}
+
+.map-rule {
+  color: #5b426e;
+}
+
+.map-params span {
+  border-color: rgba(110, 78, 145, 0.24);
+  background: rgba(255, 253, 255, 0.8);
+  color: #3d2751;
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.map-params b {
+  color: #7b668d;
+}
+
+/* Full-series victory */
+
+.victory-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-top-color: var(--panel-border-strong);
+  background:
+    radial-gradient(ellipse 36% 52% at 50% 46%, rgba(255, 255, 255, 0.98), transparent 68%),
+    radial-gradient(ellipse 70% 42% at 50% 106%, rgba(208, 185, 234, 0.36), transparent 74%),
+    linear-gradient(115deg, rgba(255, 253, 255, 0.97) 0%, rgba(244, 234, 252, 0.94) 52%, rgba(253, 248, 255, 0.98) 100%);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 #ffffff, 0 18px 46px rgba(74, 43, 105, 0.1);
+}
+
+.victory-hero::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 610px;
+  height: 610px;
+  border: 1px solid rgba(99, 66, 139, 0.17);
+  border-radius: 50%;
+  content: "";
+  box-shadow:
+    0 0 0 88px rgba(159, 122, 203, 0.034),
+    0 0 0 89px rgba(99, 66, 139, 0.08),
+    0 0 0 170px rgba(159, 122, 203, 0.025),
+    0 0 0 171px rgba(99, 66, 139, 0.045);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.victory-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.victory-mark {
+  border: 1px solid rgba(78, 48, 109, 0.55);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.24), transparent 36%),
+    linear-gradient(145deg, #69489e 0%, #4e2e78 100%);
+  color: #fffaff;
+  box-shadow:
+    0 0 0 12px rgba(255, 255, 255, 0.72),
+    0 0 0 13px rgba(102, 69, 143, 0.18),
+    0 18px 44px rgba(78, 48, 109, 0.18);
+  text-shadow: 0 2px 14px rgba(52, 27, 77, 0.28);
+}
+
+.victory-kicker {
+  color: #7f698f;
+}
+
+.victory-copy h3 {
+  color: #2a173c;
+  font-family: var(--display);
+}
+
+.victory-status {
+  color: #5c3a8a;
+}
+
+.victory-result {
+  border-left-color: rgba(105, 73, 141, 0.26);
+}
+
+.victory-result span {
+  color: #816b92;
+}
+
+.victory-result strong {
+  color: #4e2f75;
+}
+
+.victory-supports {
+  border: 2px solid var(--panel-border);
+  background:
+    linear-gradient(120deg, rgba(255, 253, 255, 0.94), rgba(246, 239, 252, 0.9)),
+    var(--fill);
+}
+
+.victory-supports div {
+  border-right-color: rgba(110, 78, 145, 0.22);
+}
+
+.victory-supports span {
+  color: #816b92;
+}
+
+.victory-supports strong {
+  color: #402956;
+  font-family: var(--display);
+}
+
+/* Tactical / technical hold */
+
+.pause-primary {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-top-color: var(--panel-border-strong);
+  background:
+    radial-gradient(ellipse 36% 44% at 50% 44%, rgba(255, 255, 255, 0.9), transparent 68%),
+    repeating-linear-gradient(135deg, transparent 0 46px, rgba(107, 77, 140, 0.03) 46px 47px, transparent 47px 93px),
+    linear-gradient(150deg, rgba(255, 253, 255, 0.97) 0%, rgba(243, 234, 251, 0.94) 100%);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 #ffffff, 0 18px 46px rgba(74, 43, 105, 0.1);
+}
+
+.pause-primary::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 520px;
+  height: 520px;
+  border: 1px solid rgba(99, 66, 139, 0.1);
+  border-radius: 50%;
+  content: "";
+  box-shadow:
+    0 0 0 1px rgba(155, 115, 220, 0.06),
+    0 0 0 105px rgba(144, 94, 219, 0.018),
+    0 0 0 106px rgba(99, 66, 139, 0.04);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.pause-primary > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pause-mark span {
+  background: linear-gradient(180deg, #7855aa, #4b2c73);
+  box-shadow: 0 10px 26px rgba(78, 47, 110, 0.15);
+}
+
+.pause-primary h3 {
+  color: #2a173c;
+  font-family: var(--display);
+}
+
+.pause-time {
+  color: #4f3564;
+}
+
+.pause-recovery {
+  color: #705989;
+}
+
+.pause-copy {
+  color: #756087;
+}
+
+.pause-side {
+  border: 2px solid var(--panel-border);
+  border-top-color: var(--panel-border-strong);
+  background:
+    linear-gradient(150deg, rgba(255, 253, 255, 0.96), rgba(246, 239, 252, 0.92)),
+    var(--paper);
+}
+
+.pause-row {
+  border-bottom-color: rgba(113, 81, 148, 0.21);
+}
+
+.pause-row span {
+  color: #816b94;
+}
+
+.pause-row strong {
+  color: #442d58;
+}
+
+.pause-side [data-rematch-status] {
+  color: #5e466f;
+}
+
+.pause-source {
+  border-top-color: rgba(108, 76, 143, 0.26);
+  color: #7a648c;
+}
+
+.footer-kicker,
+.series-label,
+.event-meta,
+.layout-mark,
+.map-sub,
+.player-sub,
+.player-status span,
+.map-params b,
+.chat-author {
+  font-variant-numeric: tabular-nums;
+}
+
+@supports not (-webkit-text-stroke: 1px #ffffff) {
+  .team-block::before {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Team colour language + restrained ambience
+   Left / A = red, right / B = blue. Tournament furniture stays violet; team
+   colour is reserved for markers, stars, player frames, labels and the lead
+   score band. POV rectangles and all scene coordinates remain untouched.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --team-a: #9d3647;
+  --team-b: #2f5b90;
+  --team-a-soft: rgba(157, 54, 71, 0.1);
+  --team-b-soft: rgba(47, 91, 144, 0.1);
+}
+
+.team-block--a .team-side {
+  color: #85323e;
+}
+
+.team-block--b .team-side {
+  color: #2b507d;
+}
+
+.team-block--a .team-side::before {
+  background: var(--team-a);
+  box-shadow: 0 0 9px rgba(157, 54, 71, 0.3);
+}
+
+.team-block--b .team-side::before {
+  background: var(--team-b);
+  box-shadow: 0 0 9px rgba(47, 91, 144, 0.28);
+}
+
+.mappool-team-status:not(.mappool-team-status--b) .mappool-team-name {
+  color: #7e2f3b;
+}
+
+.mappool-team-status--b .mappool-team-name {
+  color: #294c76;
+}
+
+.mappool-team-status .mappool-team-name::before {
+  background: var(--team-a);
+  box-shadow: 0 0 0 3px rgba(157, 54, 71, 0.09);
+}
+
+.mappool-team-status--b .mappool-team-name::before {
+  background: var(--team-b);
+  box-shadow: 0 0 0 3px rgba(47, 91, 144, 0.09);
+}
+
+.team-roster[data-team-panel="a"] {
+  --team-tint: var(--team-a);
+  --team-wash: var(--team-a-soft);
+}
+
+.team-roster[data-team-panel="b"] {
+  --team-tint: var(--team-b);
+  --team-wash: var(--team-b-soft);
+}
+
+.team-roster[data-team-panel="a"]::after {
+  background: linear-gradient(90deg, transparent, rgba(157, 54, 71, 0.46) 50%, transparent);
+}
+
+.team-roster[data-team-panel="b"]::after {
+  background: linear-gradient(90deg, transparent, rgba(47, 91, 144, 0.42) 50%, transparent);
+}
+
+.roster-team strong {
+  color: var(--team-tint);
+}
+
+.player-card[data-team="a"] {
+  --team-wash: rgba(157, 54, 71, 0.09);
+}
+
+.player-card[data-team="b"] {
+  --team-wash: rgba(47, 91, 144, 0.09);
+}
+
+.player-card.is-arrived .arrival-chip {
+  background: var(--team-tint);
+}
+
+.pov-cell[data-team="a"] {
+  --team-wash: rgba(157, 54, 71, 0.075);
+  border-color: rgba(157, 54, 71, 0.35);
+  border-top-color: var(--team-a);
+}
+
+.pov-cell[data-team="b"] {
+  --team-wash: rgba(47, 91, 144, 0.075);
+  border-color: rgba(47, 91, 144, 0.34);
+  border-top-color: var(--team-b);
+}
+
+.score-stage[data-lead] .score-readout--a .score-side {
+  color: #85323e;
+}
+
+.score-stage[data-lead] .score-readout--b .score-side {
+  color: #2b507d;
+}
+
+.score-stage[data-lead^="left"] .score-readout--a .score-number {
+  color: #8f2d3c;
+  text-shadow: 0 1px 0 #ffffff, 0 2px 16px rgba(157, 54, 71, 0.12);
+}
+
+.score-stage[data-lead^="right"] .score-readout--b .score-number {
+  color: #284d7c;
+  text-shadow: 0 1px 0 #ffffff, 0 2px 16px rgba(47, 91, 144, 0.12);
+}
+
+.score-stage[data-lead^="left"] .score-fill {
+  background: linear-gradient(90deg, #8d2f3d 0%, #bd6873 100%);
+  box-shadow: 0 2px 14px rgba(157, 54, 71, 0.22);
+}
+
+.score-stage[data-lead^="right"] .score-fill {
+  background: linear-gradient(90deg, #284d7c 0%, #6c8fb7 100%);
+  box-shadow: 0 2px 14px rgba(47, 91, 144, 0.2);
+}
+
+.victory-hero::after {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  left: 20px;
+  height: 2px;
+  content: "";
+  background:
+    linear-gradient(90deg, var(--team-a) 0 52px, transparent 52px) left / 100% 100% no-repeat,
+    linear-gradient(270deg, var(--team-b) 0 52px, transparent 52px) right / 100% 100% no-repeat;
+  opacity: 0.36;
+  pointer-events: none;
+}
+
+.pause-row:nth-child(2) span {
+  color: #85323e;
+}
+
+.pause-row:nth-child(3) span {
+  color: #2b507d;
+}
+
+/* A slow ambient wash lives below the masthead, panels and gameplay cells. */
+
+.broadcast-canvas::after {
+  position: absolute;
+  inset: -5%;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 26% 34% at 22% 34%, rgba(157, 120, 211, 0.16), transparent 70%),
+    radial-gradient(ellipse 22% 30% at 79% 56%, rgba(230, 176, 204, 0.12), transparent 70%),
+    radial-gradient(ellipse 16% 22% at 52% 20%, rgba(255, 255, 255, 0.42), transparent 72%);
+  transform: translate3d(-0.8%, -0.4%, 0) scale(1.02);
+  animation: oclr-ambient-drift 52s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes oclr-ambient-drift {
+  0% {
+    transform: translate3d(-0.8%, -0.4%, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(0.9%, 0.6%, 0) scale(1.055);
+  }
+}
+
+/* State transitions are colour-only; nothing here moves a POV/result window
+   or changes its contain calculation. */
+
+.scene-tab,
+.clean-button,
+.mode-button,
+.demo-button,
+.ban-slot-chip,
+.map-entry,
+.map-status,
+.arrival-chip,
+.player-card,
+.state-badge,
+.role-chip,
+.map-chip,
+.score-number,
+.score-side {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.score-stage {
+  background:
+    radial-gradient(ellipse 24% 140% at 50% 0%, rgba(213, 192, 239, 0.42), transparent 72%),
+    linear-gradient(90deg, rgba(194, 171, 224, 0.1), transparent 28%, transparent 72%, rgba(232, 190, 212, 0.1)),
+    rgba(252, 248, 255, 0.94);
+}
+
+.playing-footer .map-row {
+  background:
+    linear-gradient(90deg, rgba(255, 253, 255, 0.97), rgba(250, 245, 254, 0.94) 55%, rgba(255, 253, 255, 0.97)),
+    rgba(255, 253, 255, 0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .broadcast-canvas::after {
+    animation: none;
+    transform: none;
+  }
+
+  .scene-tab,
+  .clean-button,
+  .mode-button,
+  .demo-button,
+  .ban-slot-chip,
+  .map-entry,
+  .map-status,
+  .arrival-chip,
+  .player-card,
+  .state-badge,
+  .role-chip,
+  .map-chip,
+  .score-number,
+  .score-side,
+  .score-fill,
+  .score-readout {
+    transition: none;
+  }
+}
+
+/* End Violet Orbit light layer 3 */

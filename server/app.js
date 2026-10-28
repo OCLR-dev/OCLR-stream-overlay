@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -11,6 +13,36 @@ const RESOURCES = [
 ];
 const MODULES = ['index', 'oclr', 'tosu', 'broadcast'];
 const MAX_BYTES = 2 * 1024 * 1024;
+const UI_ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
+const UI_ASSET = /^\/assets\/[A-Za-z0-9_-]+\.(?:js|css|svg|md|woff2?)$/;
+const MIME = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml', '.md': 'text/markdown; charset=utf-8', '.woff': 'font/woff', '.woff2': 'font/woff2' };
+
+// Serve only the generated index and flat, named Vite assets. Never fall back
+// to the project directory, source files, .env files, or arbitrary SPA paths.
+export async function serveUi(pathname, res, uiRoot = UI_ROOT) {
+  if (!['/', '/index.html', '/overlay'].includes(pathname) && !UI_ASSET.test(pathname)) return false;
+  const name = UI_ASSET.test(pathname) ? pathname.slice(1) : 'index.html';
+  const filename = resolve(uiRoot, name);
+  if (!filename.startsWith(resolve(uiRoot) + sep)) return false;
+  try {
+    const body = await readFile(filename);
+    const extension = name.slice(name.lastIndexOf('.'));
+    res.writeHead(200, {
+      'Content-Type': name === 'index.html' ? 'text/html; charset=utf-8' : MIME[extension],
+      'Cache-Control': name === 'index.html' ? 'no-store' : 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.end(body);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      fail(res, 500, 'UI_READ_FAILED');
+      return true;
+    }
+    fail(res, 404, name === 'index.html' ? 'UI_BUILD_REQUIRED' : 'NOT_FOUND');
+  }
+  return true;
+}
 
 function reply(res, status, value, extra = {}) {
   res.writeHead(status, {
@@ -62,21 +94,27 @@ export async function readBoundedJson(response) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-export function createOverlayServer(config, fetchImpl = fetch) {
+export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT) {
   return createServer(async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
     const origins = hosts.map(host => `http://${host}`);
+    // Opening the public UI from a link is a cross-site document navigation.
+    // Permit only that entry navigation; API and cross-site fetches stay blocked.
+    const uiNavigation = req.method === 'GET' &&
+      req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document' &&
+      ['/', '/index.html', '/overlay'].includes(req.url.split('?')[0]);
     if (!hosts.includes(req.headers.host) ||
         (req.headers.origin && !origins.includes(req.headers.origin)) ||
-        req.headers['sec-fetch-site'] === 'cross-site') return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
+        (req.headers['sec-fetch-site'] === 'cross-site' && !uiNavigation)) return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     let url;
     try { url = new URL(req.url, 'http://localhost'); }
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
-    if (url.pathname === '/' || url.pathname === '/api/health') {
-      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'data-foundation', ui: 'pending' });
+    if (url.pathname === '/api/health') {
+      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'vue-ui', ui: 'demo' });
     }
+    if (await serveUi(url.pathname, res, uiRoot)) return;
     if (url.pathname === '/api/config') {
       return reply(res, 200, { oclrBaseUrl: '/api/oclr', tosuWsUrl: config.wsUrl, authMode: config.mode });
     }
