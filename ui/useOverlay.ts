@@ -1,9 +1,68 @@
 import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, watch, type InjectionKey } from 'vue';
-import { changeBan, changeField, derive, mapLabels, parseLocation, scenes, serializeState, urlKeys, type Field, type Team } from './model';
+import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
+import { useSession } from './session';
 
-export function createOverlay() {
-  const state = reactive(parseLocation(location.search, location.hash));
-  const view = computed(() => derive(state));
+export function createOverlay(shared = false) {
+  const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
+  const sessionClient = shared ? useSession() : null;
+  const session = computed(() => sessionClient?.snapshot.value?.session || null);
+  if (shared) watch(session, s => {
+    state.clean = true; state.seriesA = s?.series.a ?? null;
+    state.seriesB = s?.series.b ?? null;
+    if (!s) return;
+    state.scene = s.scene as Scene; state.mode = s.match.mode; state.source = s.match.source; state.stage = s.match.stage;
+    state.pickFirst = s.roll.pickFirst || 'unknown'; state.banFirst = s.roll.banFirst || 'unknown';
+    state.pauseType = s.pauseType; state.exTeam = s.ex.team || 'none'; state.exA = s.ex.remaining.a; state.exB = s.ex.remaining.b;
+    const entry = s.pool.find(e => e.id === s.rounds.find(r => r.id === s.currentRoundId)?.entryId);
+    state.mapType = entry?.mod === 'TB' ? 'tb' : 'normal';
+    state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
+  }, { immediate: true });
+  const view = computed(() => {
+    const base = derive(state);
+    const s = session.value;
+    const envelope = sessionClient?.snapshot.value;
+    const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
+    const round = s?.rounds.find(r => r.id === s.currentRoundId);
+    const currentMap = s?.pool.find(e => e.id === round?.entryId) || null;
+    const roster = (team: Team) => shared ? Array.from({ length: base.count }, (_, i) => ({
+      team, id: `${team}-${i + 1}`, slot: i + 1, role: '', syntheticEx: false,
+      name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null
+    })) : base.roster(team);
+    const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
+    const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
+      envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
+    const scores = bound ? envelope?.live.tosu.data?.tourney?.totalScore : null;
+    const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
+    const scoreA = shared ? formatted(scores?.left) : base.scoreA;
+    const scoreB = shared ? formatted(scores?.right) : base.scoreB;
+    const resultA = shared ? formatted(round?.finalScore?.a) : base.resultA;
+    const resultB = shared ? formatted(round?.finalScore?.b) : base.resultB;
+    const pool = shared ? (s?.pool || []).map(entry => {
+      const banning = (['a', 'b'] as const).find(t => s?.bans[t].includes(entry.id));
+      const used = s?.rounds.find(r => r.entryId === entry.id && r.status !== 'void');
+      const status = banning ? 'banned' : used?.status === 'recorded' ? 'used' : used ? 'picked' : 'open';
+      return { ...entry, status, statusLabel: banning ? `${names[banning]} Ban` : used ? `${names[used.pickedBy]} ${status === 'used' ? '已打' : 'Pick'}` : '未选', icon: banning ? '×' : used ? '✓' : '○' };
+    }) : mapMods.map((mod, index) => {
+      const status = index === 0 ? state.map : 'open';
+      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, statusLabel: mapLabels[status], icon: mapIcons[status] };
+    });
+    return { ...base, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
+      ready: (team: Team) => shared ? s?.ready[team] || false : false,
+      orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
+      banText: (team: Team, index: 0 | 1) => shared ? s?.pool.find(e => e.id === s.bans[team][index])?.label || '未确认' : banLabel(state.banSlots[team][index]),
+      scoreA, scoreB, resultA, resultB, pool, currentMap, winner: s?.winner ? names[s.winner] : null,
+      roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
+      season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
+      chat: shared && bound ? envelope?.live.tosu.data?.tourney?.chat.slice(-4) || [] : [],
+      sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',
+      arrivalCount: shared ? (['a', 'b'] as const).filter(arrived).length * base.count : base.arrivalCount,
+      readiness: shared ? (s?.ready.a && s?.ready.b ? '双方已就绪' : '等待到场 / 就绪确认') : base.readiness,
+      readinessCopy: shared ? '状态由直播员人工核对。' : base.readinessCopy,
+      commentary: shared ? '本机播出记录 · 实际名单由直播员核对' : base.commentary,
+      exLabel: shared && s?.ex.team ? `EX · ${names[s.ex.team]}开启` : base.exLabel,
+      connection: sessionClient?.connection.value || 'demo'
+    };
+  });
   const feedback = ref('Ban 槽默认未确认。');
   const update = (field: Field, value: string) => Object.assign(state, changeField(state, field, value));
   const select = (field: Field, event: Event) => update(field, (event.target as HTMLSelectElement).value);
@@ -34,6 +93,7 @@ export function createOverlay() {
   };
   const onLocation = () => Object.assign(state, parseLocation(location.search, location.hash));
   const stopWatch = watch(state, () => {
+    if (shared) { document.body.classList.add('is-clean'); document.title = 'OCLR · 共享直播输出'; return; }
     const url = new URL(location.href);
     for (const key of [...Object.values(urlKeys), 'banA1', 'banA2', 'banB1', 'banB2']) url.searchParams.delete(key);
     url.hash = serializeState(state);
@@ -46,6 +106,7 @@ export function createOverlay() {
     document.title = state.clean ? '干净输出 · Esc 退出 · OCLR S11 Neon Broadcast' : 'OCLR S11 直播 UI · Neon Broadcast 视觉评审';
   }, { immediate: true, flush: 'sync' });
   onMounted(() => {
+    if (shared) return;
     window.addEventListener('keydown', onKeydown);
     window.addEventListener('hashchange', onLocation);
     window.addEventListener('popstate', onLocation);

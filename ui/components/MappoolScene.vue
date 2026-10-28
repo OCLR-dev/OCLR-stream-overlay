@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useOverlay } from '../useOverlay';
-import { banLabel } from '../model';
 import MapColumns from './MapColumns.vue';
 import ChatPanel from './ChatPanel.vue';
 
@@ -17,11 +16,11 @@ const { state, view } = useOverlay();
         </div>
       </div>
 
-      <div class="mappool-status" aria-label="S11 本地选图状态">
+      <div class="mappool-status" aria-label="本场选图状态">
         <div class="mappool-team-status">
-          <span class="mappool-team-name">示例A队</span>
-          <span class="ban-slot-chip" :data-state="state.banSlots.a[0] === 'empty' ? 'empty' : state.banSlots.a[0] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="a0">{{ banLabel(state.banSlots.a[0]) }}</b></span>
-          <span class="ban-slot-chip" :data-state="state.banSlots.a[1] === 'empty' ? 'empty' : state.banSlots.a[1] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="a1">{{ banLabel(state.banSlots.a[1]) }}</b></span>
+          <span class="mappool-team-name">{{ view.names.a }}</span>
+          <span class="ban-slot-chip" :data-state="state.banSlots.a[0] === 'empty' ? 'empty' : state.banSlots.a[0] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="a0">{{ view.banText('a', 0) }}</b></span>
+          <span class="ban-slot-chip" :data-state="state.banSlots.a[1] === 'empty' ? 'empty' : state.banSlots.a[1] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="a1">{{ view.banText('a', 1) }}</b></span>
           <span class="ex-counter">EX 剩余 <b data-ex-remaining="a">{{ state.exA }}</b></span>
         </div>
         <div class="mappool-mid">
@@ -31,9 +30,9 @@ const { state, view } = useOverlay();
           <span class="map-ex-mark" data-mappool-ex>{{ view.exLabel }}</span>
         </div>
         <div class="mappool-team-status mappool-team-status--b">
-          <span class="mappool-team-name">示例B队</span>
-          <span class="ban-slot-chip" :data-state="state.banSlots.b[0] === 'empty' ? 'empty' : state.banSlots.b[0] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="b0">{{ banLabel(state.banSlots.b[0]) }}</b></span>
-          <span class="ban-slot-chip" :data-state="state.banSlots.b[1] === 'empty' ? 'empty' : state.banSlots.b[1] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="b1">{{ banLabel(state.banSlots.b[1]) }}</b></span>
+          <span class="mappool-team-name">{{ view.names.b }}</span>
+          <span class="ban-slot-chip" :data-state="state.banSlots.b[0] === 'empty' ? 'empty' : state.banSlots.b[0] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="b0">{{ view.banText('b', 0) }}</b></span>
+          <span class="ban-slot-chip" :data-state="state.banSlots.b[1] === 'empty' ? 'empty' : state.banSlots.b[1] === 'unknown' ? 'unknown' : 'used'"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="b1">{{ view.banText('b', 1) }}</b></span>
           <span class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
         </div>
       </div>

@@ -29,7 +29,7 @@ test('built UI serves only generated files and never exposes source, credentials
   config.port = server.address().port;
   t.after(async () => { await new Promise(resolve => server.close(resolve)); await rm(fixture, { recursive: true }); });
   const base = `http://127.0.0.1:${config.port}`;
-  for (const path of ['/', '/index.html', '/overlay']) {
+  for (const path of ['/', '/index.html', '/overlay', '/control']) {
     const response = await fetch(base + path);
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type'), /text\/html/);

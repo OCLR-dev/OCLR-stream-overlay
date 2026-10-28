@@ -14,8 +14,8 @@ const { view } = useOverlay();
         <span class="map-chip" data-map-mod :data-mod="view.mod">{{ view.mod }}</span>
         <span class="map-chip map-chip--ex" data-map-ex>{{ view.exLabel }}</span>
       </span>
-      <strong>{{ result ? '谱面标题占位 02' : '谱面标题占位' }}</strong>
-      <span class="map-sub">艺术家 / 难度</span>
+      <strong>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '尚未准备谱面' : result ? '谱面标题占位 02' : '谱面标题占位' }}</strong>
+      <span class="map-sub">{{ view.shared ? `${view.currentMap?.artist || '—'} / ${view.currentMap?.difficulty || '—'}` : '艺术家 / 难度' }}</span>
       <span class="map-rule" data-map-rule :hidden="!view.mapRule">{{ view.mapRule }}</span>
     </div>
     <div class="map-params" aria-label="谱面参数">

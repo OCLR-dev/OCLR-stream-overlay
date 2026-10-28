@@ -31,7 +31,7 @@ export class BroadcastData {
         this.emit();
       },
       onFrame: data => {
-        this.state.tosu = { status: 'live', updatedAt: new Date().toISOString(), error: null, data };
+        this.state.tosu = { status: 'live', frameSeq: (this.state.tosu.frameSeq || 0) + 1, updatedAt: new Date().toISOString(), error: null, data };
         this.derive();
         this.emit();
       },

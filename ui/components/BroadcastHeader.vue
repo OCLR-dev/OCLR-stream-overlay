@@ -15,9 +15,9 @@ const score = (team: 'a' | 'b') => {
 
 <template>
   <header class="broadcast-header">
-    <section class="team-block team-block--a" aria-label="左队（RED）：示例A队">
+    <section class="team-block team-block--a" :aria-label="`左队（RED）：${view.names.a}`">
       <span class="team-side">左队 / RED · A SIDE</span>
-      <span class="team-name">示例A队</span>
+      <span class="team-name">{{ view.names.a }}</span>
       <strong class="header-score" :class="{ 'header-score--series': !arena }" :id="state.scene === 'map-result' ? 'resultTotalA' : 'scoreValueA'">{{ score('a') }}</strong>
       <span class="header-score-label">{{ arena ? (state.scene === 'map-result' ? '本图总分 / MAP SCORE' : '当前总分 / TEAM SCORE') : '系列赢图 / SERIES' }}</span>
       <div class="series-row">
@@ -27,18 +27,18 @@ const score = (team: 'a' | 'b') => {
     </section>
 
     <section class="event-block">
-      <div class="event-shield"><span class="event-title">OCLR <b>S11</b></span><span class="event-bo">{{ view.meta.format }}</span></div>
+      <div class="event-shield"><span class="event-title">OCLR <b>{{ view.season }}</b></span><span class="event-bo">{{ view.meta.format }}</span></div>
       <span class="event-meta"><span data-stage-label>{{ view.meta.label }}</span> · <span data-series-target>{{ view.seriesTarget }}</span></span>
       <span class="event-context">
         <span class="event-context-line"><span data-header-scene>{{ sceneLabels[state.scene] }}</span> · <span class="format-chip" :data-format="view.format" data-format-label>{{ view.formatLabel }}</span></span>
         <span class="event-context-line">常规 <span data-mode-label>{{ state.mode }}</span> · 当前 <span data-active-mode-label>{{ view.modeLabel }}</span></span>
       </span>
-      <span class="layout-mark">布局示意</span>
+      <span class="layout-mark">{{ view.shared ? view.title : '布局示意' }}</span>
     </section>
 
-    <section class="team-block team-block--b" aria-label="右队（BLUE）：示例B队">
+    <section class="team-block team-block--b" :aria-label="`右队（BLUE）：${view.names.b}`">
       <span class="team-side">右队 / BLUE · B SIDE</span>
-      <span class="team-name">示例B队</span>
+      <span class="team-name">{{ view.names.b }}</span>
       <strong class="header-score" :class="{ 'header-score--series': !arena }" :id="state.scene === 'map-result' ? 'resultTotalB' : 'scoreValueB'">{{ score('b') }}</strong>
       <span class="header-score-label">{{ arena ? (state.scene === 'map-result' ? '本图总分 / MAP SCORE' : '当前总分 / TEAM SCORE') : '系列赢图 / SERIES' }}</span>
       <div class="series-row">

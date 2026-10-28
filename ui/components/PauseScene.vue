@@ -27,7 +27,7 @@ const { state, view } = useOverlay();
           <div class="pause-row"><span>A 队战术暂停</span><strong data-pause-a-status>{{ view.pauseA }}</strong></div>
           <div class="pause-row"><span>B 队战术暂停</span><strong data-pause-b-status>{{ view.pauseB }}</strong></div>
           <div class="pause-row"><span>断线重赛机会</span><strong data-rematch-status>{{ view.rematch }}</strong></div>
-          <div class="pause-row"><span>当前谱面</span><strong>谱面标题占位</strong></div>
+          <div class="pause-row"><span>当前谱面</span><strong>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '未选择' : '谱面标题占位' }}</strong></div>
         </section>
       </div>
     </div>
@@ -43,7 +43,7 @@ const { state, view } = useOverlay();
       </section>
       <section class="footer-cell">
         <span class="footer-kicker">当前谱面</span>
-        <p>谱面标题占位</p>
+        <p>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '未选择' : '谱面标题占位' }}</p>
       </section>
     </footer>
   </section>

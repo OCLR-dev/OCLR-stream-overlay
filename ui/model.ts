@@ -1,6 +1,6 @@
 // Local demonstration state. No API records, player identity or official result
 // is inferred here; live data remains a separate subscription boundary.
-export const scenes = ['waiting', 'mappool', 'playing', 'map-result', 'victory', 'pause'] as const;
+export const scenes = ['waiting', 'mappool', 'playing', 'map-result', 'victory', 'pause', 'roll'] as const;
 export type Scene = typeof scenes[number];
 export type Team = 'a' | 'b';
 export const regularMods = ['NM', 'HD', 'HR', 'DT', 'FM'] as const;
@@ -8,7 +8,7 @@ export type Ban = 'unknown' | 'empty' | typeof regularMods[number];
 const singleBanMods = ['HD', 'HR', 'DT'];
 export const sceneLabels: Record<Scene, string> = {
   waiting: '等待选手', mappool: 'Mappool Ban/Pick', playing: 'Playing',
-  'map-result': '单图结算', victory: '全场胜利', pause: '暂停 / 技术处理'
+  'map-result': '单图结算', victory: '全场胜利', pause: '暂停 / 技术处理', roll: 'Roll / 先手'
 };
 export const teams = ['a', 'b'] as const;
 export const teamNames = { a: '示例A队', b: '示例B队' };
@@ -141,7 +141,7 @@ export function derive(state: OverlayState) {
   const count = (state.mode === '4v4' ? 4 : 3) - (ex ? 1 : 0);
   const roster = (team: Team) => Array.from({ length: count }, (_, i) => ({
     team, id: `${team.toUpperCase()}${i + (ex ? 3 : 1)}`, slot: i + 1,
-    role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex
+    role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null
   }));
   const arrived = (team: Team) => state.arrival === 'both' || state.arrival === team;
   const orderLabel = (value: 'unknown' | Team) => value === 'unknown' ? '未确认' : teamNames[value];

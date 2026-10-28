@@ -1,6 +1,6 @@
 # BP 自动跟随与单图 Ban
 
-日期：2026-10-28。状态：操作与数据设计，尚未实现运行功能。用户已明确：裁判使用 `!mp map <mapid>` 切换房间谱面，网页直接跟随 tosu 读到的当前谱面；Ban 以单张图为目标。**根据当前 BP 动作、行动队伍和新换入的谱面，自动记录 Ban 或 Pick。** 不解析命令聊天，不需要额外的禁图 API。
+日期：2026-10-28。状态：已实现服务端统一动作、单图引用、去重/重连基线及模拟序列测试；真实 tosu 房间联调待完成。用户已明确：裁判使用 `!mp map <mapid>` 切换房间谱面，网页直接跟随 tosu 读到的当前谱面；Ban 以单张图为目标。**根据当前 BP 动作、行动队伍和新换入的谱面，自动记录 Ban 或 Pick。** 不解析命令聊天，不需要额外的禁图 API。
 
 ## 房间换图 → 按当前 BP 动作处理
 
@@ -65,4 +65,4 @@
 - [tosu v2 类型](https://github.com/tosuapp/tosu/blob/master/packages/tosu/src/api/types/v2.ts)：顶层 `beatmap.id`，赛事聊天 `name/message/timestamp/team`；所阅结构没有图池 Ban 字段。
 - [tosu v2 输出实现](https://github.com/tosuapp/tosu/blob/master/packages/tosu/src/api/utils/buildResultV2.ts)：顶层谱面由选中的游戏实例生成，需与实际赛事房间绑定核对。
 
-实现时需验证：Ban → Ban 旧图不重复消费、Ban → Pick 正确归队、同 ID 多槽、非池内热身、首次连接、断线重连、暂停锁定、Ban 冲突、自动/手动去重、撤销后旧事件不复活、Pick 后改图不追加轮次。真实验收需实际直播机 tosu / osu!tourney 联调。本次仅更新设计，未改变运行时，也未运行代码测试。
+实现时需验证：Ban → Ban 旧图不重复消费、Ban → Pick 正确归队、同 ID 多槽、非池内热身、首次连接、断线重连、暂停锁定、Ban 冲突、自动/手动去重、撤销后旧事件不复活、Pick 后改图不追加轮次。真实验收需实际直播机 tosu / osu!tourney 联调。当前实现与测试结果见 [控制台验证](../verification/operator-console/README.md)。

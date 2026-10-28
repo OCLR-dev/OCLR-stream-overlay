@@ -12,14 +12,14 @@ const { state, view } = useOverlay();
         <div class="title-line">
           <span class="scene-eyebrow">PRE-MATCH / 01</span>
           <h2 id="waiting-title">等待选手</h2>
-          <span class="state-badge">未就绪</span>
+          <span class="state-badge">{{ view.ready('a') && view.ready('b') ? '双方就绪' : '未就绪' }}</span>
         </div>
       </div>
 
       <div class="waiting-main">
-        <section class="team-roster" data-team-panel="a" aria-label="示例A队在场槽位">
+        <section class="team-roster" data-team-panel="a" :aria-label="`${view.names.a}在场槽位`">
           <header class="roster-head">
-            <span class="roster-team"><strong>示例A队</strong></span>
+            <span class="roster-team"><strong>{{ view.names.a }}</strong></span>
             <span class="roster-count" data-arrival-count="a">{{ `${view.arrived('a') ? view.count : 0} / ${view.count} 已到场` }}</span>
           </header>
           <PlayerRoster team="a" />
@@ -27,9 +27,9 @@ const { state, view } = useOverlay();
 
         <aside class="readiness-column" aria-label="对阵与就绪状态">
           <div class="versus-bar">
-            <span>示例A队</span>
+            <span>{{ view.names.a }}</span>
             <b>VS</b>
-            <span>示例B队</span>
+            <span>{{ view.names.b }}</span>
           </div>
           <div class="readiness-card" aria-live="polite">
             <span class="readiness-kicker">到场 / 就绪</span>
@@ -43,9 +43,9 @@ const { state, view } = useOverlay();
           </div>
         </aside>
 
-        <section class="team-roster" data-team-panel="b" aria-label="示例B队在场槽位">
+        <section class="team-roster" data-team-panel="b" :aria-label="`${view.names.b}在场槽位`">
           <header class="roster-head">
-            <span class="roster-team"><strong>示例B队</strong></span>
+            <span class="roster-team"><strong>{{ view.names.b }}</strong></span>
             <span class="roster-count" data-arrival-count="b">{{ `${view.arrived('b') ? view.count : 0} / ${view.count} 已到场` }}</span>
           </header>
           <PlayerRoster team="b" />
@@ -64,7 +64,7 @@ const { state, view } = useOverlay();
       </section>
       <section class="footer-cell">
         <span class="footer-kicker">本场对阵</span>
-        <p>示例A队 <span class="versus-inline">vs</span> 示例B队</p>
+        <p>{{ view.names.a }} <span class="versus-inline">vs</span> {{ view.names.b }}</p>
       </section>
     </footer>
   </section>

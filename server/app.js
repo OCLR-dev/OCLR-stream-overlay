@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sessionHttp } from './session/http.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -21,7 +22,7 @@ const MIME = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; chars
 // Serve only the generated index and flat, named Vite assets. Never fall back
 // to the project directory, source files, .env files, or arbitrary SPA paths.
 export async function serveUi(pathname, res, uiRoot = UI_ROOT) {
-  if (!['/', '/index.html', '/overlay'].includes(pathname) && !UI_ASSET.test(pathname)) return false;
+  if (!['/', '/index.html', '/overlay', '/control'].includes(pathname) && !UI_ASSET.test(pathname)) return false;
   const name = UI_ASSET.test(pathname) ? pathname.slice(1) : 'index.html';
   const filename = resolve(uiRoot, name);
   if (!filename.startsWith(resolve(uiRoot) + sep)) return false;
@@ -94,7 +95,7 @@ export async function readBoundedJson(response) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT) {
+export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
   return createServer(async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
@@ -103,16 +104,17 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT)
     // Permit only that entry navigation; API and cross-site fetches stay blocked.
     const uiNavigation = req.method === 'GET' &&
       req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document' &&
-      ['/', '/index.html', '/overlay'].includes(req.url.split('?')[0]);
+      ['/', '/index.html', '/overlay', '/control'].includes(req.url.split('?')[0]);
     if (!hosts.includes(req.headers.host) ||
         (req.headers.origin && !origins.includes(req.headers.origin)) ||
         (req.headers['sec-fetch-site'] === 'cross-site' && !uiNavigation)) return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
-    if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     let url;
     try { url = new URL(req.url, 'http://localhost'); }
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
+    if (await sessionHttp(req, res, url, session)) return;
+    if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     if (url.pathname === '/api/health') {
-      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'vue-ui', ui: 'demo' });
+      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(session) });
     }
     if (await serveUi(url.pathname, res, uiRoot)) return;
     if (url.pathname === '/api/config') {

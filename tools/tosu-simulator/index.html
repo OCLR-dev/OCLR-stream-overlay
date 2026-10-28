@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>tosu v2 模拟器 · OCLR</title><link rel="stylesheet" href="/simulator.css"></head>
+<body><main>
+  <header><div><small>OCLR / DEVELOPMENT TOOL</small><h1>tosu v2 模拟器</h1></div><strong class="badge">仅模拟 · 非实机</strong></header>
+  <p class="notice">实际通过 WebSocket 驱动现有界面。这里只模拟数据，不提供游戏视频；比赛与存储使用独立临时会话。</p>
+  <nav><a id="controlLink" target="_blank" rel="noopener">直播员控制台 ↗</a><a id="outputLink" target="_blank" rel="noopener">只读输出 ↗</a><a href="/json/v2" target="_blank" rel="noopener">tosu 原始 JSON ↗</a></nav>
+  <p id="error" role="alert" hidden></p>
+  <section class="status" aria-live="polite"><div><span>连接</span><strong id="connections">等待连接</strong></div><div><span>赛事 IPC</span><strong id="ipc">—</strong></div><div><span>房间当前图</span><strong id="currentMap">—</strong></div><div><span>当前队分</span><strong id="scores">—</strong></div></section>
+  <section class="panel"><div class="section-title"><h2>完整一局演练</h2><span id="scenario">手动模式</span></div>
+    <p>明确的测试序列：红 Ban HD1 → 蓝 Ban HR1 → 红 Pick NM1 → 改成 NM2 → Playing → Ranking 自动加赢图。此序列仅用于测试。</p>
+    <div class="buttons"><button id="demo" class="primary">重置并自动演练一局</button><button id="reset">重置隔离模拟会话</button></div>
+  </section>
+  <div class="columns"><section class="panel"><h2>手动发送房间状态</h2>
+    <form id="frameForm"><label>待推送谱面<select id="mapSelect" name="mapId"></select></label><label>待推送赛事 IPC<select name="ipcState"><option value="0">0 · Initialising</option><option value="1" selected>1 · Idle</option><option value="2">2 · WaitingForClients</option><option value="3">3 · Playing</option><option value="4">4 · Ranking</option></select></label>
+      <div class="two"><label>红队总分<input name="left" type="number" min="0" step="1" value="1234567" required></label><label>蓝队总分<input name="right" type="number" min="0" step="1" value="1100000" required></label></div>
+      <label class="check"><input name="growing" type="checkbox" checked>Playing 时持续增加模拟分数</label><button class="primary">推送所选状态</button>
+    </form>
+  </section><section class="panel"><h2>逐步演练</h2><div id="steps" class="steps"></div><p>先等待连接，再按顺序换图。直播员控制台仍负责实际 BP 动作、暂停、记胜和纠错。</p></section></div>
+  <section class="panel"><h2>异常与恢复</h2><div class="buttons"><button id="disconnect">断开 WebSocket，观察自动重连</button><button id="silent" aria-pressed="false">暂停发送（测试 stale）</button><button id="invalid" aria-pressed="false">发送无效数据</button><button id="wrongRoom" aria-pressed="false">模拟错误房间</button></div><p>暂停发送超过 5 秒应标记 stale；恢复或重连的第一帧只建立基线。可在控制台撤回自动计胜，再观察旧结算是否被错误加回。</p></section>
+  <details class="panel" id="raw"><summary>查看实际 WebSocket 帧</summary><pre id="payload"></pre></details>
+  <footer><span id="transport">—</span> · <span id="sent">—</span></footer>
+</main><script type="module" src="/simulator.js"></script></body></html>

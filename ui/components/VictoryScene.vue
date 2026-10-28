@@ -17,13 +17,13 @@ const { state, view } = useOverlay();
       <div class="victory-hero">
         <div class="victory-mark" aria-hidden="true">WINNER</div>
         <div class="victory-copy">
-          <span class="victory-kicker">OCLR S11 · <span data-victory-stage>{{ view.meta.label }}</span></span>
-          <h3>全场胜者待确认</h3>
-          <p class="victory-status">示例A队 <span>VS</span> 示例B队</p>
+          <span class="victory-kicker">OCLR {{ view.season }} · <span data-victory-stage>{{ view.meta.label }}</span></span>
+          <h3>{{ view.winner || '全场胜者待确认' }}</h3>
+          <p class="victory-status">{{ view.names.a }} <span>VS</span> {{ view.names.b }}</p>
         </div>
         <div class="victory-result">
           <span>最终赢图</span>
-          <strong><span>—</span><i>:</i><span>—</span></strong>
+          <strong><span>{{ state.seriesA ?? '—' }}</span><i>:</i><span>{{ state.seriesB ?? '—' }}</span></strong>
         </div>
       </div>
 
@@ -50,7 +50,7 @@ const { state, view } = useOverlay();
     <footer class="scene-footer">
       <section class="footer-cell">
         <span class="footer-kicker">全场胜者</span>
-        <p class="footer-lead">待确认</p>
+        <p class="footer-lead">{{ view.winner || '待确认' }}</p>
       </section>
       <section class="footer-cell">
         <span class="footer-kicker">赛制目标</span>

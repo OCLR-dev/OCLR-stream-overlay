@@ -73,6 +73,11 @@ export class OclrClient {
     const snapshot = {};
     for (const [key, suffix] of Object.entries({ overview: '', teams: '/teams', competition: '/competition', mappools: '/mappools', bracket: '/bracket' })) {
       snapshot[key] = (await this.read(`${path}${suffix}`, {}, signal)).data;
+      if (key === 'overview' && snapshot.overview.overview?.kind === 'historical_archive') {
+        // Published historical details have a distinct contract. Empty live
+        // collections are not substitutes for the explicitly selected archive.
+        snapshot.configuration = (await this.read(`${path}/configuration`, {}, signal)).data;
+      }
     }
     snapshot.players = await this.players(edition, signal);
     return snapshot;

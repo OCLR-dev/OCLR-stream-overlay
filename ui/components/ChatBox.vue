@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useOverlay } from '../useOverlay';
+const { view } = useOverlay();
 defineProps<{ source: 'match' | 'stream' }>();
 const labels = {
   match: { title: '比赛聊天', tag: 'MATCH CHAT', placeholder: '比赛聊天内容占位' },
@@ -13,7 +15,10 @@ const labels = {
       <span>{{ labels[source].tag }}</span>
     </header>
     <div class="chat-box-content">
-      <p class="chat-empty">{{ labels[source].placeholder }}</p>
+      <template v-if="view.shared && source === 'match' && view.chat.length">
+        <p v-for="(line, index) in view.chat" :key="index" class="match-chat-line"><b>{{ line.name || '—' }}</b> {{ line.message }}</p>
+      </template>
+      <p v-else class="chat-empty">{{ view.shared ? source === 'stream' ? '固定直播间 Chat · 等待 OBS 源叠放' : `等待比赛聊天 · tosu ${view.sourceStatus}` : labels[source].placeholder }}</p>
     </div>
   </section>
 </template>

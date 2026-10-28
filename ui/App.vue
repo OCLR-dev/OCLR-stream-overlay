@@ -9,8 +9,10 @@ import MappoolScene from './components/MappoolScene.vue';
 import ArenaScene from './components/ArenaScene.vue';
 import VictoryScene from './components/VictoryScene.vue';
 import PauseScene from './components/PauseScene.vue';
+import RollScene from './components/RollScene.vue';
 
-const controller = createOverlay();
+const shared = location.pathname === '/overlay';
+const controller = createOverlay(shared);
 provide(overlayKey, controller);
 const { state, view } = controller;
 const { stage, scale } = useCanvasFit();
@@ -18,13 +20,13 @@ const { stage, scale } = useCanvasFit();
 
 <template>
   <div class="review-app" id="reviewApp">
-    <ReviewControls />
+    <ReviewControls v-if="!shared" />
     <main class="canvas-stage" id="canvasStage" ref="stage">
       <div class="canvas-sizer" id="canvasSizer" :style="{ width: `${1920 * scale}px`, height: `${1080 * scale}px` }">
         <div class="broadcast-canvas" id="broadcastCanvas"
-          :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`]"
+          :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared }]"
           :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-current-scene="state.scene"
-          :aria-label="`1920×1080 OCLR S11 直播布局示意画布，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
+          :aria-label="`1920×1080 OCLR ${view.season} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})` }">
           <BroadcastHeader />
           <!-- Keep scenes mounted so switching scenes never recreates a POV. -->
@@ -35,6 +37,7 @@ const { stage, scale } = useCanvasFit();
             <ArenaScene result />
             <VictoryScene />
             <PauseScene />
+            <RollScene />
           </div>
         </div>
       </div>

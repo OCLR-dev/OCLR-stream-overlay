@@ -130,3 +130,23 @@ test('WebSocket silence marks stale, reconnects, and stop cancels reconnect', as
   assert.equal(FakeSocket.sockets.length, count);
   assert.equal(statuses.at(-1), 'stopped');
 });
+
+test('historical editions read the published configuration archive without replacing empty live resources', async () => {
+  const calls = [];
+  const archive = { editionSlug: 's10', teams: [], pools: [] };
+  const client = new OclrClient({ fetchImpl: async url => {
+    calls.push(url);
+    const path = new URL(url, 'http://local.test').pathname;
+    if (path.endsWith('/players')) return json(page([], 1, 0, VERSION_A));
+    if (path.endsWith('/configuration')) return json(envelope({ edition: { archive } }));
+    if (path.endsWith('/s10')) return json(envelope({ slug: 's10', overview: { kind: 'historical_archive' } }));
+    return json(envelope(path.endsWith('/bracket') ? null : []));
+  } });
+  const result = await client.edition('s10');
+  assert.deepEqual(result.configuration.edition.archive, archive);
+  assert.deepEqual(result.teams, []); assert.deepEqual(result.mappools, []);
+  assert.equal(calls.filter(url => url.includes('/configuration')).length, 1);
+  calls.length = 0;
+  await client.edition('s11');
+  assert.equal(calls.some(url => url.includes('/configuration')), false);
+});
