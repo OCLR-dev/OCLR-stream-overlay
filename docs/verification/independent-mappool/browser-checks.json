@@ -1,0 +1,138 @@
+{
+  "pickOnly": {
+    "manualStartButtons": 0,
+    "series": "模拟红队\n0 : 0\n模拟蓝队"
+  },
+  "recorded": "Playing · 管理\n比分与赛果\n\n正常成绩自动计胜；需要时在这里人工记胜、撤回或直接校正系列比分。\n\n当前图 NM1 · 已计胜\n\n画面已同步\n游戏数据已连接\n选择下一局谱面\n本局谱面\nNM1 · 模拟谱面 NM1 · WebSocket 联动测试\n选图队伍\n模拟红队\n准备本图\n\n准备好后标记开打；已记录的赛果保留。\n\n直接校正系列比分\n模拟红队 赢图\n模拟蓝队 赢图\n\n修改后自动同步，无需确认；保留逐局记录，后续赢图从此比分继续累计。\n\nNM1 已记 模拟红队 胜 · 修正",
+  "remarkedScore": "模拟红队\n1 : 0\n模拟蓝队",
+  "clearedScore": "模拟红队\n1 : 0\n模拟蓝队",
+  "outputSize": {
+    "height": 1080,
+    "width": 1920
+  },
+  "mobile": {
+    "actions": {
+      "bottom": 647.0859375,
+      "height": 227.3984375,
+      "left": 31,
+      "right": 359,
+      "top": 419.6875,
+      "width": 328,
+      "x": 31,
+      "y": 419.6875
+    },
+    "scrollWidth": 390,
+    "series": "模拟红队1 : 0模拟蓝队",
+    "width": 390
+  },
+  "desktop": {
+    "scrollWidth": 1440,
+    "series": "模拟红队1 : 0模拟蓝队",
+    "width": 1440
+  },
+  "styles": {
+    "cards": [
+      {
+        "border": "rgb(61, 139, 255)",
+        "fill": "rgb(52, 52, 60)",
+        "id": "sim-nm1",
+        "state": "banned",
+        "team": "b"
+      },
+      {
+        "border": "rgb(61, 139, 255)",
+        "fill": "rgb(52, 52, 60)",
+        "id": "sim-nm2",
+        "state": "picked",
+        "team": "b"
+      },
+      {
+        "border": "rgb(255, 77, 109)",
+        "fill": "rgb(52, 52, 60)",
+        "id": "sim-nm3",
+        "state": "picked",
+        "team": "a"
+      },
+      {
+        "border": "rgb(255, 77, 109)",
+        "fill": "rgb(52, 52, 60)",
+        "id": "sim-hd1",
+        "state": "banned",
+        "team": "a"
+      },
+      {
+        "border": "rgb(61, 139, 255)",
+        "fill": "rgb(52, 52, 60)",
+        "id": "sim-hr1",
+        "state": "banned",
+        "team": "b"
+      }
+    ],
+    "openLabels": [
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      },
+      {
+        "display": "none",
+        "text": " "
+      }
+    ]
+  },
+  "controlStyles": [
+    {
+      "border": "rgb(61, 139, 255)",
+      "fill": "rgb(52, 52, 60)",
+      "status": "banned",
+      "team": "b"
+    },
+    {
+      "border": "rgb(61, 139, 255)",
+      "fill": "rgb(52, 52, 60)",
+      "status": "picked",
+      "team": "b"
+    },
+    {
+      "border": "rgb(255, 77, 109)",
+      "fill": "rgb(52, 52, 60)",
+      "status": "picked",
+      "team": "a"
+    },
+    {
+      "border": "rgb(255, 77, 109)",
+      "fill": "rgb(52, 52, 60)",
+      "status": "banned",
+      "team": "a"
+    },
+    {
+      "border": "rgb(61, 139, 255)",
+      "fill": "rgb(52, 52, 60)",
+      "status": "banned",
+      "team": "b"
+    }
+  ]
+}

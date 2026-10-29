@@ -1,11 +1,15 @@
 import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, watch, type InjectionKey } from 'vue';
 import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
 import { useSession } from './session';
+import { useMotionReady } from './motion';
+import { poolDisplay } from './poolDisplay';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
   const sessionClient = shared ? useSession() : null;
   const session = computed(() => sessionClient?.snapshot.value?.session || null);
+  const motionScope = computed(() => shared ? `${session.value?.id}:${sessionClient?.presentationEpoch.value}:${sessionClient?.connection.value}` : 'demo');
+  const motionReady = useMotionReady(motionScope);
   if (shared) watch(session, s => {
     state.clean = true; state.seriesA = s?.series.a ?? null;
     state.seriesB = s?.series.b ?? null;
@@ -31,27 +35,34 @@ export function createOverlay(shared = false) {
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
       envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
-    const scores = bound ? envelope?.live.tosu.data?.tourney?.totalScore : null;
+    const sameLiveMap = currentMap && envelope?.live.tosu.data?.beatmap.id === currentMap.beatmapId;
+    const scores = bound && sameLiveMap && !s?.incident ? envelope?.live.tosu.data?.tourney?.totalScore : null;
     const liveMap = bound ? envelope?.live.tosu.data?.beatmap : null;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
     const scoreB = shared ? formatted(scores?.right) : base.scoreB;
-    const resultA = shared ? formatted(round?.finalScore?.a) : base.resultA;
-    const resultB = shared ? formatted(round?.finalScore?.b) : base.resultB;
+    const reviewedScore = s?.incident?.roundId === round?.id ? null : round?.finalScore;
+    const resultA = shared ? formatted(reviewedScore?.a) : base.resultA;
+    const resultB = shared ? formatted(reviewedScore?.b) : base.resultB;
     const pool = shared ? (s?.pool || []).map(entry => {
-      const banning = (['a', 'b'] as const).find(t => s?.bans[t].includes(entry.id));
-      const used = s?.rounds.find(r => r.entryId === entry.id && r.status !== 'void');
-      const status = banning ? 'banned' : used?.status === 'recorded' ? 'used' : used ? 'picked' : 'open';
-      return { ...entry, status, statusLabel: banning ? `${names[banning]} Ban` : used ? `${names[used.pickedBy]} ${status === 'used' ? '已打' : 'Pick'}` : '未选', icon: banning ? '×' : used ? '✓' : '○' };
+      const { status, team } = poolDisplay(s!, entry.id);
+      return { ...entry, status, actionTeam: team,
+        statusLabel: team && status !== 'open' ? `${names[team]} ${status === 'banned' ? 'Ban' : status === 'used' ? '已打' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
     }) : mapMods.map((mod, index) => {
       const status = index === 0 ? state.map : 'open';
-      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, statusLabel: mapLabels[status], icon: mapIcons[status] };
+      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null,
+        statusLabel: status === 'open' ? '' : mapLabels[status], icon: status === 'open' ? '' : mapIcons[status] };
     });
     return { ...base, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
-      banText: (team: Team, index: 0 | 1) => shared ? s?.pool.find(e => e.id === s.bans[team][index])?.label || '未确认' : banLabel(state.banSlots[team][index]),
+      banText: (team: Team, index: 0 | 1) => {
+        if (!shared) return banLabel(state.banSlots[team][index]);
+        const ids = [...new Set([...(s?.bans[team] || []), ...pool.map(e => e.id)])]
+          .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
+        return pool.find(e => e.id === ids[index])?.label || '未确认';
+      },
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters, winner: s?.winner ? names[s.winner] : null,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
@@ -121,7 +132,7 @@ export function createOverlay(shared = false) {
     document.body.classList.remove('is-clean');
     for (const key of ['scene', 'clean', 'mode', 'activeMode', 'lead']) delete document.body.dataset[key];
   });
-  return { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
+  return { state, view, motionScope, motionReady, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
 }
 export type OverlayController = ReturnType<typeof createOverlay>;
 export const overlayKey: InjectionKey<OverlayController> = Symbol('overlay');

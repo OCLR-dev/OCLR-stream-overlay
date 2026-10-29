@@ -320,13 +320,16 @@
 .mappool-columns--stacked .map-title { max-height: 36px; font-size: 15px; line-height: 18px; }
 .mappool-columns--stacked .map-meta { display: none; }
 .mappool-columns--stacked .map-status { top: 5px; font-size: 10px; }
-.map-entry.is-banned { border-color: #ad3a60; background: #24132699; }
-.map-entry.is-banned .map-copy, .map-entry.is-banned .map-thumbnail { opacity: .48; }
-.map-entry.is-banned .map-status { color: #ff91a7; }
-.map-entry.is-banned::after { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--team-a); content: ''; }
-.map-entry.is-picked { border-color: var(--team-b); box-shadow: 0 0 16px #3d8bff33; }
-.map-entry.is-picked .map-status { color: #9cc8ff; }
-.map-entry.is-picked::after { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: var(--team-b); content: ''; }
+/* Team ownership, rather than Ban/Pick kind, determines the frame color.
+   Inset strokes keep every card's outer dimensions unchanged. */
+.map-entry { --map-team-color: #92929f; --map-team-ink: #eeeef2; }
+.map-entry[data-team='a'] { --map-team-color: var(--team-a); --map-team-ink: #ffbdca; }
+.map-entry[data-team='b'] { --map-team-color: var(--team-b); --map-team-ink: #b7d3ff; }
+.map-entry:is(.is-banned, .is-picked) { border-color: var(--map-team-color); background: #34343c; box-shadow: inset 0 0 0 1px var(--map-team-color); }
+.map-entry:is(.is-banned, .is-picked) .map-thumbnail { background: #484851; }
+.map-entry:is(.is-banned, .is-picked) .map-mod { color: #eeeef2; }
+.map-entry:is(.is-banned, .is-picked) .map-meta { color: #c4c4ce; }
+.map-entry:is(.is-banned, .is-picked) .map-status { color: var(--map-team-ink); }
 .chat-footer { display: flex; align-items: center; border-top: 0; padding: var(--stream-chat-top) var(--stream-chat-right) 14px 60px; box-shadow: inset 0 1px #7c3aed66; }
 .chat-panel { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: center; gap: 28px; width: 100%; height: var(--stream-chat-height); }
 .playing-footer--result { justify-content: center; padding: var(--stream-chat-top) var(--stream-chat-right) 14px 60px; background: #1c1034d9; box-shadow: inset 0 1px #7c3aed66; }
@@ -426,4 +429,20 @@
 @media (prefers-reduced-motion: reduce) {
   .broadcast-canvas::before { animation: none; }
   *, *::before, *::after { transition: none !important; }
+}
+
+/* Mounted scene layers crossfade directly to the latest committed selection.
+   No keyed transitions, timers, or transforms on any game/capture ancestor. */
+.scene-stack > .scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; pointer-events: none; }
+.scene-stack > .scene.is-active { opacity: 1; visibility: visible; pointer-events: auto; z-index: 1; }
+.motion-ready .scene-stack > .scene { transition: opacity 200ms ease-out, visibility 0s linear 200ms; }
+.motion-ready .scene-stack > .scene.is-active { transition-delay: 0s; }
+.scene[data-scene-panel='victory'] .victory-copy { opacity: 0; transform: translateY(6px); }
+.scene[data-scene-panel='victory'].is-active .victory-copy { opacity: 1; transform: translateY(0); }
+.motion-ready .scene[data-scene-panel='victory'] .victory-copy { transition: opacity 300ms ease-out, transform 300ms cubic-bezier(.2,.7,.3,1); }
+/* Live totals and their lead band update directly. Series wins get one emphasis. */
+.shared-output .score-fill, .shared-output .score-delta { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .broadcast-canvas *, .broadcast-canvas::before { animation: none !important; transition: none !important; }
+  .scene[data-scene-panel='victory'] .victory-copy { transform: none; }
 }

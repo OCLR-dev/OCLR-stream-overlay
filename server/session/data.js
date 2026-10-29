@@ -54,7 +54,7 @@ export function attachBroadcast(store, data) {
     const pool = catalog.pools.find(t => t.id === p.poolId);
     const fixture = p.fixtureId ? catalog.fixtures.find(f => f.id === p.fixtureId) : null;
     requireValue(a && b && a.id !== b.id && pool && (!p.fixtureId || fixture), '请明确选择本场队伍、场次和图池');
-    return store.command({ ...command, type: 'setup', payload: {
+    return store.command({ ...command, type: 'update-setup', payload: {
       title: p.title, edition: p.edition, fixtureId: fixture?.id || null, poolId: pool.id, provenance: catalog.kind === 'historical_archive' ? 'oclr-archive' : 'oclr',
       teams: { a, b }, pool: pool.entries, stage: p.stage, mode: p.mode, source: p.source,
     } });

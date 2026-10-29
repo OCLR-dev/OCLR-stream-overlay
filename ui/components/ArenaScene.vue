@@ -23,7 +23,7 @@ const actualLead = computed(() => {
 
 <template>
   <section class="scene" :class="{ 'is-active': state.scene === (result ? 'map-result' : 'playing') }"
-    :hidden="state.scene !== (result ? 'map-result' : 'playing')" :data-scene-panel="result ? 'map-result' : 'playing'" :aria-label="result ? '单图结算' : 'Playing'">
+    :inert="state.scene !== (result ? 'map-result' : 'playing')" :aria-hidden="state.scene !== (result ? 'map-result' : 'playing')" :data-scene-panel="result ? 'map-result' : 'playing'" :aria-label="result ? '单图结算' : 'Playing'">
     <div class="scene-body playing-body"><PovGrid :result="result" /></div>
     <footer class="scene-footer playing-footer" :class="{ 'playing-footer--result': result }">
       <div class="score-stage" :class="{ 'score-stage--result': result }" :id="result ? 'resultScoreStage' : 'scoreStage'" :data-lead="view.shared ? actualLead : result ? 'left-small' : state.lead" role="group"

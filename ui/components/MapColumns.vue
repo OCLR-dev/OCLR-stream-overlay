@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
-const { view } = useOverlay();
+const { view, state, motionScope } = useOverlay();
 const maxColumns = 6;
 const groups = computed(() => ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'].map(mod => ({
   mod, entries: view.value.pool.filter(entry => entry.mod === mod)
@@ -18,10 +19,10 @@ const rows = computed(() => Math.max(1, groups.value.reduce((sum, group) => sum 
       <ol class="map-list">
         <li v-for="(entry, index) in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used' }"
-          :data-map-index="entry.id" :data-map-state="entry.status" :data-mod="group.mod">
+          :data-map-index="entry.id" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod">
           <span class="map-thumbnail" aria-hidden="true"><span class="map-index">{{ String(index + 1).padStart(2, '0') }}</span></span>
           <span class="map-copy"><span class="map-mod">{{ entry.label }}</span><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="entry.artist || entry.difficulty" class="map-meta">{{ entry.artist || '—' }} / {{ entry.difficulty || '—' }}</span></span>
-          <span class="map-status" :class="`state-${entry.status}`"><span aria-hidden="true">{{ entry.icon }}</span> {{ entry.statusLabel }}</span>
+          <span v-show="entry.status !== 'open'" v-emphasize="{ value: [entry.status, entry.statusLabel], scope: motionScope, enabled: state.scene === 'mappool' }" class="map-status" :class="`state-${entry.status}`"><span aria-hidden="true">{{ entry.icon }}</span> {{ entry.statusLabel }}</span>
         </li>
       </ol>
     </article>

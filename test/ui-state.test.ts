@@ -55,3 +55,24 @@ test('Ban rejection preserves state, permits repeat NM/FM, and stage changes cle
   assert.equal(group.seriesB, 0);
   assert.equal(derive(group).meta.target, 6);
 });
+
+test('manual broadcast ownership and explicit clear survive later score changes without mutating records', async () => {
+  const { poolDisplay } = await import('../ui/poolDisplay.ts');
+  const s = { bans: { a: ['hd1', null], b: [null, null] }, rounds: [{ entryId: 'nm1', pickedBy: 'a', status: 'recorded', winner: 'a' }],
+    poolMarks: [{ entryId: 'nm1', status: 'banned', team: 'b' }, { entryId: 'hd1', status: 'open', team: null }] };
+  const before = structuredClone(s);
+  assert.deepEqual(poolDisplay(s, 'nm1'), { status: 'banned', team: 'b' });
+  assert.deepEqual(poolDisplay(s, 'hd1'), { status: 'open', team: null });
+  assert.deepEqual(s, before);
+  s.rounds[0].winner = 'b';
+  assert.deepEqual(poolDisplay(s, 'nm1'), { status: 'banned', team: 'b' });
+  assert.deepEqual(poolDisplay({ ...s, poolMarks: undefined }, 'nm1'), { status: 'used', team: 'a' });
+});
+
+test('old backend command rejection explains the service update rather than suggesting match corrections', async () => {
+  const { commandErrorMessage } = await import('../ui/session.ts');
+  assert.match(commandErrorMessage('未知会话命令'), /本机服务尚未更新/);
+  assert.doesNotMatch(commandErrorMessage('未知会话命令'), /手动调整/);
+  assert.equal(commandErrorMessage('该图已经 Ban'), '该图已经 Ban');
+  assert.equal(commandErrorMessage(undefined), '操作未应用');
+});

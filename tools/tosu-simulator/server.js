@@ -5,7 +5,7 @@ import { SIM_POOL, WARMUP } from './fixture.js';
 import { initialRoom, IPC_LABELS, makeV2Frame, MAP_PARAM_PRESETS } from './frames.js';
 import { acceptSocket } from './websocket.js';
 
-const FIELDS = ['mapId', 'ipcState', 'left', 'right', 'growing', 'silent', 'invalid', 'wrongRoom', 'mapParams'];
+const FIELDS = ['mapId', 'ipcState', 'left', 'right', 'growing', 'silent', 'invalid', 'wrongRoom', 'missingClient', 'clientsHidden', 'mapParams'];
 const reply = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.end(JSON.stringify(body));
@@ -51,7 +51,7 @@ export class TosuSimulator {
     if ('ipcState' in patch && ![0, 1, 2, 3, 4].includes(patch.ipcState)) throw new Error('IPC 无效');
     if ('mapParams' in patch && !Object.hasOwn(MAP_PARAM_PRESETS, patch.mapParams)) throw new Error('参数样本无效');
     for (const key of ['left', 'right']) if (key in patch && patch[key] !== null && (!Number.isSafeInteger(patch[key]) || patch[key] < 0)) throw new Error('队分无效');
-    for (const key of ['growing', 'silent', 'invalid', 'wrongRoom']) if (key in patch && typeof patch[key] !== 'boolean') throw new Error('开关无效');
+    for (const key of ['growing', 'silent', 'invalid', 'wrongRoom', 'missingClient', 'clientsHidden']) if (key in patch && typeof patch[key] !== 'boolean') throw new Error('开关无效');
     if ('mapId' in patch && patch.mapId !== this.room.mapId) {
       this.room.time = 0; this.room.left = 0; this.room.right = 0;
       this.chat(`模拟换图 ${[WARMUP, ...SIM_POOL].find(m => m.beatmapId === patch.mapId)?.label || patch.mapId}`);
@@ -88,6 +88,22 @@ export class TosuSimulator {
     } catch (error) { if (error.name !== 'AbortError') this.scenario = '模拟序列失败'; }
     finally { if (this.demo === controller) this.demo = null; }
   }
+  async panicRun() {
+    this.cancelDemo();
+    const controller = new AbortController(); this.demo = controller;
+    const previous = { ipcState: this.room.ipcState, clientsHidden: this.room.clientsHidden || false };
+    const room = this.room;
+    this.scenario = '模拟观战重建 · 比赛记录不变（非真实 Panic 时序）';
+    this.set({ ipcState: 0, clientsHidden: true });
+    try {
+      await delay(1200, undefined, { signal: controller.signal });
+      this.set(previous); this.scenario = '观战已恢复 · 在控制台核对继续当前局';
+    } catch (error) { if (error.name !== 'AbortError') this.scenario = '模拟观战恢复失败'; }
+    finally {
+      if (controller.signal.aborted && this.room === room) this.set({ clientsHidden: previous.clientsHidden });
+      if (this.demo === controller) this.demo = null;
+    }
+  }
   async http(req, res) {
     if (!this.allowed(req)) return reply(res, 403, { error: 'LOCAL_ORIGIN_REQUIRED' });
     const url = new URL(req.url, 'http://localhost');
@@ -108,6 +124,7 @@ export class TosuSimulator {
     else if (command.action === 'disconnect') { for (const client of this.clients) client.drop(); }
     else if (command.action === 'reset') await this.reset();
     else if (command.action === 'demo') { if (this.demo) return reply(res, 409, { error: '模拟序列正在运行' }); void this.demoRun(); }
+    else if (command.action === 'panic') { if (this.demo) return reply(res, 409, { error: '模拟序列正在运行' }); void this.panicRun(); }
     else return reply(res, 400, { error: 'UNKNOWN_ACTION' });
     return reply(res, 200, this.snapshot());
   }

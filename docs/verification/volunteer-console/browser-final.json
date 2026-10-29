@@ -1,0 +1,19 @@
+{
+  "desktop": {
+    "width": 1440,
+    "height": 1000
+  },
+  "narrow": {
+    "bottom": 543.84375,
+    "height": 844,
+    "left": 49,
+    "right": 229,
+    "scrollWidth": 390,
+    "top": 447.84375,
+    "width": 390
+  },
+  "previewTransport": "parent-preview",
+  "nativeSelectors": 0,
+  "sceneButtons": 6,
+  "exCounterSyncAndUndo": true
+}

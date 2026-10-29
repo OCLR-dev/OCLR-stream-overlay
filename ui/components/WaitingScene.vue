@@ -6,7 +6,7 @@ const { state, view } = useOverlay();
 </script>
 
 <template>
-  <section class="scene" :class="{ 'is-active': state.scene === 'waiting' }" :hidden="state.scene !== 'waiting'" data-scene-panel="waiting" aria-labelledby="waiting-title">
+  <section class="scene" :class="{ 'is-active': state.scene === 'waiting' }" :inert="state.scene !== 'waiting'" :aria-hidden="state.scene !== 'waiting'" data-scene-panel="waiting" aria-labelledby="waiting-title">
     <div class="scene-body waiting-body">
       <div class="waiting-head">
         <div class="title-line">

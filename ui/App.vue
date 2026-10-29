@@ -14,7 +14,7 @@ import RollScene from './components/RollScene.vue';
 const shared = location.pathname === '/overlay';
 const controller = createOverlay(shared);
 provide(overlayKey, controller);
-const { state, view } = controller;
+const { state, view, motionReady } = controller;
 const { stage, scale } = useCanvasFit();
 </script>
 
@@ -24,7 +24,7 @@ const { stage, scale } = useCanvasFit();
     <main class="canvas-stage" id="canvasStage" ref="stage">
       <div class="canvas-sizer" id="canvasSizer" :style="{ width: `${1920 * scale}px`, height: `${1080 * scale}px` }">
         <div class="broadcast-canvas" id="broadcastCanvas"
-          :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared }]"
+          :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared, 'motion-ready': motionReady }]"
           :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-current-scene="state.scene"
           :aria-label="`1920×1080 OCLR ${view.season} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})` }">

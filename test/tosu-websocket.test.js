@@ -166,6 +166,43 @@ test('real socket abort, independent same-map rematch and late missing/tied fina
   assert.deepEqual(snapshot(stack).session.series, { a: 0, b: 1 }); assert.equal(stack.store.state.rounds[0].status, 'void');
 });
 
+test('prestart abort, missing client replay and Panic recovery remain distinct over the real WebSocket', { timeout: 18000 }, async t => {
+  const stack = await boot(t); await prepare(stack);
+  const initial = structuredClone(current(stack));
+  const originalBp = structuredClone(stack.store.state.bpHistory);
+  await simulate(stack, 'set', { ipcState: 2 }); await delay(150);
+  await simulate(stack, 'set', { ipcState: 1 }); await delay(150);
+  assert.equal(current(stack).id, initial.id); assert.equal(current(stack).runId, null);
+  await operator(stack, 'incident', { kind: 'abort', reason: '模拟开打前卡住，取消启动' });
+  assert.equal(stack.store.state.incident.kind, 'prestart-abort');
+  await operator(stack, 'replay', { reason: '继续准备原图' });
+  assert.equal(stack.store.state.rounds.length, 1); assert.equal(current(stack).id, initial.id);
+  await delay(150);
+  await simulate(stack, 'set', { ipcState: 3 }); await until(() => current(stack)?.status === 'playing', 'initial Playing');
+  const oldRun = current(stack).runId;
+  await simulate(stack, 'set', { missingClient: true }); await until(() => stack.store.state.incident, 'one missing client holds automation');
+  assert.equal(stack.store.state.incident.kind, 'unverified');
+  await operator(stack, 'incident', { kind: 'player-disconnect', reason: '模拟裁判确认选手掉线' });
+  await simulate(stack, 'set', { ipcState: 4, left: 900, right: 800 }); await delay(400);
+  assert.deepEqual(snapshot(stack).session.series, { a: 0, b: 0 });
+  await simulate(stack, 'set', { ipcState: 1, missingClient: false });
+  await operator(stack, 'replay', { reason: '模拟裁判确认同图重赛' });
+  await delay(150);
+  await simulate(stack, 'set', { ipcState: 3 }); await until(() => current(stack)?.status === 'playing', 'replay Playing');
+  const replay = structuredClone(current(stack)); assert.notEqual(replay.runId, oldRun);
+  await simulate(stack, 'panic'); await until(() => stack.store.state.incident, 'Panic observation gap');
+  await until(() => !stack.simulator.demo && stack.simulator.room.ipcState === 3, 'simulated spectators recover');
+  assert.equal(stack.simulator.room.clientsHidden, false);
+  await operator(stack, 'incident', { kind: 'spectator', reason: '仅观战端 Panic，重赛本身仍在进行' });
+  await operator(stack, 'resolve-incident', { reason: '核对后继续同一次开打' });
+  await delay(250);
+  assert.equal(current(stack).id, replay.id); assert.equal(current(stack).runId, replay.runId);
+  await simulate(stack, 'set', { ipcState: 4, left: 900, right: 800 });
+  await until(() => current(stack)?.status === 'recorded', 'valid result after verified spectator recovery');
+  assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
+  assert.equal(stack.store.state.rounds.length, 2); assert.deepEqual(stack.store.state.bpHistory, originalBp);
+});
+
 test('simulator writes and WebSocket upgrades stay local and the explicit test stack never serves private files', { timeout: 10000 }, async t => {
   const stack = await boot(t);
   assert.equal((await fetch(`${stack.simulatorUrl}/api/simulator/control`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 403);

@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 
-const { state, view } = useOverlay();
+const { state, view, motionScope } = useOverlay();
 </script>
 
 <template>
-  <section class="scene" :class="{ 'is-active': state.scene === 'victory' }" :hidden="state.scene !== 'victory'" data-scene-panel="victory" aria-labelledby="victory-title">
+  <section class="scene" :class="{ 'is-active': state.scene === 'victory' }" :inert="state.scene !== 'victory'" :aria-hidden="state.scene !== 'victory'" data-scene-panel="victory" aria-labelledby="victory-title">
     <div class="scene-body victory-body">
       <div class="scene-head result-head">
         <div class="title-line">
@@ -16,7 +17,7 @@ const { state, view } = useOverlay();
 
       <div class="victory-hero">
         <div class="victory-mark" aria-hidden="true">WINNER</div>
-        <div class="victory-copy">
+        <div class="victory-copy" v-emphasize="{ value: view.winner, scope: motionScope, enabled: state.scene === 'victory', kind: 'winner' }">
           <span class="victory-kicker">OCLR {{ view.season }} · <span data-victory-stage>{{ view.meta.label }}</span></span>
           <h3>{{ view.winner || '全场胜者待确认' }}</h3>
           <p class="victory-status">{{ view.names.a }} <span>VS</span> {{ view.names.b }}</p>

@@ -1,0 +1,97 @@
+{
+  "auto": {
+    "text": "模拟红队\n2 : 3\n模拟蓝队",
+    "confirmButtons": 0
+  },
+  "focusedAuto": {
+    "series": "模拟红队2 : 4模拟蓝队",
+    "tag": "INPUT",
+    "value": "4"
+  },
+  "blank": {
+    "status": "请输入 0 到 6 之间的整数，空白不会记为 0",
+    "series": "模拟红队\n2 : 4\n模拟蓝队"
+  },
+  "draftRetained": "",
+  "invalid": "模拟红队\n2 : 5\n模拟蓝队",
+  "undo": "2",
+  "busySamples": [
+    {
+      "busy": "true",
+      "buttons": [
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        }
+      ],
+      "exUnavailable": "0.48",
+      "noticeOpacity": "1",
+      "panelOpacity": "1"
+    },
+    {
+      "busy": "true",
+      "buttons": [
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        },
+        {
+          "disabled": true,
+          "opacity": "1",
+          "unavailable": "false"
+        }
+      ],
+      "exUnavailable": "0.48",
+      "noticeOpacity": "1",
+      "panelOpacity": "1"
+    }
+  ],
+  "sampleCount": 25
+}

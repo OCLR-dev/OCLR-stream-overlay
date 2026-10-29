@@ -1,0 +1,19 @@
+{
+  "roll": {
+    "heading": "Roll 点数与先手",
+    "scoreForms": 0
+  },
+  "mappool": {
+    "scoreForms": 0,
+    "poolEntries": 13
+  },
+  "narrow": {
+    "height": 844,
+    "scrollWidth": 390,
+    "width": 390
+  },
+  "recordingPreservesPlayingAndNextPick": true,
+  "seriesBefore": "0:1",
+  "seriesAfter": "0:2",
+  "nextPick": "NM3"
+}

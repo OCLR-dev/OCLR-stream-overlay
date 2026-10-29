@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-29",
+  "runtime": "existing single instance :3007",
+  "tests": {
+    "passed": 95,
+    "failed": 0,
+    "modelPassed": 54,
+    "build": "passed including typecheck"
+  },
+  "liveMatch": {
+    "resetPerformed": false,
+    "teamA": "模拟红队",
+    "score": "1:3"
+  },
+  "desktop": {
+    "viewport": {
+      "width": 1710,
+      "height": 840
+    },
+    "dialogWidth": 520,
+    "initialFocus": "取消",
+    "escape": "passed",
+    "cancel": "passed"
+  },
+  "mobile": {
+    "dialog": {
+      "bottom": 650.1953125,
+      "height": 300.390625,
+      "left": 18,
+      "right": 372,
+      "top": 349.8046875,
+      "width": 354,
+      "x": 18,
+      "y": 349.8046875
+    },
+    "documentWidth": 390,
+    "focus": "取消",
+    "viewport": {
+      "height": 1000,
+      "width": 390
+    }
+  },
+  "browserSubmitResetTested": false,
+  "realTosuObsTested": false
+}

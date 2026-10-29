@@ -5,7 +5,7 @@ const { state, view } = useOverlay();
 </script>
 
 <template>
-  <section class="scene" :class="{ 'is-active': state.scene === 'pause' }" :hidden="state.scene !== 'pause'" data-scene-panel="pause" aria-labelledby="pause-title">
+  <section class="scene" :class="{ 'is-active': state.scene === 'pause' }" :inert="state.scene !== 'pause'" :aria-hidden="state.scene !== 'pause'" data-scene-panel="pause" aria-labelledby="pause-title">
     <div class="scene-body pause-body">
       <div class="scene-head pause-head">
         <div class="title-line">

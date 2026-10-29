@@ -14,6 +14,8 @@
     "preview": "vite preview",
     "sim": "node tools/tosu-simulator/index.js",
     "sim:test": "node --test test/tosu-websocket.test.js",
+    "sim:timing": "node tools/tosu-diagnostics/result-timing.js",
+    "tosu:record": "node tools/tosu-diagnostics/record.js",
     "test": "node --experimental-strip-types --test test/*.test.js test/*.test.ts"
   },
   "dependencies": {

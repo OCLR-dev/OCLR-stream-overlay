@@ -35,10 +35,11 @@ function render(data) {
   byId('mapParams').value = data.room.mapParams;
   byId('transport').textContent = data.wsUrl; byId('sent').textContent = `已发送 ${data.framesSent} 个文本帧`;
   byId('controlLink').href = `${data.appUrl}/control`; byId('outputLink').href = `${data.appUrl}/overlay`;
-  for (const field of ['silent', 'invalid', 'wrongRoom']) byId(field).setAttribute('aria-pressed', String(data.room[field]));
+  for (const field of ['silent', 'invalid', 'wrongRoom', 'missingClient']) byId(field).setAttribute('aria-pressed', String(data.room[field]));
   byId('silent').textContent = data.room.silent ? '恢复发送' : '暂停发送（测试 stale）';
   byId('invalid').textContent = data.room.invalid ? '恢复有效数据' : '发送无效数据';
   byId('wrongRoom').textContent = data.room.wrongRoom ? '恢复正确房间' : '模拟错误房间';
+  byId('missingClient').textContent = data.room.missingClient ? '恢复观战窗口' : '移除一路观战窗口';
   if (!optionsReady) {
     for (const map of data.maps) { const option = document.createElement('option'); option.value = map.beatmapId; option.textContent = `${map.label} · ${map.title}`; byId('mapSelect').append(option); }
     byId('mapSelect').value = data.room.mapId; optionsReady = true;
@@ -53,7 +54,9 @@ byId('demo').addEventListener('click', () => command('demo'));
 byId('mapParams').addEventListener('change', event => command('set', { mapParams: event.target.value }));
 byId('reset').addEventListener('click', () => command('reset'));
 byId('disconnect').addEventListener('click', () => command('disconnect'));
-for (const field of ['silent', 'invalid', 'wrongRoom']) byId(field).addEventListener('click', () => command('set', { [field]: !current?.room[field] }));
+byId('abort').addEventListener('click', () => command('set', { ipcState: 1 }));
+byId('panic').addEventListener('click', () => command('panic'));
+for (const field of ['silent', 'invalid', 'wrongRoom', 'missingClient']) byId(field).addEventListener('click', () => command('set', { [field]: !current?.room[field] }));
 async function poll() {
   try { const response = await fetch('/api/simulator', { cache: 'no-store' }); if (!response.ok) throw new Error(); render(await response.json()); }
   catch { byId('connections').textContent = '模拟服务连接中断'; }

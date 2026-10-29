@@ -65,7 +65,7 @@ test('tosu awards and operator series correction are published to all output sub
   }
   const one = await stream(base); const two = await stream(base); t.after(() => { one.close(); two.close(); });
   await one.next(); await two.next();
-  const frame = ipcState => ({ beatmap: { id: 100 }, tourney: { ipcState, teams: { left: 'Red room', right: 'Blue room' }, players: [{ side: 'left', osuId: 1 }, { side: 'right', osuId: 2 }], totalScore: { left: 900, right: 800 } } });
+  const frame = ipcState => ({ beatmap: { id: 100 }, tourney: { ipcState, teams: { left: 'Red room', right: 'Blue room' }, players: [{ side: 'left', osuId: 1, score: 900 }, { side: 'right', osuId: 2, score: 800 }], totalScore: { left: 900, right: 800 } } });
   await store.frame(frame(1), 1000); await store.frame(frame(3), 1500); await store.frame(frame(4), 2000); await store.frame(frame(4), 2500);
   const [a, b] = await Promise.all([one.next(), two.next()]);
   assert.deepEqual(a.session.series, { a: 1, b: 0 }); assert.deepEqual(a.session.series, b.session.series);

@@ -31,7 +31,7 @@ const play = (name, score, time) => ({
 
 export function initialRoom() {
   return { mapId: WARMUP.beatmapId, ipcState: 1, left: 0, right: 0, time: 0, growing: true, mapParams: 'normal',
-    silent: false, invalid: false, wrongRoom: false, chatIndex: 0, chat: [] };
+    silent: false, invalid: false, wrongRoom: false, missingClient: false, clientsHidden: false, chatIndex: 0, chat: [] };
 }
 
 // Shape follows the tosu v2 fields consumed by src/tosu.js, including original
@@ -67,6 +67,7 @@ export function makeV2Frame(room) {
     tourney: { ipcState: room.ipcState, bestOF: 11, scoreVisible: true, starsVisible: true,
       team: { left: room.wrongRoom ? '错误房间（模拟）' : SIM_TEAMS.left, right: SIM_TEAMS.right },
       // Deliberately unrelated: the overlay must award from final totals, not mirror points.
-      points: { left: 0, right: 0 }, totalScore: { left: room.left, right: room.right }, chat: room.chat, clients },
+      points: { left: 0, right: 0 }, totalScore: { left: room.left, right: room.right }, chat: room.chat,
+      clients: room.clientsHidden ? [] : room.missingClient ? clients.slice(1) : clients },
   };
 }

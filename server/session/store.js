@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { newSession, seriesOf, transition } from './model.js';
+import { currentRound, entryOf, newSession, requireValue, seriesOf, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
 
 export class SessionStore {
@@ -45,6 +45,17 @@ export class SessionStore {
 
   command(command) {
     return this.enqueue(async () => {
+      if (command.type === 'resolve-incident' && !this.state.commandIds.includes(command.id) && currentRound(this.state)?.status === 'playing') {
+        const room = this.live.tosu.data?.tourney;
+        requireValue(this.live.tosu.status === 'live' && room?.ipcState === 3 &&
+          this.live.tosu.data?.beatmap.id === entryOf(this.state, currentRound(this.state).entryId)?.beatmapId &&
+          room.teams.left === this.state.auto.left && room.teams.right === this.state.auto.right &&
+          room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0),
+        '尚未恢复到本图有效 Playing；请等待观战恢复，或由裁判确认重赛 / 人工核对赛果');
+      }
+      const preservesObserver = command.type === 'set-stage' || command.type === 'set-roll' || command.type === 'map-mark' ||
+        (command.type === 'setting' && command.payload?.field !== 'pool') ||
+        (command.type === 'ex' && command.payload?.team === this.state.ex.team);
       const next = transition(this.state, command);
       if (next !== this.state) {
         // Archive before replacing the match, without exposing local files over HTTP.
@@ -53,7 +64,7 @@ export class SessionStore {
           await writeFile(`${dirname(this.file)}/archive/${this.state.id}-${this.state.version}.json`, JSON.stringify(this.state), { mode: 0o600 });
         }
         await this.save(next);
-        this.automation.reset();
+        if (!preservesObserver) this.automation.reset();
         this.emit();
       }
       return this.snapshot();
@@ -61,7 +72,11 @@ export class SessionStore {
   }
 
   sourceStatus(status) {
-    return this.enqueue(() => { if (status !== 'live') {
+    return this.enqueue(async () => { if (status !== 'live') {
+      if (status !== 'stopped' && (this.state.auto.bp || this.state.auto.scenes)) {
+        const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
+        if (held.state !== this.state) await this.save(held.state);
+      }
       this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
       this.live.note = `tosu ${status}，自动跟随已挂起`; this.emit();
     } });
