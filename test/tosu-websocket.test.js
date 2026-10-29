@@ -86,6 +86,37 @@ test('real tosu-shaped WebSocket drives Ban/Pick, replacement, live scores/chat,
   assert.ok(stack.simulator.framesSent >= 20);
 });
 
+test('real socket updates Playing map parameters and clears absent fields over SSE', async t => {
+  const stack = await boot(t);
+  const stream = await subscribe(stack.appUrl); t.after(() => stream.close());
+  await prepare(stack);
+  await simulate(stack, 'set', { ipcState: 3, growing: false });
+  await until(() => stack.store.state.scene === 'playing', 'Playing');
+  const map = () => stack.store.live.tosu.data.beatmap;
+  assert.equal(map().stats.stars.total, 6.2);
+  const version = stack.store.state.version;
+  await simulate(stack, 'set', { mapParams: 'changed' });
+  await until(() => stream.received.some(s => s.live.tosu.data?.beatmap.stats?.stars.total === 7.35), 'parameter update over SSE');
+  assert.equal(map().id, 710001);
+  assert.equal(map().stats.cs.converted, 5.2);
+  assert.equal(map().stats.ar.converted, 10.3);
+  assert.equal(map().stats.od.converted, 9.7);
+  assert.equal(map().stats.bpm.common, 210.5);
+  assert.equal(map().time.lastObject, 245000);
+  assert.equal(stack.store.state.version, version, 'metadata update does not advance match state');
+  await simulate(stack, 'set', { mapParams: 'partial' });
+  await until(() => map().stats?.ar.converted === 9.8, 'partial parameters');
+  assert.equal(map().stats.stars.total, null);
+  assert.equal(map().stats.cs.converted, null);
+  assert.equal(map().stats.bpm.common, null);
+  assert.equal(map().time.lastObject, null);
+  await simulate(stack, 'set', { mapParams: 'missing' });
+  await until(() => map().stats === null, 'missing stats clear previous values');
+  await simulate(stack, 'set', { mapParams: 'zero' });
+  await until(() => map().stats?.stars.total === 0, 'explicit zero values');
+  assert.equal(map().time.lastObject, 0);
+});
+
 test('real socket invalid frames, room mismatch, pause and undo never consume old map changes', { timeout: 15000 }, async t => {
   const stack = await boot(t);
   await simulate(stack, 'set', { wrongRoom: true, mapId: 720001 }); await delay(650);

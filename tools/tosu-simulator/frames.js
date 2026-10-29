@@ -9,6 +9,19 @@ const stats = {
   objects: { circles: 300, sliders: 180, spinners: 2, holds: 0, total: 482 }, hitWindow: {}, maxCombo: 800,
 };
 const mods = { name: 'NF', number: 1, array: ['NF'], rate: 1 };
+// Explicit synthetic fixtures for the Playing card; never production defaults.
+export const MAP_PARAM_PRESETS = {
+  normal: { stats, time: { firstObject: 1000, lastObject: 180000, mp3Length: 182000 } },
+  changed: { stats: { ...stats, stars: { live: 2.1, total: 7.35 }, cs: { original: 4, converted: 5.2 },
+    ar: { original: 9, converted: 10.3 }, od: { original: 8, converted: 9.7 },
+    bpm: { realtime: 240, common: 210.5, min: 150, max: 240 } },
+    time: { firstObject: 2500, lastObject: 245000, mp3Length: 250000 } },
+  partial: { stats: { stars: { live: 2.1 }, cs: { original: 4 }, ar: { converted: 9.8 },
+    od: { converted: null }, bpm: { realtime: 180 } }, time: { firstObject: 1000, mp3Length: 182000 } },
+  missing: { stats: null, time: {} },
+  zero: { stats: { stars: { total: 0 }, cs: { converted: 0 }, ar: { converted: 0 },
+    od: { converted: 0 }, bpm: { common: 0 } }, time: { lastObject: 0 } },
+};
 const play = (name, score, time) => ({
   failed: false, playerName: name, mode: { number: 0, name: 'osu!' }, score, accuracy: 98.65,
   healthBar: { normal: 100, smooth: 100 }, hits, hitErrorArray: [],
@@ -17,7 +30,7 @@ const play = (name, score, time) => ({
 });
 
 export function initialRoom() {
-  return { mapId: WARMUP.beatmapId, ipcState: 1, left: 0, right: 0, time: 0, growing: true,
+  return { mapId: WARMUP.beatmapId, ipcState: 1, left: 0, right: 0, time: 0, growing: true, mapParams: 'normal',
     silent: false, invalid: false, wrongRoom: false, chatIndex: 0, chat: [] };
 }
 
@@ -25,6 +38,7 @@ export function initialRoom() {
 // tourney.team / totalScore / clients[].user + play (not normalized app state).
 // Unused tosu settings/performance/files fields are intentionally omitted.
 export function makeV2Frame(room) {
+  const params = MAP_PARAM_PRESETS[room.mapParams || 'normal'];
   const entry = [WARMUP, ...SIM_POOL].find(e => e.beatmapId === room.mapId) || {
     title: '模拟池外谱面', artist: '模拟艺术家', difficulty: '模拟难度', mod: 'NM',
   };
@@ -36,7 +50,7 @@ export function makeV2Frame(room) {
     const name = `SIM-${left ? 'A' : 'B'}${slot + 1}`;
     return { ipcId: index, team: left ? 'left' : 'right', settings: { mania: { scrollSpeed: 28 } },
       user: { id: 900001 + (left ? 0 : 10) + slot, name, country: 'CN', accuracy: 98.65, rankedScore: 0, playCount: 1000, globalRank: 20000, totalPP: 5000 },
-      beatmap: { stats }, play: play(name, score, room.time) };
+      beatmap: { stats: params.stats }, play: play(name, score, room.time) };
   });
   const ranking = room.ipcState === 4;
   return {
@@ -47,7 +61,7 @@ export function makeV2Frame(room) {
       mode: { number: 0, name: 'osu!' }, status: { number: 4, name: 'Ranked' },
       artist: entry.artist, artistUnicode: entry.artist, title: entry.title, titleUnicode: entry.title,
       mapper: 'SIM Mapper', version: entry.difficulty, source: 'SIMULATOR', tags: 'simulation',
-      time: { live: room.time, firstObject: 1000, lastObject: 180000, mp3Length: 182000 }, stats },
+      time: { live: room.time, ...params.time }, stats: params.stats },
     play: clients[0].play,
     resultsScreen: ranking ? { ...clients[0].play, scoreId: 0, name: 'SIM', rank: 'A', maxCombo: 800, createdAt: '2026-10-28T00:00:00Z' } : null,
     tourney: { ipcState: room.ipcState, bestOF: 11, scoreVisible: true, starsVisible: true,

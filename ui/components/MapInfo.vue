@@ -1,7 +1,26 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useOverlay } from '../useOverlay';
 defineProps<{ result?: boolean }>();
 const { view } = useOverlay();
+const numeric = (value: number | null | undefined, digits = 2) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? String(Number(value.toFixed(digits))) : '—';
+const duration = (value: number | null | undefined) => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '—';
+  const seconds = Math.floor(value / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+};
+const parameters = computed(() => {
+  const map = view.value.mapParameters;
+  return [
+    { label: '★', value: numeric(map?.stats?.stars.total) },
+    { label: 'CS', value: numeric(map?.stats?.cs.converted) },
+    { label: 'AR', value: numeric(map?.stats?.ar.converted) },
+    { label: 'OD', value: numeric(map?.stats?.od.converted) },
+    { label: 'BPM', value: numeric(map?.stats?.bpm.common) },
+    { label: '时长', value: duration(map?.time.lastObject) },
+  ];
+});
 </script>
 
 <template>
@@ -19,7 +38,7 @@ const { view } = useOverlay();
       <span class="map-rule" data-map-rule :hidden="!view.mapRule">{{ view.mapRule }}</span>
     </div>
     <div class="map-params" aria-label="谱面参数">
-      <span v-for="label in ['★', 'CS', 'AR', 'OD', 'BPM', '时长']" :key="label"><b>{{ label }}</b> —</span>
+      <span v-for="param in parameters" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
     </div>
     <div class="map-slot"><span>{{ result ? 'MAP RESULT' : 'NOW PLAYING' }}</span><b>{{ view.mod }}</b><span>{{ view.formatLabel }} · {{ view.modeLabel }}</span></div>
   </div>

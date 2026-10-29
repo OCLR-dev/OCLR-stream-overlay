@@ -2,6 +2,18 @@ const number = value => typeof value === 'number' && Number.isFinite(value) ? va
 const text = value => typeof value === 'string' ? value : null;
 const bool = value => typeof value === 'boolean' ? value : null;
 
+function statsSnapshot(stats) {
+  if (!stats || typeof stats !== 'object') return null;
+  const pair = value => ({ original: number(value?.original), converted: number(value?.converted) });
+  return {
+    ...stats,
+    stars: { ...stats.stars, live: number(stats.stars?.live), total: number(stats.stars?.total) },
+    cs: pair(stats.cs), ar: pair(stats.ar), od: pair(stats.od), hp: pair(stats.hp),
+    bpm: { realtime: number(stats.bpm?.realtime), common: number(stats.bpm?.common),
+      min: number(stats.bpm?.min), max: number(stats.bpm?.max) },
+  };
+}
+
 function playSnapshot(play) {
   if (!play) return null;
   return {
@@ -22,7 +34,7 @@ export function normalizeTosuV2(raw) {
       id: number(map.id), setId: number(map.set), checksum: text(map.checksum),
       artist: text(map.artist), title: text(map.title), difficulty: text(map.version), mapper: text(map.mapper),
       time: { current: number(map.time?.live), firstObject: number(map.time?.firstObject), lastObject: number(map.time?.lastObject) },
-      stats: map.stats ?? null,
+      stats: statsSnapshot(map.stats),
     },
     play: playSnapshot(raw.play),
     resultsScreen: playSnapshot(raw.resultsScreen),

@@ -32,6 +32,8 @@ export function createOverlay(shared = false) {
     const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
       envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
     const scores = bound ? envelope?.live.tosu.data?.tourney?.totalScore : null;
+    const liveMap = bound ? envelope?.live.tosu.data?.beatmap : null;
+    const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
     const scoreB = shared ? formatted(scores?.right) : base.scoreB;
@@ -50,7 +52,7 @@ export function createOverlay(shared = false) {
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => shared ? s?.pool.find(e => e.id === s.bans[team][index])?.label || '未确认' : banLabel(state.banSlots[team][index]),
-      scoreA, scoreB, resultA, resultB, pool, currentMap, winner: s?.winner ? names[s.winner] : null,
+      scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters, winner: s?.winner ? names[s.winner] : null,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
       chat: shared && bound ? envelope?.live.tosu.data?.tourney?.chat.slice(-4) || [] : [],

@@ -2,10 +2,10 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { SIM_POOL, WARMUP } from './fixture.js';
-import { initialRoom, IPC_LABELS, makeV2Frame } from './frames.js';
+import { initialRoom, IPC_LABELS, makeV2Frame, MAP_PARAM_PRESETS } from './frames.js';
 import { acceptSocket } from './websocket.js';
 
-const FIELDS = ['mapId', 'ipcState', 'left', 'right', 'growing', 'silent', 'invalid', 'wrongRoom'];
+const FIELDS = ['mapId', 'ipcState', 'left', 'right', 'growing', 'silent', 'invalid', 'wrongRoom', 'mapParams'];
 const reply = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.end(JSON.stringify(body));
@@ -49,6 +49,7 @@ export class TosuSimulator {
     if (!patch || typeof patch !== 'object' || Array.isArray(patch) || Object.keys(patch).some(key => !FIELDS.includes(key))) throw new Error('未知模拟字段');
     if ('mapId' in patch && (!Number.isSafeInteger(patch.mapId) || patch.mapId <= 0)) throw new Error('谱面 ID 无效');
     if ('ipcState' in patch && ![0, 1, 2, 3, 4].includes(patch.ipcState)) throw new Error('IPC 无效');
+    if ('mapParams' in patch && !Object.hasOwn(MAP_PARAM_PRESETS, patch.mapParams)) throw new Error('参数样本无效');
     for (const key of ['left', 'right']) if (key in patch && patch[key] !== null && (!Number.isSafeInteger(patch[key]) || patch[key] < 0)) throw new Error('队分无效');
     for (const key of ['growing', 'silent', 'invalid', 'wrongRoom']) if (key in patch && typeof patch[key] !== 'boolean') throw new Error('开关无效');
     if ('mapId' in patch && patch.mapId !== this.room.mapId) {

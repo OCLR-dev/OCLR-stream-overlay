@@ -1,0 +1,90 @@
+[
+  {
+    "preset": "normal",
+    "values": [
+      "★ 6.2",
+      "CS 4",
+      "AR 9.3",
+      "OD 8.5",
+      "BPM 180",
+      "时长 3:00"
+    ]
+  },
+  {
+    "preset": "changed",
+    "values": [
+      "★ 7.35",
+      "CS 5.2",
+      "AR 10.3",
+      "OD 9.7",
+      "BPM 210.5",
+      "时长 4:05"
+    ]
+  },
+  {
+    "preset": "partial",
+    "values": [
+      "★ —",
+      "CS —",
+      "AR 9.8",
+      "OD —",
+      "BPM —",
+      "时长 —"
+    ]
+  },
+  {
+    "preset": "missing",
+    "values": [
+      "★ —",
+      "CS —",
+      "AR —",
+      "OD —",
+      "BPM —",
+      "时长 —"
+    ]
+  },
+  {
+    "preset": "zero",
+    "values": [
+      "★ 0",
+      "CS 0",
+      "AR 0",
+      "OD 0",
+      "BPM 0",
+      "时长 0:00"
+    ]
+  },
+  {
+    "preset": "wrong-room",
+    "values": [
+      "★ —",
+      "CS —",
+      "AR —",
+      "OD —",
+      "BPM —",
+      "时长 —"
+    ]
+  },
+  {
+    "preset": "stale",
+    "values": [
+      "★ —",
+      "CS —",
+      "AR —",
+      "OD —",
+      "BPM —",
+      "时长 —"
+    ]
+  },
+  {
+    "preset": "wrong-map",
+    "values": [
+      "★ —",
+      "CS —",
+      "AR —",
+      "OD —",
+      "BPM —",
+      "时长 —"
+    ]
+  }
+]

@@ -32,6 +32,7 @@ function render(data) {
   byId('currentMap').textContent = data.maps.find(map => map.beatmapId === data.room.mapId)?.label || String(data.room.mapId);
   byId('scores').textContent = `${data.room.left?.toLocaleString() ?? '未知'} : ${data.room.right?.toLocaleString() ?? '未知'}`;
   byId('scenario').textContent = data.scenario;
+  byId('mapParams').value = data.room.mapParams;
   byId('transport').textContent = data.wsUrl; byId('sent').textContent = `已发送 ${data.framesSent} 个文本帧`;
   byId('controlLink').href = `${data.appUrl}/control`; byId('outputLink').href = `${data.appUrl}/overlay`;
   for (const field of ['silent', 'invalid', 'wrongRoom']) byId(field).setAttribute('aria-pressed', String(data.room[field]));
@@ -49,6 +50,7 @@ byId('frameForm').addEventListener('submit', event => {
   command('set', { mapId: Number(form.get('mapId')), ipcState: Number(form.get('ipcState')), left: Number(form.get('left')), right: Number(form.get('right')), growing: form.has('growing') });
 });
 byId('demo').addEventListener('click', () => command('demo'));
+byId('mapParams').addEventListener('change', event => command('set', { mapParams: event.target.value }));
 byId('reset').addEventListener('click', () => command('reset'));
 byId('disconnect').addEventListener('click', () => command('disconnect'));
 for (const field of ['silent', 'invalid', 'wrongRoom']) byId(field).addEventListener('click', () => command('set', { [field]: !current?.room[field] }));

@@ -55,6 +55,25 @@ test('tosu distinguishes zero, absent data, and an absent tournament client', ()
   assert.throws(() => normalizeTosuV2({ error: 'not ready' }));
 });
 
+test('tosu map stats preserve zero and normalize missing or nonnumeric fields without fallback', () => {
+  const raw = { ...frame, beatmap: { id: 42, time: { lastObject: 245000 }, stats: {
+    stars: { live: 2.1, total: 7.35 }, cs: { original: 4, converted: 0 },
+    ar: { original: 9, converted: '10.3' }, od: { converted: NaN },
+    bpm: { realtime: 180, common: Infinity },
+  } } };
+  const map = normalizeTosuV2(raw).beatmap;
+  assert.equal(map.stats.stars.total, 7.35);
+  assert.equal(map.stats.cs.converted, 0);
+  assert.equal(map.stats.ar.converted, null);
+  assert.equal(map.stats.od.converted, null);
+  assert.equal(map.stats.bpm.common, null);
+  assert.equal(map.time.lastObject, 245000);
+  assert.equal(map.time.firstObject, null);
+  assert.equal(normalizeTosuV2(frame).beatmap.stats, null);
+  assert.equal(normalizeTosuV2(frame).beatmap.time.lastObject, null);
+  assert.equal(raw.beatmap.stats.ar.converted, '10.3', 'normalization does not mutate raw frames');
+});
+
 test('map lookup stays within the selected pool and requires a slot for repeated maps', () => {
   const data = { mappools: [
     { id: 'first', entries: [{ id: 'a', beatmapId: 42 }, { id: 'b', beatmapId: 42 }] },
