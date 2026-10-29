@@ -2,7 +2,15 @@
 
 Vue 3 / Vite / TypeScript 的 Neon Broadcast 直播界面，配套独立直播员控制台与本机共享会话。沿用现有深紫 UI、红蓝横幅、系列菱形和稳定游戏窗口。
 
-## 运行
+Windows 便携版请看 [直播员使用说明](docs/windows-portable.md)。
+
+## Windows 便携版
+
+普通直播员使用 `release/OCLR-Windows-x64.zip`：全部解压后双击 `OCLR.exe`。包内包含构建好的前端、服务端、Windows x64 Node 运行时和原生启动器，无需安装开发工具或联网安装运行时。固定输出为 `http://127.0.0.1:3001/overlay`；比赛保存在 `%LOCALAPPDATA%\OCLR\StreamOverlay`，关闭网页不影响播出，退出使用启动窗口按钮。
+
+[简短上手说明](docs/windows-portable.md) · [构建、实际验证与边界](docs/verification/windows-portable/README.md)。旧版本退出后再启动新包；构建标识不一致时拒绝复用旧后端。当前工作区的 3007 模拟比赛服务保持原状，便携包不包含其数据或本机凭证。
+
+## 开发运行
 
 需要 Node.js 22.13+。已有依赖不需重新安装；首次使用执行 `npm ci`。
 

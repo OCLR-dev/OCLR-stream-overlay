@@ -11,3 +11,6 @@ dist/
 # Local model-to-model engineering handoff; do not publish.
 /HANDOFF.local.md
 /.local/
+
+# Offline Windows distributions and compiler cache
+/release/

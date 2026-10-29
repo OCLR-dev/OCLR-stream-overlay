@@ -111,10 +111,12 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     let url;
     try { url = new URL(req.url, 'http://localhost'); }
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
-    if (await sessionHttp(req, res, url, session)) return;
+    const activeSession = config.session || session;
+    if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
+    if (await sessionHttp(req, res, url, activeSession)) return;
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     if (url.pathname === '/api/health') {
-      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(session) });
+      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(activeSession), ...(config.runtime || {}) });
     }
     if (await serveUi(url.pathname, res, uiRoot)) return;
     if (url.pathname === '/api/config') {

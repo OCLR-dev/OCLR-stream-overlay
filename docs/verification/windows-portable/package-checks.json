@@ -1,0 +1,15 @@
+{
+  "files": 34,
+  "checksums": "all match",
+  "zip": "valid",
+  "excluded_private_files": true,
+  "build": {
+    "build": "4329cc00751c7988511854edca1252dd161cd2ee4f21f84198856c9e80bc119c",
+    "node": "22.23.4",
+    "architecture": "x64"
+  },
+  "zipSha256": "2c8f1d48ef9bdf1313b919e4ab7f82835358935e5b3c411e3ec9c8a5205accca",
+  "zipBytes": 36344107,
+  "windowsExecuted": false,
+  "realTosuObsVerified": false
+}
