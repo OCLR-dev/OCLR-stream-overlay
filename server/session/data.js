@@ -16,7 +16,7 @@ export function catalogue(source) {
         const valid = p.maps.filter(m => Number.isSafeInteger(m.beatmapId) && m.beatmapId > 0 && /^(NM|HD|HR|DT|FM|TB)\d+$/.test(m.slot));
         if (valid.length !== p.maps.length) warnings.push(`${p.name}：${p.maps.length - valid.length} 个条目缺失谱面 ID 或使用未支持的 mod，未导入`);
         return { id: p.id, name: p.name, entries: normalizePool(valid.map(m => ({ id: `${p.id}:${m.slot}`, label: m.slot,
-          mod: m.slot.match(/^[A-Z]+/)[0], beatmapId: m.beatmapId, title: m.title || '', artist: '', difficulty: '' }))) };
+          mod: m.slot.match(/^[A-Z]+/)[0], beatmapId: m.beatmapId, setId: m.setId, title: m.title || '', artist: '', difficulty: '' }))) };
       }),
       fixtures: archive.matches.map(f => ({ id: f.id, label: f.label, roundName: f.stage,
         home: { team: teams.find(t => t.id === f.teamA) || null }, away: { team: teams.find(t => t.id === f.teamB) || null },
@@ -27,7 +27,7 @@ export function catalogue(source) {
     kind: 'published', capturedOn: null, warnings: [],
     teams: data?.teams?.map(t => ({ id: t.id, name: t.name, roster: t.members?.map(p => ({ name: p.username, osuId: p.osuId })) || [] })) || [],
     pools: data?.mappools?.map(p => ({ id: p.id, name: p.name, entries: normalizePool(p.entries.map(e => ({
-      id: e.id, beatmapId: e.beatmapId, mod: e.category, label: `${e.category}${e.position}`,
+      id: e.id, beatmapId: e.beatmapId, setId: e.metadata?.setId, mod: e.category, label: `${e.category}${e.position}`,
       title: e.metadata?.title || '', artist: e.metadata?.artist || '', difficulty: e.metadata?.difficulty || '',
     }))) })) || [],
     fixtures: data?.competition?.fixtures?.map(f => ({ id: f.id, label: f.label, roundName: f.roundName,

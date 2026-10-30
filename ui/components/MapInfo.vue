@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useOverlay } from '../useOverlay';
+import MapArtwork from './MapArtwork.vue';
 defineProps<{ result?: boolean }>();
-const { view } = useOverlay();
+const { state, view } = useOverlay();
+const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
+const mapMod = computed(() => view.value.shared ? view.value.currentMap?.mod : view.value.mod);
 const numeric = (value: number | null | undefined, digits = 2) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? String(Number(value.toFixed(digits))) : '—';
 const duration = (value: number | null | undefined) => {
@@ -24,14 +27,14 @@ const parameters = computed(() => {
 </script>
 
 <template>
-  <div class="map-row">
-    <div class="map-cover" aria-label="谱面封面占位"><span>OCLR</span><b>{{ view.mod }}</b></div>
+  <div class="map-row" :data-mod="mapMod">
+    <div class="map-cover" aria-label="谱面封面"><MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" /><span>OCLR</span><b>{{ mapLabel }}</b></div>
     <div class="current-map">
       <span class="map-kicker-row">
         <span class="map-kicker">{{ result ? '本图谱面' : '当前谱面' }}</span>
-        <span class="map-chip" data-map-format :data-format="view.format">{{ view.formatLabel }}</span>
-        <span class="map-chip" data-map-mod :data-mod="view.mod">{{ view.mod }}</span>
-        <span class="map-chip map-chip--ex" data-map-ex>{{ view.exLabel }}</span>
+        <span class="map-chip" data-map-format :data-format="view.format" :data-ex-team="view.ex ? state.exTeam : undefined">{{ view.formatLabel }}</span>
+        <span class="map-chip" data-map-mod :data-mod="mapMod">{{ mapLabel }}</span>
+        <span class="map-chip map-chip--ex" data-map-ex :data-ex-team="view.ex ? state.exTeam : undefined">{{ view.exLabel }}</span>
       </span>
       <strong>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '尚未准备谱面' : result ? '谱面标题占位 02' : '谱面标题占位' }}</strong>
       <span class="map-sub">{{ view.shared ? `${view.currentMap?.artist || '—'} / ${view.currentMap?.difficulty || '—'}` : '艺术家 / 难度' }}</span>
@@ -40,6 +43,6 @@ const parameters = computed(() => {
     <div class="map-params" aria-label="谱面参数">
       <span v-for="param in parameters" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
     </div>
-    <div class="map-slot"><span>{{ result ? 'MAP RESULT' : 'NOW PLAYING' }}</span><b>{{ view.mod }}</b><span>{{ view.formatLabel }} · {{ view.modeLabel }}</span></div>
+    <div class="map-slot"><span>{{ result ? 'MAP RESULT' : 'NOW PLAYING' }}</span><b :title="mapLabel">{{ mapLabel }}</b><span>{{ view.formatLabel }} · {{ view.modeLabel }}</span></div>
   </div>
 </template>

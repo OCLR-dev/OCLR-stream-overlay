@@ -184,8 +184,7 @@
 .event-context { position: absolute; top: 150px; left: -650px; width: 1460px; display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
 .event-context-line { display: inline-flex; align-items: center; gap: 8px; }
 .format-chip { padding: 2px 7px; border: 1px solid #8454c4; color: #e1caff; font-weight: 700; }
-.format-chip[data-format='ex'] { border-color: #ff7191; color: #ffb3c6; }
-.format-chip[data-format='tb'] { border-color: #edcc7e; color: #ffe0a0; }
+.format-chip[data-format='tb'] { border-color: var(--mod-tb); color: var(--mod-tb); }
 .layout-mark { position: absolute; top: 18px; left: 925px; width: 80px; color: var(--muted); font-size: 11px; letter-spacing: .12em; }
 
 /* All six scenes stay mounted. Playing and native results share the same grid. */
@@ -255,9 +254,13 @@
 
 /* Compact lower map card, artwork placeholder on the left and slot on the right. */
 .playing-stream-chat { position: absolute; top: var(--stream-chat-top); right: var(--stream-chat-right); width: var(--stream-chat-width); height: var(--stream-chat-height); }
-.map-row { display: grid; grid-template-columns: 140px minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 28px; width: 1000px; height: var(--stream-chat-height); min-height: 0; margin-top: var(--stream-chat-top); border: 1px solid #7c3aed; background: #241349f0; box-shadow: 0 0 30px #7c3aed33; }
-.map-cover { position: relative; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background: linear-gradient(135deg, #7c3aed, #8b2b7c 55%, #2257a9); }
+.map-row { display: grid; grid-template-columns: 140px minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 28px; width: 1000px; height: var(--stream-chat-height); min-height: 0; margin-top: var(--stream-chat-top); border: 1px solid var(--mod-color); background: #241349f0; box-shadow: 0 0 30px color-mix(in srgb, var(--mod-color) 20%, transparent); }
+.map-cover { position: relative; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--mod-color) 60%, #241349), #241349); }
 .map-cover::before { position: absolute; width: 100px; height: 100px; border: 1px solid #ffffff44; content: ''; transform: rotate(45deg); box-shadow: 0 0 0 20px #ffffff0a, 0 0 0 40px #ffffff08; }
+.map-artwork { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .8; }
+.map-artwork[data-loaded='false'] { opacity: 0; }
+.map-cover:has(.map-artwork[data-loaded='true'])::before, .map-thumbnail:has(.map-artwork[data-loaded='true'])::after { display: none; }
+.map-cover:has(.map-artwork[data-loaded='true']) { text-shadow: 0 1px 5px #000; }
 .map-cover span { z-index: 1; color: #fffc; font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: .2em; }
 .map-cover b { z-index: 1; font-family: var(--display); font-size: 38px; line-height: 1; }
 .current-map { display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 0; padding: 10px 18px 3px; }
@@ -265,17 +268,21 @@
 .map-kicker { margin-right: 5px; color: var(--muted); font-size: 11px; letter-spacing: .1em; }
 .map-chip { border: 1px solid #7c3aed99; padding: 2px 7px; background: #7c3aed26; color: #e0cdfa; font-size: 12px; font-weight: 700; }
 .map-chip--ex { border-style: dashed; }
-.map-chip[data-format='ex'] { color: #ffb3c6; border-color: #d76586; }
-.map-chip[data-format='tb'] { color: #ffe0a0; border-color: #d3b06b; }
+.map-chip[data-map-mod] { color: var(--mod-color); border-color: color-mix(in srgb, var(--mod-color) 60%, transparent); background: color-mix(in srgb, var(--mod-color) 14%, transparent); }
+.format-chip[data-format='ex'], .map-chip[data-format='ex'], .map-chip--ex[data-ex-team] { color: var(--ex-ink); border-color: var(--ex-color); background: color-mix(in srgb, var(--ex-color) 12%, transparent); }
+[data-ex-team='a'] { --ex-color: var(--team-a); --ex-ink: #ffbdca; }
+[data-ex-team='b'] { --ex-color: var(--team-b); --ex-ink: #b7d3ff; }
+.map-ex-mark[data-ex-team] { color: var(--ex-ink); }
+.map-chip[data-format='tb'] { color: var(--mod-tb); border-color: var(--mod-tb); }
 .current-map strong { overflow: hidden; color: var(--ink); font-size: 26px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .map-sub { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .map-rule { color: #e6cbff; font-size: 13px; line-height: 1.2; }
 .map-params { grid-column: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
 .map-params span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #7c3aed80; padding: 3px 8px; color: var(--ink); font-family: var(--display); font-size: 15px; line-height: 1; }
 .map-params b { color: #c9a8ff; font-weight: 700; }
-.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(#7c3aed, #4c1d95); }
-.map-slot b { font-family: var(--display); font-size: 44px; line-height: 1; }
-.map-slot span { color: #eee1ff; font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--mod-color); color: #150a2c; }
+.map-slot b { max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-slot span { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
 
 /* Mappool keeps the S11 status strip, using the reference's mod-grouped rows,
    cover tiles, mod colours, stronger picks and subdued bans. */
@@ -298,12 +305,12 @@
 .mappool-mid b { color: #e4d5fa; }
 .map-ex-mark { color: #dbc0ff; }
 .mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 12px; }
-:is(.mappool-column, .map-entry, .operator-pool button) { --mod-color: var(--mod-nm); }
-:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='HD'] { --mod-color: var(--mod-hd); }
-:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='HR'] { --mod-color: var(--mod-hr); }
-:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='DT'] { --mod-color: var(--mod-dt); }
-:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='FM'] { --mod-color: var(--mod-fm); }
-:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='TB'] { --mod-color: var(--mod-tb); }
+:is(.mappool-column, .map-entry, .operator-pool button, .map-row) { --mod-color: var(--mod-nm); }
+:is(.mappool-column, .map-entry, .operator-pool button, .map-row)[data-mod='HD'] { --mod-color: var(--mod-hd); }
+:is(.mappool-column, .map-entry, .operator-pool button, .map-row)[data-mod='HR'] { --mod-color: var(--mod-hr); }
+:is(.mappool-column, .map-entry, .operator-pool button, .map-row)[data-mod='DT'] { --mod-color: var(--mod-dt); }
+:is(.mappool-column, .map-entry, .operator-pool button, .map-row)[data-mod='FM'] { --mod-color: var(--mod-fm); }
+:is(.mappool-column, .map-entry, .operator-pool button, .map-row)[data-mod='TB'] { --mod-color: var(--mod-tb); }
 .mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
 .map-group-head { display: grid; place-items: center; background: var(--mod-color); color: #150a2c; }
 .map-group-head strong { font-family: var(--display); font-size: 34px; font-weight: 800; }
@@ -311,7 +318,7 @@
 .map-entry { position: relative; display: grid; grid-template-columns: var(--map-thumbnail-width, 78px) minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #7c3aed66; background: #241349e6; padding-right: 8px; }
 .map-thumbnail { position: relative; display: flex; align-items: center; justify-content: center; align-self: stretch; overflow: hidden; background: linear-gradient(145deg, color-mix(in srgb, var(--mod-color) 45%, #3b2060), #1b0f3a); }
 .map-thumbnail::after { position: absolute; width: 72px; height: 72px; border: 1px solid #ffffff24; content: ''; transform: rotate(45deg); }
-.map-index { color: #ffffffb3; font-family: var(--display); font-size: 30px; font-weight: 800; }
+.map-index { position: relative; z-index: 1; color: #ffffffb3; font-family: var(--display); font-size: 30px; font-weight: 800; text-shadow: 0 1px 4px #000; }
 .map-mod { color: var(--mod-color); font-family: var(--display); font-size: 20px; font-weight: 800; line-height: 24px; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; }
 .map-title { overflow: hidden; font-size: 17px; font-weight: 700; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
@@ -330,6 +337,7 @@
 .map-entry:is(.is-banned, .is-picked) { border-color: var(--map-team-color); box-shadow: inset 0 0 0 1px var(--map-team-color); }
 .map-entry.is-banned { background: #110c1c; }
 .map-entry.is-banned .map-thumbnail { background: #211b2d; }
+.map-entry.is-banned .map-artwork { filter: brightness(.35) saturate(.4); }
 .map-entry.is-banned .map-index { color: #a39aac; }
 .map-entry.is-banned .map-mod { color: #b5afc1; }
 .map-entry.is-banned .map-title { color: #bdb6cb; }

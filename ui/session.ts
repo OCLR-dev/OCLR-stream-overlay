@@ -6,7 +6,7 @@ export function commandErrorMessage(message: unknown) {
   return typeof message === 'string' && message ? message : '操作未应用';
 }
 
-export interface PoolEntry { id: string; beatmapId: number; mod: string; label: string; title: string; artist: string; difficulty: string }
+export interface PoolEntry { id: string; beatmapId: number; setId?: number; mod: string; label: string; title: string; artist: string; difficulty: string }
 export interface MatchTeam { id: string | null; name: string; roster: { name: string; osuId: number | null }[] }
 export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: number | null }
 export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; exTeam: Team | null }

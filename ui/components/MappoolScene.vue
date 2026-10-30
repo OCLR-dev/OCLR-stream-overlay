@@ -30,7 +30,7 @@ const banState = (team: 'a' | 'b', index: 0 | 1) => view.value.shared
           <span>先Pick <b data-pick-first>{{ view.orderLabel(state.pickFirst) }}</b></span>
           <span>先Ban <b data-ban-first>{{ view.orderLabel(state.banFirst) }}</b></span>
           <span>当前 <b data-mappool-format>{{ view.formatLabel }}</b> · <b data-mappool-mod>{{ view.mod }}</b></span>
-          <span class="map-ex-mark" data-mappool-ex>{{ view.exLabel }}</span>
+          <span class="map-ex-mark" data-mappool-ex :data-ex-team="view.ex ? state.exTeam : undefined">{{ view.exLabel }}</span>
         </div>
         <div class="mappool-team-status mappool-team-status--b">
           <span class="mappool-team-name">{{ view.names.b }}</span>

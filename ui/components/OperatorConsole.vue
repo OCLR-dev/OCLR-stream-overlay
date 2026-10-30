@@ -61,7 +61,13 @@ const adjustments = ref(false);
 const incidentOpen = ref(false);
 const feedback = ref('');
 const feedbackKind = ref('success');
-const exForm = reactive({ team: '', a: 2, b: 2 });
+const exForm = reactive({ a: 2, b: 2 });
+const canEnableEx = computed(() => round.value?.status === 'prepared' && !!entry(round.value.entryId) && entry(round.value.entryId)?.mod !== 'TB');
+const exHint = computed(() => entry(round.value?.entryId)?.mod === 'TB' ? '本图为 TB，不能开启 EX。'
+  : canEnableEx.value ? '由直播员手动设置；开启／关闭不会自动扣次数。'
+  : !round.value || ['recorded', 'void'].includes(round.value.status) ? '先准备本局谱面，再开启 EX。'
+  : '本局已开打；可关闭 EX，不能更换开启方。');
+const exUnavailable = (team: Team) => s.value?.ex.team !== team && (!canEnableEx.value || !s.value?.ex.remaining[team]);
 const correctedScore = reactive({ a: 0, b: 0 });
 const incidentReason = ref('');
 const incidentLabels = { 'prestart-abort': '开打前取消启动 / 卡住', abort: '已开打后 abort', 'player-disconnect': '有人尚未结束 · 等待核对', spectator: '观战故障 / Panic', unverified: '观战信号异常 · 原因待核对' };
@@ -120,7 +126,6 @@ watch(s, value => {
   const nextExKey = JSON.stringify([value.id, value.ex]);
   if (exKey !== nextExKey) {
     exKey = nextExKey;
-    if (!dirtySettings.has('ex-team')) exForm.team = value.ex.team || '';
     for (const team of ['a', 'b'] as const) if (!dirtySettings.has(`ex-${team}`)) exForm[team] = value.ex.remaining[team];
   }
   const current = value.rounds.find(r => r.id === value.currentRoundId);
@@ -193,6 +198,10 @@ function adjustExCount(team: Team, delta: number) {
   const remaining = { ...s.value.ex.remaining, [team]: s.value.ex.remaining[team] + delta };
   return run('ex', { team: s.value.ex.team, remaining });
 }
+function setExTeam(team: Team | null) {
+  if (!s.value || disabled.value || team === s.value.ex.team || (team && exUnavailable(team))) return;
+  return run('ex', { team, remaining: { ...s.value.ex.remaining } });
+}
 
 function parsePool(): PoolEntry[] {
   return form.pool.split('\n').filter(line => line.trim()).map((line, index) => {
@@ -200,7 +209,8 @@ function parsePool(): PoolEntry[] {
     if (!match) throw new Error(`图池第 ${index + 1} 行：使用「标签 谱面ID 标题」格式`);
     const label = match[1]!.toUpperCase();
     const existing = s.value?.pool.find(e => e.label === label) || s.value?.pool.find(e => e.beatmapId === Number(match[3]));
-    return { id: existing?.id || label, label, mod: match[2]!.toUpperCase(), beatmapId: Number(match[3]), title: match[4] || '', artist: existing?.artist || '', difficulty: existing?.difficulty || '' };
+    return { id: existing?.id || label, label, mod: match[2]!.toUpperCase(), beatmapId: Number(match[3]), title: match[4] || '', artist: existing?.artist || '', difficulty: existing?.difficulty || '',
+      ...(existing?.beatmapId === Number(match[3]) && existing.setId ? { setId: existing.setId } : {}) };
   });
 }
 
@@ -257,7 +267,7 @@ async function drainSettings() {
         } else if (key.startsWith('ex-')) {
           const team = key === 'ex-a' ? 'a' : key === 'ex-b' ? 'b' : null;
           if (team && (!Number.isInteger(exForm[team]) || exForm[team] < 0 || exForm[team] > 2)) throw new Error('请输入 0 到 2 之间的整数，空白不会记为 0');
-          type = 'ex'; payload = { team: key === 'ex-team' ? exForm.team || null : s.value!.ex.team,
+          type = 'ex'; payload = { team: s.value!.ex.team,
             remaining: { ...s.value!.ex.remaining, ...(team ? { [team]: exForm[team] } : {}) } };
         } else if (key === 'roll') {
           type = 'set-roll';
@@ -383,8 +393,16 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
       </section>
       <p class="operator-hint" role="status">{{ live?.note }}</p>
-      <section class="operator-ex-quick" aria-label="EX 剩余次数">
-        <span>EX 剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button><span v-if="s.ex.team === team">本图已开启</span></div>
+      <section class="operator-ex-quick" aria-label="EX 常用操作">
+        <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
+          <span>本图 EX</span>
+          <button :aria-pressed="!s.ex.team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="setExTeam(null)">关闭 EX</button>
+          <button v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team" :aria-pressed="s.ex.team === team" :aria-label="`${names[team]} 开启 EX`" :disabled="disabled || exUnavailable(team)" :data-unavailable="connection !== 'synced' || exUnavailable(team)" :title="s.ex.remaining[team] <= 0 && s.ex.team !== team ? '该队没有 EX 剩余次数' : exHint" @click="setExTeam(team)">{{ names[team] }} {{ s.ex.team === team ? '已开启 EX' : '开启 EX' }}</button>
+        </div>
+        <div class="operator-ex-counters" role="group" aria-label="EX 剩余次数">
+          <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
+        </div>
+        <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
       </section>
       <div class="operator-notice" aria-label="操作反馈" :aria-busy="busy">
         <p v-show="error || localError" role="alert" class="operator-error">{{ localError || error }}</p>
@@ -498,7 +516,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <section><h3>当前 BP 动作</h3><div class="operator-two"><label>队伍<ControlSelect v-model="actionForm.team" @change="scheduleSetting('action', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><label>动作<ControlSelect v-model="actionForm.kind" @change="scheduleSetting('action', true)"><option value="">请选择</option><option value="ban">Ban</option><option value="pick">Pick</option></ControlSelect></label></div><label v-if="actionForm.kind === 'ban'">Ban 槽<ControlSelect v-model="actionForm.slot" @change="scheduleSetting('action', true)"><option :value="-1">请选择</option><option :value="0">Ban 1</option><option :value="1">Ban 2</option></ControlSelect></label><p role="status">{{ settingMessages.action || '队伍与动作选全后立即生效，不改变后续顺序。' }}</p><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('set-action', { action: null })">取消当前动作</button><button :disabled="disabled || !!s.incident" :data-unavailable="connection !== 'synced' || !!s.incident" @click="run('bp')">手动回到 BP 操作</button><p>只改当前动作，不猜测或重排后续顺序。</p></section>
             <section><h3>自动跟随的 Ban 记录</h3><div v-for="team in (['a', 'b'] as const)" :key="team"><strong>{{ names[team] }}</strong><div v-for="(id, index) in s.bans[team]" :key="index" class="operator-inline"><span>Ban {{ index + 1 }} · {{ entry(id)?.label || '未确认' }}</span><button v-if="id" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('clear-ban', { team, slot: index, reason: note('直播员修正该 Ban 槽位') })">清除此 Ban</button></div></div><p>这里调整房间自动跟随的记录。播出标记直接在图池修改。</p></section>
             <section><h3>Roll 与先手修正</h3><label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="scheduleSetting('roll', true)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p role="status">{{ settingMessages.roll || '修改后立即生效，保留当前进度。' }}</p></section>
-            <section><h3>EX 与剩余次数</h3><label>开启方<ControlSelect v-model="exForm.team" @change="scheduleSetting('ex-team', true)"><option value="">未开启</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><div class="operator-two"><label>{{ names.a }} 剩余<input v-model.number="exForm.a" type="number" min="0" max="2" @input="scheduleSetting('ex-a')" @blur="dirtySettings.has('ex-a') && scheduleSetting('ex-a', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-a'] }}</span></label><label>{{ names.b }} 剩余<input v-model.number="exForm.b" type="number" min="0" max="2" @input="scheduleSetting('ex-b')" @blur="dirtySettings.has('ex-b') && scheduleSetting('ex-b', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-b'] }}</span></label></div><p role="status">{{ settingMessages['ex-team'] || '修改后自动同步，无需保存。' }}</p><p>准备期可开启 EX；TB 禁用。只改标记与次数，不推定实际上场名单。</p></section>
+            <section><h3>EX 剩余次数修正</h3><p>本图开启／关闭请使用顶部 EX 常用操作。</p><div class="operator-two"><label>{{ names.a }} 剩余<input v-model.number="exForm.a" type="number" min="0" max="2" @input="scheduleSetting('ex-a')" @blur="dirtySettings.has('ex-a') && scheduleSetting('ex-a', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-a'] }}</span></label><label>{{ names.b }} 剩余<input v-model.number="exForm.b" type="number" min="0" max="2" @input="scheduleSetting('ex-b')" @blur="dirtySettings.has('ex-b') && scheduleSetting('ex-b', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-b'] }}</span></label></div><p>修改后自动同步，无需保存；不推定实际上场名单。</p></section>
 
           </div>
           <section><h3>逐局赛果修正</h3><div v-for="r in s.rounds.filter(r => r.status === 'recorded')" :key="r.id" class="operator-round-record"><span>{{ entry(r.entryId)?.label }} · {{ r.winner ? names[r.winner] : '未知' }} 胜 · {{ r.resultSource === 'tosu' ? '自动' : '人工' }}</span><div class="operator-inline"><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('correct-result', { roundId: r.id, winner: r.winner === 'a' ? 'b' : 'a', reason: note('直播员核对后修正胜方') })">改为 {{ names[r.winner === 'a' ? 'b' : 'a'] }} 胜</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('retract-result', { roundId: r.id, reason: note('直播员撤回计胜，等待核对') })">撤回计胜</button></div></div></section>

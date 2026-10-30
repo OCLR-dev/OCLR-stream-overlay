@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sessionHttp } from './session/http.js';
+import { createArtworkHandler } from './artwork.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -96,6 +97,7 @@ export async function readBoundedJson(response) {
 }
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
+  const artwork = createArtworkHandler(config, fetchImpl, config.session || session);
   return createServer(async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
@@ -114,6 +116,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
     if (await sessionHttp(req, res, url, activeSession)) return;
+    if (await artwork(req, res, url)) return;
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     if (url.pathname === '/api/health') {
       return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(activeSession), ...(config.runtime || {}) });

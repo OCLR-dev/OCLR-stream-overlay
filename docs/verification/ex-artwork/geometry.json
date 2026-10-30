@@ -1,0 +1,58 @@
+[
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "exTeam": "none",
+    "count": 6,
+    "maxDifference": 0
+  },
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "exTeam": "a",
+    "count": 4,
+    "maxDifference": 0
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "exTeam": "none",
+    "count": 6,
+    "maxDifference": 0
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "exTeam": "a",
+    "count": 4,
+    "maxDifference": 0
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "exTeam": "none",
+    "count": 8,
+    "maxDifference": 0
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "exTeam": "a",
+    "count": 6,
+    "maxDifference": 0
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "exTeam": "none",
+    "count": 8,
+    "maxDifference": 0
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "exTeam": "a",
+    "count": 6,
+    "maxDifference": 0
+  }
+]

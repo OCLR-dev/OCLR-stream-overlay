@@ -31,7 +31,7 @@ const score = (team: 'a' | 'b') => {
       <div class="event-shield"><span class="event-title">OCLR <b>{{ view.season }}</b></span><span class="event-bo">{{ view.meta.format }}</span></div>
       <span class="event-meta"><span data-stage-label>{{ view.meta.label }}</span> · <span data-series-target>{{ view.seriesTarget }}</span></span>
       <span class="event-context">
-        <span class="event-context-line"><span data-header-scene>{{ sceneLabels[state.scene] }}</span> · <span class="format-chip" :data-format="view.format" data-format-label>{{ view.formatLabel }}</span></span>
+        <span class="event-context-line"><span data-header-scene>{{ sceneLabels[state.scene] }}</span> · <span class="format-chip" :data-format="view.format" :data-ex-team="view.ex ? state.exTeam : undefined" :title="view.ex ? view.exLabel : undefined" :aria-label="view.ex ? view.exLabel : view.formatLabel" data-format-label>{{ view.formatLabel }}</span></span>
         <span class="event-context-line">常规 <span data-mode-label>{{ state.mode }}</span> · 当前 <span data-active-mode-label>{{ view.modeLabel }}</span></span>
       </span>
       <span class="layout-mark">{{ view.shared ? view.title : '布局示意' }}</span>

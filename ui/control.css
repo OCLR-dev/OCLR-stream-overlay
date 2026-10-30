@@ -71,9 +71,14 @@
 .operator-actions > .operator-situation h2 { font-size: 22px; }
 .operator-actions > .operator-situation > span { display: block; margin-top: 12px; font-size: 12px; }
 
-.operator-ex-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 0 0 16px; font-size: 14px; }
-.operator-ex-quick > span { color: var(--op-muted); }.operator-ex-quick > div { display: flex; align-items: center; gap: 10px; }.operator-ex-quick strong { max-width: 200px; }.operator-ex-quick [data-team='a'] strong { color: #ff9caf; }.operator-ex-quick [data-team='b'] strong { color: #96c1ff; }.operator-ex-quick button { min-width: 44px; padding: 5px; }.operator-ex-quick output { min-width: 20px; text-align: center; font: 700 22px var(--display); }
-@media (max-width: 760px) { .operator-ex-quick { display: grid; gap: 10px; }.operator-ex-quick > div { display: grid; grid-template-columns: minmax(0, 1fr) 44px 20px 44px; } }
+.operator-ex-quick { display: grid; gap: 10px; padding: 12px 0 16px; font-size: 14px; }
+.operator-ex-mode, .operator-ex-counters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.operator-ex-mode > span, .operator-ex-counters > span { flex: 0 0 64px; color: var(--op-muted); }
+.operator-ex-mode button { min-height: 44px; padding: 7px 12px; }
+.operator-ex-mode button[data-team='a'] { border-left: 3px solid #ff7591; }.operator-ex-mode button[data-team='b'] { border-left: 3px solid #70a9ff; }
+.operator-ex-mode button[data-team='a'][aria-pressed='true'] { background: #431b2d; border-color: #ff7591; color: #ffd0dc; }.operator-ex-mode button[data-team='b'][aria-pressed='true'] { background: #172e51; border-color: #70a9ff; color: #c5ddff; }
+.operator-ex-team { display: flex; align-items: center; gap: 10px; min-width: 0; margin-right: 14px; }.operator-ex-team strong { max-width: 200px; }.operator-ex-team[data-team='a'] strong { color: #ff9caf; }.operator-ex-team[data-team='b'] strong { color: #96c1ff; }.operator-ex-team button { min-width: 44px; padding: 5px; }.operator-ex-team output { min-width: 20px; text-align: center; font: 700 22px var(--display); }
+@media (max-width: 760px) { .operator-ex-mode > span { flex-basis: 100%; }.operator-ex-mode button { flex: 1 1 100px; }.operator-ex-counters { display: grid; }.operator-ex-team { display: grid; grid-template-columns: minmax(0, 1fr) 44px 20px 44px; margin-right: 0; } }
 .operator-round-context { margin-top: 12px !important; color: #e3d3f5 !important; }
 .operator-panel-bans { display: grid; gap: 14px; border-top: 1px solid var(--op-line); padding-top: 16px; }
 .operator-panel-bans > div { display: grid; gap: 8px; }

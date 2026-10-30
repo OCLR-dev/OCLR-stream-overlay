@@ -79,7 +79,8 @@ export function normalizePool(entries) {
     requireValue(text(entry.label, 24) && entry.label, '请填写图池标签，例如 HD2');
     for (const field of ['title', 'artist', 'difficulty']) requireValue(entry[field] == null || text(entry[field], 300), '谱面文字过长');
     return { id: entry.id, beatmapId: entry.beatmapId, mod: entry.mod, label: entry.label,
-      title: entry.title || '', artist: entry.artist || '', difficulty: entry.difficulty || '' };
+      title: entry.title || '', artist: entry.artist || '', difficulty: entry.difficulty || '',
+      ...(Number.isSafeInteger(entry.setId) && entry.setId > 0 ? { setId: entry.setId } : {}) };
   });
 }
 
