@@ -348,7 +348,7 @@ const nextStep = computed(() => {
   if (connection.value !== 'synced') return '控制台连接中断，正在重新连接。恢复后核对最近操作再继续。';
   if (panel.value === 'waiting') return '在这里管理双方到场与就绪状态。';
   if (panel.value === 'roll') return '分别选择先 Ban 与先 Pick，新比赛自动建立顺序；已发生的 BP、当前局和比分保留。';
-  if (panel.value === 'mappool') return '正常 BP 自动跟随裁判换图。漏记时点选谱面并完成当前真实动作；播出标记仍可独立修改。';
+  if (panel.value === 'mappool') return 'Ban／Pick 按钮直接选择动作，随后自动跟随房间换图。';
   if (panel.value === 'pause') return '调整暂停类型或返回原画面，保留比赛记录。';
   if (panel.value === 'victory') return '核对最终系列比分，选择胜方展示，或准备下一场。';
   if (s.value?.incident) return '本图自动加分已暂停。请核对实际赛果，或使用现场处理继续等待 / 重赛。';
@@ -484,18 +484,16 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
                 <p v-if="s.bp?.mode !== 'roll'">保留本场原有手动顺序。可在“手动调整”修正当前动作，在“本场设置”调整后续。</p>
                 <p v-if="s.bp?.rollChanged">Roll 先手已修正；真实 BP 顺序保持原样，需要时使用手动纠错。</p>
               </div>
-              <section class="operator-next-action" aria-label="选择下一 BP 动作">
-                <h3>下一动作 · 可以先选动作，再等换图</h3>
-                <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['ban', 'pick'] as const)" :key="kind" :data-team="team" :aria-pressed="s.action?.team === team && s.action.kind === kind" :disabled="disabled || !!s.incident || s.paused || !!s.bp?.stopped || round?.status === 'prepared' || round?.status === 'playing'" @click="run('select-bp-action', { team, kind })">下一步：{{ names[team] }} {{ kind === 'ban' ? 'Ban' : 'Pick' }}</button></template></div>
-                <p>选择后等待新的 tosu 换图；没有有效连接时继续等待。人工补做时再点谱面，完成当前真实动作。</p>
-              </section>
-              <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : '先点选一张谱面' }}</p>
+              <div class="operator-pool-actions">
+              <div class="operator-bp-buttons" aria-label="BP 动作"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['ban', 'pick'] as const)" :key="kind" :data-team="team" :aria-pressed="s.action?.team === team && s.action.kind === kind" :disabled="disabled || !!s.incident || s.paused || !!s.bp?.stopped || round?.status === 'prepared' || round?.status === 'playing'" @click="run('select-bp-action', { team, kind })">{{ names[team] }} {{ kind === 'ban' ? 'Ban' : 'Pick' }}</button></template></div>
+              <p class="operator-hint">选择 Ban／Pick 后等待房间换图；人工补做时再选谱面。</p>
+<p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : '人工补做时选择谱面' }}</p>
               <button v-if="s.bp?.canApply" class="operator-primary" :disabled="disabled || !canCompleteBp" @click="run('apply-bp', { entryId: poolEntryId, actionId: s.action?.id })">人工完成当前真实 {{ s.action?.kind === 'ban' ? 'Ban' : 'Pick' }} · {{ s.action ? names[s.action.team] : '' }}{{ poolSelection ? ` · ${poolSelection.label}` : '（先点选谱面）' }}</button>
               <button v-if="s.bp?.canReplace" :disabled="disabled || !canReplaceBp" @click="run('apply-bp', { entryId: poolEntryId })">替换本次准备图{{ poolSelection ? ` · ${poolSelection.label}` : '（先点选谱面）' }}</button>
               <button v-if="s.bp?.canApply && s.action?.kind === 'ban'" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('裁判确认本次放弃 / 空 Ban') })">裁判已确认空 Ban，进入下一步</button>
-              <p>以下只改播出标记，不推进真实 BP：</p>
+              <details class="operator-mark-correction"><summary>仅修改播出标记</summary><p>此处不改变真实 BP 进度。</p>
               <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :aria-pressed="selectedMark?.team === team && selectedMark.status === kind" :disabled="disabled || !poolSelection" :data-unavailable="connection !== 'synced' || !poolSelection" @click="markPool(kind, team)">{{ names[team] }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}</button></template></div>
-              <button :disabled="disabled || !poolSelection || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button></div>
+              <button :disabled="disabled || !poolSelection || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button></details></div>
               <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" @click="poolEntryId = e.id"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <p v-if="!s.pool.length">还没有图池，请在本场设置选择真实资料。</p>
               <p>已打过的图也可以修改标记。开打和记胜在 Playing 面板操作。</p>

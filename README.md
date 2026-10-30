@@ -143,4 +143,4 @@ npm test
 
 Roll 到完整 BP 的实现、兼容与隔离验证见 [Roll / BP 衔接验收](docs/verification/roll-bp/README.md)。当前 3007 服务未重启，需后续有序加载新后端才能使用本次功能。
 
-Mappool 支持先点击“下一步：队伍 Ban / Pick”，无需先选谱面；服务器随后按该动作跟随新的有效房间换图。要人工补做时再点谱面并完成当前真实动作，下面的播出标记仍独立。OCLR原有BP轮换保持，详见[动作优先验收](docs/verification/action-first/README.md)。
+Mappool 支持先点击队伍 Ban / Pick 按钮，无需先选谱面；服务器随后按该动作跟随新的有效房间换图。要人工补做时再点谱面并完成当前真实动作，下面的播出标记仍独立。OCLR原有BP轮换保持，详见[动作优先验收](docs/verification/action-first/README.md)。
