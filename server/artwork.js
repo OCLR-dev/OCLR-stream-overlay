@@ -1,17 +1,8 @@
+import { boundedBody, createBeatmapMetadataResolver } from './beatmap-metadata.js';
+
 const positiveId = value => Number.isSafeInteger(value) && value > 0;
 const HOUR = 60 * 60 * 1000;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-
-async function boundedBody(response, limit) {
-  if (Number(response.headers.get('content-length')) > limit) throw new Error('ARTWORK_TOO_LARGE');
-  const chunks = []; let size = 0;
-  for await (const chunk of response.body) {
-    size += chunk.length;
-    if (size > limit) throw new Error('ARTWORK_TOO_LARGE');
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
-}
 
 function remember(cache, key, value, limit = 240) {
   if (cache.size >= limit) cache.delete(cache.keys().next().value);
@@ -21,36 +12,8 @@ function remember(cache, key, value, limit = 240) {
 // Public .osu metadata supplies the set ID without an OAuth key. Never use a
 // difficulty ID as a set ID, or guess artwork for an unavailable/deleted map.
 export function createSetIdResolver(fetchImpl = fetch, { gapMs = 1000, now = Date.now } = {}) {
-  const cache = new Map(); const pending = new Map();
-  let queue = Promise.resolve(); let lastRequest = 0;
-  return async id => {
-    if (!positiveId(id)) return null;
-    const cached = cache.get(id);
-    if (cached?.until > now()) return cached.setId;
-    if (pending.has(id)) return pending.get(id);
-    const task = queue.then(async () => {
-      const delay = lastRequest + gapMs - now();
-      if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
-      lastRequest = now();
-      let setId = null;
-      try {
-        const response = await fetchImpl(`https://osu.ppy.sh/osu/${id}`, {
-          headers: { Accept: 'text/plain' }, redirect: 'error', signal: AbortSignal.timeout(5000),
-        });
-        if (!response.ok) throw new Error('BEATMAP_UNAVAILABLE');
-        const body = (await boundedBody(response, 2 * 1024 * 1024)).toString('utf8');
-        const metadata = body.split(/^\[Metadata\]\s*$/m)[1]?.split(/^\[/m)[0];
-        const beatmapId = Number(metadata?.match(/^BeatmapID:\s*(\d+)\s*$/m)?.[1]);
-        const candidate = Number(metadata?.match(/^BeatmapSetID:\s*(\d+)\s*$/m)?.[1]);
-        if (/^\uFEFF?osu file format v\d+/i.test(body) && beatmapId === id && positiveId(candidate)) setId = candidate;
-      } catch { /* An unavailable cover leaves the original placeholder intact. */ }
-      remember(cache, id, { setId, until: now() + (setId ? 24 * HOUR : 60000) });
-      return setId;
-    });
-    queue = task.catch(() => {});
-    pending.set(id, task);
-    try { return await task; } finally { pending.delete(id); }
-  };
+  const resolve = createBeatmapMetadataResolver(fetchImpl, { gapMs, now });
+  return async id => (await resolve(id))?.setId ?? null;
 }
 
 function matchingLive(snapshot, id) {
@@ -62,7 +25,7 @@ function matchingLive(snapshot, id) {
 }
 
 export function createArtworkHandler(config, fetchImpl, store) {
-  const resolveSetId = createSetIdResolver(fetchImpl);
+  const resolveMetadata = createBeatmapMetadataResolver(fetchImpl);
   // Thumbnails need this match and telemetry, not a copy of the potentially
   // large historical catalogue for every image request.
   const snapshot = () => store ? { session: store.state, live: store.live } : null;
@@ -78,13 +41,19 @@ export function createArtworkHandler(config, fetchImpl, store) {
   } catch { /* A service without tosu can still use official covers. */ }
   return async (req, res, url) => {
     if (!url.pathname.startsWith('/api/beatmaps/')) return false;
-    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|background)$/);
+    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|background|metadata)$/);
     const id = Number(match?.[1]);
     const current = snapshot();
     const entry = current?.session.pool.find(item => item.beatmapId === id);
     const fail = status => { res.writeHead(status, { 'Cache-Control': 'no-store' }); res.end(); return true; };
     if (req.method !== 'GET') return fail(405);
     if (!match || url.search || !positiveId(id) || !entry) return fail(404);
+    if (match[2] === 'metadata') {
+      const metadata = await resolveMetadata(id);
+      if (!metadata || !snapshot().session.pool.some(item => item.beatmapId === id)) return fail(404);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
+      res.end(JSON.stringify(metadata)); return true;
+    }
     const liveMap = matchingLive(current, id);
     if (match[2] === 'background' && tosuUrl && liveMap) {
       const key = JSON.stringify([id, liveMap.checksum, liveMap.setId]);
@@ -115,7 +84,7 @@ export function createArtworkHandler(config, fetchImpl, store) {
         res.end(cached.image.bytes); return true;
       }
     }
-    const setId = positiveId(entry.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : await resolveSetId(id);
+    const setId = positiveId(entry.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : (await resolveMetadata(id))?.setId;
     if (!setId || !snapshot().session.pool.some(item => item.beatmapId === id)) return fail(404);
     res.writeHead(302, { Location: `https://assets.ppy.sh/beatmaps/${setId}/covers/cover.jpg`,
       'Cache-Control': 'public, max-age=3600', 'X-Artwork-Source': 'osu-cover' });

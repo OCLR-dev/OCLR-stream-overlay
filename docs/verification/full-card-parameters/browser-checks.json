@@ -1,0 +1,249 @@
+{
+  "cards": [
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "NM1",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "NM2",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "NM3",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "brightness(0.35) saturate(0.4)",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.671875,
+      "label": "NM4",
+      "loaded": "true",
+      "width": 272.671875
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "NM5",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "NM6",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "NM7",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "HD1",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "HD2",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "HD3",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.1484375,
+      "imageHeight": 69.1484375,
+      "imageWidth": 270.6640625,
+      "label": "HR1",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.1484375,
+      "imageHeight": 69.1484375,
+      "imageWidth": 270.6640625,
+      "label": "HR2",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.1484375,
+      "imageHeight": 69.1484375,
+      "imageWidth": 270.6640625,
+      "label": "HR3",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "DT1",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "DT2",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "DT3",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": null,
+      "height": 71.140625,
+      "label": "DT4",
+      "width": 272.671875
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "FM1",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.140625,
+      "imageHeight": 69.140625,
+      "imageWidth": 270.6640625,
+      "label": "FM2",
+      "loaded": "true",
+      "width": 272.6640625
+    },
+    {
+      "filter": "none",
+      "height": 71.1484375,
+      "imageHeight": 69.1484375,
+      "imageWidth": 270.6640625,
+      "label": "TB1",
+      "loaded": "true",
+      "width": 272.6640625
+    }
+  ],
+  "params": [
+    "★ —",
+    "CS 4",
+    "HP 5",
+    "AR 9",
+    "OD 9",
+    "BPM 190",
+    "时长 —"
+  ],
+  "source": "测试 · 原始参数",
+  "geometry": [
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "none",
+      "count": 6,
+      "maxDifference": 0
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "a",
+      "count": 4,
+      "maxDifference": 0
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "none",
+      "count": 6,
+      "maxDifference": 0
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "a",
+      "count": 4,
+      "maxDifference": 0
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "none",
+      "count": 8,
+      "maxDifference": 0
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "a",
+      "count": 6,
+      "maxDifference": 0
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "none",
+      "count": 8,
+      "maxDifference": 0
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "a",
+      "count": 6,
+      "maxDifference": 0
+    }
+  ]
+}

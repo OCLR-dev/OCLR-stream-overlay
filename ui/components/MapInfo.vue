@@ -1,28 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
+import { mapParameterDisplay, type OriginalMapMetadata } from '../mapParameters';
 defineProps<{ result?: boolean }>();
 const { state, view } = useOverlay();
 const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
 const mapMod = computed(() => view.value.shared ? view.value.currentMap?.mod : view.value.mod);
-const numeric = (value: number | null | undefined, digits = 2) =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? String(Number(value.toFixed(digits))) : '—';
-const duration = (value: number | null | undefined) => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '—';
-  const seconds = Math.floor(value / 1000);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-};
-const parameters = computed(() => {
-  const map = view.value.mapParameters;
-  return [
-    { label: '★', value: numeric(map?.stats?.stars.total) },
-    { label: 'CS', value: numeric(map?.stats?.cs.converted) },
-    { label: 'AR', value: numeric(map?.stats?.ar.converted) },
-    { label: 'OD', value: numeric(map?.stats?.od.converted) },
-    { label: 'BPM', value: numeric(map?.stats?.bpm.common) },
-    { label: '时长', value: duration(map?.time.lastObject) },
-  ];
+const original = ref<OriginalMapMetadata | null>(null);
+const metadataStatus = ref('idle');
+watch([() => view.value.currentMap?.beatmapId, () => view.value.parameterMode], async ([id, mode], _, cleanup) => {
+  original.value = null; metadataStatus.value = 'idle';
+  if (!view.value.shared || mode !== 'official-test' || !id) return;
+  const controller = new AbortController(); let active = true;
+  cleanup(() => { active = false; controller.abort(); });
+  metadataStatus.value = 'loading';
+  try {
+    const response = await fetch(`/api/beatmaps/${id}/metadata`, { signal: controller.signal });
+    if (!response.ok) throw new Error('METADATA_UNAVAILABLE');
+    const value = await response.json();
+    if (active && value.beatmapId === id && value.source === 'osu-file') { original.value = value; metadataStatus.value = 'ready'; }
+  } catch { if (active) metadataStatus.value = 'unavailable'; }
+}, { immediate: true, flush: 'sync' });
+const parameters = computed(() => mapParameterDisplay(view.value.currentMap?.beatmapId ?? null, view.value.parameterMode, view.value.mapParameters, original.value));
+const parameterLabel = computed(() => {
+  if (view.value.parameterMode === 'official-test') return parameters.value.source === 'official-test' ? '测试 · 原始参数' : metadataStatus.value === 'loading' ? '测试参数读取中' : '测试参数不可用';
+  return parameters.value.source === 'tosu' ? '本局参数' : '等待本局参数';
 });
 </script>
 
@@ -41,7 +44,8 @@ const parameters = computed(() => {
       <span class="map-rule" data-map-rule :hidden="!view.mapRule">{{ view.mapRule }}</span>
     </div>
     <div class="map-params" aria-label="谱面参数">
-      <span v-for="param in parameters" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
+      <span class="map-parameter-source" :title="view.parameterMode === 'official-test' ? '模拟测试：官方谱面原始值，不含模组转换；星级和时长不作推算。' : '读取与本局谱面、房间匹配的 tosu 参数。'">{{ parameterLabel }}</span>
+      <span v-for="param in parameters.rows" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
     </div>
     <div class="map-slot"><span>{{ result ? 'MAP RESULT' : 'NOW PLAYING' }}</span><b :title="mapLabel">{{ mapLabel }}</b><span>{{ view.formatLabel }} · {{ view.modeLabel }}</span></div>
   </div>

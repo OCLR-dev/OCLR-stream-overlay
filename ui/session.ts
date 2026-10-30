@@ -35,7 +35,7 @@ export interface Envelope {
     tosu: { status: string; updatedAt: string | null; data: null | {
       beatmap: { id: number | null; title: string | null;
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
-        stats: null | { stars: { total: number | null }; cs: { converted: number | null };
+        stats: null | { stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
           ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null } } };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null;
         totalScore: { left: number | null; right: number | null }; chat: { name?: string; message?: string; timestamp?: string }[] }

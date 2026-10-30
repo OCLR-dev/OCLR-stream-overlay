@@ -105,11 +105,16 @@ test('a map change during background download and invalid image responses fall b
 });
 
 test('historical pools without set IDs resolve public metadata independently and keep the saved match unchanged', async t => {
+  let calls = 0;
   const { store, request } = await start(t, async url => {
+    calls++;
     assert.equal(url, 'https://osu.ppy.sh/osu/101'); return new Response(osuFile());
   }, { setId: null, simulated: true });
   const before = structuredClone(store.state);
+  const metadata = await request('/api/beatmaps/101/metadata');
+  assert.equal(metadata.status, 200); assert.equal((await metadata.json()).stats.ar, 9);
   const response = await request();
   assert.equal(response.status, 302); assert.match(response.headers.get('location'), /\/42\/covers\/cover.jpg$/);
+  assert.equal(calls, 1, 'parameters and cover reuse the same verified file');
   assert.deepEqual(store.state, before);
 });

@@ -63,7 +63,9 @@ export function createOverlay(shared = false) {
           .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
         return pool.find(e => e.id === ids[index])?.label || '未确认';
       },
-      scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters, winner: s?.winner ? names[s.winner] : null,
+      scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
+      parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
+      winner: s?.winner ? names[s.winner] : null,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
       chat: shared && bound ? envelope?.live.tosu.data?.tourney?.chat.slice(-4) || [] : [],
