@@ -14,10 +14,14 @@ const validRoom = (config, frame) => {
 // Continuity is deliberately volatile: restore/reconnect always establishes a baseline.
 export class RoomAutomation {
   constructor() { this.reset(); }
-  reset() { this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; }
+  reset() { this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; }
 
   rebase(state, frame, now) {
+    const presentation = this.presentation;
     this.reset();
+    if (!state.paused && !state.incident && state.auto.scenes && presentation?.sessionId === state.id &&
+      presentation.left === state.auto.left && presentation.right === state.auto.right &&
+      frame?.tourney?.teams.left === state.auto.left && frame.tourney.teams.right === state.auto.right) this.presentation = presentation;
     if (!state.paused && !state.incident && validRoom(state.auto, frame)) {
       // Seed only the observation position, never an endRun or a Playing edge.
       // This consumes the known pre-command snapshot so the next new map is not
@@ -37,6 +41,30 @@ export class RoomAutomation {
   }
 
   ingest(state, frame, now = Date.now()) {
+    // Presentation can join a live room mid-map. It never creates a round,
+    // seeds an observed run or supplies evidence for result recording.
+    const previous = this.presentation;
+    const result = this.ingestProgress(state, frame, now);
+    const config = result.state.auto;
+    const room = frame?.tourney;
+    const bound = config.scenes && config.profile === 'stable-tourney' && config.left && config.right && config.left !== config.right &&
+      room?.teams.left === config.left && room.teams.right === config.right && [0, 1, 2, 3, 4].includes(room.ipcState);
+    this.presentation = bound ? { ipc: room.ipcState, mapId: frame?.beatmap?.id, sessionId: result.state.id, left: config.left, right: config.right } : null;
+    const playingEvent = bound && room.ipcState === 3 && (!previous || previous.ipc !== 3 || previous.mapId !== frame?.beatmap?.id);
+    if (playingEvent && !result.state.paused && !result.state.incident && result.state.phase !== 'winner' && !seriesComplete(result.state) &&
+      (result.state.scene !== 'playing' || result.state.sceneOverride)) {
+      result.state = automaticTransition(result.state, draft => {
+        draft.scene = 'playing'; draft.sceneOverride = null;
+      }, '房间正在 Playing：自动跟随播出画面（不补建本局或计胜）', randomUUID(), { undo: false });
+    }
+    if (bound && room.ipcState === 3 && !result.state.paused && !result.state.incident && !currentRound(result.state)) {
+      result.note = '正在接收 Playing 实时队分；尚无本局记录，仅展示，不自动记胜';
+      if (result.state.sceneOverride) result.note = `保持所选画面，实时队分继续更新。${result.note}`;
+    }
+    return result;
+  }
+
+  ingestProgress(state, frame, now = Date.now()) {
     const config = state.auto;
     if (state.incident) {
       this.reset(); return { state, note: '本图异常待处理：自动推进与计胜已挂起；恢复观战不等于确认重赛' };

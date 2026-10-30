@@ -15,15 +15,26 @@ test('choosing an action before a map arms the server without changing marks, re
  for(const key of ['poolMarks','bpHistory','bans','rounds','queue','roll','bpFlow','auto'])assert.deepEqual(s[key],before[key],key);
  s=cmd(s,'undo');assert.deepEqual(s.action,before.action);
 });
-test('the next unused Ban slot is selected automatically; occupied slots reject',()=>{
+test('the next unused Ban slot is selected automatically; full slots still allow marks without adding Bans',()=>{
  let s=apply(choose(setup(),'a','ban'),'m0');s=apply(choose(s,'a','ban'),'m1');assert.equal(s.bans.a[1],'m1');
- assert.throws(()=>choose(s,'a','ban'),/Ban 槽已完成/);
+ const bans=structuredClone(s.bans);const history=structuredClone(s.bpHistory);
+ s=cmd(choose(s,'a','ban'),'choose-pool-map',{entryId:'m2'});
+ assert.deepEqual(s.bans,bans);assert.deepEqual(s.bpHistory,history);assert.equal(s.poolMarks.at(-1).entryId,'m2');
 });
-test('prepared/playing maps, incidents, pause and a completed series cannot be overwritten by choosing the next action',()=>{
- let s=apply(choose(setup(),'a','pick'),'m0');assert.throws(()=>choose(s,'b','pick'),/本图已选/);
- s=cmd(s,'start');const run=currentRound(s).runId;assert.throws(()=>choose(s,'b','ban'),/本图已选/);assert.equal(currentRound(s).runId,run);
- for(const command of [['pause',{kind:'technical'}],['incident',{kind:'abort',reason:'核对本局'}]])assert.throws(()=>choose(cmd(s,...command),'b','pick'),/暂停、异常/);
- s=cmd(s,'ranking');s=cmd(s,'set-series',{a:6,b:0,reason:'核对系列已结束'});assert.throws(()=>choose(s,'b','pick'),/系列结束/);
+test('free modes and broadcast corrections preserve prepared/playing maps, incidents, pause and a completed series',()=>{
+ const protectedChoice=state=>{
+  const next=choose(state,'b','ban');
+  for(const key of ['rounds','action','queue','bans','phase','incident','paused','seriesAdjustment'])assert.deepEqual(next[key],state[key],key);
+  return next;
+ };
+ let s=apply(choose(setup(),'a','pick'),'m0');s=protectedChoice(s);
+ s=cmd(s,'start');const run=currentRound(s).runId;
+ for(const state of [s,cmd(s,'pause',{kind:'technical'}),cmd(s,'incident',{kind:'abort',reason:'核对本局'})]){
+  const next=cmd(protectedChoice(state),'choose-pool-map',{entryId:'m2'});
+  assert.deepEqual(next.rounds,state.rounds);assert.equal(currentRound(next).runId,run);assert.deepEqual(next.bans,state.bans);
+ }
+ s=cmd(s,'ranking');s=cmd(s,'set-series',{a:6,b:0,reason:'核对系列已结束'});
+ const next=cmd(protectedChoice(s),'choose-pool-map',{entryId:'m2'});assert.deepEqual(next.rounds,s.rounds);assert.deepEqual(next.seriesAdjustment,s.seriesAdjustment);
 });
 test('an old pending map never transfers to a newly armed action; the next fresh map is consumed once',async()=>{
  const store=new SessionStore({state:setup()});let now=0;
@@ -39,4 +50,10 @@ test('choosing an already queued action moves it forward once and preserves the 
  let s=setup();const before=s.queue;assert.equal(before[0].team,'b');
  s=choose(s,'b','ban');assert.equal(s.action.team,'b');assert.deepEqual(s.queue,before.slice(1));
  s=apply(s,'m0');assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'b');
+});
+
+test('an old session without poolChoice can undo a newly selected mode completely',()=>{
+ let s=setup();delete s.poolChoice;const action=structuredClone(s.action);
+ s=choose(s,'b','pick');assert.equal(s.poolChoice.team,'b');
+ s=cmd(s,'undo');assert.equal(s.poolChoice,null);assert.deepEqual(s.action,action);
 });

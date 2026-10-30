@@ -3,6 +3,7 @@ import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods,
 import { useSession } from './session';
 import { useMotionReady } from './motion';
 import { poolDisplay } from './poolDisplay';
+import { livePlayingMap, liveTeamScores } from './liveScores';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -27,7 +28,7 @@ export function createOverlay(shared = false) {
     const envelope = sessionClient?.snapshot.value;
     const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
     const round = s?.rounds.find(r => r.id === s.currentRoundId);
-    const currentMap = s?.pool.find(e => e.id === round?.entryId) || null;
+    const recordedMap = s?.pool.find(e => e.id === round?.entryId) || null;
     const roster = (team: Team) => shared ? Array.from({ length: base.count }, (_, i) => ({
       team, id: `${team}-${i + 1}`, slot: i + 1, role: '', syntheticEx: false,
       name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null
@@ -35,9 +36,9 @@ export function createOverlay(shared = false) {
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
       envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
-    const sameLiveMap = currentMap && envelope?.live.tosu.data?.beatmap.id === currentMap.beatmapId;
-    const scores = bound && sameLiveMap && !s?.incident ? envelope?.live.tosu.data?.tourney?.totalScore : null;
+    const scores = liveTeamScores(envelope, sessionClient?.connection.value);
     const liveMap = bound ? envelope?.live.tosu.data?.beatmap : null;
+    const currentMap = scores && state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) : recordedMap;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
