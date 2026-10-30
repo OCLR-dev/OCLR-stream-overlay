@@ -39,6 +39,12 @@
   --team-b: #3d8bff;
   --team-a-dark: #a3123a;
   --team-b-dark: #123f9e;
+  --mod-nm: #b89af4;
+  --mod-hd: #f5d26e;
+  --mod-hr: #ff9a72;
+  --mod-dt: #3dd6c6;
+  --mod-fm: #86dda9;
+  --mod-tb: #f59bd2;
   --stream-chat-width: 420px;
   --stream-chat-height: 138px;
   --stream-chat-top: 28px;
@@ -292,21 +298,17 @@
 .mappool-mid b { color: #e4d5fa; }
 .map-ex-mark { color: #dbc0ff; }
 .mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 12px; }
-.mappool-column { --mod-color: #b89af4; display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
-.mappool-column[data-mod='HD'] { --mod-color: #f5d26e; }
-.mappool-column[data-mod='HR'] { --mod-color: #ff9a72; }
-.mappool-column[data-mod='DT'] { --mod-color: #3dd6c6; }
-.mappool-column[data-mod='FM'] { --mod-color: #86dda9; }
-.mappool-column[data-mod='TB'] { --mod-color: #ffdc81; }
+:is(.mappool-column, .map-entry, .operator-pool button) { --mod-color: var(--mod-nm); }
+:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='HD'] { --mod-color: var(--mod-hd); }
+:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='HR'] { --mod-color: var(--mod-hr); }
+:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='DT'] { --mod-color: var(--mod-dt); }
+:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='FM'] { --mod-color: var(--mod-fm); }
+:is(.mappool-column, .map-entry, .operator-pool button)[data-mod='TB'] { --mod-color: var(--mod-tb); }
+.mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
 .map-group-head { display: grid; place-items: center; background: var(--mod-color); color: #150a2c; }
 .map-group-head strong { font-family: var(--display); font-size: 34px; font-weight: 800; }
 .map-list { display: grid; grid-template-columns: repeat(var(--pool-columns, 5), minmax(0, 1fr)); grid-template-rows: repeat(var(--group-rows, 1), minmax(0, 1fr)); grid-auto-flow: row; gap: 8px 14px; min-width: 0; min-height: 0; margin: 0; padding: 0; list-style: none; }
 .map-entry { position: relative; display: grid; grid-template-columns: var(--map-thumbnail-width, 78px) minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #7c3aed66; background: #241349e6; padding-right: 8px; }
-.map-entry[data-mod='HD'] { --mod-color: #f5d26e; }
-.map-entry[data-mod='HR'] { --mod-color: #ff9a72; }
-.map-entry[data-mod='DT'] { --mod-color: #3dd6c6; }
-.map-entry[data-mod='FM'] { --mod-color: #86dda9; }
-.map-entry[data-mod='TB'] { --mod-color: #ffdc81; }
 .map-thumbnail { position: relative; display: flex; align-items: center; justify-content: center; align-self: stretch; overflow: hidden; background: linear-gradient(145deg, color-mix(in srgb, var(--mod-color) 45%, #3b2060), #1b0f3a); }
 .map-thumbnail::after { position: absolute; width: 72px; height: 72px; border: 1px solid #ffffff24; content: ''; transform: rotate(45deg); }
 .map-index { color: #ffffffb3; font-family: var(--display); font-size: 30px; font-weight: 800; }
@@ -325,10 +327,13 @@
 .map-entry { --map-team-color: #92929f; --map-team-ink: #eeeef2; }
 .map-entry[data-team='a'] { --map-team-color: var(--team-a); --map-team-ink: #ffbdca; }
 .map-entry[data-team='b'] { --map-team-color: var(--team-b); --map-team-ink: #b7d3ff; }
-.map-entry:is(.is-banned, .is-picked) { border-color: var(--map-team-color); background: #34343c; box-shadow: inset 0 0 0 1px var(--map-team-color); }
-.map-entry:is(.is-banned, .is-picked) .map-thumbnail { background: #484851; }
-.map-entry:is(.is-banned, .is-picked) .map-mod { color: #eeeef2; }
-.map-entry:is(.is-banned, .is-picked) .map-meta { color: #c4c4ce; }
+.map-entry:is(.is-banned, .is-picked) { border-color: var(--map-team-color); box-shadow: inset 0 0 0 1px var(--map-team-color); }
+.map-entry.is-banned { background: #110c1c; }
+.map-entry.is-banned .map-thumbnail { background: #211b2d; }
+.map-entry.is-banned .map-index { color: #a39aac; }
+.map-entry.is-banned .map-mod { color: #b5afc1; }
+.map-entry.is-banned .map-title { color: #bdb6cb; }
+.map-entry.is-banned .map-meta { color: #aaa4b8; }
 .map-entry:is(.is-banned, .is-picked) .map-status { color: var(--map-team-ink); }
 .chat-footer { display: flex; align-items: center; border-top: 0; padding: var(--stream-chat-top) var(--stream-chat-right) 14px 60px; box-shadow: inset 0 1px #7c3aed66; }
 .chat-panel { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: center; gap: 28px; width: 100%; height: var(--stream-chat-height); }

@@ -35,7 +35,7 @@
 .operator-two, .operator-bp-buttons { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.operator-bp-buttons button[data-team='a'] { border-left: 4px solid #ff7591; }.operator-bp-buttons button[data-team='b'] { border-left: 4px solid #70a9ff; }
 .operator-pool { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 420px; overflow: auto; padding: 4px; }
 .operator-pool button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; align-items: center; gap: 0 8px; min-height: 48px; padding: 5px 8px; text-align: left; }
-.operator-pool strong { grid-column: 1; grid-row: 1; color: #e0c9ff; font: 700 18px/20px var(--display); }
+.operator-pool strong { grid-column: 1; grid-row: 1; padding-inline: 5px; border-radius: 3px; background: color-mix(in srgb, var(--mod-color) 14%, transparent); color: var(--mod-color); font: 700 18px/20px var(--display); }
 .operator-pool span { grid-column: 1 / -1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; }
 .operator-pool small { grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 11px; line-height: 16px; color: var(--op-muted); }
 .operator-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }.operator-inline label { flex: 1; }.operator-hint { color: var(--op-muted); font-size: 13px; }
@@ -100,7 +100,10 @@
 .operator-pool button { --pool-mark-color: #92929f; }
 .operator-pool button[data-team='a'] { --pool-mark-color: #ff4d6d; }
 .operator-pool button[data-team='b'] { --pool-mark-color: #3d8bff; }
-.operator .operator-pool button:is([data-map-state='banned'], [data-map-state='picked'], [data-map-state='used']) { border-color: var(--pool-mark-color); background: #34343c; }
+.operator .operator-pool button:is([data-map-state='banned'], [data-map-state='picked'], [data-map-state='used']) { border-color: var(--pool-mark-color); background: #160d25; }
+.operator .operator-pool button[data-map-state='banned'] { background: #110c1c; }
+.operator-pool button[data-map-state='banned'] strong { background: transparent; }
+.operator-pool button[data-map-state='banned'] > span { color: #bdb6cb; }
 .operator-pool button[aria-pressed='true'] { outline: 2px solid #dbc6ff; outline-offset: 2px; }
 
 .operator button.operator-reset { border-color: #bb7388; color: #ffd0dc; }
