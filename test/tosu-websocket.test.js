@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { get } from 'node:http';
 import { startSimulation } from '../tools/tosu-simulator/stack.js';
+import { seedCommands } from '../tools/tosu-simulator/fixture.js';
 
 async function until(predicate, message, timeout = 5000) {
   const deadline = Date.now() + timeout;
@@ -25,6 +26,39 @@ async function operator(stack, type, payload = {}) {
 }
 const snapshot = stack => stack.store.snapshot();
 const current = stack => stack.store.state.rounds.find(r => r.id === stack.store.state.currentRoundId);
+
+test('real socket follows Roll-generated BP through both first Picks, replay and second bans without requiring wins', { timeout: 20000 }, async t => {
+  const stack = await boot(t);
+  await operator(stack, 'next-match');
+  await operator(stack, 'setup', seedCommands()[0][1]);
+  await operator(stack, 'set-roll', { a: 83, b: 52, winner: 'a', banFirst: 'a', pickFirst: 'b' });
+  await operator(stack, 'auto', { ...stack.store.state.auto, profile: 'stable-tourney', left: '模拟红队', right: '模拟蓝队' });
+  assert.equal(stack.store.state.action.team, 'a');
+  await map(stack, 720001); await until(() => stack.store.state.bans.a[0], 'Roll-generated first Red Ban');
+  await map(stack, 730001); await until(() => stack.store.state.bans.b[0], 'Roll-generated first Blue Ban');
+  await map(stack, 710001); await until(() => current(stack)?.status === 'prepared', 'Blue first Pick');
+  assert.equal(current(stack).pickedBy, 'b'); const id = current(stack).id;
+  await map(stack, 710002); await until(() => current(stack)?.entryId === 'sim-nm2', 'replacement, same Pick');
+  assert.equal(current(stack).id, id);
+  const finish = async () => {
+    await simulate(stack, 'set', { ipcState: 3, growing: false }); await until(() => current(stack)?.status === 'playing', 'observed Playing');
+    await simulate(stack, 'set', { ipcState: 4, left: null, right: null }); await until(() => current(stack)?.status === 'ranking', 'finish without scores');
+  };
+  await finish(); assert.equal(stack.store.state.action.team, 'a');
+  await map(stack, 710003); await until(() => current(stack)?.entryId === 'sim-nm3', 'Red first Pick');
+  await finish(); assert.equal(stack.store.state.action.kind, 'ban'); assert.equal(stack.store.state.action.slot, 1);
+  const action = structuredClone(stack.store.state.action);
+  await operator(stack, 'referee-replay', { reason: '合成传输测试：裁判重赛' });
+  await delay(350); assert.equal(stack.store.state.action, null); assert.equal(current(stack).status, 'prepared');
+  await simulate(stack, 'set', { ipcState: 1 }); await until(() => stack.store.live.tosu.data?.tourney.ipcState === 1, 'new prestart edge');
+  await finish(); assert.deepEqual(stack.store.state.action, action);
+  await map(stack, 710004); await until(() => stack.store.state.bans.a[1], 'Red second Ban');
+  await map(stack, 710005); await until(() => stack.store.state.bans.b[1], 'Blue second Ban');
+  assert.equal(stack.store.state.action.team, 'b'); assert.equal(stack.store.state.action.ordinal, 2);
+  await map(stack, 710006); await until(() => current(stack)?.entryId === 'sim-nm6', 'Blue second Pick');
+  assert.equal(current(stack).pickedBy, 'b'); assert.deepEqual(snapshot(stack).session.series, { a: 0, b: 0 });
+  assert.equal(stack.store.state.bpHistory.filter(item => item.kind === 'pick').length, 3);
+});
 const map = (stack, mapId) => simulate(stack, 'set', { mapId, ipcState: 1 });
 async function prepare(stack) {
   await map(stack, 720001); await until(() => stack.store.state.bans.a[0], 'automatic Red Ban');

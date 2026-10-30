@@ -1,0 +1,58 @@
+[
+  {
+    "scene": "roll",
+    "chats": [
+      {
+        "contentHeight": "116px",
+        "headerHeight": "21px",
+        "source": "match"
+      }
+    ],
+    "clip": {
+      "height": 140,
+      "width": 1493.3333740234375,
+      "x": 108.3359375,
+      "y": 700
+    },
+    "insideCanvas": true
+  },
+  {
+    "scene": "mappool",
+    "chats": [
+      {
+        "contentHeight": "115px",
+        "headerHeight": "21px",
+        "source": "match"
+      },
+      {
+        "contentHeight": "115px",
+        "headerHeight": "21px",
+        "source": "stream"
+      }
+    ],
+    "clip": {
+      "height": 140,
+      "width": 1493.3333740234375,
+      "x": 108.3359375,
+      "y": 700
+    },
+    "insideCanvas": true
+  },
+  {
+    "scene": "playing",
+    "chats": [
+      {
+        "contentHeight": "115px",
+        "headerHeight": "21px",
+        "source": "stream"
+      }
+    ],
+    "clip": {
+      "height": 140,
+      "width": 1493.3333740234375,
+      "x": 108.3359375,
+      "y": 700
+    },
+    "insideCanvas": true
+  }
+]

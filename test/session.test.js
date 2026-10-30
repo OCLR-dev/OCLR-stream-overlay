@@ -625,12 +625,16 @@ test('Roll management edits points during Playing without changing the game, BP,
   assert.throws(() => command(store.state, 'set-roll', { a: -1, b: 0, winner: null, pickFirst: null, banFirst: null }), /Roll/);
 });
 
-test('pool management can Ban and prepare a new Pick while the previous Playing result is unrecorded', () => {
+test('pool management waits for the map to end, then allows BP before recording its result', () => {
   let s = command(pick(ready()), 'start');
-  const playing = structuredClone(currentRound(s));
   s = command(s, 'display', { scene: 'mappool' });
   assert.equal(s.phase, 'playing');
-  s = action(s, 'ban', 'b'); s = command(s, 'apply-bp', { entryId: 'hd1' });
+  s = action(s, 'ban', 'b');
+  assert.throws(() => command(s, 'apply-bp', { entryId: 'hd1' }), /尚未结束/);
+  s = command(s, 'ranking');
+  const playing = structuredClone(currentRound(s));
+  s = command(s, 'display', { scene: 'mappool' });
+  s = command(s, 'apply-bp', { entryId: 'hd1' });
   assert.equal(s.bans.b[0], 'hd1'); assert.deepEqual(currentRound(s), playing);
   s = action(s, 'pick', 'b'); s = command(s, 'apply-bp', { entryId: 'nm2' });
   const prepared = structuredClone(currentRound(s));
@@ -731,6 +735,8 @@ test('Playing preparation is explicit and independent of broadcast Pick, preserv
   s = command(s, 'prepare-round', { entryId: 'nm1', pickedBy: 'a' });
   assert.equal(currentRound(s).entryId, 'nm1'); assert.equal(s.scene, 'playing'); assert.equal(s.paused, false);
   s = command(s, 'start'); const old = structuredClone(currentRound(s));
+  assert.throws(() => command(s, 'prepare-round', { entryId: 'nm2', pickedBy: 'b' }), /尚未结束/);
+  s = command(s, 'ranking');
   s = command(s, 'prepare-round', { entryId: 'nm2', pickedBy: 'b' });
   const next = structuredClone(currentRound(s));
   s = command(s, 'record-result', { roundId: old.id, winner: 'a', keepDisplay: true });

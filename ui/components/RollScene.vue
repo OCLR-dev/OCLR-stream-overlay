@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
+import ChatBox from './ChatBox.vue';
 const { state, view, motionScope } = useOverlay();
 </script>
 <template>
@@ -10,6 +11,13 @@ const { state, view, motionScope } = useOverlay();
       <div class="roll-sides"><div v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team"><h3>{{ view.names[team] }}</h3><strong v-emphasize="{ value: view.roll?.[team], scope: motionScope, enabled: state.scene === 'roll' }">{{ view.roll?.[team] ?? '—' }}</strong></div></div>
       <p v-emphasize="{ value: view.roll?.winner, scope: motionScope, enabled: state.scene === 'roll' }">Roll 胜方：{{ view.roll?.winner ? view.names[view.roll.winner] : '待记录真实结果' }}</p>
     </div>
-    <footer class="scene-footer"><div class="footer-cell"><span class="footer-kicker">先 Pick</span><p v-emphasize="{ value: view.roll?.pickFirst, scope: motionScope, enabled: state.scene === 'roll' }">{{ view.roll?.pickFirst ? view.names[view.roll.pickFirst] : '未确认' }}</p></div><div class="footer-cell"><span class="footer-kicker">先 Ban</span><p v-emphasize="{ value: view.roll?.banFirst, scope: motionScope, enabled: state.scene === 'roll' }">{{ view.roll?.banFirst ? view.names[view.roll.banFirst] : '未确认' }}</p></div><div class="footer-cell"><span class="footer-kicker">比赛操作</span><p>实际 Roll 结果由直播员记录</p></div></footer>
+    <footer class="scene-footer roll-footer">
+      <div class="footer-cell roll-order" role="group" aria-label="先 Pick 与先 Ban">
+        <div class="roll-order-row"><span class="footer-kicker">先 Pick</span><p v-emphasize="{ value: view.roll?.pickFirst, scope: motionScope, enabled: state.scene === 'roll' }">{{ view.roll?.pickFirst ? view.names[view.roll.pickFirst] : '未确认' }}</p></div>
+        <div class="roll-order-row"><span class="footer-kicker">先 Ban</span><p v-emphasize="{ value: view.roll?.banFirst, scope: motionScope, enabled: state.scene === 'roll' }">{{ view.roll?.banFirst ? view.names[view.roll.banFirst] : '未确认' }}</p></div>
+      </div>
+      <div class="roll-room-chat"><ChatBox source="match" /></div>
+      <div class="footer-cell"><span class="footer-kicker">比赛操作</span><p>实际 Roll 结果由直播员记录</p></div>
+    </footer>
   </section>
 </template>

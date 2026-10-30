@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { applyBp, automaticTransition, awardTosuResult, currentRound, entryOf, holdRound, seriesComplete, startRound } from './model.js';
+import { applyBp, automaticTransition, awardTosuResult, currentRound, entryOf, holdRound, releaseRoundBp, seriesComplete, startRound } from './model.js';
 
 const playerKeys = room => room.players.filter(p => p.osuId > 0).map(p => `${p.side}:${p.osuId}`).sort();
 const validRoom = (config, frame) => {
@@ -156,7 +156,7 @@ export class RoomAutomation {
               playing.status = 'ranking';
               // A source snapshot, never persisted as live telemetry or used to assign a winner.
               playing.finalScore = { a: room.totalScore.left, b: room.totalScore.right };
-              if (!draft.action) draft.action = draft.queue.shift() || null;
+              releaseRoundBp(draft, playing);
               if (config.scenes) { draft.scene = 'map-result'; draft.sceneOverride = null; }
             }, 'tosu 连续 Playing → Ranking：展示单图结算（不计胜）', randomUUID());
             this.endRun = { roundId: round.id, runId: round.runId };

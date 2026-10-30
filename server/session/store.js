@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { currentRound, entryOf, newSession, requireValue, restoreAutomation, seriesOf, transition } from './model.js';
+import { bpProgress, currentRound, entryOf, newSession, requireValue, restoreAutomation, seriesOf, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
 
 export class SessionStore {
@@ -23,7 +23,7 @@ export class SessionStore {
 
   snapshot() {
     const { undo, commandIds, ...session } = this.state;
-    return structuredClone({ session: { ...session, series: seriesOf(this.state), canUndo: undo.length > 0 }, live: this.live, persistence: this.persistence, catalog: this.catalog || null });
+    return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state), canUndo: undo.length > 0 }, live: this.live, persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }

@@ -1,0 +1,11 @@
+{
+  "currentServiceSessionUnchanged": true,
+  "version": 302,
+  "series": {
+    "a": 4,
+    "b": 3
+  },
+  "dailyServiceRestarted": false,
+  "obsTouched": false,
+  "isolatedBrowserServiceClosed": true
+}

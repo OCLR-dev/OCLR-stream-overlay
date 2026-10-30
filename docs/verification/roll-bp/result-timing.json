@@ -1,0 +1,426 @@
+{
+  "generatedAt": "2026-10-30T08:44:46.745Z",
+  "transport": "real localhost WebSocket / synthetic tosu frames",
+  "actualOsuTested": false,
+  "summary": {
+    "total": 17,
+    "pass": 15,
+    "risk": 2
+  },
+  "results": [
+    {
+      "id": "normal",
+      "description": "正常连续 Playing → Ranking",
+      "pass": true,
+      "samples": [
+        {
+          "label": "final",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 1,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1000
+          }
+        }
+      ]
+    },
+    {
+      "id": "late-ipc",
+      "description": "最后一路未结束期间 IPC 保持 Playing，旧分数停住",
+      "pass": true,
+      "samples": [
+        {
+          "label": "still-playing",
+          "scene": "playing",
+          "status": "playing",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": null
+        },
+        {
+          "label": "last-player-finished",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 0,
+            "b": 1
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1500
+          }
+        }
+      ]
+    },
+    {
+      "id": "early-ipc",
+      "description": "Ranking 提前，旧的有效队分冻结 1.2 秒后反转胜方",
+      "pass": false,
+      "samples": [
+        {
+          "label": "before-late-score",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 1,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1000
+          }
+        },
+        {
+          "label": "late-score",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": "unverified",
+          "finalScore": null
+        }
+      ]
+    },
+    {
+      "id": "missing-total",
+      "description": "Ranking 先到，但最终队分缺失，之后才补齐",
+      "pass": true,
+      "samples": [
+        {
+          "label": "missing",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": null,
+            "b": null
+          }
+        },
+        {
+          "label": "complete",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 0,
+            "b": 1
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1500
+          }
+        }
+      ]
+    },
+    {
+      "id": "tied-total",
+      "description": "Ranking 先到，暂时平分，随后补齐",
+      "pass": true,
+      "samples": [
+        {
+          "label": "tie",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1000,
+            "b": 1000
+          }
+        },
+        {
+          "label": "complete",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 0,
+            "b": 1
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1000,
+            "b": 1500
+          }
+        }
+      ]
+    },
+    {
+      "id": "changing-total",
+      "description": "Ranking 期间持续更新队分，每次间隔短于防抖",
+      "pass": true,
+      "samples": [
+        {
+          "label": "updating",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1000,
+            "b": 1400
+          }
+        },
+        {
+          "label": "stable",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 0,
+            "b": 1
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1000,
+            "b": 1500
+          }
+        }
+      ]
+    },
+    {
+      "id": "true-zero",
+      "description": "真实零分与缺失值区分",
+      "pass": true,
+      "samples": [
+        {
+          "label": "zero",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 0,
+            "b": 1
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 0,
+            "b": 500
+          }
+        }
+      ]
+    },
+    {
+      "id": "first-ranking",
+      "description": "首次收到的就是 Ranking，未观察到本次 Playing",
+      "pass": true,
+      "samples": [
+        {
+          "label": "unobserved-run",
+          "scene": "mappool",
+          "status": "prepared",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": null
+        }
+      ]
+    },
+    {
+      "id": "ipc-blip",
+      "description": "Ranking 短暂出现后返回 Playing",
+      "pass": true,
+      "samples": [
+        {
+          "label": "returned-playing",
+          "scene": "playing",
+          "status": "playing",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": null
+        },
+        {
+          "label": "real-ranking",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 0,
+            "b": 1
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1500
+          }
+        }
+      ]
+    },
+    {
+      "id": "client-still-incomplete",
+      "description": "一路命中数未完成，管理器已 Ranking",
+      "pass": true,
+      "samples": [
+        {
+          "label": "one-client-incomplete",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1000
+          }
+        }
+      ]
+    },
+    {
+      "id": "manager-client-race",
+      "description": "管理器队分与各选手求和不一致",
+      "pass": true,
+      "samples": [
+        {
+          "label": "inconsistent-snapshot",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1000
+          }
+        }
+      ]
+    },
+    {
+      "id": "coherent-stale",
+      "description": "全体字段一致但实际是旧快照，IPC 单独先变 Ranking",
+      "pass": false,
+      "samples": [
+        {
+          "label": "coherent-but-not-final",
+          "scene": "map-result",
+          "status": "recorded",
+          "series": {
+            "a": 1,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": {
+            "a": 1200,
+            "b": 1000
+          }
+        }
+      ]
+    },
+    {
+      "id": "late-same-winner",
+      "description": "先自动计胜后总分继续上涨：撤回自动加分，等待核对",
+      "pass": true,
+      "samples": [
+        {
+          "label": "late-final-totals",
+          "scene": "map-result",
+          "status": "ranking",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": "unverified",
+          "finalScore": null
+        }
+      ]
+    },
+    {
+      "id": "single-results-screen",
+      "description": "单个选中实例先到 ResultsScreen，但赛事 IPC 仍是 Playing",
+      "pass": true,
+      "samples": [
+        {
+          "label": "single-client-results",
+          "scene": "playing",
+          "status": "playing",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": null
+        }
+      ]
+    },
+    {
+      "id": "past-map-duration",
+      "description": "播放时间超过谱面末尾，但赛事仍是 Playing",
+      "pass": true,
+      "samples": [
+        {
+          "label": "past-duration",
+          "scene": "playing",
+          "status": "playing",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": null,
+          "finalScore": null
+        }
+      ]
+    },
+    {
+      "id": "missing-spectator",
+      "description": "最后一路窗口消失后仍收到 Ranking",
+      "pass": true,
+      "samples": [
+        {
+          "label": "missing-client",
+          "scene": "playing",
+          "status": "playing",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": "unverified",
+          "finalScore": null
+        }
+      ]
+    },
+    {
+      "id": "abort-before-ranking",
+      "description": "Playing → Idle → 旧 Ranking",
+      "pass": true,
+      "samples": [
+        {
+          "label": "aborted",
+          "scene": "playing",
+          "status": "playing",
+          "series": {
+            "a": 0,
+            "b": 0
+          },
+          "incident": "unverified",
+          "finalScore": null
+        }
+      ]
+    }
+  ]
+}

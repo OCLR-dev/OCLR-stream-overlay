@@ -100,6 +100,7 @@
 }
 
 .operator-pool-actions { position: sticky; top: 12px; z-index: 2; display: grid; gap: 12px; padding-bottom: 12px; background: var(--op-panel); border-bottom: 1px solid var(--op-line); }
+@media (max-width: 760px) { .operator-pool-actions { position: static; } }
 .operator-prepare[open] { display: grid; gap: 12px; }
 
 .operator-pool button { --pool-mark-color: #92929f; }

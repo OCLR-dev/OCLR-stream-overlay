@@ -59,6 +59,7 @@ export function createOverlay(shared = false) {
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {
         if (!shared) return banLabel(state.banSlots[team][index]);
+        if (s?.emptyBans?.[team][index]) return '空 Ban';
         const ids = [...new Set([...(s?.bans[team] || []), ...pool.map(e => e.id)])]
           .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
         return pool.find(e => e.id === ids[index])?.label || '未确认';

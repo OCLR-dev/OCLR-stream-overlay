@@ -1,0 +1,38 @@
+{
+  "synthetic": true,
+  "actualTosu": false,
+  "actualObs": false,
+  "desktop": {
+    "header": "等待房间资料 · 自动化保持开启",
+    "progress": "当前：模拟蓝队已选图，等待本图开打接下来：模拟红队 · 第 1 次 Pick（本图结束后）",
+    "scrollWidth": 1200,
+    "width": 1200
+  },
+  "responsive": [
+    {
+      "width": 1440,
+      "scrollWidth": 1440
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "mobileControls": "static"
+    }
+  ],
+  "playingResultWindowCount": 8,
+  "playingResultSameGeometry": true,
+  "current": "当前：模拟红队 · 第 1 次 Pick",
+  "workflow": [
+    "Roll independent choices autosave",
+    "current Ban ready without plan configuration",
+    "broadcast mark does not advance BP",
+    "manual real Ban",
+    "explicit empty Ban",
+    "Pick waits for start",
+    "reload retains prepared round",
+    "manual start",
+    "manual finish without award",
+    "next Pick ready with series still 0:0"
+  ],
+  "logs": []
+}
