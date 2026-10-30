@@ -10,7 +10,7 @@ async function until(predicate, message, timeout = 5000) {
   assert.fail(`Timed out: ${message}`);
 }
 async function boot(t) {
-  const stack = await startSimulation({ appPort: 0, wsPort: 0 });
+  const stack = await startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0 });
   t.after(() => stack.stop());
   await until(() => stack.store.live.tosu.status === 'live', 'real WebSocket connection');
   return stack;

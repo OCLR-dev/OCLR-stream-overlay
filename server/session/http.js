@@ -25,17 +25,33 @@ export async function sessionHttp(req, res, url, store) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Content-Type-Options': 'nosniff' });
     let pending = null;
     let latest;
+    let written;
+    let blocked = false;
     const write = snapshot => {
-      if (!res.write(`event: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`)) res.destroy();
+      if (res.destroyed || res.writableEnded) return;
+      written = snapshot;
+      // A complete historical catalogue can exceed the stream high-water mark.
+      // false means wait for drain, not that the subscriber disconnected.
+      blocked = !res.write(`event: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
     };
+    const schedule = () => {
+      if (!blocked && !pending && latest !== written && !res.destroyed) pending = setTimeout(() => {
+        pending = null;
+        if (!blocked) write(latest);
+      }, 80);
+    };
+    const drain = () => { blocked = false; schedule(); };
+    res.on('drain', drain);
     let first = true;
     const unsubscribe = store.subscribe(snapshot => {
       latest = snapshot;
       if (first) { first = false; write(snapshot); }
-      else if (!pending) pending = setTimeout(() => { pending = null; write(latest); }, 80);
+      else schedule(); // Retain only the latest snapshot while a reader is slow.
     });
-    const heartbeat = setInterval(() => res.write('event: heartbeat\ndata: {}\n\n'), 15000);
-    res.on('close', () => { unsubscribe(); clearInterval(heartbeat); clearTimeout(pending); });
+    const heartbeat = setInterval(() => {
+      if (!blocked && !res.destroyed) blocked = !res.write('event: heartbeat\ndata: {}\n\n');
+    }, 15000);
+    res.on('close', () => { unsubscribe(); clearInterval(heartbeat); clearTimeout(pending); res.off('drain', drain); });
     return true;
   }
   if (req.method !== 'POST' || url.pathname !== '/api/session/command') {

@@ -8,7 +8,7 @@ import { startSimulation } from '../tosu-simulator/stack.js';
 const args = process.argv.slice(2);
 if (args.length && (args.length !== 2 || args[0] !== '--out')) throw new Error('Usage: npm run sim:timing -- [--out report.json]');
 const output = resolve(args[1] || `.local/diagnostics/result-timing-${Date.now()}.json`);
-const stack = await startSimulation({ appPort: 0, wsPort: 0 });
+const stack = await startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0 });
 const results = [];
 let transform = value => value;
 const originalWire = stack.simulator.wire.bind(stack.simulator);

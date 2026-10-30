@@ -37,9 +37,9 @@ export function initialRoom() {
 // Shape follows the tosu v2 fields consumed by src/tosu.js, including original
 // tourney.team / totalScore / clients[].user + play (not normalized app state).
 // Unused tosu settings/performance/files fields are intentionally omitted.
-export function makeV2Frame(room) {
+export function makeV2Frame(room, maps = [WARMUP, ...SIM_POOL]) {
   const params = MAP_PARAM_PRESETS[room.mapParams || 'normal'];
-  const entry = [WARMUP, ...SIM_POOL].find(e => e.beatmapId === room.mapId) || {
+  const entry = maps.find(e => e.beatmapId === room.mapId) || {
     title: '模拟池外谱面', artist: '模拟艺术家', difficulty: '模拟难度', mod: 'NM',
   };
   const clients = Array.from({ length: 8 }, (_, index) => {
@@ -65,7 +65,7 @@ export function makeV2Frame(room) {
     play: clients[0].play,
     resultsScreen: ranking ? { ...clients[0].play, scoreId: 0, name: 'SIM', rank: 'A', maxCombo: 800, createdAt: '2026-10-28T00:00:00Z' } : null,
     tourney: { ipcState: room.ipcState, bestOF: 11, scoreVisible: true, starsVisible: true,
-      team: { left: room.wrongRoom ? '错误房间（模拟）' : SIM_TEAMS.left, right: SIM_TEAMS.right },
+      team: { left: room.wrongRoom ? '错误房间（模拟）' : room.leftName || SIM_TEAMS.left, right: room.rightName || SIM_TEAMS.right },
       // Deliberately unrelated: the overlay must award from final totals, not mirror points.
       points: { left: 0, right: 0 }, totalScore: { left: room.left, right: room.right }, chat: room.chat,
       clients: room.clientsHidden ? [] : room.missingClient ? clients.slice(1) : clients },

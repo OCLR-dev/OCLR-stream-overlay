@@ -6,6 +6,7 @@ const options = { appPort: 3005, wsPort: 24051 };
 let roomFile;
 for (let index = 2; index < process.argv.length; index += 2) {
   const flag = process.argv[index];
+  if (flag === '--offline-oclr') { options.offlineOclr = true; index--; continue; }
   const raw = process.argv[index + 1];
   if (['--session-file', '--room-file'].includes(flag) && raw) {
     if (flag === '--session-file') options.sessionFile = resolve(raw);
@@ -15,7 +16,7 @@ for (let index = 2; index < process.argv.length; index += 2) {
   const option = { '--app-port': 'appPort', '--ws-port': 'wsPort' }[flag];
   const value = Number(raw);
   if (!option || !Number.isInteger(value) || value < 1 || value > 65535) {
-    console.error('Usage: npm run sim -- [--app-port 3005] [--ws-port 24051] [--session-file path] [--room-file path]'); process.exit(1);
+    console.error('Usage: npm run sim -- [--app-port 3005] [--ws-port 24051] [--session-file path] [--room-file path] [--offline-oclr]'); process.exit(1);
   }
   options[option] = value;
 }
@@ -25,7 +26,7 @@ try {
     options.initialRoom = saved.room || saved;
   }
   const stack = await startSimulation(options);
-  console.log(`SIMULATION ONLY\n模拟器面板: ${stack.simulatorUrl}/\n直播员控制台: ${stack.appUrl}/control\n只读输出: ${stack.appUrl}/overlay\n模拟 tosu: ${stack.simulator.wsUrl}\n本机会话: ${stack.directory}`);
+  console.log(`TOSU SIMULATION ONLY · ${options.offlineOclr ? 'OCLR 离线测试样本' : 'OCLR 真实只读 API'}\n模拟器面板: ${stack.simulatorUrl}/\n直播员控制台: ${stack.appUrl}/control\n只读输出: ${stack.appUrl}/overlay\n模拟 tosu: ${stack.simulator.wsUrl}\n本机会话: ${stack.directory}`);
   let stopping = false;
   const stop = async () => { if (stopping) return; stopping = true; await stack.stop(); };
   process.once('SIGINT', stop); process.once('SIGTERM', stop);

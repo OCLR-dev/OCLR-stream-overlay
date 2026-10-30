@@ -99,7 +99,7 @@ watch(s, value => {
     plan.rows = []; plan.verifiedBy = ''; poolEntryId.value = ''; prepareForm.entryId = ''; prepareForm.pickedBy = '';
     Object.assign(mapForm, { entryId: '', pickedBy: '' });
     settingContexts.clear();
-    Object.assign(selection, { edition: value.match.edition || 's11', fixtureId: '', poolId: '', leftTeamId: '', rightTeamId: '' });
+    Object.assign(selection, { edition: catalog.value?.edition || value.match.edition || 's11', fixtureId: '', poolId: '', leftTeamId: '', rightTeamId: '' });
     resultRound.value = ''; reason.value = ''; incidentReason.value = ''; adjustments.value = false;
     if (!value.pool.length) settings.value = true;
   }
@@ -339,7 +339,7 @@ const nextStep = computed(() => {
   if (s.value?.incident) return '本图自动加分已暂停。请核对实际赛果，或使用现场处理继续等待 / 重赛。';
   return '正常成绩自动计胜；需要时在这里人工记胜、撤回或直接校正系列比分。';
 });
-const gameStatus = computed(() => ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据格式错误', error: '游戏数据连接出错', disconnected: '游戏数据连接中断', connecting: '正在连接游戏数据', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));
+const gameStatus = computed(() => live.value?.sources?.tosu === 'simulated' && live.value?.tosu.status === 'live' ? 'tosu 模拟数据已连接' : ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据格式错误', error: '游戏数据连接出错', disconnected: '游戏数据连接中断', connecting: '正在连接游戏数据', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));
 const latestResult = computed(() => [...(s.value?.rounds || [])].reverse().find(r => r.status === 'recorded'));
 const seriesPayload = (team: Team, value: number) => ({ ...s.value!.series, [team]: value, reason: note('直播员核对后直接校正系列比分') });
 const display = (scene: string) => run('display', { scene });

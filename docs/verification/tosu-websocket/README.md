@@ -1,12 +1,12 @@
 # tosu WebSocket 模拟器与界面验证
 
-日期：2026-10-28（America/New_York）。本轮使用**真实本机 WebSocket 连接传输模拟数据**，不是直接调用 SessionStore.frame() 注入已归一化对象。仍不等于真实 osu! / tosu / OBS 联调。
+日期：2026-10-28（America/New_York）。本页记录合成赛事回归，现已限定为显式 `--offline-oclr`；普通使用仅模拟 tosu、赛事读取真实 API，见 [最新来源分离验收](../tosu-real-oclr/README.md)。本轮使用**真实本机 WebSocket 连接传输模拟数据**，不是直接调用 SessionStore.frame() 注入已归一化对象。仍不等于真实 osu! / tosu / OBS 联调。
 
 ## 启动与使用
 
 ```sh
 npm run build
-npm run sim
+npm run sim -- --offline-oclr
 ```
 
 - 模拟器面板：<http://127.0.0.1:24051/>

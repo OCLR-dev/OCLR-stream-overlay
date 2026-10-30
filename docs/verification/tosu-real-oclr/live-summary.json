@@ -1,0 +1,25 @@
+{
+  "oclr": {
+    "status": "ready",
+    "updatedAt": "2026-10-30T02:27:43.188Z",
+    "error": null
+  },
+  "sources": {
+    "tosu": "simulated",
+    "oclr": "remote-read-only"
+  },
+  "edition": "s10",
+  "kind": "historical_archive",
+  "teams": 10,
+  "pools": 5,
+  "fixtures": 36,
+  "poolEntries": 97,
+  "snapshotBytes": 88639,
+  "sessionId": "7eab0399-e37b-4dd5-8482-e616434d2757",
+  "version": 165,
+  "series": {
+    "a": 0,
+    "b": 0
+  },
+  "matchUnchanged": true
+}

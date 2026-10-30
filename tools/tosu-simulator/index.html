@@ -1,17 +1,17 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>tosu v2 模拟器 · OCLR</title><link rel="stylesheet" href="/simulator.css"></head>
 <body><main>
-  <header><div><small>OCLR / DEVELOPMENT TOOL</small><h1>tosu v2 模拟器</h1></div><strong class="badge">仅模拟 · 非实机</strong></header>
-  <p class="notice">实际通过 WebSocket 驱动现有界面。这里只模拟数据，不提供游戏视频；比赛与存储使用独立临时会话。</p>
+  <header><div><small>OCLR / DEVELOPMENT TOOL</small><h1>tosu v2 模拟器</h1></div><strong id="sourceMode" class="badge">仅 tosu 模拟</strong></header>
+  <p id="sourceNotice" class="notice">模拟 tosu 信号；赛事资料独立读取，正在连接。</p>
   <nav><a id="controlLink" target="_blank" rel="noopener">直播员控制台 ↗</a><a id="outputLink" target="_blank" rel="noopener">只读输出 ↗</a><a href="/json/v2" target="_blank" rel="noopener">tosu 原始 JSON ↗</a></nav>
   <p id="error" role="alert" hidden></p>
   <section class="status" aria-live="polite"><div><span>连接</span><strong id="connections">等待连接</strong></div><div><span>赛事 IPC</span><strong id="ipc">—</strong></div><div><span>房间当前图</span><strong id="currentMap">—</strong></div><div><span>当前队分</span><strong id="scores">—</strong></div></section>
   <section class="panel"><div class="section-title"><h2>完整一局演练</h2><span id="scenario">手动模式</span></div>
-    <p>明确的测试序列：红 Ban HD1 → 蓝 Ban HR1 → 红 Pick NM1 → 改成 NM2 → Playing → Ranking 自动加赢图。此序列仅用于测试。</p>
-    <div class="buttons"><button id="demo" class="primary">重置并自动演练一局</button><button id="reset">重置隔离模拟会话</button></div>
+    <p id="demoNotice">先选择本场谱面，再演练游戏信号；不预设真实 BP 顺序。</p>
+    <div class="buttons"><button id="demo" class="primary">演练当前图 Playing → Ranking</button><button id="reset">重置 tosu 信号（保留比赛）</button></div>
   </section>
   <div class="columns"><section class="panel"><h2>手动发送房间状态</h2>
-    <form id="frameForm"><label>待推送谱面<select id="mapSelect" name="mapId"></select></label><label>待推送赛事 IPC<select name="ipcState"><option value="0">0 · Initialising</option><option value="1" selected>1 · Idle</option><option value="2">2 · WaitingForClients</option><option value="3">3 · Playing</option><option value="4">4 · Ranking</option></select></label>
+    <form id="frameForm"><label>待推送谱面<select id="mapSelect" name="mapId"></select></label><label>指定谱面 ID（可选，覆盖上方选择）<input name="mapOverride" type="number" min="1" step="1" placeholder="使用上方本场图池时留空"></label><div class="two"><label>模拟房间左队名称<input id="leftName" name="leftName" maxlength="80" required></label><label>模拟房间右队名称<input id="rightName" name="rightName" maxlength="80" required></label></div><label>待推送赛事 IPC<select name="ipcState"><option value="0">0 · Initialising</option><option value="1" selected>1 · Idle</option><option value="2">2 · WaitingForClients</option><option value="3">3 · Playing</option><option value="4">4 · Ranking</option></select></label>
       <div class="two"><label>红队总分<input name="left" type="number" min="0" step="1" value="1234567" required></label><label>蓝队总分<input name="right" type="number" min="0" step="1" value="1100000" required></label></div>
       <label class="check"><input name="growing" type="checkbox" checked>Playing 时持续增加模拟分数</label><button class="primary">推送所选状态</button>
     </form>

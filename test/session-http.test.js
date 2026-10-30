@@ -76,3 +76,32 @@ test('tosu awards and operator series correction are published to all output sub
   await store.frame(frame(4), 3000); await store.frame(frame(4), 3500);
   assert.deepEqual(store.snapshot().session.series, { a: 0, b: 1 });
 });
+
+test('large historical catalogues remain connected over SSE and later commands arrive', { timeout: 10000 }, async t => {
+  const { base, store } = await start(t);
+  store.catalog = { kind: 'historical_archive', teams: [], pools: [], fixtures: [], fixturePayload: 'archive-fixture '.repeat(40000) };
+  const output = await stream(base); t.after(() => output.close());
+  const initial = await output.next();
+  assert.equal(initial.catalog.fixturePayload.length, store.catalog.fixturePayload.length);
+  assert.equal((await post(base, cmd(store.state, 'begin-roll'))).status, 200);
+  assert.equal((await output.next()).session.scene, 'roll');
+  assert.equal((await post(base, cmd(store.state, 'bp'))).status, 200);
+  assert.equal((await output.next()).session.scene, 'mappool');
+});
+
+test('SSE backpressure coalesces snapshots until drain instead of disconnecting or queueing every update', async t => {
+  const { EventEmitter } = await import('node:events');
+  const { setTimeout: delay } = await import('node:timers/promises');
+  const { sessionHttp } = await import('../server/session/http.js');
+  const store = new SessionStore(); const response = new EventEmitter(); const writes = [];
+  response.writeHead = () => {};
+  response.write = chunk => { writes.push(chunk); return false; };
+  response.destroy = () => { assert.fail('backpressure is not a disconnect'); };
+  t.after(() => response.emit('close'));
+  await sessionHttp({ method: 'GET' }, response, new URL('http://localhost/api/session/events'), store);
+  for (let i = 0; i < 8; i++) await store.command(cmd(store.state, 'setting', { field: 'title', value: `Current ${i}` }));
+  await delay(100); assert.equal(writes.length, 1);
+  response.emit('drain'); await delay(100); assert.equal(writes.length, 2);
+  const latest = JSON.parse(writes[1].split('\ndata: ')[1]);
+  assert.equal(latest.session.match.title, 'Current 7');
+});

@@ -36,11 +36,18 @@ npm run build
 npm run sim
 ```
 
-打开 [模拟器面板](http://127.0.0.1:24051/)、[模拟控制台](http://127.0.0.1:3005/control) 和 [模拟只读输出](http://127.0.0.1:3005/overlay)。点击“重置并自动演练一局”，或逐步换图、进入 Playing/Ranking、修改队分与注入断线。现有 TosuClient 实际连接 `ws://127.0.0.1:24051/websocket/v2`，沿用原归一化、共享状态与界面链路。
+打开 [模拟器面板](http://127.0.0.1:24051/)、[模拟控制台](http://127.0.0.1:3005/control) 和 [模拟只读输出](http://127.0.0.1:3005/overlay)。在控制台读取真实 OCLR 历史场次与图池，再在模拟器中选择本场谱面、推送 Playing/Ranking、模拟队分或注入故障。现有 TosuClient 实际连接 `ws://127.0.0.1:24051/websocket/v2`，沿用原归一化、共享状态与界面链路。
 
 维护者重启模拟服务时，可使用 `--session-file <现有 session.json>` 与 `--room-file <已保存房间 JSON>` 恢复同一场比赛；会话加载完成后才启动订阅，不重置记录。普通直播员不需要操作这些参数。
 
-模拟服务与正式 24050 / 3001 分开；不读取本机凭证，不请求线上 API，使用明确标记的模拟资料与临时存储。Ctrl+C 关闭。可通过 `--app-port` / `--ws-port` 改端口；`npm run sim:test` 运行 8 项真实 WebSocket 测试。结构、用例与浏览器证据见 [WebSocket 模拟验证](docs/verification/tosu-websocket/README.md)。
+当前保留实例仍为 `3007/control`／`3007/overlay`，模拟 tosu 为 `24053/websocket/v2`；未来维护重启使用 `npm run sim -- --app-port 3007 --ws-port 24053`，已保存房间需要恢复时附上其 `--room-file`。在这同一实例里填写 `s10` 即可读取真实历史资料，不需要另开“真实赛事模式”。图池未绑定的历史场次需明确选择图池；历史比分不自动导入。
+
+模拟器选图列表随本场图池更新，也可手填谱面 ID。模拟房间左右队名由测试人员明确填写，控制台房间绑定须与模拟读数一致，不从历史播出队名猜房间。模拟选手、实时分数、IPC、参数和故障仍是合成信号。正常模式的自动演练只发送当前图的 Playing → Ranking，不编排 BP，不重置对阵或赛果。
+
+保留 bearer 验证时，Key 失效会明确显示鉴权失败，不退回匿名。凭证只在服务端加载，更新本机凭证文件后由维护者有序重启；Key 的 Origin 应匹配 `OCLR_API_ORIGIN`，与控制台监听端口是不同设置。
+
+
+模拟器只替代 tosu：赛事资料仍通过已有 OCLR 只读 API、`.env.local` 与服务端凭证读取；正常模式不生成模拟对阵、图池或 BP 顺序。比赛默认保存在 `.local/session.json`，与普通启动共用；重置仅重置 tosu 信号，不清空比赛。完全离线的合成赛事须显式使用 `--offline-oclr`，仅供回归／时序诊断，使用隔离临时会话且不读取凭证或请求线上 API。Ctrl+C 关闭。可通过 `--app-port` / `--ws-port` 改端口；`npm run sim:test` 运行 8 项真实 WebSocket 测试。结构、用例与浏览器证据见 [WebSocket 模拟验证](docs/verification/tosu-websocket/README.md)。
 
 `npm run sim:timing` 对抗探测 17 种结算先后顺序；原始基线发现 5 种风险；本轮增加一致性校验与迟到分数核对后，仍有 2 种完整旧快照导致提前计胜的风险，发现风险时退出码为 1。真实直播机可用 `npm run tosu:record -- --duration 180` 记录 IPC、各路分数与人工事件标记。探测结果、限制与记录步骤见 [结算时序验证](docs/verification/result-timing/README.md)。
 
@@ -119,7 +126,7 @@ npm run build
 npm test
 ```
 
-当前按画面管理的实现、81 项回归测试与截图见 [面板职责验收](docs/verification/scene-management/README.md)。此前的整体改造见 [志愿直播员控制台验收](docs/verification/volunteer-console/README.md)。原有实现记录见 [控制台验证](docs/verification/operator-console/README.md)。合成 tosu 序列只验证本地状态逻辑；本 Mac 没有 tosu，**尚未完成真实 tosu / osu!tourney / OBS 联调**。
+当前按画面管理的实现、81 项回归测试与截图见 [面板职责验收](docs/verification/scene-management/README.md)。此前的整体改造见 [志愿直播员控制台验收](docs/verification/volunteer-console/README.md)。原有实现记录见 [控制台验证](docs/verification/operator-console/README.md)。合成 tosu 序列只验证本地状态逻辑；真实 OCLR S10 历史 API 已在仅模拟 tosu 的实例验证，见 [数据来源分离验收](docs/verification/tosu-real-oclr/README.md)；本 Mac 没有 tosu，**尚未完成真实 tosu / osu!tourney / OBS 联调**。
 
 游戏视频、原生结算捕获与直播间 Chat 源叠放仍需直播机接线，当前游戏窗口明确显示待接入。Playing 与单图结算保持同位同尺寸，直播间 Chat 固定为 `(1470,928,420,138)`。EX 对称减员窗口保留，但真实 EX 选手映射、捕获源和完整 EX 裁判规则仍待核对，不自动推定减员名单或扣次数。自动回 BP 的空闲状态计时策略尚未启用，只支持下一有效谱面或人工返回。
 

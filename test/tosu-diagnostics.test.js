@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { startSimulation } from '../tools/tosu-simulator/stack.js';
 
 test('live timing recorder captures ordered raw IPC/zero/missing totals and markers without names or chat', { timeout: 6000 }, async t => {
-  const stack = await startSimulation({ appPort: 0, wsPort: 0 });
+  const stack = await startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0 });
   t.after(() => stack.stop());
   const dir = await mkdtemp(join(tmpdir(), 'oclr-timing-recorder-'));
   t.after(() => rm(dir, { recursive: true }));

@@ -1,0 +1,17 @@
+{
+  "readers": [
+    {
+      "snapshots": 50,
+      "firstVersion": 165,
+      "lastVersion": 165,
+      "unexpectedClose": false
+    },
+    {
+      "snapshots": 50,
+      "firstVersion": 165,
+      "lastVersion": 165,
+      "unexpectedClose": false
+    }
+  ],
+  "tosuSubscriptions": 1
+}

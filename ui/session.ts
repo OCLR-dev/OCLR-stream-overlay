@@ -29,6 +29,7 @@ export interface Session {
 export interface Envelope {
   session: Session; persistence: string;
   live: {
+    sources?: { tosu: 'simulated'; oclr: 'remote-read-only' | 'offline-fixture' };
     note: string;
     oclr: { status: string; updatedAt: string | null; error: string | null };
     tosu: { status: string; updatedAt: string | null; data: null | {

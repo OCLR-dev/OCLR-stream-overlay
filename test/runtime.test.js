@@ -32,7 +32,7 @@ test('simulation resumes the original file and room before subscribing, without 
     state.poolMarks = [{ entryId: 'sim-nm1', status: 'banned', team: 'b' }];
     await writeFile(file, JSON.stringify(state), { mode: 0o600 });
     const room = { ...initialRoom(), mapId: 710003, growing: false };
-    stack = await startSimulation({ appPort: 0, wsPort: 0, sessionFile: file, initialRoom: room });
+    stack = await startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0, sessionFile: file, initialRoom: room });
     await stack.store.tail;
     assert.equal(stack.store.file, file);
     assert.deepEqual(stack.store.state, state);
@@ -43,6 +43,6 @@ test('simulation resumes the original file and room before subscribing, without 
     assert.equal(reopened.state.id, state.id);
     assert.equal(reopened.state.match.teams.a.name, '保留的本机队名');
     assert.deepEqual(reopened.state.poolMarks, [{ entryId: 'sim-nm1', status: 'open', team: null }]);
-    await assert.rejects(startSimulation({ appPort: 0, wsPort: 0, sessionFile: join(directory, 'missing.json') }), { code: 'ENOENT' });
+    await assert.rejects(startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0, sessionFile: join(directory, 'missing.json') }), { code: 'ENOENT' });
   } finally { await stack?.stop(); await rm(directory, { recursive: true, force: true }); }
 });
