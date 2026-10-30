@@ -325,14 +325,12 @@
 .map-entry > .map-status { position: absolute; }
 .map-thumbnail { position: relative; display: flex; align-items: center; justify-content: center; align-self: stretch; overflow: hidden; background: color-mix(in srgb, var(--mod-color) 12%, transparent); border-right: 1px solid #ffffff14; }
 .map-thumbnail::after { position: absolute; width: 72px; height: 72px; border: 1px solid #ffffff24; content: ''; transform: rotate(45deg); }
-.map-index { position: relative; z-index: 1; color: #ffffffb3; font-family: var(--display); font-size: 30px; font-weight: 800; text-shadow: 0 1px 4px #000; }
-.map-mod { color: var(--mod-color); font-family: var(--display); font-size: 20px; font-weight: 800; line-height: 24px; }
-.map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; text-shadow: 0 1px 4px #0008; }
+.map-index { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 3px; color: var(--mod-color); font-family: var(--display); font-size: clamp(14px, calc(var(--map-thumbnail-width, 78px) * .44), 28px); font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 4px #000; }
+.map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; padding-top: 16px; text-shadow: 0 1px 4px #0008; }
 .map-title { overflow: hidden; font-size: 17px; font-weight: 700; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; color: var(--muted); font-size: 11px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { position: absolute; top: 8px; right: 8px; max-width: min(180px, calc(100% - var(--map-thumbnail-width, 78px) - 70px)); overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap; }
 .mappool-columns--dense .map-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-height: 40px; font-size: 16px; line-height: 20px; white-space: normal; overflow-wrap: anywhere; }
-.mappool-columns--stacked .map-mod { font-size: 18px; line-height: 20px; }
 .mappool-columns--stacked .map-title { max-height: 36px; font-size: 15px; line-height: 18px; }
 .mappool-columns--stacked .map-meta { display: none; }
 .mappool-columns--stacked .map-status { top: 5px; font-size: 10px; }
@@ -347,8 +345,7 @@
 .map-entry.is-banned::before { background: #0a0713b3; }
 .map-entry.is-banned .map-thumbnail { background: #211b2d; }
 .map-entry.is-banned .map-artwork { filter: brightness(.35) saturate(.4); }
-.map-entry.is-banned .map-index { color: #a39aac; }
-.map-entry.is-banned .map-mod { color: #b5afc1; }
+.map-entry.is-banned .map-index { color: color-mix(in srgb, var(--mod-color) 70%, #8f859e); }
 .map-entry.is-banned .map-title { color: #bdb6cb; }
 .map-entry.is-banned .map-meta { color: #aaa4b8; }
 .map-entry:is(.is-banned, .is-picked) .map-status { color: var(--map-team-ink); }

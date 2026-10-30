@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createSetIdResolver } from '../server/artwork.js';
 import { createOverlayServer } from '../server/app.js';
 import { SessionStore } from '../server/session/store.js';
+import { calculationFixture } from './calculation-fixture.js';
 
 const osuFile = (id = 101, setId = 42) => `osu file format v14\r\n\r\n[Metadata]\r\nTitle:Artwork test\r\nBeatmapID:${id}\r\nBeatmapSetID:${setId}\r\n\r\n[Difficulty]\r\nApproachRate:9\r\n`;
 
@@ -116,5 +117,16 @@ test('historical pools without set IDs resolve public metadata independently and
   const response = await request();
   assert.equal(response.status, 302); assert.match(response.headers.get('location'), /\/42\/covers\/cover.jpg$/);
   assert.equal(calls, 1, 'parameters and cover reuse the same verified file');
+  assert.deepEqual(store.state, before);
+});
+
+test('mod-specific test parameter routes validate pool mods and return calculated HR attributes without changing the match', async t => {
+  const { store, request } = await start(t, async () => new Response(calculationFixture()));
+  const before = structuredClone(store.state);
+  const response = await request('/api/beatmaps/101/metadata/HR');
+  assert.equal(response.status, 200); const value = await response.json();
+  assert.equal(value.calculation.mod, 'HR'); assert.ok(value.calculation.stars > 0);
+  assert.ok(Math.abs(value.calculation.cs - 5.2) < .001); assert.equal(value.calculation.ar, 10);
+  for (const path of ['/api/beatmaps/101/metadata/DT', '/api/beatmaps/101/metadata/HRDT', '/api/beatmaps/101/cover/HR']) assert.equal((await request(path)).status, 404);
   assert.deepEqual(store.state, before);
 });

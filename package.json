@@ -19,6 +19,7 @@
     "test": "node --experimental-strip-types --test test/*.test.js test/*.test.ts"
   },
   "dependencies": {
+    "rosu-pp-js": "4.0.1",
     "vue": "3.5.44"
   },
   "devDependencies": {

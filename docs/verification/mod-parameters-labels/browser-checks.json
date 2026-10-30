@@ -1,0 +1,182 @@
+{
+  "hr": {
+    "cardWidth": 1000,
+    "label": "测试 · HR 参数",
+    "parameterScroll": 740,
+    "parameterWidth": 740,
+    "parameters": [
+      "★ 6.85",
+      "CS 5.2",
+      "HP 7",
+      "AR 10",
+      "OD 10",
+      "BPM 190",
+      "时长 —"
+    ]
+  },
+  "dt": {
+    "label": "测试 · DT 参数",
+    "parameters": [
+      "★ 6.82",
+      "CS 4",
+      "HP 6",
+      "AR 9.67",
+      "OD 9.78",
+      "BPM 249",
+      "时长 —"
+    ],
+    "slot": "DT1"
+  },
+  "slots": {
+    "duplicateLabels": 0,
+    "labels": [
+      {
+        "clipped": false,
+        "text": "NM1"
+      },
+      {
+        "clipped": false,
+        "text": "NM2"
+      },
+      {
+        "clipped": false,
+        "text": "NM3"
+      },
+      {
+        "clipped": false,
+        "text": "NM4"
+      },
+      {
+        "clipped": false,
+        "text": "NM5"
+      },
+      {
+        "clipped": false,
+        "text": "NM6"
+      },
+      {
+        "clipped": false,
+        "text": "NM7"
+      },
+      {
+        "clipped": false,
+        "text": "HD1"
+      },
+      {
+        "clipped": false,
+        "text": "HD2"
+      },
+      {
+        "clipped": false,
+        "text": "HD3"
+      },
+      {
+        "clipped": false,
+        "text": "HR1"
+      },
+      {
+        "clipped": false,
+        "text": "HR2"
+      },
+      {
+        "clipped": false,
+        "text": "HR3"
+      },
+      {
+        "clipped": false,
+        "text": "DT1"
+      },
+      {
+        "clipped": false,
+        "text": "DT2"
+      },
+      {
+        "clipped": false,
+        "text": "DT3"
+      },
+      {
+        "clipped": false,
+        "text": "DT4"
+      },
+      {
+        "clipped": false,
+        "text": "FM1"
+      },
+      {
+        "clipped": false,
+        "text": "FM2"
+      },
+      {
+        "clipped": false,
+        "text": "TB1"
+      }
+    ],
+    "loadedImages": 20
+  },
+  "geometry": [
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "none",
+      "maxDifference": 0,
+      "playingCount": 6,
+      "resultCount": 6
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "exTeam": "a",
+      "maxDifference": 0,
+      "playingCount": 4,
+      "resultCount": 4
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "none",
+      "maxDifference": 0,
+      "playingCount": 6,
+      "resultCount": 6
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "exTeam": "a",
+      "maxDifference": 0,
+      "playingCount": 4,
+      "resultCount": 4
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "none",
+      "maxDifference": 0,
+      "playingCount": 8,
+      "resultCount": 8
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "exTeam": "a",
+      "maxDifference": 0,
+      "playingCount": 6,
+      "resultCount": 6
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "none",
+      "maxDifference": 0,
+      "playingCount": 8,
+      "resultCount": 8
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "exTeam": "a",
+      "maxDifference": 0,
+      "playingCount": 6,
+      "resultCount": 6
+    }
+  ]
+}

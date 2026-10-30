@@ -1,4 +1,5 @@
 import { boundedBody, createBeatmapMetadataResolver } from './beatmap-metadata.js';
+import { testModForCategory } from './beatmap-calculation.js';
 
 const positiveId = value => Number.isSafeInteger(value) && value > 0;
 const HOUR = 60 * 60 * 1000;
@@ -41,15 +42,16 @@ export function createArtworkHandler(config, fetchImpl, store) {
   } catch { /* A service without tosu can still use official covers. */ }
   return async (req, res, url) => {
     if (!url.pathname.startsWith('/api/beatmaps/')) return false;
-    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|background|metadata)$/);
+    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|background|metadata)(?:\/(NM|HD|HR|DT))?$/);
     const id = Number(match?.[1]);
     const current = snapshot();
     const entry = current?.session.pool.find(item => item.beatmapId === id);
     const fail = status => { res.writeHead(status, { 'Cache-Control': 'no-store' }); res.end(); return true; };
     if (req.method !== 'GET') return fail(405);
     if (!match || url.search || !positiveId(id) || !entry) return fail(404);
+    if (match[3] && (match[2] !== 'metadata' || !current.session.pool.some(item => item.beatmapId === id && testModForCategory(item.mod) === match[3]))) return fail(404);
     if (match[2] === 'metadata') {
-      const metadata = await resolveMetadata(id);
+      const metadata = await resolveMetadata(id, match[3] || null);
       if (!metadata || !snapshot().session.pool.some(item => item.beatmapId === id)) return fail(404);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
       res.end(JSON.stringify(metadata)); return true;

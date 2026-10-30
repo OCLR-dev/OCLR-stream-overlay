@@ -39,6 +39,7 @@ def main():
     app.mkdir(parents=True)
     for folder in ['dist', 'server', 'src']:
         shutil.copytree(ROOT / folder, app / folder)
+    shutil.copytree(ROOT / 'node_modules/rosu-pp-js', app / 'node_modules/rosu-pp-js')
     (app / 'package.json').write_text('{"type":"module","private":true}\n', encoding='utf-8')
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
@@ -66,6 +67,7 @@ def main():
     for path in (ROOT / 'tools/packaging/licenses').glob('*'):
         shutil.copyfile(path, license_dir / path.name)
     shutil.copyfile(ROOT / 'node_modules/vue/LICENSE', license_dir / 'Vue-LICENSE')
+    shutil.copyfile(ROOT / 'node_modules/rosu-pp-js/LICENSE', license_dir / 'rosu-pp-js-LICENSE')
     # The Go runtime is statically linked; include its redistribution license.
     goroot = subprocess.check_output([args.go, 'env', 'GOROOT'], text=True).strip()
     shutil.copyfile(Path(goroot) / 'LICENSE', license_dir / 'Go-LICENSE')

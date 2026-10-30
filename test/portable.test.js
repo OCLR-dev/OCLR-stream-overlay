@@ -6,9 +6,10 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { preparePortableData } from '../server/portable-data.js';
 import { simulationSession } from '../tools/tosu-simulator/fixture.js';
+import { calculationFixture } from './calculation-fixture.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const base = 'http://127.0.0.1:3001';
@@ -16,6 +17,7 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function packageAt(dir, build) {
   await mkdir(dir, { recursive: true });
   for (const name of ['server', 'src', 'dist']) await cp(join(root, name), join(dir, name), { recursive: true });
+  await cp(join(root, 'node_modules/rosu-pp-js'), join(dir, 'node_modules/rosu-pp-js'), { recursive: true });
   await writeFile(join(dir, 'package.json'), '{"type":"module"}');
   await writeFile(join(dir, 'portable-build.json'), JSON.stringify({ build }));
 }
@@ -46,6 +48,9 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
   let running;
   try {
     await packageAt(app, build);
+    const calculator = await import(pathToFileURL(join(app, 'server/beatmap-calculation.js')));
+    const calculated = await calculator.calculateBeatmap(calculationFixture(), 'HR');
+    assert.ok(calculated.stars > 0); assert.ok(Math.abs(calculated.cs - 5.2) < .001);
     running = launch(app, data);
     const health = await ready(build);
     assert.equal(health.session, true);

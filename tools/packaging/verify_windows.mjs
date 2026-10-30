@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { pathToFileURL } from 'node:url';
 
 if (process.platform !== 'win32') throw new Error('Windows execution required');
 const packageRoot = resolve(process.argv[2]);
@@ -41,6 +42,13 @@ let running;
 try {
   await cp(packageRoot, first, { recursive: true });
   await cp(packageRoot, second, { recursive: true });
+  await check('bundled WASM HR calculation works offline from a Unicode path', async () => {
+    const { calculateBeatmap } = await import(pathToFileURL(join(first, 'app/server/beatmap-calculation.js')));
+    const body = 'osu file format v14\n[General]\nMode:0\n[Difficulty]\nHPDrainRate:5\nCircleSize:4\nOverallDifficulty:9\nApproachRate:9\nSliderMultiplier:1.4\nSliderTickRate:1\n[TimingPoints]\n0,500,4,0,0,100,1,0\n[HitObjects]\n' +
+      Array.from({ length: 16 }, (_, i) => `${64 + i % 4 * 112},${64 + i % 3 * 112},${1000 + i * 125},1,0,0:0:0:0:`).join('\n');
+    const value = await calculateBeatmap(body, 'HR');
+    assert.ok(value.stars > 0); assert.ok(Math.abs(value.cs - 5.2) < .001); assert.equal(value.ar, 10);
+  });
   await check('native x64 first start from Chinese/spaced path; ready before control/overlay', async () => {
     running = launch(first);
     const h = await ready();

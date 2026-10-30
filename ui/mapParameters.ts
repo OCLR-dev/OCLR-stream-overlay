@@ -1,7 +1,10 @@
-export interface OriginalMapMetadata {
+export const testModForCategory = (mod: string | null) => ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
+export interface TestMapMetadata {
   beatmapId: number;
   source: 'osu-file';
   stats: { cs: number | null; hp: number | null; ar: number | null; od: number | null; bpm: { min: number | null; max: number | null } };
+  calculation?: { mod: string; stars: number; cs: number; hp: number; ar: number; od: number; clockRate: number;
+    bpm: { min: number | null; max: number | null } };
 }
 interface LiveMapParameters {
   id: number | null;
@@ -16,21 +19,21 @@ const duration = (value: number | null | undefined) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 };
 
-export function mapParameterDisplay(id: number | null, mode: 'tosu' | 'official-test', live: LiveMapParameters | null, original: OriginalMapMetadata | null) {
+export function mapParameterDisplay(id: number | null, mode: 'tosu' | 'official-test', live: LiveMapParameters | null, metadata: TestMapMetadata | null, category: string | null) {
   const selected = Number.isSafeInteger(id) && id! > 0;
   const map = selected && mode === 'tosu' && live?.id === id ? live : null;
-  const base = selected && mode === 'official-test' && original?.beatmapId === id && original.source === 'osu-file' ? original : null;
-  const range = base?.stats.bpm;
+  const calculated = selected && mode === 'official-test' && metadata?.beatmapId === id && metadata.source === 'osu-file' && metadata.calculation?.mod === testModForCategory(category) ? metadata.calculation : null;
+  const range = calculated?.bpm;
   const min = numeric(range?.min); const max = numeric(range?.max);
-  // Test files provide original settings, never converted values, stars or a
-  // guessed duration. Formal output uses only the matched tosu frame.
-  return { source: map ? 'tosu' : base ? 'official-test' : 'none', rows: [
-    { label: '★', value: numeric(map?.stats?.stars?.total) },
-    { label: 'CS', value: numeric(base ? base.stats.cs : map?.stats?.cs?.converted) },
-    { label: 'HP', value: numeric(base ? base.stats.hp : map?.stats?.hp?.converted) },
-    { label: 'AR', value: numeric(base ? base.stats.ar : map?.stats?.ar?.converted) },
-    { label: 'OD', value: numeric(base ? base.stats.od : map?.stats?.od?.converted) },
-    { label: 'BPM', value: base ? min === max ? min : min !== '—' && max !== '—' ? `${min}–${max}` : '—' : numeric(map?.stats?.bpm?.common) },
+  // Formal output uses only the matched tosu frame. Simulation uses a complete
+  // calculation for this map and mod, never NM values relabelled as HR/DT.
+  return { source: map ? 'tosu' : calculated ? 'official-test' : 'none', mod: calculated?.mod, rows: [
+    { label: '★', value: numeric(calculated ? calculated.stars : map?.stats?.stars?.total) },
+    { label: 'CS', value: numeric(calculated ? calculated.cs : map?.stats?.cs?.converted) },
+    { label: 'HP', value: numeric(calculated ? calculated.hp : map?.stats?.hp?.converted) },
+    { label: 'AR', value: numeric(calculated ? calculated.ar : map?.stats?.ar?.converted) },
+    { label: 'OD', value: numeric(calculated ? calculated.od : map?.stats?.od?.converted) },
+    { label: 'BPM', value: calculated ? min === max ? min : min !== '—' && max !== '—' ? `${min}–${max}` : '—' : numeric(map?.stats?.bpm?.common) },
     { label: '时长', value: duration(map?.time?.lastObject) },
   ] };
 }

@@ -18,12 +18,12 @@ const rows = computed(() => Math.max(1, groups.value.reduce((sum, group) => sum 
     <article v-for="group in groups" :key="group.mod" class="mappool-column" :data-mod="group.mod" :aria-label="`${group.mod} 谱面列表`" :style="{ gridRow: `span ${group.rows}`, '--group-rows': group.rows }">
       <header class="map-group-head"><strong>{{ group.mod }}</strong></header>
       <ol class="map-list">
-        <li v-for="(entry, index) in group.entries" :key="entry.id" class="map-entry"
+        <li v-for="entry in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used' }"
           :data-map-index="entry.id" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod">
           <MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" />
-          <span class="map-thumbnail" aria-hidden="true"><span class="map-index">{{ String(index + 1).padStart(2, '0') }}</span></span>
-          <span class="map-copy"><span class="map-mod">{{ entry.label }}</span><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="entry.artist || entry.difficulty" class="map-meta">{{ entry.artist || '—' }} / {{ entry.difficulty || '—' }}</span></span>
+          <span class="map-thumbnail"><span class="map-index" :title="entry.label">{{ entry.label }}</span></span>
+          <span class="map-copy"><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="entry.artist || entry.difficulty" class="map-meta">{{ entry.artist || '—' }} / {{ entry.difficulty || '—' }}</span></span>
           <span v-show="entry.status !== 'open'" v-emphasize="{ value: [entry.status, entry.statusLabel], scope: motionScope, enabled: state.scene === 'mappool' }" class="map-status" :class="`state-${entry.status}`"><span aria-hidden="true">{{ entry.icon }}</span> {{ entry.statusLabel }}</span>
         </li>
       </ol>
