@@ -1,5 +1,7 @@
 # OCLR S11 直播设计
 
+> 2026-10-30 当前交互以[自由操作与中途加入](docs/main-operator-contract.md)为准。保留现有视觉；完整BP不再是直播显示的必经路径。中途初始化可以保留已核实房间连接，未知历史保持未知。
+
 当前视觉为 **Neon Broadcast**，按用户于 2026-10-28 提供的 `osu! 組隊賽直播界面.html` 直接重构。它取代此前仅浅色的 Violet Orbit；`design/layout-v1/` 和旧验收截图保留为历史参考。当前前端是 `ui/` 下的 Vue 3 + Vite + TypeScript。
 
 后续以直播员实际操作和真实播出为目标，控制台通过共享状态驱动同一个浏览器输出页换画面，OBS 保持浏览器源，不增加 OBS 场景切换或确认流程。比赛按“双方到场 → Roll 确认先手 → BP → Playing 循环 → Winner”组织，功能设计见 [直播员控制台方案](docs/design/operator-console-plan.md)。控制台、持久化共享会话、BP 自动跟随与自动开打/结算已实现；本 Mac 没有 tosu，运行逻辑以模拟序列验证，实际直播机联调仍待完成。
