@@ -166,6 +166,20 @@
 .win-pip { width: 11px; height: 11px; border: 1.5px solid #ffffffa6; transform: rotate(45deg); }
 .win-pip.is-filled { background: #fff; border-color: #fff; box-shadow: 0 0 10px #ffffff8c; }
 .team-block--b .series-row, .team-block--b .win-stars { flex-direction: row-reverse; }
+.header-score-line { display: contents; }
+/* Flag placement trial shared by the console preview and standalone output. */
+.broadcast-header--flag-preview .team-block--a { padding-left: 172px; }
+.broadcast-header--flag-preview .team-block--b { padding-right: 172px; }
+.team-flag-preview { position: absolute; top: 40px; width: 120px; margin: 0; }
+.team-block--a .team-flag-preview { left: 28px; }
+.team-block--b .team-flag-preview { right: 28px; }
+.team-flag-preview svg { display: block; width: 120px; height: 72px; border: 1px solid #ffffff70; object-fit: contain; }
+.team-flag-preview figcaption { margin-top: 3px; color: var(--ink-soft); text-align: center; font-size: 9px; letter-spacing: .12em; }
+.broadcast-header--flag-preview .header-score-line { display: flex; align-items: center; gap: 12px; max-width: 100%; }
+.broadcast-header--flag-preview .team-block--a .header-score-line { flex-direction: row-reverse; }
+.broadcast-header--flag-preview .header-score-label { position: static; max-width: 92px; font-size: 10px; }
+.broadcast-header--flag-preview .team-block--a .header-score-label { text-align: right; }
+.broadcast-header--flag-preview .team-block--b .header-score-label { text-align: left; }
 .event-block { position: absolute; top: 0; left: 880px; width: 160px; text-align: center; }
 .event-shield {
   display: flex;
@@ -315,7 +329,7 @@
 .mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
 .map-group-head { display: grid; place-items: center; background: var(--mod-color); color: #150a2c; }
 .map-group-head strong { font-family: var(--display); font-size: 34px; font-weight: 800; }
-.map-list { display: grid; grid-template-columns: repeat(var(--pool-columns, 5), minmax(0, 1fr)); grid-template-rows: repeat(var(--group-rows, 1), minmax(0, 1fr)); grid-auto-flow: row; gap: 8px 14px; min-width: 0; min-height: 0; margin: 0; padding: 0; list-style: none; }
+.map-list { display: grid; grid-template-columns: repeat(var(--pool-columns, 4), minmax(0, 1fr)); grid-template-rows: repeat(var(--group-rows, 1), minmax(0, 1fr)); grid-auto-flow: row; gap: 8px 14px; min-width: 0; min-height: 0; margin: 0; padding: 0; list-style: none; }
 .map-entry { position: relative; display: grid; grid-template-columns: var(--map-thumbnail-width, 78px) minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #7c3aed66; background: #241349e6; padding-right: 8px; }
 .map-entry > .map-artwork { z-index: 0; opacity: .85; }
 .map-entry > .map-artwork[data-loaded='false'] { opacity: 0; }
@@ -326,14 +340,14 @@
 .map-thumbnail { position: relative; display: flex; align-items: center; justify-content: center; align-self: stretch; overflow: hidden; background: color-mix(in srgb, var(--mod-color) 12%, transparent); border-right: 1px solid #ffffff14; }
 .map-thumbnail::after { position: absolute; width: 72px; height: 72px; border: 1px solid #ffffff24; content: ''; transform: rotate(45deg); }
 .map-index { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 3px; color: var(--mod-color); font-family: var(--display); font-size: clamp(14px, calc(var(--map-thumbnail-width, 78px) * .44), 28px); font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 4px #000; }
-.map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; padding-top: 16px; text-shadow: 0 1px 4px #0008; }
+.map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; text-shadow: 0 1px 4px #0008; }
+.map-entry:is(.is-banned, .is-picked) .map-copy { padding-right: 54px; }
 .map-title { overflow: hidden; font-size: 17px; font-weight: 700; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; color: var(--muted); font-size: 11px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
-.map-status { position: absolute; top: 8px; right: 8px; max-width: min(180px, calc(100% - var(--map-thumbnail-width, 78px) - 70px)); overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap; }
+.map-status { position: absolute; top: 5px; right: 5px; padding: 2px 5px; border: 1px solid currentColor; border-radius: 2px; background: #120a26e6; color: var(--muted); font-size: 10px; font-weight: 700; line-height: 14px; white-space: nowrap; }
 .mappool-columns--dense .map-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-height: 40px; font-size: 16px; line-height: 20px; white-space: normal; overflow-wrap: anywhere; }
 .mappool-columns--stacked .map-title { max-height: 36px; font-size: 15px; line-height: 18px; }
 .mappool-columns--stacked .map-meta { display: none; }
-.mappool-columns--stacked .map-status { top: 5px; font-size: 10px; }
 /* Team ownership, rather than Ban/Pick kind, determines the frame color.
    Inset strokes keep every card's outer dimensions unchanged. */
 .map-entry { --map-team-color: #92929f; --map-team-ink: #eeeef2; }
