@@ -1,0 +1,26 @@
+{
+  "isolatedPorts": [
+    3012,
+    24055
+  ],
+  "before": {
+    "action": {
+      "id": "ad618e62-893b-4569-b79e-8b3a9c31f04a",
+      "kind": "ban",
+      "team": "a",
+      "slot": 0
+    },
+    "bpHistory": 0
+  },
+  "after": {
+    "action": {
+      "id": "cf9dada2-fad3-4ed1-a2a9-2bb4dbb87d39",
+      "kind": "ban",
+      "team": "b",
+      "slot": 0
+    },
+    "ban": "sim-hd1",
+    "bpHistory": 1
+  },
+  "passed": true
+}

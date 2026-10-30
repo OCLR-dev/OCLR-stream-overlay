@@ -484,6 +484,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
                 <p v-if="s.bp?.mode !== 'roll'">保留本场原有手动顺序。可在“手动调整”修正当前动作，在“本场设置”调整后续。</p>
                 <p v-if="s.bp?.rollChanged">Roll 先手已修正；真实 BP 顺序保持原样，需要时使用手动纠错。</p>
               </div>
+              <section class="operator-next-action" aria-label="选择下一 BP 动作">
+                <h3>下一动作 · 可以先选动作，再等换图</h3>
+                <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['ban', 'pick'] as const)" :key="kind" :data-team="team" :aria-pressed="s.action?.team === team && s.action.kind === kind" :disabled="disabled || !!s.incident || s.paused || !!s.bp?.stopped || round?.status === 'prepared' || round?.status === 'playing'" @click="run('select-bp-action', { team, kind })">下一步：{{ names[team] }} {{ kind === 'ban' ? 'Ban' : 'Pick' }}</button></template></div>
+                <p>选择后等待新的 tosu 换图；没有有效连接时继续等待。人工补做时再点谱面，完成当前真实动作。</p>
+              </section>
               <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : '先点选一张谱面' }}</p>
               <button v-if="s.bp?.canApply" class="operator-primary" :disabled="disabled || !canCompleteBp" @click="run('apply-bp', { entryId: poolEntryId, actionId: s.action?.id })">人工完成当前真实 {{ s.action?.kind === 'ban' ? 'Ban' : 'Pick' }} · {{ s.action ? names[s.action.team] : '' }}{{ poolSelection ? ` · ${poolSelection.label}` : '（先点选谱面）' }}</button>
               <button v-if="s.bp?.canReplace" :disabled="disabled || !canReplaceBp" @click="run('apply-bp', { entryId: poolEntryId })">替换本次准备图{{ poolSelection ? ` · ${poolSelection.label}` : '（先点选谱面）' }}</button>

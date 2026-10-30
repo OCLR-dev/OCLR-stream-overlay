@@ -429,6 +429,22 @@ function applyCommand(s, command) {
       return p.enterBp === false ? '展示真实 Roll 与独立先手' : '记录真实 Roll 与独立先手，进入 BP';
     }
     case 'bp': s.phase = 'bp'; s.scene = 'mappool'; return '进入 BP（保留比赛记录）';
+    case 'select-bp-action': {
+      requireValue(side(p.team) && ['ban', 'pick'].includes(p.kind), '请选择下一动作及行动队伍');
+      requireValue(!s.paused && !s.incident && !seriesComplete(s) && s.phase !== 'winner', '暂停、异常或系列结束时不能改下一动作');
+      requireValue(!['prepared', 'playing'].includes(currentRound(s)?.status), '本图已选或进行中；改图请替换本次准备，下一动作在本图结束后选择');
+      requireValue(!bpStopReason(s), bpStopReason(s));
+      const slot = p.kind === 'ban' ? [0, 1].find(slot => !s.bans[p.team][slot] && !s.emptyBans?.[p.team]?.[slot]) : null;
+      requireValue(slot !== undefined, '该队 Ban 槽已完成，请先核对或修正记录');
+      // Arm one event under the established rule; move a queued match here once.
+      // A pending old map event is invalidated by the new action ID in Store.
+      const queued = s.queue.findIndex(action => action.team === p.team && action.kind === p.kind && (p.kind !== 'ban' || action.slot === slot));
+      const selected = queued < 0 ? {} : s.queue.splice(queued, 1)[0];
+      s.action = { ...selected, ...normalizeAction({ ...p, slot }) };
+      s.bpFlow ||= { mode: 'manual' };
+      s.phase = 'bp';
+      return `下一动作：${s.match.teams[p.team].name} ${p.kind === 'ban' ? 'Ban' : 'Pick'}；等待新的房间换图，尚未操作谱面`;
+    }
     case 'set-action':
       s.bpFlow = { ...s.bpFlow, mode: 'manual' };
       s.action = p.action === null ? null : normalizeAction(p.action);
