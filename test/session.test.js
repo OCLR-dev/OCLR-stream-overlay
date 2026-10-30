@@ -150,15 +150,15 @@ test('same map in multiple slots, warmups, occupied maps and wrong room never ad
   assert.match(sim.change(103).note, /已 Ban/);
 });
 
-test('first connection, reconnect, invalid frames, pause and lock establish baselines without replay', () => {
+test('first connection, reconnect, invalid frames, pause establish baselines without replay', () => {
   const sim = simulate(action(ready(), 'ban'));
   sim.feed(101); sim.feed(101); assert.equal(sim.state.bans.a[0], null);
   sim.change(103); assert.equal(sim.state.bans.a[0], 'nm1');
   sim.manual('undo'); sim.feed(103); sim.feed(103); assert.equal(sim.state.bans.a[0], null);
   sim.manual('pause', { kind: 'technical' }); sim.change(104); assert.equal(sim.state.scene, 'pause');
   sim.manual('resume'); sim.feed(104); sim.feed(104); assert.equal(sim.state.bans.a[0], null);
-  sim.manual('display', { scene: 'mappool' }); sim.change(105); assert.equal(sim.state.bans.a[0], null);
-  sim.manual('auto', { ...sim.state.auto, locked: false }); sim.feed(105); sim.feed(105); assert.equal(sim.state.bans.a[0], null);
+  sim.manual('pause', { kind: 'technical' }); sim.change(105); assert.equal(sim.state.bans.a[0], null);
+  sim.manual('resume'); sim.feed(105); sim.feed(105); assert.equal(sim.state.bans.a[0], null);
   sim.observer.reset(); sim.feed(101); sim.feed(101); assert.equal(sim.state.bans.a[0], null);
   sim.feed(0); sim.feed(104); sim.feed(104); assert.equal(sim.state.bans.a[0], null);
 });
@@ -516,7 +516,7 @@ test('manual map and first-action corrections preserve run, EX, series and queue
   s = command(s, 'start'); const before = structuredClone(s);
   s = command(s, 'adjust-round', { entryId: 'nm2', pickedBy: 'b' });
   assert.equal(currentRound(s).runId, currentRound(before).runId); assert.equal(currentRound(s).entryId, 'nm2');
-  assert.equal(s.locked, true); assert.deepEqual(s.ex, before.ex); assert.deepEqual(s.queue, before.queue);
+  assert.equal(s.paused, false); assert.equal(s.incident, null); assert.deepEqual(s.ex, before.ex); assert.deepEqual(s.queue, before.queue);
   assert.deepEqual(currentRound(command(s, 'undo')), currentRound(before));
   s = command(s, 'set-roll', { winner: 'a', pickFirst: 'b', banFirst: 'a' });
   assert.equal(s.phase, 'playing'); assert.equal(s.scene, 'playing');
@@ -539,9 +539,10 @@ test('one-step waiting and referee replay retract only this map and are undoable
   assert.deepEqual(currentRound(command(s, 'undo')), currentRound(recorded));
 });
 
-test('verified BP plan changes only queued actions and requires a verification source', () => {
+test('explicit BP plan changes only queued actions, without requiring an extra verification field', () => {
   const s = action(ready(), 'ban');
-  assert.throws(() => command(s, 'set-plan', { verifiedBy: '', queue: [] }), /核实/);
+  assert.deepEqual(command(s, 'set-plan', { verifiedBy: '', queue: [] }).queue, []);
+  assert.throws(() => command(s, 'set-plan', { queue: [{ kind: 'pick' }] }), /明确 BP/);
   const next = command(s, 'set-plan', { verifiedBy: '本场裁判确认', queue: [{ kind: 'pick', team: 'b' }] });
   assert.deepEqual(next.action, s.action); assert.equal(next.queue[0].team, 'b');
   for (const key of ['phase', 'scene', 'rounds', 'bans', 'ex']) assert.deepEqual(next[key], s[key]);
@@ -559,15 +560,15 @@ test('immediate individual settings change live layout and metadata without rese
   assert.deepEqual(command(s, 'undo').match.teams.a.roster, original.match.teams.a.roster);
 });
 
-test('live pool edits preserve referenced IDs and reject removal atomically; map corrections pause following', () => {
+test('live pool edits preserve referenced IDs and reject removal atomically; prepared map corrections keep automation armed', () => {
   let s = pick(ready()); const original = structuredClone(s);
   assert.throws(() => command(s, 'setting', { field: 'pool', value: s.pool.filter(e => e.id !== 'nm1') }), /不能删除/);
   assert.deepEqual(s, original);
   const renamed = s.pool.map(e => e.id === 'nm1' ? { ...e, label: 'NM9', title: 'Corrected title' } : e);
   s = command(s, 'setting', { field: 'pool', value: renamed });
-  assert.equal(currentRound(s).entryId, 'nm1'); assert.equal(s.locked, false);
+  assert.equal(currentRound(s).entryId, 'nm1'); assert.equal(s.paused, false);
   s = command(s, 'setting', { field: 'pool', value: s.pool.map(e => e.id === 'nm1' ? { ...e, beatmapId: 9999 } : e) });
-  assert.equal(s.locked, true); assert.equal(currentRound(s).status, 'prepared');
+  assert.equal(s.paused, false); assert.equal(s.incident, null); assert.equal(currentRound(s).status, 'prepared');
 });
 
 test('metadata edits between Ranking frames keep automatic finish continuity', async () => {
@@ -580,14 +581,14 @@ test('metadata edits between Ranking frames keep automatic finish continuity', a
   assert.deepEqual(seriesOf(store.state), { a: 1, b: 0 });
 });
 
-test('published selections can update existing match metadata while preserving records and requiring takeover', () => {
+test('published selections can update existing match metadata while preserving records and automatic intent', () => {
   let s = pick(ready()); s = command(s, 'start');
   s = command(s, 'record-result', { roundId: currentRound(s).id, winner: 'a' });
   const before = structuredClone(s);
   s = command(s, 'update-setup', { ...s.match, teams: { ...s.match.teams, b: { ...s.match.teams.b, name: 'Corrected Blue' } }, pool: s.pool });
   assert.equal(s.match.teams.b.name, 'Corrected Blue'); assert.deepEqual(seriesOf(s), { a: 1, b: 0 });
   for (const key of ['rounds', 'action', 'queue', 'bans', 'roll', 'ex', 'phase', 'scene', 'auto']) assert.deepEqual(s[key], before[key]);
-  assert.equal(s.locked, true);
+  assert.equal(s.paused, false);
 });
 
 test('common EX counters can change during play, including zero for the active team, without changing activation or the run', () => {
@@ -728,7 +729,7 @@ test('Playing preparation is explicit and independent of broadcast Pick, preserv
   assert.equal(s.currentRoundId, null); assert.equal(s.rounds.length, 0);
   s = command(s, 'display', { scene: 'playing' });
   s = command(s, 'prepare-round', { entryId: 'nm1', pickedBy: 'a' });
-  assert.equal(currentRound(s).entryId, 'nm1'); assert.equal(s.scene, 'playing'); assert.equal(s.locked, true);
+  assert.equal(currentRound(s).entryId, 'nm1'); assert.equal(s.scene, 'playing'); assert.equal(s.paused, false);
   s = command(s, 'start'); const old = structuredClone(currentRound(s));
   s = command(s, 'prepare-round', { entryId: 'nm2', pickedBy: 'b' });
   const next = structuredClone(currentRound(s));

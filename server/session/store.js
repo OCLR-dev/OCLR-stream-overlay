@@ -1,12 +1,12 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { currentRound, entryOf, newSession, requireValue, seriesOf, transition } from './model.js';
+import { currentRound, entryOf, newSession, requireValue, restoreAutomation, seriesOf, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
 
 export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
-    this.file = file; this.state = state; this.listeners = new Set(); this.automation = new RoomAutomation();
-    this.live = { tosu: { status: 'idle', updatedAt: null, data: null }, oclr: { status: 'idle', updatedAt: null, error: null }, note: '自动跟随关闭' };
+    this.file = file; this.state = restoreAutomation(state); this.listeners = new Set(); this.automation = new RoomAutomation();
+    this.live = { tosu: { status: 'idle', updatedAt: null, data: null }, oclr: { status: 'idle', updatedAt: null, error: null }, note: '等待房间资料，自动化意图保持开启' };
     this.persistence = file ? 'ready' : 'memory'; this.tail = Promise.resolve();
   }
 
@@ -53,9 +53,13 @@ export class SessionStore {
           room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0),
         '尚未恢复到本图有效 Playing；请等待观战恢复，或由裁判确认重赛 / 人工核对赛果');
       }
-      const preservesObserver = command.type === 'set-stage' || command.type === 'set-roll' || command.type === 'map-mark' ||
-        (command.type === 'setting' && command.payload?.field !== 'pool') ||
-        (command.type === 'ex' && command.payload?.team === this.state.ex.team);
+      // Reset only the continuity whose meaning changed. Display, Roll, marks,
+      // counters, future actions and unrelated corrections do not lose a finish.
+      const continuity = state => {
+        const round = currentRound(state);
+        return JSON.stringify([state.id, state.auto.profile, state.auto.left, state.auto.right, state.paused, state.incident,
+          round?.id, round?.entryId, entryOf(state, round?.entryId)?.beatmapId, round?.status, round?.runId]);
+      };
       const next = transition(this.state, command);
       if (next !== this.state) {
         // Archive before replacing the match, without exposing local files over HTTP.
@@ -63,8 +67,18 @@ export class SessionStore {
           await mkdir(`${dirname(this.file)}/archive`, { recursive: true, mode: 0o700 });
           await writeFile(`${dirname(this.file)}/archive/${this.state.id}-${this.state.version}.json`, JSON.stringify(this.state), { mode: 0o600 });
         }
+        const reset = continuity(next) !== continuity(this.state);
+        const changedAction = next.action?.id !== this.state.action?.id || next.auto.bp !== this.state.auto.bp;
+        const changedResults = next.auto.results !== this.state.auto.results;
         await this.save(next);
-        if (!preservesObserver) this.automation.reset();
+        if (reset) {
+          if (this.live.tosu.status === 'live' && Date.now() - this.receivedAt < 5000) {
+            this.automation.rebase(next, this.live.tosu.data, Date.parse(this.live.tosu.updatedAt));
+          } else this.automation.reset();
+        }
+        else if (changedAction) this.automation.pending = null;
+        if (changedResults) { this.automation.endRun = null; this.automation.scoreCandidate = null; }
+        if (command.type === 'set-series' && currentRound(next)?.status === 'ranking') this.automation.endRun = null;
         this.emit();
       }
       return this.snapshot();
@@ -73,16 +87,17 @@ export class SessionStore {
 
   sourceStatus(status) {
     return this.enqueue(async () => { if (status !== 'live') {
-      if (status !== 'stopped' && (this.state.auto.bp || this.state.auto.scenes)) {
+      if (!['stopped', 'connecting', 'idle'].includes(status) && !this.state.paused && (this.state.auto.bp || this.state.auto.scenes || this.state.auto.results)) {
         const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
         if (held.state !== this.state) await this.save(held.state);
       }
       this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
-      this.live.note = `tosu ${status}，自动跟随已挂起`; this.emit();
+      this.live.note = `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`; this.emit();
     } });
   }
   frame(frame, now = Date.now()) {
     return this.enqueue(async () => {
+      this.receivedAt = Date.now();
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
       const result = this.automation.ingest(this.state, frame, now);
       this.live.note = result.note;

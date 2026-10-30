@@ -2,12 +2,30 @@ import { randomUUID } from 'node:crypto';
 import { applyBp, automaticTransition, awardTosuResult, currentRound, entryOf, holdRound, seriesComplete, startRound } from './model.js';
 
 const playerKeys = room => room.players.filter(p => p.osuId > 0).map(p => `${p.side}:${p.osuId}`).sort();
+const validRoom = (config, frame) => {
+  const room = frame?.tourney;
+  return config.profile === 'stable-tourney' && config.left && config.right && config.left !== config.right && room &&
+    room.teams.left === config.left && room.teams.right === config.right &&
+    room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0) &&
+    [0, 1, 2, 3, 4].includes(room.ipcState) && Number.isSafeInteger(frame?.beatmap?.id) && frame.beatmap.id > 0;
+};
 
 // Only the server owns this observer. Browsers never ingest frames or advance BP.
 // Continuity is deliberately volatile: restore/reconnect always establishes a baseline.
 export class RoomAutomation {
   constructor() { this.reset(); }
   reset() { this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; }
+
+  rebase(state, frame, now) {
+    this.reset();
+    if (!state.paused && !state.incident && validRoom(state.auto, frame)) {
+      // Seed only the observation position, never an endRun or a Playing edge.
+      // This consumes the known pre-command snapshot so the next new map is not
+      // accidentally swallowed as the first baseline after incident handling.
+      this.baseline = { mapId: frame.beatmap.id, ipc: frame.tourney.ipcState };
+      this.lastAt = now;
+    }
+  }
 
   hold(state, reason) {
     this.reset();
@@ -23,15 +41,15 @@ export class RoomAutomation {
     if (state.incident) {
       this.reset(); return { state, note: '本图异常待处理：自动推进与计胜已挂起；恢复观战不等于确认重赛' };
     }
-    if (state.locked || state.scene === 'pause' || !(config.bp || config.scenes)) {
-      this.reset(); return { state, note: state.scene === 'pause' ? '暂停中，自动跟随已挂起' : state.locked ? '手动画面锁定中' : '自动跟随关闭' };
+    if (state.paused || !(config.bp || config.scenes || config.results)) {
+      this.reset(); return { state, note: state.paused ? '明确暂停中，结束暂停后自动建立基线' : '自动跟随已明确关闭' };
+    }
+    if (config.profile !== 'stable-tourney' || !config.left || !config.right || config.left === config.right) {
+      this.reset(); return { state, note: '等待核实客户端与实际房间左右队名；自动化保持开启，资料齐全后自动建立基线' };
     }
     const room = frame?.tourney;
     const mapId = frame?.beatmap?.id;
-    const valid = config.profile === 'stable-tourney' && room &&
-      room.teams.left === config.left && room.teams.right === config.right &&
-      room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0) &&
-      [0, 1, 2, 3, 4].includes(room.ipcState) && Number.isSafeInteger(mapId) && mapId > 0;
+    const valid = validRoom(config, frame);
     if (!valid) return this.hold(state, '房间或观战客户端资料不完整，不能据此判断 abort、选手掉线或 Panic');
     const ipc = room.ipcState;
     if (this.lastAt !== null && (now - this.lastAt > 5000 || now < this.lastAt)) return this.hold(state, '观战数据连续性中断，请核对比赛是否仍在进行');
@@ -80,18 +98,17 @@ export class RoomAutomation {
         const applicable = state.action?.id === pending.actionId || (!state.action && pending.actionId === null && round?.id === pending.roundId);
         if (!entry) note = candidates.length > 1 ? '同一谱面对应多个槽位，请手动选择条目' : '房间谱面不在本场图池中';
         else if (!applicable) note = '换图所属动作已结束，等待新的换图';
-        else if (!seriesComplete(state) && (state.phase === 'bp' ||
-          (state.scene === 'mappool' && round?.status !== 'playing') ||
-          (state.scene === 'map-result' && ['ranking', 'recorded'].includes(round?.status)))) {
+        else if (!seriesComplete(state) && state.phase !== 'winner' && round?.status !== 'playing' &&
+          (state.phase === 'bp' || state.action || round?.status === 'prepared' || ['ranking', 'recorded'].includes(round?.status))) {
           try {
             // Return to BP only for an available map. Old/unavailable maps must not move the display.
             const occupied = Object.values(state.bans).some(slots => slots.includes(entry.id)) ||
               state.rounds.some(r => r.entryId === entry.id && r.status !== 'void' && r.id !== (round?.status === 'prepared' ? round.id : null));
             if (occupied) throw new Error('房间谱面已 Ban / 已打 / 正在使用，请手动纠正');
-            const returnToBp = config.scenes && (state.scene === 'map-result' || (state.scene === 'playing' && round?.status === 'recorded'));
+            const returnToBp = config.scenes && (['ranking', 'recorded'].includes(round?.status) || state.sceneOverride);
             const consumeBp = config.bp && (state.action || round?.status === 'prepared');
             if (returnToBp || consumeBp) next = automaticTransition(state, draft => {
-              if (returnToBp) { draft.phase = 'bp'; draft.scene = 'mappool'; }
+              if (returnToBp) { draft.phase = 'bp'; draft.scene = 'mappool'; draft.sceneOverride = null; }
               if (config.bp && (draft.action || currentRound(draft)?.status === 'prepared')) {
                 draft.phase = 'bp';
                 applyBp(draft, entry.id, 'room-map', pending.actionId, pending.eventId);
@@ -113,9 +130,14 @@ export class RoomAutomation {
     } else { this.scoreCandidate = null; this.endRun = null; }
     if (ipc === 3 && this.baseline.ipc !== 3) this.playEdge = mapId;
     if (ipc !== 3) this.playEdge = null;
-    if (config.scenes && sameMap && !this.pending && next.phase !== 'winner') {
+    if (sameMap && !this.pending && next.phase !== 'winner') {
       if (ipc === 3 && this.playEdge === mapId && round.status === 'prepared' && next.phase === 'bp' && !next.action && !seriesComplete(next)) {
-        next = automaticTransition(next, draft => startRound(draft, 'tosu'), 'tosu Playing → 游戏画面', randomUUID());
+        next = automaticTransition(next, draft => {
+          const scene = draft.scene;
+          startRound(draft, 'tosu');
+          if (!config.scenes) draft.scene = scene;
+          else draft.sceneOverride = null;
+        }, 'tosu Playing → 本局开打', randomUUID());
         this.observedRun = currentRound(next).runId;
         this.runPlayers = playerKeys(room);
         this.playEdge = null;
@@ -135,7 +157,7 @@ export class RoomAutomation {
               // A source snapshot, never persisted as live telemetry or used to assign a winner.
               playing.finalScore = { a: room.totalScore.left, b: room.totalScore.right };
               if (!draft.action) draft.action = draft.queue.shift() || null;
-              draft.scene = 'map-result';
+              if (config.scenes) { draft.scene = 'map-result'; draft.sceneOverride = null; }
             }, 'tosu 连续 Playing → Ranking：展示单图结算（不计胜）', randomUUID());
             this.endRun = { roundId: round.id, runId: round.runId };
             this.observedRun = null; this.ranking = null;
@@ -146,7 +168,7 @@ export class RoomAutomation {
     // Keep observing a known continuous finish if totals arrive after Ranking.
     // A fresh connection at Ranking has no endRun and can never backfill a win.
     const finished = currentRound(next);
-    if (config.scenes && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking') {
+    if (config.results && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted'].includes(finished.resultSource)) {
       const score = this.scoreCandidate;
       // Agreement is a necessary consistency check, not proof that every player finished.
       const consistent = ['left', 'right'].every(side => {
@@ -165,6 +187,7 @@ export class RoomAutomation {
       } else if (!ready) note = '成绩还未确认，暂不加分；请等待全部结束，必要时人工核对胜方';
     }
     this.baseline.ipc = ipc;
+    if (next.sceneOverride) note = `${config.scenes ? '画面人工覆盖中，下一有效换图 / 开打 / 结算自动接回。' : '自动选画面已关闭，保持人工画面；比赛数据跟随继续。'}${note}`;
     return { state: next, note };
   }
 }

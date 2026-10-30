@@ -15,11 +15,11 @@ export interface Session {
   schema: number; id: string; version: number;
   match: { title: string; edition: string | null; fixtureId: string | null; poolId: string | null; provenance: string;
     stage: 'group' | 'elimination' | 'final'; mode: '3v3' | '4v4'; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam> };
-  pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; locked: boolean;
+  pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; paused: boolean; sceneOverride: { scene: string; until: 'next-match-event' } | null;
   arrived: Record<Team, boolean>; ready: Record<Team, boolean>;
   roll: { a: number | null; b: number | null; winner: Team | null; pickFirst: Team | null; banFirst: Team | null };
   action: BpAction | null; queue: BpAction[]; planVerification?: string | null; bans: Record<Team, [string | null, string | null]>;
-  auto: { bp: boolean; scenes: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
+  auto: { bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
   incident?: { kind: 'prestart-abort' | 'abort' | 'player-disconnect' | 'spectator' | 'unverified'; roundId: string; reason: string; source: string; at: string } | null;
   series: Record<Team, number>; seriesAdjustment: Record<Team, number>;
@@ -60,7 +60,7 @@ export function useSession() {
   try { embeddedPreview = window.parent !== window && window.parent.location.origin === location.origin && window.parent.location.pathname === '/control'; } catch { /* Standalone output owns its SSE. */ }
   const apply = (value: Envelope) => {
     if (disposed) return;
-    if (snapshot.value && value.session.version < snapshot.value.session.version) return;
+    if (snapshot.value?.session.id === value.session.id && value.session.version < snapshot.value.session.version) return;
     if (connection.value !== 'synced' || snapshot.value?.session.id !== value.session.id) presentationEpoch.value += 1;
     snapshot.value = value; lastReceived = Date.now(); connection.value = 'synced';
   };

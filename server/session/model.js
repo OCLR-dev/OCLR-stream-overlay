@@ -16,13 +16,40 @@ export function newSession() {
       teams: { a: { id: null, name: '左队待设置', roster: [] }, b: { id: null, name: '右队待设置', roster: [] } } },
     pool: [], poolMarks: [], arrived: { a: false, b: false }, ready: { a: false, b: false },
     roll: { a: null, b: null, winner: null, pickFirst: null, banFirst: null },
-    phase: 'arrival', scene: 'waiting', returnScene: null, locked: false,
-    auto: { bp: false, scenes: false, profile: 'unverified', left: '', right: '', mapDebounceMs: 400, rankingDebounceMs: 250 },
+    phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null, automationVersion: 3,
+    auto: { bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', mapDebounceMs: 400, rankingDebounceMs: 250 },
     action: null, queue: [], planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
     rounds: [], currentRoundId: null, incident: null, winner: null, seriesAdjustment: { a: 0, b: 0 },
     ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'technical',
     history: [], undo: [], commandIds: [],
   };
+}
+
+// Upgrade the old implicit global locks only when their origin is known. An
+// explicit/ambiguous old hold becomes an explicit pause. Upgrade undo
+// domains too, so undo cannot silently reinstall the old defaults or locks.
+export function restoreAutomation(state) {
+  if (state.automationVersion === 3) return state;
+  const next = clone(state);
+  const upgrade = (draft, trail) => {
+    if (draft.automationVersion === 3) return;
+    const cause = [...trail].reverse().find(item => !item.state.locked)?.message;
+    const incidental = draft.automationVersion !== 2 && cause && /手动切画面并锁定|已准备本图|人工调整本图|保存本场队伍与图池|已同步本场图池/.test(cause);
+    if (draft.locked && incidental) draft.sceneOverride = { scene: draft.scene, until: 'next-match-event' };
+    draft.paused = !!draft.paused || draft.scene === 'pause' || (!!draft.locked && !incidental);
+    if (draft.paused) draft.returnScene ||= draft.scene === 'pause' ? 'waiting' : draft.scene;
+    delete draft.locked;
+    draft.sceneOverride ??= null;
+    draft.auto.results ??= true;
+    if (draft.auto.profile === 'unverified' && !draft.auto.left && !draft.auto.right) {
+      draft.auto.bp = true; draft.auto.scenes = true;
+    }
+    draft.automationVersion = 3;
+  };
+  const oldTrail = clone(next.undo || []);
+  upgrade(next, oldTrail);
+  next.undo?.forEach((item, index) => upgrade(item.state, oldTrail.slice(0, index)));
+  return next;
 }
 
 export const targetOf = s => s.match.stage === 'final' ? 7 : 6;
@@ -91,7 +118,6 @@ function updatePool(s, entries) {
   const before = entryOf(s, round?.entryId);
   const after = pool.find(e => e.id === round?.entryId);
   if (before && after && (before.beatmapId !== after.beatmapId || before.mod !== after.mod)) {
-    s.locked = true;
     if (after.mod === 'TB') { s.ex.team = null; round.exTeam = null; }
   }
   s.pool = pool;
@@ -197,10 +223,10 @@ function applyCommand(s, command) {
       return p.status === 'open' ? `已清除 ${entry.label} 的图池标记` : `已标记 ${s.match.teams[p.team].name} ${p.status === 'banned' ? 'Ban' : 'Pick'} ${entry.label}`;
     }
     case 'prepare-round': {
+      requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');
       requireValue(side(p.pickedBy), '请选择本局选图队伍');
       s.action = { id: randomUUID(), kind: 'pick', team: p.pickedBy, slot: null };
       applyBp(s, p.entryId);
-      s.locked = true;
       return `已准备本图 ${entryOf(s, p.entryId).label}，等待开打`;
     }
     case 'wait-result': {
@@ -253,13 +279,13 @@ function applyCommand(s, command) {
     }
     case 'adjust-round': {
       const round = currentRound(s);
+      requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');
       requireValue(round && ['prepared', 'playing', 'ranking'].includes(round.status), '请先选择尚未计胜的本图');
       requireValue(side(p.pickedBy), '请选择 Pick 方');
       const entry = available(s, p.entryId, round.id);
       round.entryId = entry.id; round.pickedBy = p.pickedBy;
       if (entry.mod === 'TB') { s.ex.team = null; round.exTeam = null; }
-      s.locked = true;
-      return `人工调整本图为 ${entry.label}，Pick 方 ${s.match.teams[p.pickedBy].name}；已暂停自动跟随，可撤销`;
+      return `人工调整本图为 ${entry.label}，Pick 方 ${s.match.teams[p.pickedBy].name}；保留其他自动流程，可撤销`;
     }
     case 'set-roll': {
       for (const team of SIDES) {
@@ -281,8 +307,7 @@ function applyCommand(s, command) {
         provenance: ['oclr', 'oclr-archive'].includes(p.provenance) ? p.provenance : 'manual', stage: p.stage, mode: p.mode, source: p.source, teams: normalizeTeams(p.teams) };
       requireValue(SIDES.every(t => seriesOf(s)[t] <= targetOf(s)), '现有比分超出该阶段目标，请先校正比分');
       if (s.winner && seriesOf(s)[s.winner] < targetOf(s)) leaveInvalidWinner(s);
-      if (command.type === 'setup') { s.action = null; s.queue = []; s.auto.bp = false; s.auto.scenes = false; s.auto.profile = 'unverified'; }
-      else if (s.rounds.length || SIDES.some(t => s.bans[t].some(Boolean))) s.locked = true;
+      if (command.type === 'setup') { s.action = null; s.queue = []; }
       return '保存本场队伍与图池';
     }
     case 'arrival':
@@ -307,11 +332,11 @@ function applyCommand(s, command) {
       }
       return '设置明确 BP 动作与后续序列';
     case 'set-plan':
-      requireValue(text(p.verifiedBy) && p.verifiedBy.trim(), '请填写核实顺序的来源或负责人');
+      requireValue(p.verifiedBy == null || text(p.verifiedBy), '核实来源说明过长');
       requireValue(Array.isArray(p.queue) && p.queue.length <= 40, 'BP 序列过长');
       s.queue = p.queue.map(normalizeAction);
-      s.planVerification = p.verifiedBy.trim();
-      return `保存已核实后续 BP 顺序（不修改当前动作）：${p.verifiedBy.trim()}`;
+      s.planVerification = p.verifiedBy?.trim() || null;
+      return `更新明确配置的后续 BP 顺序（不修改当前动作）${s.planVerification ? `：${s.planVerification}` : ''}`;
     case 'apply-bp': return applyBp(s, p.entryId, 'manual', p.actionId);
     case 'clear-ban':
       requireValue(side(p.team) && [0, 1].includes(p.slot), 'Ban 槽无效');
@@ -376,7 +401,7 @@ function applyCommand(s, command) {
       const old = seriesOf(s);
       s.seriesAdjustment = Object.fromEntries(SIDES.map(t => [t, p[t] - s.rounds.filter(r => r.status === 'recorded' && r.winner === t).length]));
       // Explicit operator scores take precedence over all previously received results.
-      for (const round of s.rounds) round.autoProtected = true;
+      for (const round of s.rounds) if (['ranking', 'recorded'].includes(round.status)) round.autoProtected = true;
       leaveInvalidWinner(s);
       return `人工校正系列分 ${old.a}:${old.b} → ${p.a}:${p.b}：${p.reason}`;
     }
@@ -414,23 +439,27 @@ function applyCommand(s, command) {
     }
     case 'display':
       requireValue(SCENES.includes(p.scene) && p.scene !== 'pause', '显示画面无效');
-      s.scene = p.scene; s.locked = true; s.returnScene = null;
-      return '手动切画面并锁定自动跟随';
+      s.scene = p.scene; s.sceneOverride = { scene: p.scene, until: 'next-match-event' };
+      return '手动覆盖播出画面，下一有效比赛事件自动接回；数据跟随继续';
     case 'pause':
       requireValue(['technical', 'tactical'].includes(p.kind), '暂停类型无效');
-      if (s.scene !== 'pause') s.returnScene = s.scene;
-      s.scene = 'pause'; s.pauseType = p.kind;
+      if (!s.paused) s.returnScene = s.scene;
+      s.paused = true; s.scene = 'pause'; s.pauseType = p.kind;
       return '暂停（保留原阶段和返回位置）';
     case 'resume':
       requireValue(s.returnScene, '没有暂停返回位置');
-      s.scene = s.returnScene; s.returnScene = null;
+      s.scene = s.returnScene; s.returnScene = null; s.paused = false; s.sceneOverride = null;
       return '恢复暂停前画面';
     case 'auto':
-      requireValue(typeof p.bp === 'boolean' && typeof p.scenes === 'boolean' && typeof p.locked === 'boolean', '自动跟随开关无效');
+      requireValue(typeof p.bp === 'boolean' && typeof p.scenes === 'boolean', '自动跟随开关无效');
+      requireValue(p.results === undefined || typeof p.results === 'boolean', '自动计胜开关无效');
       requireValue(['unverified', 'stable-tourney'].includes(p.profile) && text(p.left, 80) && text(p.right, 80), '房间绑定格式无效');
-      requireValue(!(p.bp || p.scenes) || (p.profile === 'stable-tourney' && p.left.trim() && p.right.trim() && p.left !== p.right), '启用前请明确 stable/osu!tourney 并填写实际房间双方名称');
-      s.auto = { ...s.auto, bp: p.bp, scenes: p.scenes, profile: p.profile, left: p.left.trim(), right: p.right.trim() };
-      s.locked = p.locked;
+      if (['playing', 'ranking'].includes(currentRound(s)?.status) &&
+        (s.auto.profile !== p.profile || s.auto.left !== p.left.trim() || s.auto.right !== p.right.trim())) {
+        holdRound(s, 'unverified', '本局进行中修改了房间绑定，请核对继续当前局或赛果');
+      }
+      s.auto = { ...s.auto, bp: p.bp, scenes: p.scenes, results: p.results ?? s.auto.results, profile: p.profile, left: p.left.trim(), right: p.right.trim() };
+      requireValue(p.locked !== true, '已移除全局人工接管；人工修正直接生效，需要停住自动流程时请明确暂停');
       return '更新自动跟随与房间绑定（重新建立基线）';
     case 'winner': {
       requireResolved(s);

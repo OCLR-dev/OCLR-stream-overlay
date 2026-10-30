@@ -1,0 +1,32 @@
+{
+  "sessionId": "0d39167d-c407-428b-8a0d-bf349e370bbf",
+  "version": 155,
+  "scene": "playing",
+  "phase": "bp",
+  "series": {
+    "a": 1,
+    "b": 6
+  },
+  "auto": {
+    "bp": true,
+    "scenes": true,
+    "profile": "stable-tourney",
+    "left": "模拟红队",
+    "right": "模拟蓝队",
+    "mapDebounceMs": 400,
+    "rankingDebounceMs": 250,
+    "results": true
+  },
+  "hasGlobalManualState": false,
+  "sceneOverride": {
+    "scene": "playing",
+    "until": "next-match-event"
+  },
+  "paused": false,
+  "matchDataAndHistoryEqual": true,
+  "originalFileByteEquivalent": true,
+  "roomRestoredExceptStartupChat": true,
+  "mapId": 799999,
+  "ipcState": 1,
+  "note": "画面人工覆盖中，下一有效换图 / 开打 / 结算自动接回。自动跟随房间"
+}

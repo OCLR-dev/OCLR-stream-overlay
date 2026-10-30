@@ -1,0 +1,37 @@
+{
+  "obsInitiallyRunning": false,
+  "obsFinallyRunning": false,
+  "scenesAndSourcesUnchanged": true,
+  "profileIniUnchanged": true,
+  "changedConfigurationFields": {},
+  "collections": [
+    {
+      "name": "OCLR 直播",
+      "unchanged": true,
+      "sources": [
+        [
+          "OCLR 网页输出",
+          "browser_source",
+          "http://127.0.0.1:3007/overlay"
+        ],
+        [
+          "OCLR 直播",
+          "scene",
+          null
+        ]
+      ]
+    },
+    {
+      "name": "未命名",
+      "unchanged": true,
+      "sources": [
+        [
+          "场景",
+          "scene",
+          null
+        ]
+      ]
+    }
+  ],
+  "noStreamingOrRecording": true
+}
