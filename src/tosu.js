@@ -87,8 +87,19 @@ export class TosuClient {
       this.onStatus('live');
       this.onFrame(frame);
     };
-    socket.onerror = () => { if (active()) { this.onStatus('error'); socket.close(); } };
-    socket.onclose = () => { if (active()) this.retry(); };
+    socket.onerror = () => {
+      if (!active()) return;
+      // Closing a failed CONNECTING socket can synchronously dispatch another
+      // error in Node's WebSocket. Retire its callbacks before closing it.
+      this.releaseSocket(socket);
+      this.onStatus('error');
+      this.retry(false);
+    };
+    socket.onclose = () => {
+      if (!active()) return;
+      this.releaseSocket(socket, false);
+      this.retry();
+    };
     this.watchForStale();
   }
 
@@ -98,9 +109,7 @@ export class TosuClient {
       if (!this.running) return;
       this.onStatus('stale');
       // Re-open silent/stuck connections, including a stalled initial handshake.
-      const old = this.socket;
-      this.socket = null;
-      old?.close();
+      this.releaseSocket();
       this.retry(false);
     }, this.staleMs);
   }
@@ -112,13 +121,20 @@ export class TosuClient {
     if (this.running) this.retryTimer = setTimeout(() => this.connect(), this.reconnectMs);
   }
 
+  releaseSocket(socket = this.socket, close = true) {
+    if (!socket) return;
+    if (this.socket === socket) this.socket = null;
+    socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
+    if (close) {
+      try { socket.close(); } catch { /* Already failed/closing; retry owns recovery. */ }
+    }
+  }
+
   stop() {
     this.running = false;
     clearTimeout(this.staleTimer);
     clearTimeout(this.retryTimer);
-    const socket = this.socket;
-    this.socket = null;
-    socket?.close();
+    this.releaseSocket();
     this.onStatus('stopped');
   }
 }

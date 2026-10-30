@@ -92,7 +92,10 @@ export class SessionStore {
         if (held.state !== this.state) await this.save(held.state);
       }
       this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
-      this.live.note = `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`; this.emit();
+      this.live.note = ['connecting', 'error', 'disconnected'].includes(status)
+        ? '尚未连接 tosu，请确认 tosu 已启动并核对 WebSocket 地址。程序会自动重连，比赛资料与自动化设置已保留。'
+        : `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`;
+      this.emit();
     } });
   }
   frame(frame, now = Date.now()) {

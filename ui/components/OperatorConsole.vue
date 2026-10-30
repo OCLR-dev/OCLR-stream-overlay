@@ -367,7 +367,7 @@ const nextStep = computed(() => {
   if (roomScores.value && round.value?.status === 'prepared') return '实时队分正常跟随；本局尚未确认开打，暂不自动记胜。';
   return '正常成绩自动计胜；需要时在这里人工记胜、撤回或直接校正系列比分。';
 });
-const gameStatus = computed(() => live.value?.sources?.tosu === 'simulated' && live.value?.tosu.status === 'live' ? 'tosu 模拟数据已连接' : ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据格式错误', error: '游戏数据连接出错', disconnected: '游戏数据连接中断', connecting: '正在连接游戏数据', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));
+const gameStatus = computed(() => live.value?.sources?.tosu === 'simulated' && live.value?.tosu.status === 'live' ? 'tosu 模拟数据已连接' : ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据格式错误', error: '未连接 tosu · 请确认已启动', disconnected: 'tosu 连接中断 · 自动重连中', connecting: '正在连接 tosu', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));
 const latestResult = computed(() => [...(s.value?.rounds || [])].reverse().find(r => r.status === 'recorded'));
 const seriesPayload = (team: Team, value: number) => ({ ...s.value!.series, [team]: value, reason: note('直播员核对后直接校正系列比分') });
 const display = (scene: string) => run('display', { scene });
@@ -403,7 +403,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <span>播出画面</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
       </nav>
       <section class="operator-toolbar" aria-label="随时可用的比赛操作">
-        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '明确暂停中' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动化已明确关闭' : live?.tosu.status !== 'live' || s.auto.profile !== 'stable-tourney' || !s.auto.left || !s.auto.right || live?.tosu.data?.tourney?.teams.left !== s.auto.left || live?.tosu.data?.tourney?.teams.right !== s.auto.right ? '等待房间资料 · 自动化保持开启' : s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? 'Playing · 实时跟随中' : '自动流程待命' }}</span>
+        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '明确暂停中' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动化已明确关闭' : live?.tosu.status !== 'live' ? '等待 tosu 连接 · 自动化保持开启' : s.auto.profile !== 'stable-tourney' || !s.auto.left || !s.auto.right || live?.tosu.data?.tourney?.teams.left !== s.auto.left || live?.tosu.data?.tourney?.teams.right !== s.auto.right ? '等待房间资料 · 自动化保持开启' : s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? 'Playing · 实时跟随中' : '自动流程待命' }}</span>
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'technical' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
