@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shouldEmphasize, vEmphasize } from '../ui/motion.ts';
+import { shouldEmphasize, vEmphasize, vSceneReveal } from '../ui/motion.ts';
 
 const scope = 'match:connected:1';
 test('presentation compares semantic values, retaining unknown and real zero', () => {
@@ -42,6 +42,55 @@ test('rapid emphasis replaces the old animation; live totals/no-op values do not
   update({ value: 6, scope: 'reconnected' }, { value: 4, scope });
   assert.equal(animations[2].cancelled, true);
   assert.equal(animations.length, 3);
+  update({ value: ['banned', 'a'], scope, kind: 'confirm' }, { value: ['open', null], scope });
+  assert.equal(animations[3].options.duration, 1600);
+  assert.equal(animations[3].frames[2].offset, .78);
+  assert.equal(animations[3].frames[2].opacity, 1);
+  assert.equal(Math.round(animations[3].frames[1].offset * 1600), 220); // Same reveal speed.
+  assert.equal(Math.round((1 - animations[3].frames[2].offset) * 1600), 352); // Same fade speed.
+  assert.equal(Math.round((animations[3].frames[2].offset - animations[3].frames[1].offset) * 1600), 1028); // Hold +500ms.
+
   vEmphasize.beforeUnmount(element);
+  delete globalThis.matchMedia;
+});
+
+
+test('confirmation ignores used/open states, display-name edits and unchanged diamond fill', () => {
+  assert.equal(shouldEmphasize({ value: ['used', 'a'], scope, when: false }, { value: ['picked', 'a'], scope }), false);
+  assert.equal(shouldEmphasize({ value: ['banned', 'a'], scope }, { value: ['banned', 'a'], scope }), false);
+  assert.equal(shouldEmphasize({ value: true, scope }, { value: true, scope }), false);
+  assert.equal(shouldEmphasize({ value: false, scope }, { value: true, scope }), true);
+});
+
+test('scene entry targets safe surfaces, cancels on rapid switch and stays silent on reconnect', () => {
+  globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
+  const animations = [];
+  const surface = capture => ({
+    classList: { contains: () => false },
+    matches: () => false,
+    querySelector: () => capture ? {} : null,
+    animate(frames, options) {
+      const animation = { frames, options, cancelled: false, cancel() { this.cancelled = true; this.oncancel?.(); } };
+      animations.push(animation); return animation;
+    }
+  });
+  const footer = surface(false), captureAncestor = surface(true);
+  const stack = { contains: e => e === footer, querySelector: () => ({ querySelectorAll: () => [footer, captureAncestor] }) };
+  const update = (value, oldValue) => vSceneReveal.updated(stack, { value, oldValue });
+  update({ value: 'playing', scope }, { value: 'mappool', scope });
+  assert.equal(animations.length, 1);
+  assert.equal(animations[0].options.duration, 720);
+  assert.equal(animations[0].frames[0].opacity, 0);
+  update({ value: 'playing', scope }, { value: 'playing', scope }); // Duplicate SSE / score ticks.
+  assert.equal(animations.length, 1);
+  update({ value: 'waiting', scope }, { value: 'playing', scope });
+  assert.equal(animations[0].cancelled, true);
+  assert.equal(animations.length, 2);
+  update({ value: 'victory', scope: 'reconnected' }, { value: 'waiting', scope });
+  assert.equal(animations[1].cancelled, true);
+  assert.equal(animations.length, 2);
+  update({ value: 'playing', scope, enabled: true }, { value: 'waiting', scope, enabled: false });
+  assert.equal(animations.length, 2);
+  vSceneReveal.beforeUnmount(stack);
   delete globalThis.matchMedia;
 });

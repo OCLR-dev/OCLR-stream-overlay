@@ -494,20 +494,15 @@
   *, *::before, *::after { transition: none !important; }
 }
 
-/* Mounted scene layers crossfade directly to the latest committed selection.
-   No keyed transitions, timers, or transforms on any game/capture ancestor. */
-.scene-stack > .scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; pointer-events: none; }
-.scene-stack > .scene.is-active { opacity: 1; visibility: visible; pointer-events: auto; z-index: 1; }
-.motion-ready .scene-stack > .scene { transition: opacity 200ms ease-out, visibility 0s linear 200ms; }
-.motion-ready .scene-stack > .scene.is-active { transition-delay: 0s; }
-/* Blending the key colour with the backdrop leaves green during transitions. */
-.shared-output .scene-stack > .scene { transition: none; }
-.scene[data-scene-panel='victory'] .victory-copy { opacity: 0; transform: translateY(6px); }
-.scene[data-scene-panel='victory'].is-active .victory-copy { opacity: 1; transform: translateY(0); }
-.motion-ready .scene[data-scene-panel='victory'] .victory-copy { transition: opacity 300ms ease-out, transform 300ms cubic-bezier(.2,.7,.3,1); }
+/* Captures and their ancestors never fade or move, including the demo.
+   motion.ts reveals only safe information surfaces on a committed scene change. */
+.scene-stack > .scene { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
+.scene-stack > .scene.is-active { visibility: visible; pointer-events: auto; z-index: 1; }
+.map-confirmation { position: absolute; top: 0; bottom: 0; left: var(--map-thumbnail-width, 78px); right: 0; z-index: 4; display: flex; align-items: center; gap: 14px; overflow: hidden; padding: 0 16px; border-left: 3px solid var(--map-team-color); border-radius: 0 var(--radius-card) var(--radius-card) 0; pointer-events: none; opacity: 0; background: linear-gradient(100deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); color: var(--map-team-ink); }
+.map-confirmation b { flex-shrink: 0; font: 800 28px/1 var(--display); letter-spacing: .12em; }
+.map-confirmation > span { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 /* Totals update directly; the independent lead fill follows smoothly. */
 .shared-output .score-delta { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .broadcast-canvas *, .broadcast-canvas::before { animation: none !important; transition: none !important; }
-  .scene[data-scene-panel='victory'] .victory-copy { transform: none; }
 }
