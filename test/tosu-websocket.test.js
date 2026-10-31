@@ -21,8 +21,15 @@ async function simulate(stack, action, patch) {
   assert.equal(response.status, 200); return response.json();
 }
 async function operator(stack, type, payload = {}) {
-  const response = await fetch(`${stack.appUrl}/api/session/command`, { method: 'POST', headers: { Origin: stack.appUrl, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: crypto.randomUUID(), version: stack.store.state.version, type, payload }) });
-  const result = await response.json(); assert.equal(response.status, 200, result.error?.message); return result;
+  const id = crypto.randomUUID();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await fetch(`${stack.appUrl}/api/session/command`, { method: 'POST', headers: { Origin: stack.appUrl, 'Content-Type': 'application/json' }, body: JSON.stringify({ id, version: stack.store.state.version, type, payload }) });
+    const result = await response.json();
+    // Room discovery is a legitimate concurrent server update. Match the UI's
+    // optimistic-version retry, retaining the command ID so it applies once.
+    if (response.status === 409 && result.error?.message?.includes('会话已被其他操作更新') && attempt < 4) continue;
+    assert.equal(response.status, 200, result.error?.message); return result;
+  }
 }
 const snapshot = stack => stack.store.snapshot();
 const current = stack => stack.store.state.rounds.find(r => r.id === stack.store.state.currentRoundId);
