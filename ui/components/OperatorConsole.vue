@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useSession, type PoolEntry } from '../session';
 import { sceneLabels, type Scene, type Team } from '../model';
+import StreamingAccess from './StreamingAccess.vue';
 import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
 import { useMotionReady } from '../motion';
@@ -428,6 +429,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       </div>
       <section v-show="settings" class="operator-setup" aria-label="本场设置">
         <div class="operator-section-head"><h2>本场设置</h2><span>修改后自动同步，无需保存；已有比赛记录保留</span></div>
+        <StreamingAccess v-if="snapshot" :snapshot="snapshot" :disabled="disabled" />
         <div class="setup-meta">
           <label>比赛标题<input v-model="form.title" aria-label="比赛标题" maxlength="160" @input="scheduleSetting('title')" @blur="dirtySettings.has('title') && scheduleSetting('title', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.title }}</span></label>
           <label>阶段<ControlSelect :value="s.match.stage" :disabled="disabled" :data-unavailable="connection !== 'synced'" aria-describedby="stage-hint" @change="changeStage"><option value="group">小组赛 · BO11</option><option value="elimination">淘汰赛 · BO11</option><option value="final">决赛 · BO13</option></ControlSelect><span id="stage-hint" class="operator-hint">选择后立即同步播出画面</span></label>
