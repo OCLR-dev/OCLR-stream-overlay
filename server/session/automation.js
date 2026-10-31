@@ -7,7 +7,7 @@ const validRoom = (config, frame) => {
   const room = frame?.tourney;
   return tosuRoomTeams(frame) && config.profile === 'stable-tourney' && config.left && config.right && room &&
     room.teams.left === config.left && room.teams.right === config.right &&
-    room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0) &&
+    ([1, 2].includes(room.ipcState) || room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0)) &&
     [0, 1, 2, 3, 4].includes(room.ipcState) && Number.isSafeInteger(frame?.beatmap?.id) && frame.beatmap.id > 0;
 };
 
@@ -45,15 +45,19 @@ export class RoomAutomation {
 
   ingest(state, frame, now = Date.now()) {
     const teams = tosuRoomTeams(frame);
-    if (teams && (state.auto.profile !== 'stable-tourney' || state.auto.left !== teams.left || state.auto.right !== teams.right)) {
-      // Initial discovery and saved manual names need no approval. A real room
-      // change during a known run still interrupts that run's continuity.
+    const bindingChanged = teams && (state.auto.profile !== 'stable-tourney' || state.auto.left !== teams.left || state.auto.right !== teams.right);
+    const namesChanged = teams && (state.match.teams.a.name !== teams.left || state.match.teams.b.name !== teams.right);
+    if (teams && (bindingChanged || namesChanged)) {
+      // Room sides own both connection identity and the displayed team names.
+      // A display-only name refresh must not reset an observed game's finish.
       const changedRoom = this.sourceRoom && (this.sourceRoom.left !== teams.left || this.sourceRoom.right !== teams.right);
       if (changedRoom) state = this.hold(state, 'tosu 房间已变化，原局观战连续性中断；新房间队名已自动读取').state;
       state = automaticTransition(state, draft => {
         Object.assign(draft.auto, { profile: 'stable-tourney', ...teams });
-      }, `自动读取 tosu 房间：${teams.left} / ${teams.right}`, randomUUID(), { undo: false });
-      this.reset();
+        draft.match.teams.a.name = teams.left;
+        draft.match.teams.b.name = teams.right;
+      }, `自动读取 tosu 房间与播出队名：${teams.left} / ${teams.right}`, randomUUID(), { undo: false });
+      if (bindingChanged) this.reset();
     }
     this.sourceRoom = teams;
     // Presentation can join a live room mid-map. It never creates a round,
@@ -71,6 +75,20 @@ export class RoomAutomation {
       result.state = automaticTransition(result.state, draft => {
         draft.scene = 'playing'; draft.sceneOverride = null;
       }, '房间正在 Playing：自动跟随播出画面（不补建本局或计胜）', randomUUID(), { undo: false });
+    }
+    const finished = currentRound(result.state);
+    const rankingExit = bound && previous?.ipc === 4 && [1, 2].includes(room.ipcState) &&
+      previous.sessionId === result.state.id && previous.left === config.left && previous.right === config.right;
+    if (rankingExit && !result.state.paused && result.state.phase !== 'winner' && !seriesComplete(result.state) &&
+      (!finished || ['prepared', 'ranking', 'recorded'].includes(finished.status)) &&
+      (result.state.scene !== 'mappool' || result.state.sceneOverride)) {
+      // Returning to the room is a presentation event, even without a new map.
+      // Keep pending results/incidents intact; this never advances BP or awards.
+      result.state = automaticTransition(result.state, draft => {
+        draft.scene = 'mappool'; draft.sceneOverride = null;
+        if (currentRound(draft) && !draft.incident) draft.phase = 'bp';
+      }, 'tosu 离开 Ranking 返回房间：自动回到图池（保留本局赛果）', randomUUID(), { undo: false });
+      if (!result.state.incident) result.note = '已返回房间，自动回到图池；尚未记录的本局赛果保留';
     }
     if (bound && room.ipcState === 3 && !result.state.paused && !result.state.incident && !currentRound(result.state)) {
       result.note = '正在接收 Playing 实时队分；尚无本局记录，仅展示，不自动记胜';
@@ -98,14 +116,18 @@ export class RoomAutomation {
     if (this.lastAt !== null && (now - this.lastAt > 5000 || now < this.lastAt)) return this.hold(state, '观战数据连续性中断，请核对比赛是否仍在进行');
     this.lastAt = now;
     const counted = currentRound(state);
-    if (ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
+    // osu!tourney hides and clears aggregate scores after showing results,
+    // while its clients still retain the verified final scores and IPC stays 4.
+    const clearedDisplay = counted?.finalScore && room.scoreVisible === false &&
+      room.totalScore.left === 0 && room.totalScore.right === 0;
+    if (!clearedDisplay && ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
       entryOf(state, counted.entryId)?.beatmapId === mapId &&
       (room.totalScore.left !== counted.finalScore?.a || room.totalScore.right !== counted.finalScore?.b)) {
       const next = automaticTransition(state, draft => {
         const round = currentRound(draft);
         round.status = 'ranking'; round.winner = null; round.resultSource = 'review'; round.finalScore = null;
         draft.winner = null;
-        if (draft.phase === 'winner') { draft.phase = 'playing'; draft.scene = 'map-result'; }
+        if (draft.phase === 'winner') { draft.phase = 'playing'; draft.scene = 'playing'; }
         holdRound(draft, 'unverified', '自动计胜后成绩仍有变化，已撤回该局自动加分；请等待全部结束后核对胜方', 'tosu');
       }, '成绩仍在变化：撤回本局自动计胜，等待人工核对', randomUUID());
       this.reset();
@@ -200,8 +222,8 @@ export class RoomAutomation {
               // A source snapshot, never persisted as live telemetry or used to assign a winner.
               playing.finalScore = { a: room.totalScore.left, b: room.totalScore.right };
               releaseRoundBp(draft, playing);
-              if (config.scenes) { draft.scene = 'map-result'; draft.sceneOverride = null; }
-            }, 'tosu 连续 Playing → Ranking：展示单图结算（不计胜）', randomUUID());
+              if (config.scenes) { draft.scene = 'playing'; draft.sceneOverride = null; }
+            }, 'tosu 连续 Playing → Ranking：保留 Playing 画面与总分', randomUUID());
             this.endRun = { roundId: round.id, runId: round.runId };
             this.observedRun = null; this.ranking = null;
           }

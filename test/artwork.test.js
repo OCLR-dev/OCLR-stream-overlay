@@ -78,12 +78,11 @@ test('matching live tosu backgrounds are bounded, cached, use the configured ser
   assert.equal(calls[0].options.headers.Authorization, undefined); assert.equal(calls[0].options.redirect, 'error');
 });
 
-test('wrong-map, disconnected, wrong-room and simulated signals never serve a tosu background for this card', async t => {
+test('wrong-map, disconnected and simulated signals never serve a tosu background for this card', async t => {
   const { store, request } = await start(t, async () => { throw new Error('MUST_NOT_FETCH'); });
   for (const change of [() => { store.live.tosu.data.beatmap.id = 999; },
     () => { store.live.tosu.data.beatmap.id = 101; store.live.tosu.status = 'stale'; },
-    () => { store.live.tosu.status = 'live'; store.live.tosu.data.tourney.teams.left = 'Another room'; },
-    () => { store.live.tosu.data.tourney.teams.left = 'Red room'; store.live.sources = { tosu: 'simulated' }; }]) {
+    () => { store.live.tosu.status = 'live'; store.live.sources = { tosu: 'simulated' }; }]) {
     change();
     const response = await request('/api/beatmaps/101/background');
     assert.equal(response.status, 302); assert.equal(response.headers.get('x-artwork-source'), 'osu-cover');
@@ -129,4 +128,37 @@ test('mod-specific test parameter routes validate pool mods and return calculate
   assert.ok(Math.abs(value.calculation.cs - 5.2) < .001); assert.equal(value.calculation.ar, 10);
   for (const path of ['/api/beatmaps/101/metadata/DT', '/api/beatmaps/101/metadata/HRDT', '/api/beatmaps/101/cover/HR']) assert.equal((await request(path)).status, 404);
   assert.deepEqual(store.state, before);
+});
+
+test('the current live map outside the pool can show its background without changing match data', async t => {
+  const { store, request } = await start(t, async () => new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } }));
+  store.live.tosu.data.beatmap = { id: 999, setId: 88, checksum: 'outside-pool' };
+  store.live.tosu.data.tourney = null;
+  Object.assign(store.state.auto, { profile: 'unverified', left: '', right: '' });
+  const before = structuredClone(store.state);
+  const response = await request('/api/beatmaps/999/background');
+  assert.equal(response.status, 200); assert.equal(response.headers.get('x-artwork-source'), 'tosu');
+  for (const path of ['/api/beatmaps/998/background', '/api/beatmaps/999/cover', '/api/beatmaps/999/metadata', '/api/beatmaps/999/metadata/HR']) assert.equal((await request(path)).status, 404);
+  assert.deepEqual(store.state, before);
+});
+
+test('an outside-pool live background can fall back to its verified official cover', async t => {
+  const { store, request } = await start(t, async () => { throw Error('NO_LOCAL_BACKGROUND'); });
+  store.live.tosu.data.beatmap = { id: 999, setId: 88, checksum: 'outside-pool' };
+  const response = await request('/api/beatmaps/999/background');
+  assert.equal(response.status, 302); assert.equal(response.headers.get('location'), 'https://assets.ppy.sh/beatmaps/88/covers/cover.jpg');
+});
+
+test('outside-pool backgrounds reject stale, simulated and changed maps, including changes during download', async t => {
+  let current; let calls = 0;
+  const { store, request } = await start(t, async () => {
+    calls++; current.live.tosu.data.beatmap = { id: 888, setId: 77, checksum: 'new-map' };
+    return new Response(new Uint8Array([1]), { headers: { 'Content-Type': 'image/png' } });
+  });
+  current = store;
+  store.live.tosu.data.beatmap = { id: 999, setId: 88, checksum: 'outside-pool' };
+  store.live.tosu.status = 'stale'; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
+  store.live.tosu.status = 'live'; store.live.sources = { tosu: 'simulated' }; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
+  store.live.sources = { tosu: 'live' }; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
+  assert.equal(calls, 1);
 });

@@ -29,6 +29,10 @@ export interface Session {
   ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'technical' | 'tactical';
   history: { id: string; at: string; version: number; message: string; source: string }[]; canUndo: boolean;
 }
+export interface BeatmapStats {
+  stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
+  ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null };
+}
 export interface Envelope {
   session: Session; persistence: string;
   live: {
@@ -42,9 +46,8 @@ export interface Envelope {
     tosu: { status: string; updatedAt: string | null; data: null | {
       beatmap: { id: number | null; title: string | null; artist?: string | null; difficulty?: string | null;
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
-        stats: null | { stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
-          ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null } } };
-      tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null;
+        stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null };
+      tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
         totalScore: { left: number | null; right: number | null }; chat: { name?: string; message?: string; timestamp?: string }[] }
     } };
   };

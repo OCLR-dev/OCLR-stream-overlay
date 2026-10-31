@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useSession, type PoolEntry } from '../session';
-import { sceneLabels, type Scene, type Team } from '../model';
+import { sceneLabels, normalizeScene, type Scene, type Team } from '../model';
 import StreamingAccess from './StreamingAccess.vue';
 import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
@@ -27,14 +27,15 @@ const round = computed(() => s.value?.rounds.find(r => r.id === s.value?.current
 const roomScores = computed(() => liveTeamScores(snapshot.value, connection.value));
 const teamScore = (value: number | null | undefined) => value == null ? '—' : value.toLocaleString('en-US');
 const entry = (id?: string | null) => s.value?.pool.find(e => e.id === id);
+const automaticTeamNames = computed(() => !!liveRoom(snapshot.value, connection.value));
 const names = computed(() => ({ a: s.value?.match.teams.a.name || '左队', b: s.value?.match.teams.b.name || '右队' }));
 const series = computed(() => s.value?.series || { a: 0, b: 0 });
 const target = computed(() => s.value?.match.stage === 'final' ? 7 : 6);
 const recordingPrevious = computed(() => !!resultRound.value && resultRound.value !== s.value?.currentRoundId);
-const panel = computed(() => s.value?.scene === 'map-result' ? 'playing' : s.value?.scene || 'waiting');
+const panel = computed(() => normalizeScene(s.value?.scene));
 const scorePanel = computed(() => panel.value === 'playing');
 const panelHeading = computed(() => ({ waiting: '到场与就绪', roll: 'Roll 点数与先手', mappool: '图池 Ban / Pick', playing: '比分与赛果', victory: '全场胜方', pause: '暂停管理' }[panel.value]));
-const scenes = [['waiting', '等待'], ['roll', 'Roll / 先手'], ['mappool', '图池 / BP'], ['playing', 'Playing'], ['map-result', '单图结算'], ['victory', 'Winner']] as const;
+const scenes = [['waiting', '等待'], ['roll', 'Roll / 先手'], ['mappool', '图池 / BP'], ['playing', 'Playing'], ['victory', 'Winner']] as const;
 const form = reactive({ title: 'OCLR S11', a: '', b: '', rosterA: '', rosterB: '', pool: '', mode: '4v4', source: '4x3' });
 const rollForm = reactive({ a: '', b: '', winner: '', pickFirst: '', banFirst: '' });
 const autoForm = reactive({ bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '' });
@@ -167,7 +168,7 @@ const run = async (type: string, payload: unknown = {}) => {
   if (ok) {
     const messages: Record<string, string> = {
       auto: '自动化设置已同步，条件有效时自动跟随新的比赛事件。',
-      display: `已切到${sceneLabels[s.value?.scene as Scene]}，比赛进度继续跟随；${s.value?.auto.scenes ? '下一有效比赛事件自动接回画面。' : '自动选画面已关闭，保持人工画面。'}`,
+      display: `已切到${sceneLabels[normalizeScene(s.value?.scene)]}，比赛进度继续跟随；${s.value?.auto.scenes ? '下一有效比赛事件自动接回画面。' : '自动选画面已关闭，保持人工画面。'}`,
       pause: '已展示暂停画面，比赛记录保留。准备好后点击返回原画面。',
       resume: '已结束暂停，自动建立安全基线；保留比赛记录，不补记暂停期间的赛果。',
       start: '本局已标记开打，正在播出比赛画面。正常结束后自动结算，异常时可先等待。',
@@ -450,8 +451,8 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         </details>
         <div>
           <div class="setup-teams">
-            <div><label>左队名称<input v-model="form.a" aria-label="左队名称" maxlength="80" required @input="scheduleSetting('a')" @blur="dirtySettings.has('a') && scheduleSetting('a', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.a }}</span></label><label>左队上场名单 · 每行一人<textarea v-model="form.rosterA" aria-label="左队上场名单 · 每行一人" @input="scheduleSetting('rosterA')" @blur="dirtySettings.has('rosterA') && scheduleSetting('rosterA', true)" rows="4" placeholder="按窗口顺序录入实际选手"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterA }}</span></label></div>
-            <div><label>右队名称<input v-model="form.b" aria-label="右队名称" maxlength="80" required @input="scheduleSetting('b')" @blur="dirtySettings.has('b') && scheduleSetting('b', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.b }}</span></label><label>右队上场名单 · 每行一人<textarea v-model="form.rosterB" aria-label="右队上场名单 · 每行一人" @input="scheduleSetting('rosterB')" @blur="dirtySettings.has('rosterB') && scheduleSetting('rosterB', true)" rows="4" placeholder="按窗口顺序录入实际选手"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterB }}</span></label></div>
+            <div><label>左队名称<input v-model="form.a" :readonly="automaticTeamNames" aria-label="左队名称" maxlength="80" required @input="scheduleSetting('a')" @blur="dirtySettings.has('a') && scheduleSetting('a', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.a || (automaticTeamNames ? '从 tosu 房间左队自动读取' : '') }}</span></label><label>左队上场名单 · 每行一人<textarea v-model="form.rosterA" aria-label="左队上场名单 · 每行一人" @input="scheduleSetting('rosterA')" @blur="dirtySettings.has('rosterA') && scheduleSetting('rosterA', true)" rows="4" placeholder="按窗口顺序录入实际选手"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterA }}</span></label></div>
+            <div><label>右队名称<input v-model="form.b" :readonly="automaticTeamNames" aria-label="右队名称" maxlength="80" required @input="scheduleSetting('b')" @blur="dirtySettings.has('b') && scheduleSetting('b', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.b || (automaticTeamNames ? '从 tosu 房间右队自动读取' : '') }}</span></label><label>右队上场名单 · 每行一人<textarea v-model="form.rosterB" aria-label="右队上场名单 · 每行一人" @input="scheduleSetting('rosterB')" @blur="dirtySettings.has('rosterB') && scheduleSetting('rosterB', true)" rows="4" placeholder="按窗口顺序录入实际选手"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterB }}</span></label></div>
             <label>本场图池 · 每行「标签 谱面ID 标题」<textarea v-model="form.pool" aria-label="本场图池 · 每行「标签 谱面ID 标题」" @input="scheduleSetting('pool')" @blur="dirtySettings.has('pool') && scheduleSetting('pool', true)" rows="7" placeholder="HD2 谱面ID 标题" spellcheck="false"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.pool }}</span></label>
           </div><p>文字输入停顿后自动同步；无效内容保留在输入框并显示原因，播出继续使用上一次有效设置。名单与图池修改会标为人工资料。</p>
         </div>

@@ -1,9 +1,10 @@
-import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, watch, type InjectionKey } from 'vue';
-import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
+import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, watch, type InjectionKey } from 'vue';
+import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, normalizeScene, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
 import { useSession } from './session';
 import { useMotionReady } from './motion';
 import { poolDisplay } from './poolDisplay';
-import { liveBeatmap, livePlayingMap, liveRoom, liveTeamScores, resultTeamScores } from './liveScores';
+import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, liveTeamScores, resultTeamScores } from './liveScores';
+import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -15,13 +16,18 @@ export function createOverlay(shared = false) {
     state.clean = true; state.seriesA = s?.series.a ?? null;
     state.seriesB = s?.series.b ?? null;
     if (!s) return;
-    state.scene = s.scene as Scene; state.mode = s.match.mode; state.source = s.match.source; state.stage = s.match.stage;
+    state.scene = normalizeScene(s.scene); state.mode = s.match.mode; state.source = s.match.source; state.stage = s.match.stage;
     state.pickFirst = s.roll.pickFirst || 'unknown'; state.banFirst = s.roll.banFirst || 'unknown';
     state.pauseType = s.pauseType; state.exTeam = s.ex.team || 'none'; state.exA = s.ex.remaining.a; state.exB = s.ex.remaining.b;
     const entry = s.pool.find(e => e.id === s.rounds.find(r => r.id === s.currentRoundId)?.entryId);
     state.mapType = entry?.mod === 'TB' ? 'tb' : 'normal';
     state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
   }, { immediate: true });
+  const rankingScores = shallowRef<RankingScoreHold | null>(null);
+  if (shared) watch([() => sessionClient?.snapshot.value, () => sessionClient?.connection.value, () => state.scene],
+    ([envelope, connection, scene]) => {
+      rankingScores.value = retainRankingScores(envelope, connection, scene, rankingScores.value);
+    }, { immediate: true, flush: 'sync' });
   const view = computed(() => {
     const base = derive(state);
     const s = session.value;
@@ -35,14 +41,14 @@ export function createOverlay(shared = false) {
     })) : base.roster(team);
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = liveRoom(envelope, sessionClient?.connection.value);
-    const scores = liveTeamScores(envelope, sessionClient?.connection.value);
+    const scores = rankingScores.value?.scores || liveTeamScores(envelope, sessionClient?.connection.value);
     const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
     const currentMap = state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) || recordedMap : recordedMap;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
     const scoreB = shared ? formatted(scores?.right) : base.scoreB;
-    const resultScores = resultTeamScores(envelope, sessionClient?.connection.value);
+    const resultScores = rankingScores.value?.scores || resultTeamScores(envelope, sessionClient?.connection.value);
     const resultA = shared ? formatted(resultScores?.left) : base.resultA;
     const resultB = shared ? formatted(resultScores?.right) : base.resultB;
     const pool = shared ? (s?.pool || []).map(entry => {
@@ -65,11 +71,12 @@ export function createOverlay(shared = false) {
         return pool.find(e => e.id === ids[index])?.label || '未确认';
       },
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
+      showPlayingScores: !shared || !!scores,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
       winner: s?.winner ? names[s.winner] : null,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
-      chat: shared && bound ? envelope?.live.tosu.data?.tourney?.chat.slice(-4) || [] : [],
+      chat: shared ? liveRoomChat(envelope, sessionClient?.connection.value).slice(-4) : [],
       sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',
       arrivalCount: shared ? (['a', 'b'] as const).filter(arrived).length * base.count : base.arrivalCount,
       readiness: shared ? (s?.ready.a && s?.ready.b ? '双方已就绪' : '等待到场 / 就绪确认') : base.readiness,

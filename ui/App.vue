@@ -29,12 +29,11 @@ const { stage, scale } = useCanvasFit();
           :aria-label="`1920×1080 OCLR ${view.season} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})` }">
           <BroadcastHeader />
-          <!-- Keep scenes mounted so switching scenes never recreates a POV. -->
+          <!-- One Playing capture grid remains mounted through gameplay and Ranking. -->
           <div class="scene-stack">
             <WaitingScene />
             <MappoolScene />
             <ArenaScene />
-            <ArenaScene result />
             <VictoryScene />
             <PauseScene />
             <RollScene />

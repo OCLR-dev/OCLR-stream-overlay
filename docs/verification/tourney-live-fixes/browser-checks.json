@@ -1,0 +1,461 @@
+{
+  "syntheticDemo": true,
+  "checks": [
+    {
+      "active": "3v3",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "mode": "3v3",
+      "resultScene": false,
+      "source": "4x3",
+      "streamEmpty": true
+    },
+    {
+      "active": "2v2",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 360
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 360
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 360
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 360
+        }
+      ],
+      "mode": "3v3",
+      "resultScene": false,
+      "source": "4x3",
+      "streamEmpty": true
+    },
+    {
+      "active": "3v3",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "mode": "3v3",
+      "resultScene": false,
+      "source": "16x9",
+      "streamEmpty": true
+    },
+    {
+      "active": "2v2",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 405
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 405
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 405
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 405
+        }
+      ],
+      "mode": "3v3",
+      "resultScene": false,
+      "source": "16x9",
+      "streamEmpty": true
+    },
+    {
+      "active": "4v4",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 540
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 540
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 540
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 540
+        }
+      ],
+      "mode": "4v4",
+      "resultScene": false,
+      "source": "4x3",
+      "streamEmpty": true
+    },
+    {
+      "active": "3v3",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 360,
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "mode": "4v4",
+      "resultScene": false,
+      "source": "4x3",
+      "streamEmpty": true
+    },
+    {
+      "active": "4v4",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 585
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 585
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 585
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 585
+        }
+      ],
+      "mode": "4v4",
+      "resultScene": false,
+      "source": "16x9",
+      "streamEmpty": true
+    },
+    {
+      "active": "3v3",
+      "captures": [
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "border": "none",
+          "green": true,
+          "height": 270,
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "mode": "4v4",
+      "resultScene": false,
+      "source": "16x9",
+      "streamEmpty": true
+    }
+  ]
+}

@@ -22,7 +22,7 @@ test('normal and simulated services share one runtime lease across different app
   await restarted.release(); await restarted.release();
 });
 
-test('simulation resumes the original file and room before subscribing, without reseeding the match', async () => {
+test('simulation resumes competition records and syncs display names from the connected room without reseeding', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'oclr-resume-test-'));
   const file = join(directory, 'session.json');
   let stack;
@@ -35,13 +35,20 @@ test('simulation resumes the original file and room before subscribing, without 
     stack = await startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0, sessionFile: file, initialRoom: room });
     await stack.store.tail;
     assert.equal(stack.store.file, file);
-    assert.deepEqual(stack.store.state, state);
+    for (const field of ['id', 'pool', 'poolMarks', 'rounds', 'bans', 'roll', 'seriesAdjustment']) assert.deepEqual(stack.store.state[field], state[field], field);
     assert.equal(stack.simulator.room.mapId, room.mapId);
-    await stack.store.command({ id: crypto.randomUUID(), version: state.version, type: 'map-mark', payload: { entryId: 'sim-nm1', status: 'open', team: null } });
+    const deadline = Date.now() + 3000;
+    while (stack.store.live.tosu.status !== 'live' && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(stack.store.live.tosu.status, 'live');
+    const roomName = stack.store.live.tosu.data.tourney.teams.left;
+    const store = stack.store;
     await stack.stop(); stack = null;
+    await store.command({ id: crypto.randomUUID(), version: store.state.version, type: 'map-mark', payload: { entryId: 'sim-nm1', status: 'open', team: null } });
     const reopened = await SessionStore.open(file);
     assert.equal(reopened.state.id, state.id);
-    assert.equal(reopened.state.match.teams.a.name, '保留的本机队名');
+    assert.equal(reopened.state.match.teams.a.name, roomName);
+    assert.deepEqual(reopened.state.match.teams.a.roster, state.match.teams.a.roster);
+    assert.equal(reopened.state.match.teams.a.id, state.match.teams.a.id);
     assert.deepEqual(reopened.state.poolMarks, [{ entryId: 'sim-nm1', status: 'open', team: null }]);
     await assert.rejects(startSimulation({ offlineOclr: true, appPort: 0, wsPort: 0, sessionFile: join(directory, 'missing.json') }), { code: 'ENOENT' });
   } finally { await stack?.stop(); await rm(directory, { recursive: true, force: true }); }

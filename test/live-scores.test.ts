@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { computed, shallowRef } from 'vue';
 import { normalizeTosuV2 } from '../src/tosu.js';
 import { newSession } from '../server/session/model.js';
-import { liveBeatmap, livePlayingMap, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
+import { liveBeatmap, livePlayingMap, liveRoomChat, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
 import type { Envelope } from '../ui/session';
 
 function fixture() {
@@ -149,4 +149,16 @@ test('a pending result reads only matching Ranking totals, preserving zero and m
   assert.deepEqual(resultTeamScores(envelope, 'disconnected'), { left: 100, right: null });
   envelope.session.incident = { roundId: 'round', kind: 'unverified', reason: '', source: 'tosu', at: '' };
   assert.equal(resultTeamScores(envelope, 'synced'), null);
+});
+
+
+test('room chat follows fresh tosu messages through Playing and Ranking without requiring team names', () => {
+  const { envelope } = fixture();
+  const room = envelope.live.tosu.data!.tourney!;
+  room.teams = { left: '', right: '' }; room.chat = [{ name: '测试裁判', message: 'ready' }];
+  const before = JSON.stringify(envelope.session);
+  for (const ipc of [0, 1, 2, 3, 4, null]) { room.ipcState = ipc; assert.deepEqual(liveRoomChat(envelope, 'synced'), room.chat); }
+  assert.deepEqual(liveRoomChat(envelope, 'disconnected'), []);
+  envelope.live.tosu.status = 'stale'; assert.deepEqual(liveRoomChat(envelope, 'synced'), []);
+  assert.equal(JSON.stringify(envelope.session), before);
 });
