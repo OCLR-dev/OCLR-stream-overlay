@@ -1,0 +1,13 @@
+{
+  "label": "MP5-Xronicle-Windows-x64-20261030-r4",
+  "build": "f6c496f531afa77ac741aea477b223bb802c717f2db193cb538320356c29ef9e",
+  "bytes": 36675725,
+  "sha256": "d68998666e91ec8613923daf9babf1ff4bf1a65f259dcdea5e6eaceaf4374ca3",
+  "manifestFiles": 52,
+  "allHashesValid": true,
+  "amd64Executables": true,
+  "noSessionOrEnv": true,
+  "packagedSourceAndFrontendMatchCheckout": true,
+  "matchesTestedBackendBuild": true,
+  "bundledInstructionsCurrent": true
+}

@@ -1,0 +1,13 @@
+{
+  "host": "darwin",
+  "kind": "exact extracted package backend using host Node; Windows exe not executed",
+  "label": "MP5-Xronicle-Windows-x64-20261030-r4",
+  "build": "f6c496f531afa77ac741aea477b223bb802c717f2db193cb538320356c29ef9e",
+  "passed": true,
+  "checks": [
+    "exact packaged backend reports R4 label/build; control/output available; correct 17 maps/BO9/teams, OCLR blocked",
+    "unavailable tosu URL persists across restart; server keeps both pages available and retries",
+    "later simulated tosu connects without manual names; Playing scores update and Ranking totals remain available without invented rounds/wins",
+    "mid-match initialization/one undo and restart preserve existing match/series; original StreamOverlay directory untouched"
+  ]
+}

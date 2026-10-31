@@ -1,6 +1,6 @@
 # 自定义赛事本地测试
 
-仅用于 `test/custom-match`，工作区 `/Users/me/Documents/osu!tour/overlay-custom-match`。原工作区及 3007／24053 不参与测试；不操作 OBS。本分支与 main 分开维护并同步到远端；本轮源码更新不重打 Windows R3 ZIP。
+仅用于 `test/custom-match`，工作区 `/Users/me/Documents/osu!tour/overlay-custom-match`。原工作区及 3007／24053 不参与测试；不操作 OBS。本分支与 main 分开维护并同步到远端；最新 Windows 包为 R4，包含本轮界面与自动房间队名更新。
 
 ## 启动与地址
 
