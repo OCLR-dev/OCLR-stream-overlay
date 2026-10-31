@@ -1,0 +1,36 @@
+{
+  "captures": [
+    {
+      "height": 360,
+      "width": 480,
+      "x": 0,
+      "y": 360
+    },
+    {
+      "height": 360,
+      "width": 480,
+      "x": 480,
+      "y": 360
+    },
+    {
+      "height": 360,
+      "width": 480,
+      "x": 960,
+      "y": 360
+    },
+    {
+      "height": 360,
+      "width": 480,
+      "x": 1440,
+      "y": 360
+    }
+  ],
+  "header": {
+    "height": 120,
+    "width": 1280,
+    "x": 0,
+    "y": 0
+  },
+  "removedDescriptions": true,
+  "text": "初华未来1,234,567小组赛S10BO11扣一復活苦來兮苦1,100,000"
+}

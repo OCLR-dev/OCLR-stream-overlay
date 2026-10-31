@@ -33,13 +33,17 @@ function harness(state = fixture()) {
   };
 }
 
-test('default intent waits for binding without disabling settings, including partial edits and next match', async () => {
+test('default automation reads room names without manual configuration and preserves explicit opt outs', async () => {
   const h = harness(newSession());
-  assert.deepEqual([h.s.auto.bp, h.s.auto.scenes, h.s.auto.results], [true, true, true]);
-  await h.frame(799999); assert.match(h.store.live.note, /等待核实/);
-  await h.cmd('auto', { ...h.s.auto, locked: false, profile: 'stable-tourney', left: '模拟红队' });
-  await h.frame(799999); assert.equal(h.s.auto.bp, true); assert.equal(h.s.incident, null);
-  await h.cmd('next-match'); assert.equal(h.s.auto.results, true); assert.equal(h.s.auto.profile, 'unverified');
+  h.s.auto.results = false;
+  await h.frame(799999);
+  assert.equal(h.s.auto.profile, 'stable-tourney');
+  assert.equal(h.s.auto.left, '模拟红队'); assert.equal(h.s.auto.right, '模拟蓝队');
+  assert.equal(h.s.auto.results, false); assert.equal(h.s.incident, null);
+  const version = h.s.version;
+  await h.frame(799999); assert.equal(h.s.version, version, 'unchanged telemetry does not write repeatedly');
+  await h.cmd('next-match'); await h.frame(799999);
+  assert.equal(h.s.auto.left, '模拟红队'); assert.equal(h.s.auto.right, '模拟蓝队');
 });
 
 test('manual display before/during Playing yields only to the next valid event and preserves a pending Ranking', async () => {
@@ -199,9 +203,11 @@ test('a new automatic finish after series correction during Playing still detect
   await h.frame(710001, 4, 900, 1000); assert.ok(h.s.incident); assert.deepEqual(seriesOf(h.s), { a: 1, b: 1 });
 });
 
-test('changing an active room binding requires this round to be verified instead of reusing its run in a different room', async () => {
+test('an actual live room change interrupts the old run while reading the new names automatically', async () => {
   const h = harness(); await h.prepared(); await h.frame(710001, 3);
-  await h.cmd('auto', { ...h.s.auto, left: 'Other room', locked: false });
+  const changed = raw(710001, 3); changed.tourney.teams.left = 'Other room';
+  await h.store.frame(changed, 10000);
+  assert.equal(h.s.auto.left, 'Other room');
   assert.ok(h.s.incident); assert.equal(h.s.paused, false); await h.finish(); assert.equal(seriesOf(h.s).a, 0);
 });
 

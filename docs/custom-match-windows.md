@@ -1,5 +1,7 @@
 # MP5 Xronicle — Windows x64 测试包 R3（2026-10-30）
 
+> 以下为此前 R3 包的使用记录。本轮远端源码已同步新界面与自动读取 tosu 左右队名，未重新生成 R3 ZIP；源码版本的当前步骤见[自定义赛事说明](custom-match.md)。
+
 适用于 Windows 10 / 11 的 Intel / AMD 64 位电脑。无需安装 Node.js、Git、Python；运行环境已包含。程序未签名；不需要关闭系统安全防护。Windows 原生启动与真实 osu!tourney／tosu 联调尚未在实机验收，请先测试。
 
 1. 把 MP5-Xronicle-Windows-x64-20261030-r3.zip 整个传到 Windows（U盘、局域网或你常用的文件传输工具均可），右键“全部解压”。不要在压缩包里运行，也不要只复制 exe。

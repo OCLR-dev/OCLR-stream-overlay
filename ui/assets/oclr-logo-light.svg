@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1421" height="375" viewBox="115 316 1421 375" role="img" aria-labelledby="oclr-light-title oclr-light-desc">
+  <title id="oclr-light-title">OCLR — osu! Chinese League Rookie</title>
+  <desc id="oclr-light-desc">OCLR wordmark for light surfaces.</desc>
+  <defs>
+    <linearGradient id="oclr-light-ocl" x1="0.12" y1="0" x2="0.78" y2="1"><stop offset="0%" stop-color="#432050"/><stop offset="55%" stop-color="#7A3E8C"/><stop offset="100%" stop-color="#AD72BE"/></linearGradient>
+    <linearGradient id="oclr-light-r" x1="0.12" y1="0" x2="0.78" y2="1"><stop offset="0%" stop-color="#F04FB5"/><stop offset="48%" stop-color="#D23DDF"/><stop offset="100%" stop-color="#6D4AEF"/></linearGradient>
+    <mask id="oclr-light-spark" maskUnits="userSpaceOnUse" x="1060" y="320" width="520" height="380" style="mask-type:luminance">
+      <rect x="1060" y="320" width="520" height="380" fill="#fff"/>
+      <path d="M1422 392C1426 426 1435 435 1469 439C1435 443 1426 452 1422 486C1418 452 1409 443 1375 439C1409 435 1418 426 1422 392Z" fill="#000"/>
+    </mask>
+  </defs>
+  <g fill-rule="evenodd">
+    <path d="M512,391 494,376 473,365 457,360 431,356 328,357 291,365 250,383 214,409 197,427 178,455 166,481 158,509 155,540 158,565 168,592 178,607 206,631 227,641 260,649 336,651 374,648 411,639 444,624 479,599 500,577 517,552 534,512 540,480 539,446 530,418Z M442,444 451,459 455,476 454,498 450,513 443,528 433,542 414,560 403,567 380,577 348,583 307,583 286,579 271,573 263,568 250,554 245,544 242,530 243,507 248,489 262,463 279,445 290,437 316,425 337,420 388,419 419,427 431,434Z" fill="url(#oclr-light-ocl)"/>
+    <path d="M897,357 694,358 646,370 612,389 586,413 569,438 557,466 541,518 535,561 538,582 550,609 568,628 593,642 610,647 625,649 756,649 827,575 655,575 641,573 632,569 623,559 620,549 620,534 627,505 639,475 650,458 661,447 676,437 694,431 826,430Z" fill="url(#oclr-light-ocl)"/>
+    <path d="M916,357 821,649 1054,649 1123,575 945,575 935,573 1006,358Z" fill="url(#oclr-light-ocl)"/>
+    <path d="M1227,358 1171,430 1383,430 1391,432 1395,436 1395,450 1381,466 1359,474 1169,475 1111,649 1199,649 1232,551 1250,551 1345,649 1464,649 1354,536 1394,534 1420,527 1442,516 1468,493 1487,463 1496,432 1495,404 1492,394 1483,380 1460,364 1443,359 1425,357Z" fill="url(#oclr-light-r)" mask="url(#oclr-light-spark)"/>
+  </g>
+</svg>

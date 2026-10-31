@@ -40,7 +40,7 @@ async function boot(t, options = {}) {
   const calls = [];
   const stack = await startSimulation({ appPort: 0, wsPort: 0, sessionFile: file, oclrConfig: config, oclrFetch: remote(calls), ...options });
   t.after(async () => { await stack.stop(); await rm(directory, { recursive: true, force: true }); });
-  await until(() => stack.store.live.tosu.status === 'live');
+  await until(() => stack.store.live.tosu.status === 'live' && stack.store.state.auto.profile === 'stable-tourney');
   return { ...stack, calls };
 }
 async function command(stack, type, payload = {}) {
@@ -79,7 +79,7 @@ test('imported historical pool drives simulated maps and new game results, witho
   const maps = stack.simulator.snapshot().maps;
   assert.ok(maps.some(m => m.beatmapId === 991001)); assert.ok(!maps.some(m => m.beatmapId === 710001));
   await room(stack, { leftName: 'Explicit room left', rightName: 'Explicit room right', growing: false });
-  await command(stack, 'auto', { ...stack.store.state.auto, profile: 'stable-tourney', left: 'Explicit room left', right: 'Explicit room right' });
+  await until(() => stack.store.state.auto.left === 'Explicit room left' && stack.store.state.auto.right === 'Explicit room right');
   await command(stack, 'set-action', { action: { kind: 'pick', team: 'a' }, queue: [{ kind: 'pick', team: 'b' }] });
   await delay(200);
   await room(stack, { mapId: 991001, ipcState: 1 });
@@ -119,4 +119,19 @@ test('an explicit missing match file is rejected in normal simulation instead of
 
 test('random-port tests cannot implicitly open the current persistent match or load real credentials', async () => {
   await assert.rejects(startSimulation({ appPort: 0, wsPort: 0 }), /隔离测试需明确指定/);
+});
+
+
+test('a fresh real-API simulator follows Playing and scores with no manual room binding or BP setup', async t => {
+  const stack = await boot(t);
+  assert.equal(stack.store.state.auto.left, '模拟红队'); assert.equal(stack.store.state.auto.right, '模拟蓝队');
+  await room(stack, { ipcState: 3, left: 432100, right: 123400, growing: false });
+  await until(() => stack.store.state.scene === 'playing');
+  const live = stack.store.snapshot();
+  assert.equal(live.live.tosu.data.tourney.totalScore.left, 432100);
+  assert.equal(live.live.tosu.data.tourney.totalScore.right, 123400);
+  assert.equal(live.session.incident, null); assert.equal(live.session.currentRoundId, null);
+  await room(stack, { ipcState: 4 }); await delay(600);
+  assert.deepEqual(stack.store.snapshot().session.series, { a: 0, b: 0 });
+  assert.deepEqual(stack.store.state.rounds, []);
 });

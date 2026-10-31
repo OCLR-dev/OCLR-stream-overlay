@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { computed, shallowRef } from 'vue';
 import { normalizeTosuV2 } from '../src/tosu.js';
 import { newSession } from '../server/session/model.js';
-import { liveBeatmap, livePlayingMap, liveTeamScores } from '../ui/liveScores.ts';
+import { liveBeatmap, livePlayingMap, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
 import type { Envelope } from '../ui/session';
 
 function fixture() {
@@ -30,7 +30,7 @@ test('joining Playing without a BP round shows changing room scores without crea
   assert.equal(JSON.stringify(envelope.session), before);
 });
 
-test('live room score display clears on stale/disconnected data, wrong room, missing binding and incident', () => {
+test('live room scores use tosu sides without manual binding and clear on stale data or incident', () => {
   const { envelope } = fixture();
   for (const connection of ['connecting', 'disconnected', 'error']) assert.equal(liveTeamScores(envelope, connection), null);
   for (const status of ['stale', 'disconnected', 'invalid-data']) {
@@ -39,6 +39,10 @@ test('live room score display clears on stale/disconnected data, wrong room, mis
   }
   for (const patch of [{ left: '' }, { right: '' }, { left: '错误房间' }, { right: '错误房间' }, { profile: 'unverified' }]) {
     const changed = structuredClone(envelope); Object.assign(changed.session.auto, patch);
+    assert.deepEqual(liveTeamScores(changed, 'synced'), { left: 123456, right: 654321 });
+  }
+  for (const teams of [{ left: '', right: '右队' }, { left: null, right: '右队' }, { left: '左队', right: '' }]) {
+    const changed = structuredClone(envelope); changed.live.tosu.data!.tourney!.teams = teams;
     assert.equal(liveTeamScores(changed, 'synced'), null);
   }
   envelope.session.incident = { roundId: 'test', kind: 'unverified', reason: '', source: 'manual', at: '' };
@@ -52,9 +56,13 @@ test('zero and partial missing totals stay distinct without falling back to save
   assert.deepEqual(liveTeamScores(envelope, 'synced'), { left: 0, right: null });
 });
 
-test('only current IPC 3 totals are displayed; Idle and Ranking cannot leave an old Playing score', () => {
+test('Playing and Ranking display current totals; Idle cannot leave an old score', () => {
   const { envelope } = fixture();
-  for (const ipc of [0, 1, 2, 4, null]) {
+  for (const ipc of [3, 4]) {
+    envelope.live.tosu.data!.tourney!.ipcState = ipc;
+    assert.deepEqual(liveTeamScores(envelope, 'synced'), { left: 123456, right: 654321 });
+  }
+  for (const ipc of [0, 1, 2, null]) {
     envelope.live.tosu.data!.tourney!.ipcState = ipc;
     assert.equal(liveTeamScores(envelope, 'synced'), null);
   }
@@ -102,4 +110,43 @@ test('current tosu beatmap and its parameters display without joining or binding
   }
   envelope.live.tosu.status = 'live';
   for (const connection of ['connecting', 'disconnected', 'error']) assert.equal(livePlayingMap(envelope, connection), null);
+});
+
+
+test('Ranking totals appear without a saved result or run and remain read only', () => {
+  const { envelope, raw } = fixture();
+  raw.tourney.ipcState = 4;
+  envelope.live.tosu.data = normalizeTosuV2(raw);
+  const before = JSON.stringify(envelope.session);
+  assert.deepEqual(resultTeamScores(envelope, 'synced'), { left: 123456, right: 654321 });
+  assert.equal(JSON.stringify(envelope.session), before);
+  raw.tourney.totalScore = { left: 234567, right: 765432 };
+  envelope.live.tosu.data = normalizeTosuV2(raw);
+  assert.deepEqual(resultTeamScores(envelope, 'synced'), { left: 234567, right: 765432 });
+  for (const status of ['stale', 'disconnected', 'invalid-data']) {
+    envelope.live.tosu.status = status;
+    assert.equal(resultTeamScores(envelope, 'synced'), null);
+  }
+});
+
+test('a pending result reads only matching Ranking totals, preserving zero and missing sides', () => {
+  const { envelope, raw } = fixture(); raw.tourney.ipcState = 4;
+  const entry = { id: 'hr1', beatmapId: 2635981, mod: 'HR', label: 'HR1', title: '', artist: '', difficulty: '' };
+  envelope.session.pool = [entry];
+  envelope.session.currentRoundId = 'round';
+  envelope.session.rounds = [{ id: 'round', entryId: 'hr1', pickedBy: 'a', status: 'ranking', winner: null, runId: null, source: 'manual', finalScore: null, exTeam: null }];
+  Object.assign(raw.tourney.totalScore, { left: 0, right: undefined });
+  envelope.live.tosu.data = normalizeTosuV2(raw);
+  assert.deepEqual(resultTeamScores(envelope, 'synced'), { left: 0, right: null });
+  envelope.live.tosu.data!.beatmap.id = 1;
+  assert.equal(resultTeamScores(envelope, 'synced'), null);
+  envelope.live.tosu.data!.beatmap.id = 2635981;
+  envelope.live.tosu.data!.tourney!.ipcState = 3;
+  assert.equal(resultTeamScores(envelope, 'synced'), null);
+  envelope.session.rounds[0]!.finalScore = { a: 100, b: null };
+  assert.deepEqual(resultTeamScores(envelope, 'synced'), { left: 100, right: null });
+  envelope.live.tosu.status = 'disconnected';
+  assert.deepEqual(resultTeamScores(envelope, 'disconnected'), { left: 100, right: null });
+  envelope.session.incident = { roundId: 'round', kind: 'unverified', reason: '', source: 'tosu', at: '' };
+  assert.equal(resultTeamScores(envelope, 'synced'), null);
 });

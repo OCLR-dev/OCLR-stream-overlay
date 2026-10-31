@@ -139,8 +139,9 @@ test('custom runtime uses real isolated WebSocket, blocks OCLR and preserves cor
   const cmd = (type, payload) => store.command({ id: randomUUID(), version: store.state.version, type, payload });
   await cmd('setting', { field: 'bestOf', value: 7 }); await cmd('setting', { field: 'pool', value: pool });
   await cmd('set-bp-rule', { value: rule }); await cmd('set-roll', { winner: null, banFirst: 'b', pickFirst: 'a' });
-  await cmd('auto', { ...store.state.auto, profile: 'stable-tourney', wsUrl: simulator.wsUrl, left: 'TEST ROOM RED', right: 'TEST ROOM BLUE' });
+  await cmd('auto', { bp: true, scenes: true, results: true, wsUrl: simulator.wsUrl });
   await until(() => store.live.tosu.status === 'live', 'connected'); await delay(150);
+  assert.equal(store.state.auto.left, 'TEST ROOM RED'); assert.equal(store.state.auto.right, 'TEST ROOM BLUE');
   assert.equal((await fetch(`${app.appUrl}/api/oclr/tournaments`)).status, 403);
   assert.equal((await fetch(`${app.appUrl}/.local/custom-match/session.json`)).status, 404);
   for (let i = 0; i < 5; i++) {

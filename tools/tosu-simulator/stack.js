@@ -30,7 +30,15 @@ export async function startSimulation({ appPort = 3005, wsPort = 24051, sessionF
     simulator = new TosuSimulator({ port: wsPort, offlineFixtures: offlineOclr,
       getPool: offlineOclr ? null : () => store.state.pool,
       onReset: offlineOclr ? async () => {
-        const submit = (type, payload = {}) => store.command({ id: randomUUID(), version: store.state.version, type, payload });
+        const submit = async (type, payload = {}) => {
+          const id = randomUUID();
+          for (let attempt = 0; ; attempt++) {
+            try { return await store.command({ id, version: store.state.version, type, payload }); }
+            catch (error) {
+              if (attempt >= 3 || error.message !== '会话已被其他操作更新，请核对最新状态后重试') throw error;
+            }
+          }
+        };
         await submit('next-match');
         for (const [type, payload] of seedCommands()) await submit(type, payload);
       } : null });

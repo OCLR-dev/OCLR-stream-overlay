@@ -1,0 +1,663 @@
+{
+  "layouts": [
+    {
+      "classes": "broadcast-canvas mode-3v3 layout-3v3 source-4x3 motion-ready",
+      "playing": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "result": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-3v3 layout-2v2 source-4x3 motion-ready",
+      "playing": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 360
+        }
+      ],
+      "result": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 360
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-3v3 layout-3v3 source-16x9 motion-ready",
+      "playing": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "result": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-3v3 layout-2v2 source-16x9 motion-ready",
+      "playing": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 405
+        }
+      ],
+      "result": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 405
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-4v4 layout-4v4 source-4x3 motion-ready",
+      "playing": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 540
+        }
+      ],
+      "result": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 540
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-4v4 layout-3v3 source-4x3 motion-ready",
+      "playing": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "result": [
+        {
+          "height": 360,
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-4v4 layout-4v4 source-16x9 motion-ready",
+      "playing": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 585
+        }
+      ],
+      "result": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 585
+        }
+      ]
+    },
+    {
+      "classes": "broadcast-canvas mode-4v4 layout-3v3 source-16x9 motion-ready",
+      "playing": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "result": [
+        {
+          "height": 270,
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ]
+    }
+  ],
+  "leads": [
+    {
+      "difference": "◀ +50,000",
+      "fill": "transform: scaleX(-0.190476);",
+      "lead": "left-small"
+    },
+    {
+      "difference": "◀ +400,000",
+      "fill": "transform: scaleX(-1);",
+      "lead": "left-large"
+    },
+    {
+      "difference": "TIED / 平分",
+      "fill": "transform: scaleX(0);",
+      "lead": "equal"
+    },
+    {
+      "difference": "+50,000 ▶",
+      "fill": "transform: scaleX(0.190476);",
+      "lead": "right-small"
+    },
+    {
+      "difference": "+400,000 ▶",
+      "fill": "transform: scaleX(1);",
+      "lead": "right-large"
+    }
+  ]
+}

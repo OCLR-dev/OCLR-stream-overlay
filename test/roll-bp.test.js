@@ -237,10 +237,11 @@ test('voiding a selection restores its original Pick rather than advancing to se
   assert.deepEqual(signature(h.s.queue[0]), ['pick', 'a', 1]);
 });
 
-test('missing room binding waits with intent on and current BP ready, without claiming a room operation', async () => {
+test('missing tosu room data waits with intent on and current BP ready, without claiming a room operation', async () => {
   const h = harness(); const before = structuredClone(h.s.action);
-  await h.change(0); assert.equal(h.s.auto.bp, true); assert.deepEqual(h.s.action, before);
-  assert.match(h.store.live.note, /等待核实/); assert.equal(h.s.bpHistory.length, 0);
+  await h.store.frame({ beatmap: { id: 810000 }, tourney: null });
+  assert.equal(h.s.auto.bp, true); assert.deepEqual(h.s.action, before);
+  assert.match(h.store.live.note, /等待 tosu/); assert.equal(h.s.bpHistory.length, 0);
 });
 
 test('initialization allows a fresh automatic Roll flow despite older manual actions in the audit trail', () => {
