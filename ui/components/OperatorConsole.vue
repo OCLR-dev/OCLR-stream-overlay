@@ -5,7 +5,7 @@ import { sceneLabels, type Scene, type Team } from '../model';
 import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
 import { useMotionReady } from '../motion';
-import { liveTeamScores } from '../liveScores';
+import { liveRoom, liveTeamScores } from '../liveScores';
 import '../control.css';
 
 const { snapshot, connection, error, busy, command, presentationEpoch } = useSession();
@@ -52,7 +52,7 @@ const settings = ref(false);
 const initializeDialog = ref<HTMLDialogElement>();
 const initializeError = ref('');
 const keepRoomBinding = ref(false);
-const canKeepRoomBinding = computed(() => s.value?.auto.profile === 'stable-tourney' && !!s.value.auto.left && !!s.value.auto.right && s.value.auto.left !== s.value.auto.right);
+const canKeepRoomBinding = computed(() => s.value?.auto.profile === 'stable-tourney' && !!s.value.auto.left && !!s.value.auto.right);
 let initializeMatchId = '';
 const settingMessages = reactive<Record<string, string>>({});
 const dirtySettings = new Set<string>();
@@ -260,7 +260,7 @@ async function drainSettings() {
           }
           type = 'set-series'; payload = seriesPayload(scoreTeam, value);
         } else if (key === 'auto') {
-          type = 'auto'; payload = { ...autoForm };
+          type = 'auto'; payload = { bp: autoForm.bp, scenes: autoForm.scenes, results: autoForm.results };
         } else if (key === 'round' || key === 'prepare') {
           const value = key === 'round' ? mapForm : prepareForm;
           if (!value.entryId || !value.pickedBy) throw new Error('请选择谱面与选图队伍，完整后自动生效');
@@ -403,7 +403,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <span>播出画面</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
       </nav>
       <section class="operator-toolbar" aria-label="随时可用的比赛操作">
-        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '明确暂停中' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动化已明确关闭' : live?.tosu.status !== 'live' ? '等待 tosu 连接 · 自动化保持开启' : s.auto.profile !== 'stable-tourney' || !s.auto.left || !s.auto.right || live?.tosu.data?.tourney?.teams.left !== s.auto.left || live?.tosu.data?.tourney?.teams.right !== s.auto.right ? '等待房间资料 · 自动化保持开启' : s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? 'Playing · 实时跟随中' : '自动流程待命' }}</span>
+        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '明确暂停中' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动化已明确关闭' : live?.tosu.status !== 'live' ? '等待 tosu 连接 · 自动化保持开启' : !liveRoom(snapshot, connection) ? '等待 tosu 房间数据 · 自动化保持开启' : s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? 'Ranking · 结算分数同步中' : 'Playing · 实时跟随中' : '自动流程待命' }}</span>
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'technical' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
@@ -454,9 +454,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
           </div><p>文字输入停顿后自动同步；无效内容保留在输入框并显示原因，播出继续使用上一次有效设置。名单与图池修改会标为人工资料。</p>
         </div>
           <details class="operator-follow"><summary>房间连接与自动跟随 <span>{{ s.auto.bp || s.auto.scenes || s.auto.results ? '已启用' : '关闭' }}</span></summary>
-            <p>先在直播机确认 tosu 选中实例与当前赛事房间一致，再选择客户端并填写房间中的实际队名。</p>
-            <label>赛事客户端<ControlSelect v-model="autoForm.profile" @change="scheduleSetting('auto', true)"><option value="unverified">尚未核对</option><option value="stable-tourney">stable / osu!tourney（已核对）</option></ControlSelect></label>
-            <div class="operator-two"><label>房间左队名称<input v-model="autoForm.left" maxlength="80" @input="scheduleSetting('auto')" @blur="dirtySettings.has('auto') && scheduleSetting('auto', true)"></label><label>房间右队名称<input v-model="autoForm.right" maxlength="80" @input="scheduleSetting('auto')" @blur="dirtySettings.has('auto') && scheduleSetting('auto', true)"></label></div>
+            <p>房间左右队名直接读取 tosu，收到有效赛事数据后自动跟随，无需手动填写或确认。</p>
             <p>当前读数：{{ live?.tosu.data?.tourney?.teams.left || '—' }} / {{ live?.tosu.data?.tourney?.teams.right || '—' }} · IPC {{ live?.tosu.data?.tourney?.ipcState ?? '—' }} · 谱面 {{ live?.tosu.data?.beatmap.id ?? '—' }}</p>
             <label class="operator-check"><input v-model="autoForm.bp" type="checkbox" @change="scheduleSetting('auto', true)">按当前 BP 动作自动 Ban / Pick</label>
             <label class="operator-check"><input v-model="autoForm.scenes" type="checkbox" @change="scheduleSetting('auto', true)">有效换图 / 开打 / 结算自动切换画面</label>
@@ -495,7 +493,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <p>已打过的图也可以修改标记。开打和记胜在 Playing 面板操作。</p>
             </div>
             <div v-else-if="scorePanel" class="operator-action-stack">
-              <section class="operator-series-edit" aria-label="本图实时队分"><h3>本图实时队分</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? '正在跟随房间，无需手动标记开打。' : '等待本场 Playing 数据；连接有效后自动显示。' }}</p></section>
+              <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '正在显示 tosu 结算总分；显示分数不代表已记胜。' : '正在跟随房间，无需手动标记开打。' : '等待本场 Playing / Ranking 数据；连接有效后自动显示。' }}</p></section>
               <details class="operator-prepare"><summary>{{ round?.status === 'prepared' ? '更换本局谱面' : round?.status === 'playing' ? '本局进行中，结束后再准备下一图' : round ? '选择下一局谱面' : '选择本局谱面' }}</summary><label>本局谱面<ControlSelect v-model="prepareForm.entryId" :disabled="round?.status === 'playing'" @change="scheduleSetting('prepare', true)"><option value="">请选择</option><option v-for="e in s.pool" :key="e.id" :value="e.id">{{ e.label }} · {{ e.title || e.beatmapId }}</option></ControlSelect></label><label>选图队伍<ControlSelect v-model="prepareForm.pickedBy" :disabled="round?.status === 'playing'" @change="scheduleSetting('prepare', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p role="status">{{ settingMessages.prepare || '谱面与选图队伍选全后立即准备；自动等待有效开打。' }}</p><p>准备好后标记开打；已记录的赛果保留。</p></details>
               <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>有效比分修改后立即同步，无需确认；保留逐局记录，后续赢图从此比分继续累计。</p></section>
               <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局开打</button>
@@ -549,7 +547,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <h2 id="initialize-title">初始化本场比赛？</h2>
         <p id="initialize-description">队伍、名单、图池、Roll、Ban/Pick、比分和比赛进度都会清空。未跟踪的赛果不会补记。</p>
         <label v-if="canKeepRoomBinding" class="operator-check"><input v-model="keepRoomBinding" type="checkbox">保留当前房间连接与自动跟随设置（{{ s?.auto.left }} / {{ s?.auto.right }}）</label>
-        <p>{{ keepRoomBinding ? '中途重新开始时，继续显示房间当前 Playing 和实时队分。' : '房间绑定也会清空，稍后重新核实。' }}</p>
+        <p>{{ keepRoomBinding ? '中途重新开始时，保留自动跟随设置。' : '同时重置自动跟随设置；房间队名仍会从 tosu 自动读取。' }}</p>
         <p>当前比赛会先存档。误操作可用“撤销上一项”恢复。</p>
         <div class="operator-initialize-actions"><button type="button" autofocus @click="initializeDialog?.close()">取消</button><button type="submit" class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'">清空并重新设置</button></div>
         <p class="operator-initialize-error" role="alert">{{ initializeError }}</p>

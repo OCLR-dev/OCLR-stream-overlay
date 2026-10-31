@@ -5,19 +5,21 @@ import MapInfo from './MapInfo.vue';
 import ChatPanel from './ChatPanel.vue';
 import ChatBox from './ChatBox.vue';
 import { computed } from 'vue';
+import { scoreDifference } from '../scoreDifference';
 const props = defineProps<{ result?: boolean }>();
 const { state, view } = useOverlay();
+const scoreBar = computed(() => scoreDifference(
+  props.result ? view.value.resultA : view.value.scoreA,
+  props.result ? view.value.resultB : view.value.scoreB
+));
 const difference = computed(() => {
-  const values = props.result ? [view.value.resultA, view.value.resultB] : [view.value.scoreA, view.value.scoreB];
-  const delta = Number(values[0]!.replaceAll(',', '')) - Number(values[1]!.replaceAll(',', ''));
-  if (!Number.isFinite(delta)) return '分数未知';
+  const delta = scoreBar.value.delta;
+  if (delta === null) return '分数未知';
   return delta === 0 ? 'TIED / 平分' : `${delta > 0 ? '◀ ' : ''}+${Math.abs(delta).toLocaleString('en-US')}${delta < 0 ? ' ▶' : ''}`;
 });
 const actualLead = computed(() => {
-  const a = props.result ? view.value.resultA : view.value.scoreA;
-  const b = props.result ? view.value.resultB : view.value.scoreB;
-  const delta = Number(a.replaceAll(',', '')) - Number(b.replaceAll(',', ''));
-  return !Number.isFinite(delta) || delta === 0 ? 'equal' : delta > 0 ? 'left-small' : 'right-small';
+  const delta = scoreBar.value.delta;
+  return delta === null || delta === 0 ? 'equal' : delta > 0 ? 'left-small' : 'right-small';
 });
 </script>
 
@@ -29,7 +31,7 @@ const actualLead = computed(() => {
       <div class="score-stage" :class="{ 'score-stage--result': result }" :id="result ? 'resultScoreStage' : 'scoreStage'" :data-lead="view.shared ? actualLead : result ? 'left-small' : state.lead" role="group"
         :aria-label="`左队 RED ${view.names.a} ${result ? '队伍总分 ' + view.resultA : view.scoreA}，右队 BLUE ${view.names.b} ${result ? '队伍总分 ' + view.resultB : view.scoreB}`">
         <span class="score-center-anchor" aria-hidden="true"></span>
-        <span class="score-fill" aria-hidden="true"></span>
+        <span class="score-fill" :style="{ transform: `scaleX(${scoreBar.scale})` }" aria-hidden="true"></span>
         <span class="score-caption">{{ result ? 'MAP RESULT / 单图结算' : 'SCORE DIFFERENCE / 实时分差' }}</span>
         <strong class="score-delta">{{ difference }}</strong>
       </div>

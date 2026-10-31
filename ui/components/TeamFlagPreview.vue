@@ -19,6 +19,5 @@ defineProps<{ team: 'a' | 'b' }>();
         <path fill="#f5eee0" d="m29 13 2 6 6 2-6 2-2 6-2-6-6-2 6-2z" />
       </template>
     </svg>
-    <figcaption>队旗占位</figcaption>
   </figure>
 </template>

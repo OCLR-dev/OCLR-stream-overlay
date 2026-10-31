@@ -2,6 +2,16 @@ const number = value => typeof value === 'number' && Number.isFinite(value) ? va
 const text = value => typeof value === 'string' ? value : null;
 const bool = value => typeof value === 'boolean' ? value : null;
 
+// The connected tosu instance owns room sides; operators do not retype names.
+export function tosuRoomTeams(frame) {
+  const room = frame?.tourney;
+  const names = room?.teams;
+  return room && [0, 1, 2, 3, 4].includes(room.ipcState) &&
+    typeof names?.left === 'string' && names.left.trim() &&
+    typeof names?.right === 'string' && names.right.trim()
+    ? { left: names.left, right: names.right } : null;
+}
+
 function statsSnapshot(stats) {
   if (!stats || typeof stats !== 'object') return null;
   const pair = value => ({ original: number(value?.original), converted: number(value?.converted) });

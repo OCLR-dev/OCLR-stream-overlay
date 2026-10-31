@@ -8,7 +8,6 @@ import { newSession, seriesOf } from '../server/session/model.js';
 
 function harness() {
   const state = newSession();
-  Object.assign(state.auto, { profile: 'stable-tourney', left: '测试红', right: '测试蓝' });
   const store = new SessionStore({ state }); let now = 1000;
   const frame = (ipc = 3, patch = {}) => store.frame({ beatmap: { id: 2635981 }, tourney: {
     ipcState: ipc, teams: { left: '测试红', right: '测试蓝' }, totalScore: { left: 100, right: 90 }, players: [], ...patch,
@@ -55,7 +54,7 @@ test('mid-match initialization can retain explicit room settings, archive the ma
 test('full initialization still clears room binding by default; unverified names cannot be retained', async () => {
   const h = harness(); await h.cmd('next-match'); assert.equal(h.store.state.auto.profile, 'unverified');
   assert.equal(h.store.state.auto.left, ''); assert.equal(h.store.state.auto.right, '');
-  await assert.rejects(h.cmd('next-match', { keepRoomBinding: true }), /明确核实/);
+  await assert.rejects(h.cmd('next-match', { keepRoomBinding: true }), /尚未收到/);
 });
 
 test('declaring the current map preserves an explicitly supplied future queue', async () => {
@@ -97,10 +96,38 @@ test('declaring a current map cannot turn a repeated Playing frame into a new pr
   assert.equal(store.state.rounds[0].runId, null);
 });
 
-test('scene opt out, explicit pause, wrong room and series end remain respected', async () => {
+test('scene opt out, explicit pause and series end remain respected while room names come from tosu', async () => {
   const off = harness(); off.store.state.auto.scenes = false; await off.frame(); assert.equal(off.store.state.scene, 'waiting');
   off.store.state.auto.scenes = true; await off.frame(); assert.equal(off.store.state.scene, 'playing');
   const paused = harness(); await paused.cmd('pause', { kind: 'technical' }); await paused.frame(); assert.equal(paused.store.state.scene, 'pause');
-  const wrong = harness(); await wrong.frame(3, { teams: { left: '其他房间', right: '测试蓝' } }); assert.equal(wrong.store.state.scene, 'waiting');
+  const wrong = harness(); await wrong.frame(3, { teams: { left: '其他房间', right: '测试蓝' } }); assert.equal(wrong.store.state.scene, 'playing'); assert.equal(wrong.store.state.auto.left, '其他房间');
   const ended = harness(); ended.store.state.seriesAdjustment.a = 6; await ended.frame(); assert.equal(ended.store.state.scene, 'waiting');
+});
+
+
+test('first discovery replaces old saved names without holding a pending result or replaying a win', async () => {
+  const { store, frame, cmd } = harness();
+  store.state.pool = [{ id: 'nm1', beatmapId: 2635981, mod: 'NM', label: 'NM1', title: '', artist: '', difficulty: '' }];
+  await cmd('prepare-round', { entryId: 'nm1', pickedBy: 'a' });
+  await cmd('start');
+  store.state.rounds[0].status = 'ranking';
+  Object.assign(store.state.auto, { profile: 'stable-tourney', left: '旧左队', right: '旧右队' });
+  const before = structuredClone(store.state.rounds);
+  const room = { players: [{ side: 'left', osuId: 1, score: 100 }, { side: 'right', osuId: 2, score: 90 }] };
+  await frame(4, room); await frame(4, room);
+  assert.equal(store.state.auto.left, '测试红'); assert.equal(store.state.auto.right, '测试蓝');
+  assert.equal(store.state.incident, null); assert.deepEqual(store.state.rounds, before);
+  assert.deepEqual(seriesOf(store.state), { a: 0, b: 0 });
+  await frame(3, room); assert.equal(store.state.scene, 'playing'); assert.equal(store.state.incident, null);
+  assert.deepEqual(store.state.rounds, before);
+});
+
+test('room discovery preserves explicit pause and opt outs, supports equal names and does not consume undo', async () => {
+  const { store, frame, cmd } = harness();
+  store.state.auto.results = false;
+  await cmd('pause', { kind: 'technical' }); const depth = store.state.undo.length;
+  await frame(3, { teams: { left: '同名队伍', right: '同名队伍' } });
+  assert.equal(store.state.auto.left, '同名队伍'); assert.equal(store.state.auto.right, '同名队伍');
+  assert.equal(store.state.auto.results, false); assert.equal(store.state.scene, 'pause');
+  assert.equal(store.state.undo.length, depth); assert.equal(store.state.incident, null);
 });

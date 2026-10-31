@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { applyBp, automaticTransition, awardTosuResult, currentRound, entryOf, holdRound, releaseRoundBp, seriesComplete, startRound } from './model.js';
+import { tosuRoomTeams } from '../../src/tosu.js';
 
 const playerKeys = room => room.players.filter(p => p.osuId > 0).map(p => `${p.side}:${p.osuId}`).sort();
 const validRoom = (config, frame) => {
   const room = frame?.tourney;
-  return config.profile === 'stable-tourney' && config.left && config.right && config.left !== config.right && room &&
+  return tosuRoomTeams(frame) && config.profile === 'stable-tourney' && config.left && config.right && room &&
     room.teams.left === config.left && room.teams.right === config.right &&
     room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0) &&
     [0, 1, 2, 3, 4].includes(room.ipcState) && Number.isSafeInteger(frame?.beatmap?.id) && frame.beatmap.id > 0;
@@ -14,11 +15,13 @@ const validRoom = (config, frame) => {
 // Continuity is deliberately volatile: restore/reconnect always establishes a baseline.
 export class RoomAutomation {
   constructor() { this.reset(); }
-  reset() { this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; }
+  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; }
 
   rebase(state, frame, now) {
     const presentation = this.presentation;
+    const sourceRoom = this.sourceRoom;
     this.reset();
+    this.sourceRoom = sourceRoom;
     if (!state.paused && !state.incident && state.auto.scenes && presentation?.sessionId === state.id &&
       presentation.left === state.auto.left && presentation.right === state.auto.right &&
       frame?.tourney?.teams.left === state.auto.left && frame.tourney.teams.right === state.auto.right) this.presentation = presentation;
@@ -41,13 +44,25 @@ export class RoomAutomation {
   }
 
   ingest(state, frame, now = Date.now()) {
+    const teams = tosuRoomTeams(frame);
+    if (teams && (state.auto.profile !== 'stable-tourney' || state.auto.left !== teams.left || state.auto.right !== teams.right)) {
+      // Initial discovery and saved manual names need no approval. A real room
+      // change during a known run still interrupts that run's continuity.
+      const changedRoom = this.sourceRoom && (this.sourceRoom.left !== teams.left || this.sourceRoom.right !== teams.right);
+      if (changedRoom) state = this.hold(state, 'tosu 房间已变化，原局观战连续性中断；新房间队名已自动读取').state;
+      state = automaticTransition(state, draft => {
+        Object.assign(draft.auto, { profile: 'stable-tourney', ...teams });
+      }, `自动读取 tosu 房间：${teams.left} / ${teams.right}`, randomUUID(), { undo: false });
+      this.reset();
+    }
+    this.sourceRoom = teams;
     // Presentation can join a live room mid-map. It never creates a round,
     // seeds an observed run or supplies evidence for result recording.
     const previous = this.presentation;
     const result = this.ingestProgress(state, frame, now);
     const config = result.state.auto;
     const room = frame?.tourney;
-    const bound = config.scenes && config.profile === 'stable-tourney' && config.left && config.right && config.left !== config.right &&
+    const bound = config.scenes && tosuRoomTeams(frame) && config.profile === 'stable-tourney' && config.left && config.right &&
       room?.teams.left === config.left && room.teams.right === config.right && [0, 1, 2, 3, 4].includes(room.ipcState);
     this.presentation = bound ? { ipc: room.ipcState, mapId: frame?.beatmap?.id, sessionId: result.state.id, left: config.left, right: config.right } : null;
     const playingEvent = bound && room.ipcState === 3 && (!previous || previous.ipc !== 3 || previous.mapId !== frame?.beatmap?.id);
@@ -72,8 +87,8 @@ export class RoomAutomation {
     if (state.paused || !(config.bp || config.scenes || config.results)) {
       this.reset(); return { state, note: state.paused ? '明确暂停中，结束暂停后自动建立基线' : '自动跟随已明确关闭' };
     }
-    if (config.profile !== 'stable-tourney' || !config.left || !config.right || config.left === config.right) {
-      this.reset(); return { state, note: '等待核实客户端与实际房间左右队名；自动化保持开启，资料齐全后自动建立基线' };
+    if (!tosuRoomTeams(frame)) {
+      return this.hold(state, '等待 tosu 提供赛事房间队名；收到后自动跟随，无需手动填写');
     }
     const room = frame?.tourney;
     const mapId = frame?.beatmap?.id;

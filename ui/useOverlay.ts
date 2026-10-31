@@ -3,7 +3,7 @@ import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods,
 import { useSession } from './session';
 import { useMotionReady } from './motion';
 import { poolDisplay } from './poolDisplay';
-import { liveBeatmap, livePlayingMap, liveTeamScores } from './liveScores';
+import { liveBeatmap, livePlayingMap, liveRoom, liveTeamScores, resultTeamScores } from './liveScores';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -34,8 +34,7 @@ export function createOverlay(shared = false) {
       name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null
     })) : base.roster(team);
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
-    const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
-      envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
+    const bound = liveRoom(envelope, sessionClient?.connection.value);
     const scores = liveTeamScores(envelope, sessionClient?.connection.value);
     const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
     const currentMap = state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) || recordedMap : recordedMap;
@@ -43,9 +42,9 @@ export function createOverlay(shared = false) {
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
     const scoreB = shared ? formatted(scores?.right) : base.scoreB;
-    const reviewedScore = s?.incident?.roundId === round?.id ? null : round?.finalScore;
-    const resultA = shared ? formatted(reviewedScore?.a) : base.resultA;
-    const resultB = shared ? formatted(reviewedScore?.b) : base.resultB;
+    const resultScores = resultTeamScores(envelope, sessionClient?.connection.value);
+    const resultA = shared ? formatted(resultScores?.left) : base.resultA;
+    const resultB = shared ? formatted(resultScores?.right) : base.resultB;
     const pool = shared ? (s?.pool || []).map(entry => {
       const { status, team } = poolDisplay(s!, entry.id);
       return { ...entry, status, actionTeam: team,

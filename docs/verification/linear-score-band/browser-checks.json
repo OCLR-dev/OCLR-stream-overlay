@@ -1,0 +1,16 @@
+{
+  "clip": {
+    "height": 120,
+    "width": 1280,
+    "x": 0,
+    "y": 0
+  },
+  "difference": "◀ +134,567",
+  "logicalFillWidth": 333.7261962890625,
+  "targetTransform": "transform: scaleX(-0.538268);",
+  "totals": [
+    "1,234,567",
+    "1,100,000"
+  ],
+  "transition": "transform 0.1s linear"
+}

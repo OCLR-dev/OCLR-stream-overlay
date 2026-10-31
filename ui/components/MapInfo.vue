@@ -31,13 +31,10 @@ const parameterLabel = computed(() => {
 
 <template>
   <div class="map-row" :data-mod="mapMod">
-    <div class="map-cover" aria-label="谱面封面"><MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" /><span>OCLR</span><b>{{ mapLabel }}</b></div>
+    <MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" />
     <div class="current-map">
-      <span class="map-kicker-row">
-        <span class="map-kicker">{{ result ? '本图谱面' : '当前谱面' }}</span>
-        <span class="map-chip" data-map-format :data-format="view.format" :data-ex-team="view.ex ? state.exTeam : undefined">{{ view.formatLabel }}</span>
-        <span class="map-chip" data-map-mod :data-mod="mapMod">{{ mapLabel }}</span>
-        <span class="map-chip map-chip--ex" data-map-ex :data-ex-team="view.ex ? state.exTeam : undefined">{{ view.exLabel }}</span>
+      <span v-if="view.ex" class="map-kicker-row">
+        <span class="map-chip" data-map-ex data-format="ex" :data-ex-team="state.exTeam" :title="view.exLabel" :aria-label="view.exLabel">{{ view.exLabel }}</span>
       </span>
       <strong>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '尚未准备谱面' : result ? '谱面标题占位 02' : '谱面标题占位' }}</strong>
       <span class="map-sub">{{ view.shared ? `${view.currentMap?.artist || '—'} / ${view.currentMap?.difficulty || '—'}` : '艺术家 / 难度' }}</span>

@@ -614,14 +614,15 @@ function applyCommand(s, command) {
     case 'auto':
       requireValue(typeof p.bp === 'boolean' && typeof p.scenes === 'boolean', '自动跟随开关无效');
       requireValue(p.results === undefined || typeof p.results === 'boolean', '自动计胜开关无效');
-      requireValue(['unverified', 'stable-tourney'].includes(p.profile) && text(p.left, 80) && text(p.right, 80), '房间绑定格式无效');
-      if (['playing', 'ranking'].includes(currentRound(s)?.status) &&
-        (s.auto.profile !== p.profile || s.auto.left !== p.left.trim() || s.auto.right !== p.right.trim())) {
-        holdRound(s, 'unverified', '本局进行中修改了房间绑定，请核对继续当前局或赛果');
+      // Accept old clients' saved fields for compatibility; every live frame
+      // replaces them with tosu's actual sides. The console only sends toggles.
+      if (p.profile !== undefined) {
+        requireValue(['unverified', 'stable-tourney'].includes(p.profile) && text(p.left, 80) && text(p.right, 80), '房间资料格式无效');
+        Object.assign(s.auto, { profile: p.profile, left: p.left, right: p.right });
       }
-      s.auto = { ...s.auto, bp: p.bp, scenes: p.scenes, results: p.results ?? s.auto.results, profile: p.profile, left: p.left.trim(), right: p.right.trim() };
+      s.auto = { ...s.auto, bp: p.bp, scenes: p.scenes, results: p.results ?? s.auto.results };
       requireValue(p.locked !== true, '已移除全局人工接管；人工修正直接生效，需要停住自动流程时请明确暂停');
-      return '更新自动跟随与房间绑定（重新建立基线）';
+      return '更新自动跟随设置；房间左右队名直接读取 tosu';
     case 'winner': {
       requireResolved(s);
       requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
@@ -631,11 +632,11 @@ function applyCommand(s, command) {
       requireValue(p.keepRoomBinding === undefined || typeof p.keepRoomBinding === 'boolean', '房间连接保留选项无效');
       const fresh = newSession();
       if (p.keepRoomBinding) {
-        requireValue(s.auto.profile === 'stable-tourney' && s.auto.left && s.auto.right && s.auto.left !== s.auto.right, '请先明确核实实际房间左右队名');
+        requireValue(s.auto.profile === 'stable-tourney' && s.auto.left && s.auto.right, '尚未收到 tosu 房间队名');
         fresh.auto = clone(s.auto);
       }
       Object.assign(s, domain(fresh));
-      return p.keepRoomBinding ? '已清空比赛记录，保留已核实房间连接；此前赛果不补记' : '准备下一场（上一场保留在操作记录 / 本机存档）';
+      return p.keepRoomBinding ? '已清空比赛记录，保留房间连接与自动跟随设置；此前赛果不补记' : '准备下一场（上一场保留在操作记录 / 本机存档）';
     }
     default: throw new Error('未知会话命令');
   }
