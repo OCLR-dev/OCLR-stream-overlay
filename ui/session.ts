@@ -32,9 +32,10 @@ export interface Session {
 export interface Envelope {
   session: Session; persistence: string;
   live: {
-    streaming?: { status: string; edition: string | null; updatedAt: string | null; error: string | null;
+    streaming?: { status: string; edition: string | null; updatedAt: string | null; error: string | null; afterFixtureId?: string | null; hasMore?: boolean;
+      tasks?: { nextFixture: { id: string; label: string; scheduledAt: string; home: MatchTeam | null; away: MatchTeam | null } }[];
       data: null | { nextFixture: null | { id: string; label: string; scheduledAt: string; home: MatchTeam | null; away: MatchTeam | null };
-        stage: null | { roundName: string }; mappools: { id: string; name: string }[] } };
+        stage: null | { roundName: string; scoringRules?: { type: string; wins?: number } | null }; mappools: { id: string; name: string }[] } };
     sources?: { tosu: 'simulated'; oclr: 'remote-read-only' | 'offline-fixture' };
     note: string;
     oclr: { status: string; updatedAt: string | null; error: string | null };

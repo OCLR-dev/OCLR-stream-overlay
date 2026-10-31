@@ -1,4 +1,5 @@
 // Dedicated Streamer credentials never enter persistent session state or snapshots.
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { normalizePool } from './session/model.js';
 const slug = value => typeof value === 'string' && value.length <= 80 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
@@ -51,19 +52,35 @@ export function validateStreaming(body) {
 }
 
 export class StreamingSource {
-  #token = ''; #timer; #controller; #generation = 0; #failures = 0;
+  #token = ''; #timer; #controller; #generation = 0; #failures = 0; #authorization = null;
   constructor({ backend, fetchImpl, readJson, notify = () => {}, schedule = setTimeout, cancel = clearTimeout }) {
     const url = new URL(backend);
     if (url.protocol !== 'https:' || url.href !== `${url.origin}/`) throw new Error('INVALID_BACKEND_ORIGIN');
     this.backend = url.origin; this.fetch = fetchImpl; this.readJson = readJson;
     this.notify = notify; this.schedule = schedule; this.cancel = cancel;
-    this.state = { status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null };
+    this.state = { status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null, tasks: [], hasMore: false };
   }
   snapshot() { return structuredClone(this.state); }
   publish(patch) { Object.assign(this.state, patch); this.notify(this.snapshot()); }
+  beginAuthorization(edition, origin) {
+    if (!slug(edition)) throw new Error('INVALID_EDITION');
+    const local = new URL(origin);
+    if (!['http:','https:'].includes(local.protocol) || !['127.0.0.1','localhost'].includes(local.hostname) || local.origin !== origin) throw new Error('INVALID_ORIGIN');
+    const state = randomBytes(32).toString('base64url');
+    this.#authorization = { state, edition, expiresAt: Date.now() + 600000 };
+    return { state, edition, authorizationUrl: `${this.backend}/streaming/${edition}/connect?${new URLSearchParams({ origin, state })}` };
+  }
+  async completeAuthorization(input) {
+    const pending = this.#authorization;
+    if (!pending || pending.edition !== input.edition || pending.expiresAt <= Date.now() ||
+        typeof input.state !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(input.state) ||
+        !timingSafeEqual(Buffer.from(input.state), Buffer.from(pending.state))) throw new Error('授权已过期或不属于本次连接，请重新登录');
+    this.#authorization = null;
+    return this.connect(input);
+  }
   disconnect() {
-    this.#generation++; this.cancel(this.#timer); this.#controller?.abort(); this.#token = ''; this.#failures = 0;
-    this.publish({ status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null });
+    this.#generation++; this.cancel(this.#timer); this.#controller?.abort(); this.#token = ''; this.#failures = 0; this.#authorization = null;
+    this.publish({ status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null, tasks: [], hasMore: false });
   }
   connect({ edition, token, afterFixtureId = null }) {
     if (!slug(edition) || !/^oclr_stream_[A-Za-z0-9_-]{43}$/.test(token) || (afterFixtureId !== null && !uuid(afterFixtureId))) throw new Error('INVALID_STREAMING_ACCESS');
@@ -71,45 +88,63 @@ export class StreamingSource {
     this.publish({ status: 'connecting', edition, afterFixtureId });
     return this.poll(this.#generation);
   }
+  select(fixtureId) {
+    const task = this.state.tasks.find(t => t.nextFixture?.id === fixtureId);
+    if (this.state.status !== 'ready' || !task) throw new Error('请等待任务读取完成后重新选择');
+    this.publish({ data: task });
+  }
+  page(afterFixtureId) {
+    if (!this.#token || (afterFixtureId !== null && (!this.state.hasMore || afterFixtureId !== this.state.tasks.at(-1)?.nextFixture.id))) throw new Error('请先连接并选择有效任务页');
+    this.cancel(this.#timer); this.#controller?.abort(); this.#generation++;
+    this.publish({ status: 'connecting', afterFixtureId, data: null, tasks: [], hasMore: false });
+    return this.poll(this.#generation);
+  }
   async poll(generation) {
     const controller = new AbortController(); this.#controller = controller;
     const timeout = setTimeout(() => controller.abort(), 8000);
     let delay = 15000;
     try {
-      const { edition, afterFixtureId } = this.state;
-      const query = afterFixtureId ? `?afterFixtureId=${afterFixtureId}` : '';
-      const response = await this.fetch(`${this.backend}/api/v1/streaming/tournaments/${edition}/next${query}`, {
-        method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${this.#token}` },
-        credentials: 'omit', redirect: 'error', cache: 'no-store', signal: controller.signal,
-      });
-      if (generation !== this.#generation) return;
-      if (!response.ok) {
-        await response.body?.cancel();
-        if ([401, 403].includes(response.status)) {
-          this.#token = ''; this.publish({ status: 'unauthorized', data: null, error: 'STREAMING_AUTH_REQUIRED' }); return;
+      const tasks = []; let anchor = this.state.afterFixtureId; let last;
+      // Five tasks per page keep polling below the upstream request budget.
+      for (let index = 0; index < 5; index++) {
+        const query = anchor ? `?afterFixtureId=${anchor}` : '';
+        const response = await this.fetch(`${this.backend}/api/v1/streaming/tournaments/${this.state.edition}/next${query}`, {
+          method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${this.#token}` },
+          credentials: 'omit', redirect: 'error', cache: 'no-store', signal: controller.signal,
+        });
+        if (generation !== this.#generation) return;
+        if (!response.ok) {
+          await response.body?.cancel();
+          const error = new Error('STREAMING_UNAVAILABLE'); error.status = response.status;
+          if (response.status === 429) {
+            const retry = response.headers.get('retry-after');
+            const ms = /^\d+$/.test(retry || '') ? Number(retry) * 1000 : Date.parse(retry) - Date.now();
+            delay = Number.isFinite(ms) ? Math.max(15000, ms) : 60000;
+          }
+          throw error;
         }
-        if (response.status === 429) {
-          const retry = response.headers.get('retry-after');
-          const ms = /^\d+$/.test(retry || '') ? Number(retry) * 1000 : Date.parse(retry) - Date.now();
-          delay = Number.isFinite(ms) ? Math.max(15000, ms) : 60000;
-        } else if (response.status < 500) {
-          this.#token = ''; this.publish({ status: 'error', data: null, error: 'STREAMING_SELECTION_INVALID' }); return;
-        }
-        throw new Error('STREAMING_UNAVAILABLE');
+        check(/^1\.(?:[4-9]|[1-9][0-9]+)\.\d+$/.test(response.headers.get('x-oclr-read-contract') || ''));
+        last = validateStreaming(await this.readJson(response));
+        if (generation !== this.#generation) return;
+        if (!last.nextFixture) break;
+        check(last.nextFixture.id !== anchor && !tasks.some(t => t.nextFixture.id === last.nextFixture.id));
+        tasks.push(last); anchor = last.nextFixture.id;
       }
-      check(/^1\.(?:[4-9]|[1-9][0-9]+)\.\d+$/.test(response.headers.get('x-oclr-read-contract') || ''));
-      const data = validateStreaming(await this.readJson(response));
-      if (generation !== this.#generation) return;
       this.#failures = 0;
-      this.publish({ status: 'ready', data, error: null, updatedAt: new Date().toISOString() });
-    } catch {
+      this.publish({ status: 'ready', tasks, hasMore: tasks.length === 5, data: tasks.find(t => t.nextFixture.id === this.state.data?.nextFixture?.id) || tasks[0] || last,
+        error: null, updatedAt: new Date().toISOString() });
+    } catch (error) {
       if (generation !== this.#generation) return;
+      const status = error.status;
+      if ([401,403].includes(status) || (status >= 400 && status < 429)) {
+        this.#token = ''; this.publish({ status: [401,403].includes(status) ? 'unauthorized' : 'error', data: null, tasks: [], hasMore: false,
+          error: [401,403].includes(status) ? 'STREAMING_AUTH_REQUIRED' : 'STREAMING_SELECTION_INVALID' }); return;
+      }
       delay = Math.max(delay, Math.min(120000, 15000 * 2 ** Math.min(++this.#failures, 3)));
-      this.publish({ status: 'stale', data: null, error: 'STREAMING_UNAVAILABLE' });
+      this.publish({ status: 'stale', data: null, tasks: [], hasMore: false, error: 'STREAMING_UNAVAILABLE' });
     } finally {
       clearTimeout(timeout);
       if (generation === this.#generation && this.#token) {
-        // Long Retry-After values are respected without overflowing Node's timer.
         const due = Date.now() + delay;
         const resume = () => {
           if (generation !== this.#generation) return;
@@ -123,14 +158,18 @@ export class StreamingSource {
   }
   importCommand(input) {
     const { data, edition, status, updatedAt } = this.state;
-    if (status !== 'ready' || Date.now() - Date.parse(updatedAt) > 30000 || !data?.nextFixture || input.fixtureId !== data.nextFixture.id) throw new Error('请等候有效的下一场资料');
+    if (status !== 'ready' || Date.now() - Date.parse(updatedAt) > 30000 || !data?.nextFixture || input.fixtureId !== data.nextFixture.id) throw new Error('请等候有效的直播任务资料');
     const f = data.nextFixture, rules = data.stage?.scoringRules;
     if (!f.home || !f.away || f.home.id === f.away.id) throw new Error('对阵队伍尚未确认，请等待网站发布');
-    if (rules?.type !== 'first_to' || ![6, 7].includes(rules.wins) || ![3, 4].includes(data.stage.playersPerTeam)) throw new Error('此场赛制尚不支持自动导入，请人工核对设置');
+    // Missing scoring does not prevent selecting a task. Preserve the current
+    // manual stage/mode; known unsupported rules still require explicit correction.
+    if (rules && (rules.type !== 'first_to' || ![6,7].includes(rules.wins))) throw new Error('此场赛制尚不支持自动导入，请人工核对设置');
+    const players = data.stage?.playersPerTeam;
+    if (players != null && ![3,4].includes(players)) throw new Error('此场人数尚不支持，请人工核对设置');
     return { id: input.id, version: input.version, type: 'import-streaming', payload: {
-      title: `${edition.toUpperCase()} · ${f.label} · ${data.stage.roundName}`, edition, fixtureId: f.id,
-      mode: `${data.stage.playersPerTeam}v${data.stage.playersPerTeam}`, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming', teams: { a: f.home, b: f.away },
-      pool: data.mappools[0]?.entries || [], stage: rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination',
+      title: `${edition.toUpperCase()} · ${f.label}`.slice(0,160), edition, fixtureId: f.id,
+      mode: players ? `${players}v${players}` : null, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming', teams: { a: f.home, b: f.away },
+      pool: data.mappools[0]?.entries || [], stage: rules ? rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination' : null,
     } };
   }
 }

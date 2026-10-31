@@ -65,7 +65,7 @@ test('disconnect/reconnect discards a late response from previous credential', a
 });
 
 test('explicit import copies authoritative scoring, no roster/result guesses; polling never changes a match', async () => {
-  const { s } = source(async () => response(fixture()));
+  const { s } = source(async url => response(new URL(url).search ? empty() : fixture()));
   const store = new SessionStore();
   await s.connect({ edition: 's11', token });
   assert.equal(store.state.match.fixtureId, null);
@@ -78,18 +78,20 @@ test('explicit import copies authoritative scoring, no roster/result guesses; po
   s.disconnect(); assert.deepEqual(store.state, before);
 });
 
-test('unknown/fixed-map scoring and stale data cannot import', async () => {
+test('unknown scoring preserves manual setup while fixed-map scoring cannot import', async () => {
   for (const rules of [null, { mode: 'osu', teamType: 'team-vs', playersPerTeam: 4, series: { type: 'fixed_maps', count: 8 } }]) {
     const body = fixture(); body.data.stage.round.scoringRules = rules;
-    const { s } = source(async () => response(body)); await s.connect({ edition: 's11', token });
-    assert.equal(s.state.status, 'ready'); assert.throws(() => s.importCommand({ fixtureId: id(1) }), /赛制/);
+    const { s } = source(async url => response(new URL(url).search ? empty() : body)); await s.connect({ edition: 's11', token });
+    assert.equal(s.state.status, 'ready');
+    if (rules) assert.throws(() => s.importCommand({ fixtureId: id(1) }), /赛制/);
+    else assert.equal(s.importCommand({ fixtureId: id(1) }).payload.stage, null);
   }
 });
 
 test('local credential endpoint enforces same-origin JSON, redacts upstream errors and never persists secret', async t => {
   const store = new SessionStore();
   const config = { port: 0, backend: 'https://oclr.org', origin: 'http://localhost:3000' };
-  const server = createOverlayServer(config, async () => response(fixture()), undefined, store);
+  const server = createOverlayServer(config, async url => response(new URL(url).search ? empty() : fixture()), undefined, store);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); config.port = server.address().port;
   t.after(() => new Promise(resolve => server.close(resolve)));
   const base = `http://127.0.0.1:${config.port}`;
@@ -118,24 +120,70 @@ test('linked public pool is normalized without extra/private upstream fields', (
 });
 
 test('import checks current version and refuses stale or changed assignment', async () => {
-  const { s } = source(async () => response(fixture())); await s.connect({ edition: 's11', token });
+  const { s } = source(async url => response(new URL(url).search ? empty() : fixture())); await s.connect({ edition: 's11', token });
   assert.throws(() => s.importCommand({ fixtureId: id(99) }), /有效/);
   s.state.updatedAt = new Date(Date.now() - 31000).toISOString();
   assert.throws(() => s.importCommand({ fixtureId: id(1) }), /有效/);
 });
 
-test('missing stage remains visible with no inferred scoring or import', async () => {
+test('missing stage remains selectable without inferred scoring', async () => {
   const body = fixture(); body.data.stage = null;
-  const { s } = source(async () => response(body)); await s.connect({ edition: 's11', token });
+  const { s } = source(async url => response(new URL(url).search ? empty() : body)); await s.connect({ edition: 's11', token });
   assert.equal(s.state.status, 'ready'); assert.equal(s.state.data.stage, null);
-  assert.throws(() => s.importCommand({ fixtureId: id(1) }), /赛制/);
+  assert.equal(s.importCommand({ fixtureId: id(1) }).payload.stage, null);
 });
 
 test('initialize archives match domain and permits explicit next import without losing undo', async () => {
-  const { s } = source(async () => response(fixture())); await s.connect({ edition: 's11', token });
+  const { s } = source(async url => response(new URL(url).search ? empty() : fixture())); await s.connect({ edition: 's11', token });
   const store = new SessionStore();
   await store.command(s.importCommand({ id: 'first', version: 0, fixtureId: id(1) }));
   await store.command({ id: 'initialize', version: 1, type: 'next-match', payload: {} });
   await store.command(s.importCommand({ id: 'second', version: 2, fixtureId: id(1) }));
   assert.equal(store.state.match.fixtureId, id(1)); assert.ok(store.snapshot().session.canUndo);
+});
+
+test('one-time automatic handoff validates state and edition, rejects replay and cancellation', async () => {
+  const { s } = source(async () => response());
+  const login = s.beginAuthorization('s11', 'http://127.0.0.1:3001');
+  assert.equal(new URL(login.authorizationUrl).pathname, '/streaming/s11/connect');
+  assert.ok(!JSON.stringify(s.snapshot()).includes(login.state));
+  await assert.rejects(s.completeAuthorization({ edition: 's10', state: login.state, token }), /过期/);
+  await assert.rejects(s.completeAuthorization({ edition: 's11', state: 'z'.repeat(43), token }), /过期/);
+  await s.completeAuthorization({ edition: 's11', state: login.state, token });
+  assert.equal(s.state.status, 'ready');
+  await assert.rejects(s.completeAuthorization({ edition: 's11', state: login.state, token }), /过期/);
+  const cancel = s.beginAuthorization('s11', 'http://localhost:3001'); s.disconnect();
+  await assert.rejects(s.completeAuthorization({ ...cancel, token }), /过期/);
+  assert.throws(() => s.beginAuthorization('s11', 'https://evil.example'));
+});
+
+test('assigned tasks can be selected independently, pagination stays read-only', async () => {
+  let job;
+  const s = new StreamingSource({ backend: 'https://oclr.org', readJson: readBoundedJson,
+    fetchImpl: async url => {
+      const anchor = new URL(url).searchParams.get('afterFixtureId');
+      const n = anchor ? Number(anchor.slice(-12)) + 1 : 1;
+      if (n > 7) return response();
+      const body = fixture(); body.data.nextFixture.id = id(n); body.data.nextFixture.label = `Task ${n}`;
+      return response(body);
+    }, schedule: (fn) => { job = fn; return 1; }, cancel: () => {} });
+  await s.connect({ edition: 's11', token });
+  assert.equal(s.state.tasks.length, 5); assert.equal(s.state.hasMore, true);
+  s.select(id(3)); assert.equal(s.importCommand({ fixtureId: id(3) }).payload.fixtureId, id(3));
+  assert.throws(() => s.select(id(99)), /有效|任务/);
+  await s.page(id(5)); assert.equal(s.state.tasks.length, 2); assert.equal(s.state.hasMore, false);
+  assert.equal(s.state.data.nextFixture.id, id(6));
+  s.select(id(7)); assert.equal(s.state.data.nextFixture.id, id(7));
+  await s.page(null); assert.equal(s.state.data.nextFixture.id, id(1));
+  assert.equal(typeof job, 'function');
+  s.disconnect(); assert.equal(s.state.tasks.length, 0);
+});
+
+test('unknown scoring task imports with explicit manual stage and mode preserved', async () => {
+  const body = fixture(); body.data.stage = null;
+  const { s } = source(async url => response(new URL(url).search ? empty() : body));
+  await s.connect({ edition: 's11', token });
+  const store = new SessionStore(); store.state.match.stage = 'elimination'; store.state.match.mode = '3v3';
+  await store.command(s.importCommand({ id: 'missing-rules', version: 0, fixtureId: id(1) }));
+  assert.equal(store.state.match.stage, 'elimination'); assert.equal(store.state.match.mode, '3v3');
 });

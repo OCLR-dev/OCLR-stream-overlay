@@ -30,6 +30,11 @@ const current = stack => stack.store.state.rounds.find(r => r.id === stack.store
 test('real socket follows Roll-generated BP through both first Picks, replay and second bans without requiring wins', { timeout: 20000 }, async t => {
   const stack = await boot(t);
   await operator(stack, 'next-match');
+  // Reset clears room binding. Wait for its next persisted WebSocket discovery
+  // before reading a command version; otherwise disk timing can race setup.
+  await until(() => stack.store.state.auto.profile === 'stable-tourney' &&
+    stack.store.state.auto.left === '模拟红队' && stack.store.state.auto.right === '模拟蓝队',
+  'room rediscovery after initialization');
   await operator(stack, 'setup', seedCommands()[0][1]);
   await operator(stack, 'set-roll', { a: 83, b: 52, winner: 'a', banFirst: 'a', pickFirst: 'b' });
   await operator(stack, 'auto', { ...stack.store.state.auto, profile: 'stable-tourney', left: '模拟红队', right: '模拟蓝队' });
