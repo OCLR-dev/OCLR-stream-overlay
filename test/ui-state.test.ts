@@ -4,7 +4,7 @@ import { parseLocation, serializeState, changeField, changeBan, derive } from '.
 
 test('old links retain zero, unknown, hash priority and invalid S11 safeguards', () => {
   const state = parseLocation('?scene=playing&mode=3v3&starA=4', '#scene=map-result&starA=0&starB=unknown&exA=0&banA1=HD&banA2=HD');
-  assert.equal(state.scene, 'map-result');
+  assert.equal(state.scene, 'playing');
   assert.equal(state.mode, '3v3');
   assert.equal(state.seriesA, 0);
   assert.equal(state.seriesB, null);

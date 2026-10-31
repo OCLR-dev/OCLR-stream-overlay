@@ -60,7 +60,7 @@ test('manual display before/during Playing yields only to the next valid event a
   await h.cmd('map-mark', { entryId: 'sim-nm7', status: 'picked', team: 'b' });
   await h.cmd('ex', { team: null, remaining: { a: 1, b: 2 } });
   await h.cmd('set-plan', { queue: [{ kind: 'pick', team: 'b' }], verifiedBy: 'Synthetic test sequence' });
-  await h.frame(710001, 4); assert.equal(h.s.scene, 'map-result');
+  await h.frame(710001, 4); assert.equal(h.s.scene, 'playing');
   assert.deepEqual(seriesOf(h.s), { a: 1, b: 0 }); assert.equal(h.s.sceneOverride, null);
   await h.cmd('display', { scene: 'roll' }); await h.frame(710001, 4);
   assert.equal(h.s.scene, 'roll');
@@ -79,7 +79,7 @@ test('automatic match progress and wins are independent of automatic scene selec
 test('automatic result opt out preserves automatic display and BP', async () => {
   const h = harness(); await h.cmd('auto', { ...h.s.auto, results: false, locked: false });
   await h.prepared(); await h.frame(710001, 3); await h.finish();
-  assert.equal(h.s.scene, 'map-result'); assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
+  assert.equal(h.s.scene, 'playing'); assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
 });
 
 test('retraction, manual winner and absolute score correction survive old snapshots while the next round runs', async () => {

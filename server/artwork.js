@@ -18,11 +18,9 @@ export function createSetIdResolver(fetchImpl = fetch, { gapMs = 1000, now = Dat
 }
 
 function matchingLive(snapshot, id) {
-  const { session, live } = snapshot;
+  const { live } = snapshot;
   const data = live.tosu.data;
-  return live.sources?.tosu !== 'simulated' && live.tosu.status === 'live' && data?.beatmap.id === id &&
-    session.auto.profile === 'stable-tourney' && session.auto.left && session.auto.right &&
-    data.tourney?.teams.left === session.auto.left && data.tourney?.teams.right === session.auto.right ? data.beatmap : null;
+  return live.sources?.tosu !== 'simulated' && live.tosu.status === 'live' && data?.beatmap.id === id ? data.beatmap : null;
 }
 
 export function createArtworkHandler(config, fetchImpl, store) {
@@ -49,7 +47,11 @@ export function createArtworkHandler(config, fetchImpl, store) {
 
     const fail = status => { res.writeHead(status, { 'Cache-Control': 'no-store' }); res.end(); return true; };
     if (req.method !== 'GET') return fail(405);
-    if (!match || url.search || !positiveId(id) || !entry) return fail(404);
+    if (!match || url.search || !positiveId(id)) return fail(404);
+    const liveMap = matchingLive(current, id);
+    // The selected live map can be displayed before it belongs to a pool.
+    // Keep metadata/calculation and arbitrary map requests restricted to the pool.
+    if (!entry && !(match[2] === 'background' && liveMap)) return fail(404);
     if (match[3] && (match[2] !== 'metadata' || !current.session.pool.some(item => item.beatmapId === id && testModForCategory(item.mod) === match[3]))) return fail(404);
     if (match[2] === 'metadata') {
       const metadata = await resolveMetadata(id, match[3] || null);
@@ -57,7 +59,6 @@ export function createArtworkHandler(config, fetchImpl, store) {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
       res.end(JSON.stringify(metadata)); return true;
     }
-    const liveMap = matchingLive(current, id);
     if (match[2] === 'background' && tosuUrl && liveMap) {
       const key = JSON.stringify([tosuUrl, id, liveMap.checksum, liveMap.setId]);
       let cached = backgrounds.get(key);
@@ -87,8 +88,9 @@ export function createArtworkHandler(config, fetchImpl, store) {
         res.end(cached.image.bytes); return true;
       }
     }
-    const setId = positiveId(entry.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : (await resolveMetadata(id))?.setId;
-    if (!setId || !snapshot().session.pool.some(item => item.beatmapId === id)) return fail(404);
+    const setId = positiveId(entry?.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : (await resolveMetadata(id))?.setId;
+    const latest = snapshot();
+    if (!setId || !(latest.session.pool.some(item => item.beatmapId === id) || match[2] === 'background' && matchingLive(latest, id))) return fail(404);
     res.writeHead(302, { Location: `https://assets.ppy.sh/beatmaps/${setId}/covers/cover.jpg`,
       'Cache-Control': 'public, max-age=3600', 'X-Artwork-Source': 'osu-cover' });
     res.end(); return true;

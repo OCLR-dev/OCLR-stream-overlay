@@ -107,7 +107,7 @@ test('real tosu-shaped WebSocket drives Ban/Pick, replacement, live scores/chat,
   assert.ok(live.chat.some(line => line.message.includes('Playing')));
   await simulate(stack, 'set', { ipcState: 4, left: 1234567, right: 1100000 });
   await until(() => current(stack)?.status === 'recorded', 'automatic win from real socket frames');
-  assert.equal(stack.store.state.scene, 'map-result'); assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
+  assert.equal(stack.store.state.scene, 'playing'); assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
   assert.equal(current(stack).resultSource, 'tosu');
   await until(() => one.received.some(s => s.session.series.a === 1) && two.received.some(s => s.session.series.a === 1), 'both independent output subscriptions');
   const version = stack.store.state.version; await delay(650); assert.equal(stack.store.state.version, version, 'stable Ranking does not award again');

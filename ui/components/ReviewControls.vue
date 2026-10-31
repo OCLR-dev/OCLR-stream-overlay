@@ -25,14 +25,14 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
         <button class="scene-tab" type="button" data-scene-target="playing" :class="{ 'is-active': state.scene === 'playing' }" :aria-pressed="state.scene === 'playing'" @click="update('scene', 'playing')">
           <span class="scene-tab-no">03</span><span class="scene-tab-label">Playing</span><span class="scene-tab-now" aria-hidden="true">当前</span>
         </button>
-        <button class="scene-tab" type="button" data-scene-target="map-result" :class="{ 'is-active': state.scene === 'map-result' }" :aria-pressed="state.scene === 'map-result'" @click="update('scene', 'map-result')">
-          <span class="scene-tab-no">04</span><span class="scene-tab-label">单图结算</span><span class="scene-tab-now" aria-hidden="true">当前</span>
-        </button>
         <button class="scene-tab" type="button" data-scene-target="victory" :class="{ 'is-active': state.scene === 'victory' }" :aria-pressed="state.scene === 'victory'" @click="update('scene', 'victory')">
-          <span class="scene-tab-no">05</span><span class="scene-tab-label">全场胜利</span><span class="scene-tab-now" aria-hidden="true">当前</span>
+          <span class="scene-tab-no">04</span><span class="scene-tab-label">全场胜利</span><span class="scene-tab-now" aria-hidden="true">当前</span>
         </button>
         <button class="scene-tab" type="button" data-scene-target="pause" :class="{ 'is-active': state.scene === 'pause' }" :aria-pressed="state.scene === 'pause'" @click="update('scene', 'pause')">
-          <span class="scene-tab-no">06</span><span class="scene-tab-label">暂停 / 技术处理</span><span class="scene-tab-now" aria-hidden="true">当前</span>
+          <span class="scene-tab-no">05</span><span class="scene-tab-label">暂停 / 技术处理</span><span class="scene-tab-now" aria-hidden="true">当前</span>
+        </button>
+        <button class="scene-tab" type="button" data-scene-target="roll" :class="{ 'is-active': state.scene === 'roll' }" :aria-pressed="state.scene === 'roll'" @click="update('scene', 'roll')">
+          <span class="scene-tab-no">06</span><span class="scene-tab-label">Roll / 先手</span><span class="scene-tab-now" aria-hidden="true">当前</span>
         </button>
       </nav>
 
@@ -96,7 +96,7 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
             <label class="s11-field">A 队赢图<select class="s11-select" id="seriesASelect" :value="state.seriesA === null ? 'unknown' : String(state.seriesA)" @change="select('seriesA', $event)"><option value="unknown">未知</option><option v-for="n in view.meta.target + 1" :key="n" :value="String(n - 1)">{{ n - 1 }}</option></select></label>
             <label class="s11-field">B 队赢图<select class="s11-select" id="seriesBSelect" :value="state.seriesB === null ? 'unknown' : String(state.seriesB)" @change="select('seriesB', $event)"><option value="unknown">未知</option><option v-for="n in view.meta.target + 1" :key="n" :value="String(n - 1)">{{ n - 1 }}</option></select></label>
           </div>
-          <p class="s11-help">星位上限随阶段：小组/淘汰 6，决赛 7。切场景、单图结算和 EX 标记不会自动加星。</p>
+          <p class="s11-help">星位上限随阶段：小组/淘汰 6，决赛 7。切场景和 EX 标记不会自动加星。</p>
         </section>
 
         <section class="s11-group s11-group--bp">

@@ -1,6 +1,6 @@
 // Local demonstration state. No API records, player identity or official result
 // is inferred here; live data remains a separate subscription boundary.
-export const scenes = ['waiting', 'mappool', 'playing', 'map-result', 'victory', 'pause', 'roll'] as const;
+export const scenes = ['waiting', 'mappool', 'playing', 'victory', 'pause', 'roll'] as const;
 export type Scene = typeof scenes[number];
 export type Team = 'a' | 'b';
 export const regularMods = ['NM', 'HD', 'HR', 'DT', 'FM'] as const;
@@ -8,7 +8,7 @@ export type Ban = 'unknown' | 'empty' | typeof regularMods[number];
 const singleBanMods = ['HD', 'HR', 'DT'];
 export const sceneLabels: Record<Scene, string> = {
   waiting: '等待选手', mappool: 'Mappool Ban/Pick', playing: 'Playing',
-  'map-result': '单图结算', victory: '全场胜利', pause: '暂停 / 技术处理', roll: 'Roll / 先手'
+  victory: '全场胜利', pause: '暂停 / 技术处理', roll: 'Roll / 先手'
 };
 export const teams = ['a', 'b'] as const;
 export const teamNames = { a: '示例A队', b: '示例B队' };
@@ -73,6 +73,10 @@ function exRemaining(value: string | null): number {
 export function banLabel(value: Ban): string {
   return value === 'unknown' ? '未确认' : value === 'empty' ? '空Ban' : value;
 }
+export function normalizeScene(value: string | null | undefined): Scene {
+  const scene = value === 'map-result' ? 'playing' : value;
+  return scenes.includes(scene as Scene) ? scene as Scene : 'waiting';
+}
 export function parseLocation(search = '', hash = ''): OverlayState {
   const query = new URLSearchParams(search);
   const raw = hash.replace(/^#/, '');
@@ -89,7 +93,7 @@ export function parseLocation(search = '', hash = ''): OverlayState {
   let lead = get('lead');
   if (lead === 'left' || lead === 'right') lead = `${lead}-small`;
   return {
-    scene: known(fragment.get('scene') || (scenes.includes(raw as Scene) ? raw : query.get('scene')), scenes, 'waiting'),
+    scene: normalizeScene(fragment.get('scene') || (scenes.includes(raw as Scene) || raw === 'map-result' ? raw : query.get('scene'))),
     mode: known(get('mode'), ['3v3', '4v4'], '4v4'), source: known(get('source'), ['4x3', '16x9'], '4x3'),
     lead: known(lead, Object.keys(leadDemos) as OverlayState['lead'][], 'equal'),
     clean: ['1', 'true'].includes(get('clean') || ''),

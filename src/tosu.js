@@ -24,6 +24,40 @@ function statsSnapshot(stats) {
   };
 }
 
+function tourneyStatsSnapshot(raw) {
+  if (![3, 4].includes(raw.tourney?.ipcState)) return null;
+  const root = raw.beatmap;
+  const clients = (Array.isArray(raw.tourney.clients) ? raw.tourney.clients : []).filter(client =>
+    ['left', 'right'].includes(client.team) && number(client.user?.id) > 0);
+  const samples = clients.map(client => {
+    const map = client.beatmap;
+    const stats = map?.stats;
+    if (!stats || (number(map.id) > 0 && map.id !== root.id) ||
+      (map.checksum && root.checksum && map.checksum !== root.checksum)) return null;
+    // Older v2 clients expose only stats, without a map ID. Reject explicit
+    // disagreements with the selected map rather than showing a stale sample.
+    for (const key of ['ar', 'cs', 'od', 'hp']) {
+      if (number(stats[key]?.original) !== null && number(root.stats?.[key]?.original) !== null &&
+        stats[key].original !== root.stats[key].original) return null;
+    }
+    for (const [value, expected] of [[stats.objects?.total, root.stats?.objects?.total], [stats.maxCombo, root.stats?.maxCombo]]) {
+      if (number(value) !== null && number(expected) !== null && value !== expected) return null;
+    }
+    return stats;
+  });
+  const common = pick => {
+    const values = samples.map(stats => number(pick(stats)));
+    return values.length && values[0] !== null && values.every(value => value === values[0]) ? values[0] : null;
+  };
+  // A single broadcast row cannot represent different free-mod parameters.
+  // Resolve each attribute independently; never fill gaps with root NM data.
+  return {
+    stars: { total: common(stats => stats?.stars?.total) },
+    ...Object.fromEntries(['ar', 'cs', 'od', 'hp'].map(key => [key, { converted: common(stats => stats?.[key]?.converted) }])),
+    bpm: { common: common(stats => stats?.bpm?.common) },
+  };
+}
+
 function playSnapshot(play) {
   if (!play) return null;
   return {
@@ -45,6 +79,7 @@ export function normalizeTosuV2(raw) {
       artist: text(map.artist), title: text(map.title), difficulty: text(map.version), mapper: text(map.mapper),
       time: { current: number(map.time?.live), firstObject: number(map.time?.firstObject), lastObject: number(map.time?.lastObject) },
       stats: statsSnapshot(map.stats),
+      tourneyStats: tourneyStatsSnapshot(raw),
     },
     play: playSnapshot(raw.play),
     resultsScreen: playSnapshot(raw.resultsScreen),

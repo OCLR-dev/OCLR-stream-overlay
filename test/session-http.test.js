@@ -69,7 +69,7 @@ test('tosu awards and operator series correction are published to all output sub
   await store.frame(frame(1), 1000); await store.frame(frame(3), 1500); await store.frame(frame(4), 2000); await store.frame(frame(4), 2500);
   const [a, b] = await Promise.all([one.next(), two.next()]);
   assert.deepEqual(a.session.series, { a: 1, b: 0 }); assert.deepEqual(a.session.series, b.session.series);
-  assert.equal(a.session.scene, 'map-result');
+  assert.equal(a.session.scene, 'playing');
   assert.equal((await post(base, cmd(store.state, 'set-series', { a: 0, b: 1, reason: 'Operator correction' }))).status, 200);
   const [correctedA, correctedB] = await Promise.all([one.next(), two.next()]);
   assert.deepEqual(correctedA.session.series, { a: 0, b: 1 }); assert.deepEqual(correctedA.session.series, correctedB.session.series);

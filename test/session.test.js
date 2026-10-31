@@ -94,7 +94,7 @@ test('stage update between final Ranking frames preserves automatic result conti
   await store.frame(final, 2000);
   await store.command({ id: 'stage-during-ranking', version: store.state.version, type: 'set-stage', payload: { stage: 'final' } });
   await store.frame(final, 2500);
-  assert.equal(store.state.match.stage, 'final'); assert.equal(store.state.scene, 'map-result');
+  assert.equal(store.state.match.stage, 'final'); assert.equal(store.state.scene, 'playing');
   assert.deepEqual(seriesOf(store.state), { a: 1, b: 0 });
   await store.frame(final, 3000);
   assert.deepEqual(seriesOf(store.state), { a: 1, b: 0 });
@@ -175,7 +175,7 @@ test('Playing edge starts prepared round; continuous 3→4 shows Ranking while m
   const sim = simulate(pick(ready()));
   sim.feed(103); sim.feed(103, 3); assert.equal(sim.state.scene, 'playing');
   sim.feed(103, 4, 10); assert.equal(sim.state.scene, 'playing');
-  sim.feed(103, 4, 300); assert.equal(sim.state.scene, 'map-result');
+  sim.feed(103, 4, 300); assert.equal(sim.state.scene, 'playing');
   assert.deepEqual(seriesOf(sim.state), { a: 0, b: 0 }); assert.deepEqual(currentRound(sim.state).finalScore, { a: 0, b: null });
   const version = sim.state.version; sim.feed(103, 4); assert.equal(sim.state.version, version);
   sim.change(105); assert.equal(sim.state.scene, 'mappool'); assert.equal(currentRound(sim.state).status, 'ranking');
@@ -379,7 +379,7 @@ test('normal Ranking automatically awards the winner exactly once, shows the res
   sim.feed(103, 4, 500, scores); sim.feed(103, 4, 500, scores);
   assert.deepEqual(seriesOf(sim.state), { a: 1, b: 0 });
   assert.equal(currentRound(sim.state).resultSource, 'tosu');
-  assert.equal(sim.state.scene, 'map-result'); assert.equal(sim.state.winner, null);
+  assert.equal(sim.state.scene, 'playing'); assert.equal(sim.state.winner, null);
   const version = sim.state.version;
   sim.feed(103, 4, 500, scores); sim.feed(103, 4, 500, scores);
   assert.equal(sim.state.version, version); assert.deepEqual(seriesOf(sim.state), { a: 1, b: 0 });
@@ -435,11 +435,11 @@ test('a sixth automatic win stays on Ranking, Winner is explicit, and correction
     sim.manual('bp'); sim.manual('set-action', { action: { kind: 'pick', team: 'a' } }); sim.manual('apply-bp', { entryId: `fm${i}` });
     sim.feed(200 + i); sim.feed(200 + i, 3); sim.feed(200 + i, 4, 500, totals); sim.feed(200 + i, 4, 500, totals);
   }
-  assert.deepEqual(seriesOf(sim.state), { a: 6, b: 0 }); assert.equal(sim.state.scene, 'map-result'); assert.equal(sim.state.winner, null);
-  sim.change(209); assert.equal(sim.state.scene, 'map-result');
+  assert.deepEqual(seriesOf(sim.state), { a: 6, b: 0 }); assert.equal(sim.state.scene, 'playing'); assert.equal(sim.state.winner, null);
+  sim.change(209); assert.equal(sim.state.scene, 'playing');
   sim.manual('winner', { team: 'a' }); assert.equal(sim.state.scene, 'victory');
   sim.manual('correct-result', { roundId: currentRound(sim.state).id, winner: 'b', reason: '裁判纠正胜方' });
-  assert.deepEqual(seriesOf(sim.state), { a: 5, b: 1 }); assert.equal(sim.state.winner, null); assert.equal(sim.state.scene, 'map-result');
+  assert.deepEqual(seriesOf(sim.state), { a: 5, b: 1 }); assert.equal(sim.state.winner, null); assert.equal(sim.state.scene, 'playing');
   sim.manual('undo'); assert.deepEqual(seriesOf(sim.state), { a: 6, b: 0 }); assert.equal(sim.state.winner, 'a');
   sim.manual('retract-result', { roundId: currentRound(sim.state).id, reason: '重开核对' });
   assert.deepEqual(seriesOf(sim.state), { a: 5, b: 0 }); assert.equal(sim.state.winner, null);

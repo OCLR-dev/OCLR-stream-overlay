@@ -121,8 +121,8 @@
 
 .roll-body { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px; }
 .roll-body > h2 { font: 800 72px var(--display); margin: 0; letter-spacing: .12em; }
-.roll-sides { display: flex; justify-content: center; gap: 260px; text-align: center; }
-.roll-sides h3 { font-size: 32px; margin: 0; }.roll-sides strong { font: 800 110px var(--display); }
+.roll-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 1000px; padding: 0 24px; gap: 24px; text-align: center; }
+.roll-sides h3 { font-size: 32px; line-height: 48px; min-height: 48px; margin: 0; overflow-wrap: anywhere; }.roll-sides strong { display: block; font: 800 110px/132px var(--display); }
 .roll-sides [data-team='a'] { color: var(--team-a); }.roll-sides [data-team='b'] { color: var(--team-b); }
 .pool-empty { align-self: center; justify-self: center; color: var(--muted); }
 .match-chat-line { margin: 2px 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -159,6 +159,7 @@
 .team-name { flex-shrink: 0; max-width: 100%; overflow: hidden; font-size: 22px; font-weight: 700; letter-spacing: .12em; line-height: 34px; white-space: nowrap; text-overflow: ellipsis; }
 .header-score { flex-shrink: 0; font-family: var(--display); font-size: 62px; font-weight: 800; line-height: .92; letter-spacing: .015em; text-shadow: 0 2px 18px #0006; }
 .header-score--series { font-size: 56px; }
+.header-score--hidden { visibility: hidden; }
 .series-row { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
 .win-stars { display: flex; gap: 13px; padding: 2px; }
 .win-pip { width: 11px; height: 11px; border: 1.5px solid #ffffffa6; transform: rotate(45deg); }
@@ -189,7 +190,7 @@
 .event-meta strong { overflow: hidden; color: var(--ink); font-size: 20px; text-overflow: ellipsis; }
 .event-meta > span { flex-shrink: 0; border-left: 1px solid #7c3aed99; padding-left: 10px; }
 
-/* All six scenes stay mounted. Playing and native results share the same grid. */
+/* Six scenes stay mounted. Gameplay and Ranking use one Playing capture grid. */
 .scene-stack { position: relative; flex: 0 0 900px; height: 900px; z-index: 1; }
 .scene { position: relative; width: 100%; height: 900px; }
 .scene-body { position: relative; height: 720px; overflow: hidden; padding: 16px 40px 24px; }
@@ -204,23 +205,23 @@
 .footer-kicker { color: var(--purple-light); font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: .16em; }
 .footer-cell p { margin: 0; color: var(--ink-soft); font-size: 20px; line-height: 1.5; }
 .footer-cell .footer-lead { font-size: 30px; font-weight: 800; }
-.roll-footer { padding-block: 20px; }
-.roll-order-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 12px; }
-.roll-order-row p { overflow-wrap: anywhere; }
-.roll-room-chat { min-width: 0; min-height: 0; }
-.roll-room-chat .chat-box { border-radius: var(--radius-panel); }
-.roll-room-chat .chat-box-content { flex-direction: column; align-items: stretch; justify-content: center; }
+.roll-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 28px 30px 14px; }
+.roll-order { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 24px; border: 0; padding: 0 24px; }
+.roll-order-row { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
+.roll-order-row .footer-kicker { font-size: 22px; }
+.roll-order-row p { font-size: 30px; line-height: 1.25; overflow-wrap: anywhere; }
+.roll-order-row p[data-team='a'] { color: var(--team-a); }
+.roll-order-row p[data-team='b'] { color: var(--team-b); }
+.roll-room-chat, .roll-stream-chat { min-width: 0; min-height: 0; }
+.roll-room-chat .chat-box, .roll-stream-chat .chat-box { border-radius: var(--radius-panel); }
 .roll-room-chat .match-chat-line { flex: 0 0 auto; margin: 0; line-height: 20px; }
 .versus-inline { margin-inline: 12px; color: var(--purple-light); font-family: var(--display); }
 
 /* Height=1080 / TeamSize=3 produces 480×360 clients on the measured Windows
-   host. Reserve native pixels; borders overlay the edge instead of shrinking it. */
+   host. Reserve native pixels with an unobstructed green capture surface. */
 .playing-body { display: flex; padding: 0; }
 .playfield { position: relative; display: grid; flex: 1; grid-template-columns: repeat(2, var(--pov-width)) 0px repeat(2, var(--pov-width)); grid-template-rows: repeat(2, var(--pov-height)); gap: 0; min-height: 0; }
 .pov-cell { position: relative; display: flex; min-width: 0; min-height: 0; overflow: hidden; background: #10091e; }
-.pov-cell::after { position: absolute; inset: 0; z-index: 1; border: 2px solid var(--team-tint); pointer-events: none; content: ''; }
-.pov-cell[data-team='a'] { --team-tint: var(--team-a); }
-.pov-cell[data-team='b'] { --team-tint: var(--team-b); }
 .pov-frame { display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: hidden; background: #0f091c; }
 /* Keep key surfaces opaque, flat and empty; OBS keys only the browser source. */
 [data-game-capture] { background: var(--capture-key); }
@@ -243,19 +244,27 @@
 /* The raised label leaves a continuous track through the centre. Only the
    lead fill scales; the capture grid and its ancestors stay fixed. */
 .playing-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
+.playing-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, var(--team-a) 0 50%, var(--team-b) 50% 100%); pointer-events: none; content: ''; }
 .score-stage { position: absolute; top: -768px; left: 340px; width: 1240px; height: 40px; overflow: visible; }
 .score-stage::before { position: absolute; top: 28px; left: 0; right: 0; height: 8px; border-radius: 4px; background: #352547; content: ''; }
 .score-center-anchor { position: absolute; top: 25px; left: 50%; width: 2px; height: 14px; background: #c9a8ff; }
 .score-fill { position: absolute; top: 28px; left: 50%; width: 50%; height: 8px; border-radius: 4px; transform-origin: 0 50%; transition: transform 100ms linear; }
-.score-stage[data-lead^='left'] .score-fill { background: linear-gradient(90deg, var(--team-a), #ff4d6d22); box-shadow: 0 0 14px #ff4d6d44; }
-.score-stage[data-lead^='right'] .score-fill { background: linear-gradient(90deg, var(--team-b), #3d8bff22); box-shadow: 0 0 14px #3d8bff44; }
+.score-stage[data-lead^='left'] .score-fill { background: linear-gradient(90deg, #ff4d6d66, var(--team-a) 75%, #ffb3c3); box-shadow: 0 0 14px #ff4d6d66; }
+.score-stage[data-lead^='right'] .score-fill { background: linear-gradient(90deg, #3d8bff66, var(--team-b) 75%, #b8d7ff); box-shadow: 0 0 14px #3d8bff66; }
+/* Move the cap separately so small differences never squash its width. */
+.score-tip { position: absolute; top: 24px; left: 50%; width: 50%; height: 16px; pointer-events: none; transition: transform 100ms linear; }
+.score-tip::before { position: absolute; left: -2px; width: 4px; height: 16px; border-radius: 2px; background: #fff; content: ''; }
+.score-stage[data-lead^='left'] .score-tip::before { background: #ffe4eb; box-shadow: 0 0 6px #ffb3c3, 0 0 12px var(--team-a); }
+.score-stage[data-lead^='right'] .score-tip::before { background: #e4f0ff; box-shadow: 0 0 6px #b8d7ff, 0 0 12px var(--team-b); }
 .score-delta { position: absolute; top: 0; left: 50%; min-width: 180px; height: 24px; border-radius: 6px; padding: 0 12px; background: #1b0f3a; color: #e6d7fa; font-family: var(--display); font-size: 23px; font-weight: 700; line-height: 24px; text-align: center; white-space: nowrap; transform: translateX(-50%); }
 .score-stage[data-lead^='left'] .score-delta { color: #ff91a7; }
 .score-stage[data-lead^='right'] .score-delta { color: #8abaff; }
 .score-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* One full-card beatmap background, shaded behind the title and parameters. */
-.playing-stream-chat { position: absolute; top: var(--stream-chat-top); right: var(--stream-chat-right); width: var(--stream-chat-width); height: var(--stream-chat-height); }
+.playing-room-chat, .playing-stream-chat { position: absolute; top: var(--stream-chat-top); width: var(--stream-chat-width); height: var(--stream-chat-height); }
+.playing-room-chat { left: 30px; }
+.playing-stream-chat { right: var(--stream-chat-right); }
 .map-row { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 28px; width: 1000px; height: var(--stream-chat-height); min-height: 0; overflow: hidden; margin-top: var(--stream-chat-top); border: 1px solid var(--mod-color); background: #241349f0; box-shadow: 0 0 30px color-mix(in srgb, var(--mod-color) 20%, transparent); }
 .map-row::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, #120a26b3, #120a2600 75%), linear-gradient(90deg, #120a26b3, #120a26b3 40%, #120a2699); pointer-events: none; content: ''; }
 .map-row > :not(.map-artwork) { position: relative; z-index: 1; }
@@ -357,7 +366,6 @@
 .ban-slot-chip, .map-chip, .map-status, .map-params span { border-radius: var(--radius-label); }
 .chat-footer { display: flex; align-items: center; border-top: 0; padding: var(--stream-chat-top) var(--stream-chat-right) 14px 60px; box-shadow: inset 0 1px #7c3aed66; }
 .chat-panel { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: center; gap: 28px; width: 100%; height: var(--stream-chat-height); }
-.playing-footer--result { justify-content: center; padding: var(--stream-chat-top) var(--stream-chat-right) 14px 60px; background: #1c1034d9; box-shadow: inset 0 1px #7c3aed66; }
 .chat-heading { display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--hairline); }
 .chat-heading strong { font-size: 30px; letter-spacing: .1em; }
 .chat-messages { display: grid; grid-template-columns: minmax(0, 1fr) var(--stream-chat-width); gap: 24px; height: var(--stream-chat-height); }
@@ -368,6 +376,9 @@
 .chat-box-header span { color: var(--muted); font-family: var(--display); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .chat-box-content { display: flex; flex: 1; flex-direction: column; align-items: stretch; justify-content: center; min-height: 0; overflow: hidden; padding: 4px 10px; }
 .chat-box-content .match-chat-line { flex: 0 0 auto; margin: 0; line-height: 20px; }
+.chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
+.chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
+.chat-box--compact .chat-box-content { height: 100%; justify-content: flex-start; padding-top: 4px; }
 .chat-empty { margin: 0; color: var(--muted); font-size: 13px; line-height: 22px; }
 
 /* Waiting room uses the same team colour fields as the reference winner cards. */

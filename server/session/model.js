@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { parseBpRule, resolveActor, validBestOf, normalizeWsUrl } from './custom-rules.js';
 
-export const SCENES = ['waiting', 'roll', 'mappool', 'playing', 'map-result', 'victory', 'pause'];
+export const SCENES = ['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause'];
 const MODS = ['NM', 'HD', 'HR', 'DT', 'FM', 'CA', 'TB'];
 const SIDES = ['a', 'b'];
 export const requireValue = (ok, message) => { if (!ok) throw new Error(message); };
@@ -30,9 +30,13 @@ export function newSession() {
 // explicit/ambiguous old hold becomes an explicit pause. Upgrade undo
 // domains too, so undo cannot silently reinstall the old defaults or locks.
 export function restoreAutomation(state) {
-  if (state.automationVersion === 3) return state;
+  const legacyScene = draft => draft?.scene === 'map-result' || draft?.returnScene === 'map-result' || draft?.sceneOverride?.scene === 'map-result';
+  if (state.automationVersion === 3 && !legacyScene(state) && !(state.undo || []).some(item => legacyScene(item.state))) return state;
   const next = clone(state);
   const upgrade = (draft, trail) => {
+    if (draft.scene === 'map-result') draft.scene = 'playing';
+    if (draft.returnScene === 'map-result') draft.returnScene = 'playing';
+    if (draft.sceneOverride?.scene === 'map-result') draft.sceneOverride.scene = 'playing';
     if (draft.automationVersion === 3) return;
     const cause = [...trail].reverse().find(item => !item.state.locked)?.message;
     const incidental = draft.automationVersion !== 2 && cause && /手动切画面并锁定|已准备本图|人工调整本图|保存本场队伍与图池|已同步本场图池/.test(cause);
@@ -358,7 +362,7 @@ export function awardTosuResult(s, roundId, scores) {
 function leaveInvalidWinner(s) {
   s.winner = null;
   if (s.phase === 'winner') {
-    s.phase = 'bp'; s.scene = currentRound(s) ? 'map-result' : 'mappool';
+    s.phase = 'bp'; s.scene = currentRound(s) ? 'playing' : 'mappool';
   }
 }
 
@@ -630,9 +634,9 @@ function applyCommand(s, command) {
       requireResolved(s);
       const round = currentRound(s);
       requireValue(round && ['playing', 'ranking'].includes(round.status), '没有进行中的轮次');
-      round.status = 'ranking'; s.scene = 'map-result';
+      round.status = 'ranking'; s.scene = 'playing';
       releaseRoundBp(s, round);
-      return '展示单图结算（不计胜）';
+      return '本图已结束，在 Playing 保留总分（不重复计胜）';
     }
     case 'record-result': {
       const round = s.rounds.find(r => r.id === p.roundId);
@@ -726,10 +730,12 @@ function applyCommand(s, command) {
       s.ex = { team: p.team, remaining: { a: p.remaining.a, b: p.remaining.b } };
       return `EX 剩余次数：${s.match.teams.a.name} ${p.remaining.a}，${s.match.teams.b.name} ${p.remaining.b}；${p.team ? `${s.match.teams[p.team].name} 本图已开启` : '本图未开启'}`;
     }
-    case 'display':
-      requireValue(SCENES.includes(p.scene) && p.scene !== 'pause', '显示画面无效');
-      s.scene = p.scene; s.sceneOverride = { scene: p.scene, until: 'next-match-event' };
+    case 'display': {
+      const scene = p.scene === 'map-result' ? 'playing' : p.scene;
+      requireValue(SCENES.includes(scene) && scene !== 'pause', '显示画面无效');
+      s.scene = scene; s.sceneOverride = { scene, until: 'next-match-event' };
       return '手动覆盖播出画面，下一有效比赛事件自动接回；数据跟随继续';
+    }
     case 'pause':
       requireValue(['technical', 'tactical'].includes(p.kind), '暂停类型无效');
       if (!s.paused) s.returnScene = s.scene;

@@ -7,6 +7,11 @@ export function liveRoom(envelope: Envelope | null | undefined, connection: stri
     room.ipcState !== null && [0, 1, 2, 3, 4].includes(room.ipcState) && room.teams.left?.trim() && room.teams.right?.trim() ? room : null;
 }
 
+export function liveRoomChat(envelope: Envelope | null | undefined, connection: string | undefined) {
+  const source = envelope?.live.tosu;
+  return connection === 'synced' && source?.status === 'live' ? source.data?.tourney?.chat || [] : [];
+}
+
 // Both Playing and Ranking display the room's current totals. Showing scores
 // does not establish a run or provide eligibility for automatic result recording.
 export function liveTeamScores(envelope: Envelope | null | undefined, connection: string | undefined) {
@@ -47,5 +52,7 @@ export function liveBeatmap(envelope: Envelope | null | undefined, connection: s
   const source = envelope?.live.tosu;
   const map = source?.data?.beatmap;
   if (connection !== 'synced' || source?.status !== 'live' || !map?.id || !Number.isSafeInteger(map.id) || map.id <= 0) return null;
-  return { ...map, id: map.id };
+  const room = source.data?.tourney;
+  const stats = room && [3, 4].includes(room.ipcState ?? -1) && map.tourneyStats ? map.tourneyStats : map.stats;
+  return { ...map, stats, id: map.id };
 }
