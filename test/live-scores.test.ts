@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { computed, shallowRef } from 'vue';
 import { normalizeTosuV2 } from '../src/tosu.js';
 import { newSession } from '../server/session/model.js';
-import { livePlayingMap, liveTeamScores } from '../ui/liveScores.ts';
+import { liveBeatmap, livePlayingMap, liveTeamScores } from '../ui/liveScores.ts';
 import type { Envelope } from '../ui/session';
 
 function fixture() {
@@ -80,4 +80,26 @@ test('duplicate beatmap IDs preserve a known round slot but never guess the firs
   assert.equal(livePlayingMap(envelope, 'synced', hr)!.label, 'HR1');
   assert.equal(livePlayingMap(envelope, 'synced')!.label, '—');
   envelope.session.pool = [hr]; assert.equal(livePlayingMap(envelope, 'synced')!.label, 'HR1');
+});
+
+test('current tosu beatmap and its parameters display without joining or binding a room, independently of scores', () => {
+  const { envelope } = fixture();
+  envelope.live.tosu.data!.tourney = null;
+  Object.assign(envelope.session.auto, { left: '', right: '', profile: 'unverified' });
+  Object.assign(envelope.live.tosu.data!.beatmap, { title: '本机正在播放', artist: '艺术家', difficulty: '当前难度',
+    stats: { stars: { total: 5.4 }, cs: { converted: 4 }, hp: { converted: 5 }, ar: { converted: 9 }, od: { converted: 8 }, bpm: { common: 180 } } });
+  const before = JSON.stringify(envelope.session);
+  assert.equal(liveTeamScores(envelope, 'synced'), null);
+  assert.equal(livePlayingMap(envelope, 'synced')!.title, '本机正在播放');
+  assert.equal(liveBeatmap(envelope, 'synced')!.stats!.bpm.common, 180);
+  envelope.live.tosu.data!.beatmap.id = 4556723;
+  assert.equal(livePlayingMap(envelope, 'synced')!.beatmapId, 4556723);
+  assert.equal(JSON.stringify(envelope.session), before);
+  for (const status of ['stale', 'disconnected', 'invalid-data']) {
+    envelope.live.tosu.status = status;
+    assert.equal(livePlayingMap(envelope, 'synced'), null);
+    assert.equal(liveBeatmap(envelope, 'synced'), null);
+  }
+  envelope.live.tosu.status = 'live';
+  for (const connection of ['connecting', 'disconnected', 'error']) assert.equal(livePlayingMap(envelope, connection), null);
 });

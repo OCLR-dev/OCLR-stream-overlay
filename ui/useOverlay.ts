@@ -3,7 +3,7 @@ import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods,
 import { useSession } from './session';
 import { useMotionReady } from './motion';
 import { poolDisplay } from './poolDisplay';
-import { livePlayingMap, liveTeamScores } from './liveScores';
+import { liveBeatmap, livePlayingMap, liveTeamScores } from './liveScores';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -37,8 +37,8 @@ export function createOverlay(shared = false) {
     const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
       envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
     const scores = liveTeamScores(envelope, sessionClient?.connection.value);
-    const liveMap = bound ? envelope?.live.tosu.data?.beatmap : null;
-    const currentMap = scores && state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) : recordedMap;
+    const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
+    const currentMap = state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) || recordedMap : recordedMap;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;

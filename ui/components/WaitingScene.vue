@@ -1,71 +1,17 @@
 <script setup lang="ts">
 import { useOverlay } from '../useOverlay';
 import PlayerRoster from './PlayerRoster.vue';
+import PovGrid from './PovGrid.vue';
 
-const { state, view } = useOverlay();
+const { state } = useOverlay();
 </script>
 
 <template>
-  <section class="scene" :class="{ 'is-active': state.scene === 'waiting' }" :inert="state.scene !== 'waiting'" :aria-hidden="state.scene !== 'waiting'" data-scene-panel="waiting" aria-labelledby="waiting-title">
-    <div class="scene-body waiting-body">
-      <div class="waiting-head">
-        <div class="title-line">
-          <span class="scene-eyebrow">PRE-MATCH / 01</span>
-          <h2 id="waiting-title">等待选手</h2>
-          <span class="state-badge">{{ view.ready('a') && view.ready('b') ? '双方就绪' : '未就绪' }}</span>
-        </div>
-      </div>
-
-      <div class="waiting-main">
-        <section class="team-roster" data-team-panel="a" :aria-label="`${view.names.a}在场槽位`">
-          <header class="roster-head">
-            <span class="roster-team"><strong>{{ view.names.a }}</strong></span>
-            <span class="roster-count" data-arrival-count="a">{{ `${view.arrived('a') ? view.count : 0} / ${view.count} 已到场` }}</span>
-          </header>
-          <PlayerRoster team="a" />
-        </section>
-
-        <aside class="readiness-column" aria-label="对阵与就绪状态">
-          <div class="versus-bar">
-            <span>{{ view.names.a }}</span>
-            <b>VS</b>
-            <span>{{ view.names.b }}</span>
-          </div>
-          <div class="readiness-card" aria-live="polite">
-            <span class="readiness-kicker">到场 / 就绪</span>
-            <p class="readiness-headline" id="readinessHeadline">{{ view.readiness }}</p>
-            <p class="readiness-count"><strong id="readinessCount">{{ `${view.arrivalCount} / ${view.count * 2}` }}</strong><span>人已到场</span></p>
-            <p class="readiness-copy" id="readinessCopy">{{ view.readinessCopy }}</p>
-            <div class="readiness-state">
-              <span>就绪</span>
-              <span class="state-badge">未确认</span>
-            </div>
-          </div>
-        </aside>
-
-        <section class="team-roster" data-team-panel="b" :aria-label="`${view.names.b}在场槽位`">
-          <header class="roster-head">
-            <span class="roster-team"><strong>{{ view.names.b }}</strong></span>
-            <span class="roster-count" data-arrival-count="b">{{ `${view.arrived('b') ? view.count : 0} / ${view.count} 已到场` }}</span>
-          </header>
-          <PlayerRoster team="b" />
-        </section>
-      </div>
-    </div>
-
-    <footer class="scene-footer waiting-footer">
-      <section class="footer-cell">
-        <span class="footer-kicker">现场解说</span>
-        <p data-waiting-commentary>{{ view.commentary }}</p>
-      </section>
-      <section class="footer-cell footer-cell--lead">
-        <span class="footer-kicker">当前阶段</span>
-        <p class="footer-lead">等待选手</p>
-      </section>
-      <section class="footer-cell">
-        <span class="footer-kicker">本场对阵</span>
-        <p>{{ view.names.a }} <span class="versus-inline">vs</span> {{ view.names.b }}</p>
-      </section>
+  <section class="scene" :class="{ 'is-active': state.scene === 'waiting' }" :inert="state.scene !== 'waiting'" :aria-hidden="state.scene !== 'waiting'" data-scene-panel="waiting" aria-label="等待选手">
+    <div class="scene-body playing-body"><PovGrid waiting /></div>
+    <footer class="scene-footer waiting-footer" aria-label="选手到场与就绪状态">
+      <PlayerRoster team="a" />
+      <PlayerRoster team="b" />
     </footer>
   </section>
 </template>

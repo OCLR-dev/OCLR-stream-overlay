@@ -1,0 +1,2570 @@
+[
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "exTeam": "none",
+    "expectedCount": 6,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "exTeam": "a",
+    "expectedCount": 4,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 4,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 4,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 4,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 360,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "exTeam": "none",
+    "expectedCount": 6,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "exTeam": "a",
+    "expectedCount": 4,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 4,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 4,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 4,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 405,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "exTeam": "none",
+    "expectedCount": 8,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 8,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 8,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 8,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "exTeam": "a",
+    "expectedCount": 6,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A5",
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B5",
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A5",
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B5",
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A5",
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B5",
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "exTeam": "none",
+    "expectedCount": 8,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 8,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 8,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 8,
+        "surfaces": [
+          {
+            "slot": "A1",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A2",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B1",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B2",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "exTeam": "a",
+    "expectedCount": 6,
+    "scenes": {
+      "playing": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A5",
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B5",
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "map-result": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A5",
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B5",
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": 179,
+        "playerCards": []
+      },
+      "waiting": {
+        "active": true,
+        "count": 6,
+        "surfaces": [
+          {
+            "slot": "A3",
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A4",
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "A5",
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B3",
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B4",
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          },
+          {
+            "slot": "B5",
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270,
+            "color": "rgb(0, 255, 0)",
+            "image": "none",
+            "text": "",
+            "children": 0,
+            "opacity": "1",
+            "border": "rgb(243, 238, 255)"
+          }
+        ],
+        "sharedColors": [
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)",
+          "rgb(0, 255, 0)"
+        ],
+        "captionBottom": null,
+        "playerCards": [
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          },
+          {
+            "top": 915,
+            "bottom": 1066,
+            "overflow": false
+          }
+        ]
+      }
+    }
+  }
+]
