@@ -16,7 +16,11 @@ export async function streamingHttp(req, res, url, source, store) {
       size += chunk.length; if (size > 4096) throw new Error('INVALID_INPUT'); chunks.push(chunk);
     }
     const input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    if (input.action === 'connect') await source.connect(input);
+    if (input.action === 'authorize') { send(res, 200, source.beginAuthorization(input.edition, req.headers.origin)); return true; }
+    if (input.action === 'complete-authorization') await source.completeAuthorization(input);
+    else if (input.action === 'select') source.select(input.fixtureId);
+    else if (input.action === 'page') await source.page(input.afterFixtureId ?? null);
+    else if (input.action === 'connect') await source.connect(input);
     else if (input.action === 'disconnect') source.disconnect();
     else if (input.action === 'import' && store) await store.command(source.importCommand(input));
     else throw new Error('INVALID_INPUT');

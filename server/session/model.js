@@ -420,7 +420,7 @@ function applyCommand(s, command) {
         s.phase === 'arrival' && s.scene === 'waiting' && !s.paused && !s.incident && s.roll.a === null && s.roll.b === null && !s.roll.winner && !s.roll.pickFirst && !s.roll.banFirst &&
         !s.poolMarks?.length && SIDES.every(t => !s.bans[t].some(Boolean) && seriesOf(s)[t] === 0),
       '请先初始化并存档本场，再使用下一场资料');
-      p.source = s.match.source;
+      p.source = s.match.source; p.stage ??= s.match.stage; p.mode ??= s.match.mode;
     } // fall through: same validated setup transition, guarded atomically above
     case 'update-setup':
     case 'setup': {
