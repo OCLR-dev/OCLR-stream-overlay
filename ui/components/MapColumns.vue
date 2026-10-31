@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
-const { view, state, motionScope } = useOverlay();
+const { view, state, motionScope, motionReady } = useOverlay();
 const maxColumns = 4;
 const groups = computed(() => ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'].map(mod => ({
   mod, entries: view.value.pool.filter(entry => entry.mod === mod)
@@ -21,10 +21,11 @@ const rows = computed(() => Math.max(1, groups.value.reduce((sum, group) => sum 
         <li v-for="entry in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used' }"
           :data-map-index="entry.id" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod">
+          <span class="map-confirmation" aria-hidden="true" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady && state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm' }"><b>{{ entry.status === 'banned' ? 'BAN' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" />
           <span class="map-thumbnail"><span class="map-index" :title="entry.label">{{ entry.label }}</span></span>
           <span class="map-copy"><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="entry.artist || entry.difficulty" class="map-meta">{{ entry.artist || '—' }} / {{ entry.difficulty || '—' }}</span></span>
-          <span v-show="entry.status !== 'open'" v-emphasize="{ value: [entry.status, entry.statusLabel], scope: motionScope, enabled: state.scene === 'mappool' }" class="map-status" :class="`state-${entry.status}`" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ entry.actionTeam === 'a' ? '红 ' : entry.actionTeam === 'b' ? '蓝 ' : '' }}{{ entry.status === 'banned' ? 'Ban' : entry.status === 'used' ? '已打' : 'Pick' }}</span>
+          <span v-show="entry.status !== 'open'" class="map-status" :class="`state-${entry.status}`" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ entry.actionTeam === 'a' ? '红 ' : entry.actionTeam === 'b' ? '蓝 ' : '' }}{{ entry.status === 'banned' ? 'Ban' : entry.status === 'used' ? '已打' : 'Pick' }}</span>
         </li>
       </ol>
     </article>

@@ -6,7 +6,7 @@ import TeamFlagPreview from './TeamFlagPreview.vue';
 import HeaderAmbient from './HeaderAmbient.vue';
 import oclrLogo from '../assets/oclr-logo-light.svg';
 
-const { state, view, motionScope } = useOverlay();
+const { state, view, motionScope, motionReady } = useOverlay();
 const arena = computed(() => state.scene === 'playing');
 const showScores = computed(() => state.scene !== 'mappool' && (!arena.value || view.value.showPlayingScores));
 const score = (team: 'a' | 'b') => {
@@ -26,7 +26,7 @@ const score = (team: 'a' | 'b') => {
       <strong class="header-score" :class="{ 'header-score--series': !arena, 'header-score--hidden': !showScores }" :aria-hidden="!showScores" id="scoreValueA"><span v-emphasize="{ value: state.seriesA, scope: motionScope, enabled: !arena }">{{ score('a') }}</span></strong>
       </div>
       <div class="series-row">
-        <span v-emphasize="{ value: state.seriesA, scope: motionScope }" class="win-stars" data-series-stars="a" :aria-label="state.seriesA === null ? '赢图未知' : `已赢 ${state.seriesA} 图`"><i v-for="n in view.meta.target" :key="n" class="win-pip" :class="{ 'is-filled': n <= (state.seriesA ?? 0) }" aria-hidden="true"></i></span>
+        <span class="win-stars" data-series-stars="a" :aria-label="state.seriesA === null ? '赢图未知' : `已赢 ${state.seriesA} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesA ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesA !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesA ?? 0) }" aria-hidden="true"></i></span>
       </div>
     </section>
 
@@ -44,7 +44,7 @@ const score = (team: 'a' | 'b') => {
       <strong class="header-score" :class="{ 'header-score--series': !arena, 'header-score--hidden': !showScores }" :aria-hidden="!showScores" id="scoreValueB"><span v-emphasize="{ value: state.seriesB, scope: motionScope, enabled: !arena }">{{ score('b') }}</span></strong>
       </div>
       <div class="series-row">
-        <span v-emphasize="{ value: state.seriesB, scope: motionScope }" class="win-stars" data-series-stars="b" :aria-label="state.seriesB === null ? '赢图未知' : `已赢 ${state.seriesB} 图`"><i v-for="n in view.meta.target" :key="n" class="win-pip" :class="{ 'is-filled': n <= (state.seriesB ?? 0) }" aria-hidden="true"></i></span>
+        <span class="win-stars" data-series-stars="b" :aria-label="state.seriesB === null ? '赢图未知' : `已赢 ${state.seriesB} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesB ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesB !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesB ?? 0) }" aria-hidden="true"></i></span>
       </div>
     </section>
   </header>

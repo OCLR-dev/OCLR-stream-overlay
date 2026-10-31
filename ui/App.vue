@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { provide } from 'vue';
+import { vSceneReveal } from './motion';
 import { createOverlay, overlayKey, useCanvasFit } from './useOverlay';
 import { sceneLabels } from './model';
 import ReviewControls from './components/ReviewControls.vue';
@@ -14,7 +15,7 @@ import RollScene from './components/RollScene.vue';
 const shared = location.pathname === '/overlay';
 const controller = createOverlay(shared);
 provide(overlayKey, controller);
-const { state, view, motionReady } = controller;
+const { state, view, motionReady, motionScope } = controller;
 const { stage, scale } = useCanvasFit();
 </script>
 
@@ -30,7 +31,7 @@ const { stage, scale } = useCanvasFit();
           :style="{ transform: `scale(${scale})` }">
           <BroadcastHeader />
           <!-- One Playing capture grid remains mounted through gameplay and Ranking. -->
-          <div class="scene-stack">
+          <div class="scene-stack" v-scene-reveal="{ value: state.scene, scope: motionScope, enabled: motionReady }">
             <WaitingScene />
             <MappoolScene />
             <ArenaScene />
