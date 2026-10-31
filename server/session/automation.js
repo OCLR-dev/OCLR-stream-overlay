@@ -15,7 +15,7 @@ const validRoom = (config, frame) => {
 // Continuity is deliberately volatile: restore/reconnect always establishes a baseline.
 export class RoomAutomation {
   constructor() { this.reset(); }
-  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; }
+  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; this.confirmedPlayers = null; }
 
   rebase(state, frame, now) {
     const presentation = this.presentation;
@@ -118,8 +118,16 @@ export class RoomAutomation {
     const counted = currentRound(state);
     // osu!tourney hides and clears aggregate scores after showing results,
     // while its clients still retain the verified final scores and IPC stays 4.
+    const clients = room.players.filter(p => p.osuId > 0);
+    const confirmed = this.confirmedPlayers?.roundId === counted?.id ? this.confirmedPlayers : null;
+    const sameClients = confirmed && clients.length === confirmed.scores.size &&
+      clients.every(p => confirmed.scores.has(`${p.side}:${p.osuId}`));
+    // Resetting a client to zero is display cleanup. A changed positive score
+    // from the same confirmed clients is new evidence, even if totals are hidden.
+    const changedClientScore = sameClients && clients.some(p => Number.isSafeInteger(p.score) && p.score > 0 &&
+      p.score !== confirmed.scores.get(`${p.side}:${p.osuId}`));
     const clearedDisplay = counted?.finalScore && room.scoreVisible === false &&
-      room.totalScore.left === 0 && room.totalScore.right === 0;
+      room.totalScore.left === 0 && room.totalScore.right === 0 && !changedClientScore;
     if (!clearedDisplay && ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
       entryOf(state, counted.entryId)?.beatmapId === mapId &&
       (room.totalScore.left !== counted.finalScore?.a || room.totalScore.right !== counted.finalScore?.b)) {
@@ -246,6 +254,8 @@ export class RoomAutomation {
       if (ready && !seriesComplete(next)) {
         next = automaticTransition(next, draft => awardTosuResult(draft, finished.id, score),
           `tosu 最终队分 ${score.left}:${score.right} · 自动加赢图`, randomUUID());
+        this.confirmedPlayers = { roundId: finished.id,
+          scores: new Map(room.players.filter(p => p.osuId > 0).map(p => [`${p.side}:${p.osuId}`, p.score])) };
         this.endRun = null;
         note = '本局已按最终队分自动计胜；可撤回、修正胜方或人工校正系列分';
         this.notice = note;

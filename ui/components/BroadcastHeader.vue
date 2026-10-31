@@ -3,6 +3,7 @@ import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import { computed } from 'vue';
 import TeamFlagPreview from './TeamFlagPreview.vue';
+import HeaderAmbient from './HeaderAmbient.vue';
 import oclrLogo from '../assets/oclr-logo-light.svg';
 
 const { state, view, motionScope } = useOverlay();
@@ -17,6 +18,7 @@ const score = (team: 'a' | 'b') => {
 
 <template>
   <header class="broadcast-header broadcast-header--flag-preview">
+    <HeaderAmbient />
     <section class="team-block team-block--a" :aria-label="`左队（RED）：${view.names.a}`">
       <TeamFlagPreview team="a" />
       <span class="team-name">{{ view.names.a }}</span>

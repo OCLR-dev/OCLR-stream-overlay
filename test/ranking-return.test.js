@@ -91,3 +91,15 @@ test('normal finish needs no manual confirmation and hidden/reset clients cannot
   await h.frame(); await h.change(710002); assert.equal(currentRound(h.s).entryId, 'sim-nm2'); assert.equal(currentRound(h.s).source, 'room-map');
   assert.deepEqual(h.s.rounds[0], saved);
 });
+
+for (const changed of [1000, 850]) test(`hidden aggregate cleanup still reviews a changed positive client score ${changed}`, async () => {
+  const h = harness(); await h.ranking();
+  assert.equal(currentRound(h.s).resultSource, 'tosu');
+  await h.store.frame({ beatmap: { id: 710001 }, tourney: {
+    ipcState: 4, scoreVisible: false, teams: { left: 'L', right: 'R' }, totalScore: { left: 0, right: 0 },
+    players: [{ side: 'left', osuId: 1, score: changed }, { side: 'right', osuId: 2, score: 800 }],
+  } }, 10000);
+  assert.equal(currentRound(h.s).resultSource, 'review');
+  assert.equal(currentRound(h.s).winner, null); assert.ok(h.s.incident);
+  assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
+});

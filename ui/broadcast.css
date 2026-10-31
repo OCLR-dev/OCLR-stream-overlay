@@ -119,6 +119,21 @@
 }
 @keyframes broadcast-glow { to { opacity: .35; } }
 
+/* A loose scatter of fading points fills only the empty header wings.
+   The fixed header clip keeps every particle and glow above the key surfaces. */
+.header-ambient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.header-ambient-wing { position: absolute; top: 8px; left: 10px; width: 240px; height: 148px; overflow: hidden; color: var(--team-a); }
+.header-ambient-wing[data-team='b'] { left: auto; right: 10px; color: var(--team-b); }
+.header-ambient-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; opacity: .25; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
+.header-ambient-particle:nth-child(4n) { background: #f3eeff; }
+@keyframes header-diffuse {
+  0% { opacity: 0; transform: translate(0, 0) scale(.7); }
+  18% { opacity: var(--opacity); }
+  75% { opacity: var(--opacity); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.15); }
+}
+
+
 .roll-body { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px; }
 .roll-body > h2 { font: 800 72px var(--display); margin: 0; letter-spacing: .12em; }
 .roll-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 1000px; padding: 0 24px; gap: 24px; text-align: center; }
@@ -209,6 +224,9 @@
 .roll-order-row { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
 .roll-order-row .footer-kicker { font-size: 22px; }
 .roll-order-row p { font-size: 30px; line-height: 1.25; overflow-wrap: anywhere; }
+/* Bound long room names without reducing broadcast type size. */
+.roll-sides h3, .roll-order-row p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%; }
+.roll-body > p { max-width: 1000px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roll-order-row p[data-team='a'] { color: var(--team-a); }
 .roll-order-row p[data-team='b'] { color: var(--team-b); }
 .roll-room-chat, .roll-stream-chat { min-width: 0; min-height: 0; }
@@ -218,7 +236,8 @@
 
 /* Height=1080 / TeamSize=3 produces 480×360 clients on the measured Windows
    host. Reserve native pixels with an unobstructed green capture surface. */
-.playing-body { display: flex; padding: 0; }
+/* Keep footer and score glows underneath the opaque capture surfaces. */
+.playing-body { display: flex; padding: 0; z-index: 1; }
 .playfield { position: relative; display: grid; flex: 1; grid-template-columns: repeat(2, var(--pov-width)) 0px repeat(2, var(--pov-width)); grid-template-rows: repeat(2, var(--pov-height)); gap: 0; min-height: 0; }
 .pov-cell { position: relative; display: flex; min-width: 0; min-height: 0; overflow: hidden; background: #10091e; }
 .pov-frame { display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: hidden; background: #0f091c; }
