@@ -32,10 +32,8 @@ const score = (team: 'a' | 'b') => {
 
     <section class="event-block">
       <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="42" /></div>
-      <div class="event-meta" :title="view.seriesTarget">
+      <div class="event-meta">
         <strong data-stage-label>{{ view.meta.label }}</strong>
-        <span>{{ view.season }}</span>
-        <span data-series-target :aria-label="view.seriesTarget">{{ view.meta.format }}</span>
       </div>
     </section>
 
