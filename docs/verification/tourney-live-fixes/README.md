@@ -28,3 +28,13 @@
 对应回归包括 ranking-return、ranking-score-hold、room-team-names、tourney-parameters、playing-ranking、artwork、live-scores，以及现有生命周期／WebSocket／持久化用例。构建包含 Vue 类型检查。main 还需要保留 Streaming API 登录、任务与导入回归，不能以测试分支旧 UI 覆盖这些功能。
 
 真实现场出现过的隐藏清零与换图空选手事件另存于本地只读档案；离线回放使用明确标注的基线重建。采样不是完整 WebSocket 原包，不能据此声称每一路选手结束时序已完全验证。合成回归、内存回放和浏览器显示检查不等于完整 Windows 原生包实机验收；本次没有重新生成 Windows 发行包。
+
+
+## 本次同步验证结果
+
+- main：246 项非固定端口回归 + 2 项便携版生命周期／迁移回归，共 248 项通过；包含 Streaming API 登录、任务选择和导入测试。
+- test/custom-match：250 项非固定端口回归 + 2 项便携版生命周期／迁移回归，共 252 项通过。队名回归使用通用 Session，不依赖自定义构造器。
+- 两边 Vue 类型检查、生产构建及 diff 空白检查通过。固定 3001 用例单独执行，测试使用临时程序／会话目录。
+- 浏览器检查 3v3／4v4、4:3／16:9、EX 开关八种组合：捕获均为 480×360 或 480×270，无窗口边框；Playing 单一场景且 Stream Chat 内容区全空。Roll 上下列中心线一致，先手队名为 30px。
+
+[八组几何记录](browser-checks.json) · [Roll 对齐记录](roll-checks.json) · [Playing 示例](playing-demo.png) · [Roll 底部示例](roll-footer-demo.png)。以上均为合成布局示例，不含现场队名、聊天或比赛结果。

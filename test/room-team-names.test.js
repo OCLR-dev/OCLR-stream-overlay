@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SessionStore } from '../server/session/store.js';
-import { newCustomSession, currentRound, seriesOf } from '../server/session/model.js';
+import { newSession, currentRound, seriesOf } from '../server/session/model.js';
 function harness() {
-  const store = new SessionStore({ state: newCustomSession() }); let now = 1000;
+  const store = new SessionStore({ state: newSession() }); let now = 1000;
   const cmd = (type, payload) => store.command({ id: crypto.randomUUID(), version: store.state.version, type, payload });
   const frame = (ipc = 1, left = '房间左队', right = '房间右队') => store.frame({ beatmap: { id: 101 }, tourney: { ipcState: ipc, teams: { left, right }, totalScore: { left: 900, right: 800 }, players: [{ side: 'left', osuId: 1, score: 900 }, { side: 'right', osuId: 2, score: 800 }] } }, now += 500);
   return { store, cmd, frame };
@@ -22,7 +22,7 @@ test('tosu room names update match settings and output names without replacing t
   const version = store.state.version; await frame(); assert.equal(store.state.version, version);
 });
 test('restoring names when the existing room binding already matches preserves Playing-to-Ranking continuity', async () => {
-  const { store, cmd, frame } = harness(); await cmd('setting', { field: 'bestOf', value: 9 });
+  const { store, cmd, frame } = harness();
   await cmd('setting', { field: 'pool', value: [{ id: 'nm', label: 'NM1', mod: 'NM', beatmapId: 101 }] });
   await frame(); await cmd('prepare-round', { entryId: 'nm', pickedBy: 'a' });
   await frame(3); const run = currentRound(store.state).runId;
@@ -31,7 +31,7 @@ test('restoring names when the existing room binding already matches preserves P
   assert.equal(currentRound(store.state).resultSource, 'tosu'); assert.deepEqual(seriesOf(store.state), { a: 1, b: 0 });
 });
 test('missing names do not erase match settings and a genuine room change still requires incident recovery', async () => {
-  const { store, cmd, frame } = harness(); await cmd('setting', { field: 'bestOf', value: 9 });
+  const { store, cmd, frame } = harness();
   await cmd('setting', { field: 'pool', value: [{ id: 'nm', label: 'NM1', mod: 'NM', beatmapId: 101 }] });
   await frame(); await frame(1, '', ''); assert.equal(store.state.match.teams.a.name, '房间左队');
   await frame(); await cmd('prepare-round', { entryId: 'nm', pickedBy: 'a' }); await frame(3);
