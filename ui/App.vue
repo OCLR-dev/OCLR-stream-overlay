@@ -26,7 +26,7 @@ const { stage, scale } = useCanvasFit();
         <div class="broadcast-canvas" id="broadcastCanvas"
           :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared, 'motion-ready': motionReady }]"
           :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-current-scene="state.scene"
-          :aria-label="`1920×1080 OCLR ${view.season} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
+          :aria-label="`1920×1080 ${view.brand || `OCLR ${view.season}`} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})` }">
           <BroadcastHeader />
           <!-- Keep scenes mounted so switching scenes never recreates a POV. -->

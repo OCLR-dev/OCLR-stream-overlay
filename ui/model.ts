@@ -35,7 +35,7 @@ export interface OverlayState {
   map: keyof typeof mapLabels;
   stage: keyof typeof stages;
   mapType: 'normal' | 'tb';
-  mapMod: typeof regularMods[number];
+  mapMod: typeof regularMods[number] | 'CA';
   exTeam: 'none' | Team;
   exA: number;
   exB: number;

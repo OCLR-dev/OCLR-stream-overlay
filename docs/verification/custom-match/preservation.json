@@ -1,0 +1,14 @@
+{
+  "originalSessionHashBeforeFinalCleanup": "24a2fc2df12c7a4c46bb21d97d8aa6c154ada0238f5dfdc5978bd7b2f5002dd7",
+  "originalSessionHashAfterFinalCleanup": "24a2fc2df12c7a4c46bb21d97d8aa6c154ada0238f5dfdc5978bd7b2f5002dd7",
+  "unchanged": true,
+  "originalListenerPid": 31704,
+  "customPorts": [
+    3011,
+    24054
+  ],
+  "archivedTestMatchId": "2f9339bb-1a87-452f-91ed-894ca251b524",
+  "readyMatchId": "635c1d95-6e61-4a01-b07b-b23bf2db0582",
+  "customEmpty": true,
+  "obsTouched": false
+}

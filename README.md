@@ -1,3 +1,15 @@
+# 自定义赛事本地测试分支
+
+本分支 `test/custom-match` 的独立工作区为 `overlay-custom-match`。使用 `npm run build` 后运行 **`npm run custom`**；需隔离 tosu 测试信号时运行 `npm run custom -- --simulate`。控制台为 `http://127.0.0.1:3011/control`，只读输出为同端口 `/overlay`。请勿用下方保留的 OCLR 启动／模拟命令操作这场测试。
+
+本场资料均从现有“开播前设置”录入，阶段名称与 BO 独立；BP 没有默认规则，未明确时等待。会话独立保存在 `.local/custom-match/session.json`，不加载环境凭证，OCLR 接口禁用，不向 osu! 房间发送命令。
+
+**Windows 完整测试包**：`release/MP5-Xronicle-Windows-x64-20261030-r3.zip`，已预装本次真实队名、BO9和17张图（含CA）；解压后双击 `MP5-Xronicle-Test.exe`。详见 [Windows 使用说明](docs/custom-match-windows.md)。
+
+[配置步骤与 BP 格式](docs/custom-match.md) · [隔离验证与真实联调边界](docs/verification/custom-match/README.md)
+
+---
+
 # OCLR 直播 Overlay
 
 Vue 3 / Vite / TypeScript 的 Neon Broadcast 直播界面，配套独立直播员控制台与本机共享会话。沿用现有深紫 UI、红蓝横幅、系列菱形和稳定游戏窗口。

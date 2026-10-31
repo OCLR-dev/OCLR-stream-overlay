@@ -130,3 +130,17 @@ test('mod-specific test parameter routes validate pool mods and return calculate
   for (const path of ['/api/beatmaps/101/metadata/DT', '/api/beatmaps/101/metadata/HRDT', '/api/beatmaps/101/cover/HR']) assert.equal((await request(path)).status, 404);
   assert.deepEqual(store.state, before);
 });
+
+test('custom artwork follows edited WebSocket origin and never reuses the previous server background', async t => {
+  const calls = [];
+  const { store, request } = await start(t, async url => {
+    calls.push(url);
+    return new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } });
+  });
+  store.state.match.custom = true;
+  store.state.auto.wsUrl = 'ws://127.0.0.1:24500/websocket/v2';
+  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
+  store.state.auto.wsUrl = 'ws://127.0.0.1:24501/websocket/v2';
+  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
+  assert.deepEqual(calls, ['http://127.0.0.1:24500/files/beatmap/background', 'http://127.0.0.1:24501/files/beatmap/background']);
+});

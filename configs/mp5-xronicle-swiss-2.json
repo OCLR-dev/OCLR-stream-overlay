@@ -1,0 +1,32 @@
+{
+  "format": "custom-match-config-v1",
+  "title": "MP5 Xronicle",
+  "stageName": "瑞士轮",
+  "poolName": "MP5 Xronicle 瑞士轮图池（二）",
+  "bestOf": 9,
+  "teams": {
+    "a": { "name": "好麻烦啊......", "roster": [] },
+    "b": { "name": "我发现队友都玩osu", "roster": [] }
+  },
+  "bpRule": "",
+  "bpPreset": "single-ban-alternate",
+  "pool": [
+    { "id": "NM1", "mod": "NM", "label": "NM1", "beatmapId": 804164, "artist": "れをる", "title": "MONSTER", "difficulty": "FOREVER" },
+    { "id": "NM2", "mod": "NM", "label": "NM2", "beatmapId": 209276, "artist": "Cres", "title": "End Time", "difficulty": "eXtra" },
+    { "id": "NM3", "mod": "NM", "label": "NM3", "beatmapId": 269773, "artist": "じっぷす", "title": "レイワイテロリズム", "difficulty": "Distortion" },
+    { "id": "NM4", "mod": "NM", "label": "NM4", "beatmapId": 2044547, "artist": "Cö shu Nie", "title": "Character", "difficulty": "Fixity's Insane" },
+    { "id": "NM5", "mod": "NM", "label": "NM5", "beatmapId": 2635981, "artist": "UNDEAD CORPORATION", "title": "Frozen", "difficulty": "Expert" },
+    { "id": "HD1", "mod": "HD", "label": "HD1", "beatmapId": 3279104, "artist": "Aiobahn", "title": "永久の宴 (w/ YUC'e) [TANUKI Remix]", "difficulty": "Heatwave's Expert" },
+    { "id": "HD2", "mod": "HD", "label": "HD2", "beatmapId": 4323255, "artist": "IOSYS", "title": "Miracle∞Hinacle", "difficulty": "PandaHero's Kuru-kurunatic" },
+    { "id": "HR1", "mod": "HR", "label": "HR1", "beatmapId": 719594, "artist": "xi", "title": "Blue Zenith", "difficulty": "RLC's Insane" },
+    { "id": "HR2", "mod": "HR", "label": "HR2", "beatmapId": 4556723, "artist": "KOKIA", "title": "調和 oto ～with reflection～ (Cut Ver.)", "difficulty": "App's Another" },
+    { "id": "DT1", "mod": "DT", "label": "DT1", "beatmapId": 1624401, "artist": "XX:me", "title": "トリカゴ", "difficulty": "Dakini's Insane" },
+    { "id": "DT2", "mod": "DT", "label": "DT2", "beatmapId": 451406, "artist": "FELT", "title": "Hail Storm (MZC A BraneWalker House Remix)", "difficulty": "Fubuki" },
+    { "id": "DT3", "mod": "DT", "label": "DT3", "beatmapId": 4682397, "artist": "DECO*27", "title": "ラビットホール feat. 初音ミク", "difficulty": "Hard" },
+    { "id": "FM1", "mod": "FM", "label": "FM1", "beatmapId": 741853, "artist": "ESTi", "title": "HELIX (Edit Ver.)", "difficulty": "Extreme" },
+    { "id": "FM2", "mod": "FM", "label": "FM2", "beatmapId": 81958, "artist": "Okui Masami", "title": "Good-bye crisis", "difficulty": "Insane" },
+    { "id": "CA1", "mod": "CA", "label": "CA1", "beatmapId": 895331, "artist": "あきやま うに", "title": "官板黄昏新聞", "difficulty": "Lunatic" },
+    { "id": "CA2", "mod": "CA", "label": "CA2", "beatmapId": 533622, "artist": "U1 overground", "title": "ドーパミン", "difficulty": "Kotori's EXTREME" },
+    { "id": "TB1", "mod": "TB", "label": "TB1", "beatmapId": 2452465, "artist": "FELT", "title": "Crumbling", "difficulty": "Falling Back to You" }
+  ]
+}

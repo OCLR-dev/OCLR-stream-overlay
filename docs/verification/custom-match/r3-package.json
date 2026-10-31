@@ -1,0 +1,14 @@
+{
+  "host": "darwin",
+  "kind": "exact packaged backend using host Node; Windows exe not executed",
+  "label": "MP5-Xronicle-Windows-x64-20261030-r3",
+  "build": "b3e7d45f8404e36f89774b6fb98c767763d2a10741b005cd9dc6f3acde6b0c77",
+  "passed": true,
+  "checks": [
+    "exact packaged backend label/build and served frontend contain R3 fixes; 17 maps, BO9 and exact supplied names seeded, OCLR disabled",
+    "packaged HTTP commands retain room settings on mid-match initialization and restore the prior MP5 match with one undo",
+    "persisted tosu URL unavailable at startup: process and both pages remain available with friendly waiting hint, automatic retry and unchanged automation intent",
+    "isolated simulated tosu started later connects automatically, shows Playing and changing live scores without fabricated rounds or wins",
+    "restart preserves existing data rather than overwriting with template; legacy OCLR directory untouched"
+  ]
+}

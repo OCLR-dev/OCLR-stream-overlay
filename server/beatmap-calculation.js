@@ -1,7 +1,7 @@
 import { Worker } from 'node:worker_threads';
 
 export const TEST_MODS = ['NM', 'HD', 'HR', 'DT'];
-export const testModForCategory = mod => TEST_MODS.includes(mod) ? mod : 'NM';
+export const testModForCategory = mod => mod === 'CA' ? null : TEST_MODS.includes(mod) ? mod : 'NM';
 let queue = Promise.resolve();
 
 // Keep WASM work off the score/SSE thread and allow only one calculation at a

@@ -1,0 +1,21 @@
+{
+  "archive": "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64-free-console.zip",
+  "build": "4235a60331364f801431a20d2ef2f486506df92f1163ebfe5adac0e9c32a1942",
+  "sha256": "8d783f6c9a5dc3d94174c815958dd244fa80449627796f7029bc4a6a7f490eff",
+  "filesVerified": 50,
+  "removedOldArtifacts": [
+    "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64.zip",
+    "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64.zip.sha256",
+    "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64-startup-fix.zip",
+    "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64-live-score-fix.zip",
+    "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64",
+    "/Users/me/Documents/osu!tour/oclr-stream-overlay/release/OCLR-Windows-x64.zip",
+    "/Users/me/Documents/osu!tour/oclr-stream-overlay/release/OCLR-Windows-x64.zip.sha256",
+    "/Users/me/Documents/osu!tour/oclr-stream-overlay/release/OCLR-Windows-x64"
+  ],
+  "remaining": [
+    ".go-cache",
+    "MP5-Xronicle-Windows-x64-free-console.zip",
+    "MP5-Xronicle-Windows-x64-free-console.zip.sha256"
+  ]
+}

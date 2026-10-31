@@ -11,7 +11,7 @@ const metadata = ref<TestMapMetadata | null>(null);
 const metadataStatus = ref('idle');
 watch([() => view.value.currentMap?.beatmapId, () => view.value.parameterMode, () => view.value.currentMap?.mod], async ([id, mode, mod], _, cleanup) => {
   metadata.value = null; metadataStatus.value = 'idle';
-  if (!view.value.shared || mode !== 'official-test' || !id) return;
+  if (!view.value.shared || mode !== 'official-test' || !id || !testModForCategory(mod || null)) return;
   const controller = new AbortController(); let active = true;
   cleanup(() => { active = false; controller.abort(); });
   metadataStatus.value = 'loading';
@@ -31,7 +31,7 @@ const parameterLabel = computed(() => {
 
 <template>
   <div class="map-row" :data-mod="mapMod">
-    <div class="map-cover" aria-label="谱面封面"><MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" /><span>OCLR</span><b>{{ mapLabel }}</b></div>
+    <div class="map-cover" aria-label="谱面封面"><MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" /><span>{{ view.brand ? 'MAP' : 'OCLR' }}</span><b>{{ mapLabel }}</b></div>
     <div class="current-map">
       <span class="map-kicker-row">
         <span class="map-kicker">{{ result ? '本图谱面' : '当前谱面' }}</span>

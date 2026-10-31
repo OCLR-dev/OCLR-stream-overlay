@@ -1,0 +1,11 @@
+{
+  "host": "darwin",
+  "kind": "packaged backend check using host Node; native Windows exe not executed",
+  "results": [
+    "packaged backend starts from Chinese/spaced path with all real configuration, waiting BP/tosu and OCLR blocked",
+    "restart preserves local edits rather than overwriting with bundled template",
+    "second backend refuses occupied runtime without replacing the match",
+    "original OCLR StreamOverlay data untouched"
+  ],
+  "passed": true
+}

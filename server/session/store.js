@@ -10,13 +10,14 @@ export class SessionStore {
     this.persistence = file ? 'ready' : 'memory'; this.tail = Promise.resolve();
   }
 
-  static async open(file) {
+  static async open(file, { initialState } = {}) {
     let state;
     try {
       state = JSON.parse(await readFile(file, 'utf8'));
       if (state.schema !== 1 || !Number.isSafeInteger(state.version) || !state.match || !Array.isArray(state.rounds) || !Array.isArray(state.commandIds)) throw new Error('INVALID_SESSION_FILE');
     } catch (error) {
       if (error.code !== 'ENOENT') throw new Error('SESSION_RESTORE_FAILED');
+      state = initialState?.();
     }
     return new SessionStore({ file, state });
   }
@@ -57,7 +58,7 @@ export class SessionStore {
       // counters, future actions and unrelated corrections do not lose a finish.
       const continuity = state => {
         const round = currentRound(state);
-        return JSON.stringify([state.id, state.auto.profile, state.auto.left, state.auto.right, state.paused, state.incident,
+        return JSON.stringify([state.id, state.auto.wsUrl, state.auto.profile, state.auto.left, state.auto.right, state.paused, state.incident,
           round?.id, round?.entryId, entryOf(state, round?.entryId)?.beatmapId, round?.status, round?.runId]);
       };
       const next = transition(this.state, command);
@@ -85,18 +86,25 @@ export class SessionStore {
     });
   }
 
-  sourceStatus(status) {
-    return this.enqueue(async () => { if (status !== 'live') {
-      if (!['stopped', 'connecting', 'idle'].includes(status) && !this.state.paused && (this.state.auto.bp || this.state.auto.scenes || this.state.auto.results)) {
-        const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
-        if (held.state !== this.state) await this.save(held.state);
-      }
-      this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
-      this.live.note = `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`; this.emit();
-    } });
-  }
-  frame(frame, now = Date.now()) {
+  sourceStatus(status, sourceToken) {
     return this.enqueue(async () => {
+      if (sourceToken !== undefined && sourceToken !== this.sourceToken) return;
+      if (status !== 'live') {
+        if (!['stopped', 'connecting', 'idle'].includes(status) && !this.state.paused && (this.state.auto.bp || this.state.auto.scenes || this.state.auto.results)) {
+          const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
+          if (held.state !== this.state) await this.save(held.state);
+        }
+        this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
+        this.live.note = ['connecting', 'error', 'disconnected'].includes(status)
+          ? '尚未连接 tosu，请确认 tosu 已启动并核对 WebSocket 地址。程序会自动重连，比赛资料与自动化设置已保留。'
+          : `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`;
+        this.emit();
+      }
+    });
+  }
+  frame(frame, now = Date.now(), sourceToken) {
+    return this.enqueue(async () => {
+      if (sourceToken !== undefined && sourceToken !== this.sourceToken) return this.snapshot();
       this.receivedAt = Date.now();
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
       const result = this.automation.ingest(this.state, frame, now);

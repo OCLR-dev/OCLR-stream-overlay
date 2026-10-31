@@ -1,0 +1,12 @@
+{
+  "host": "darwin",
+  "kind": "exact packaged backend using host Node; Windows exe not executed",
+  "label": "MP5-Xronicle-Windows-x64-20261030-r2",
+  "build": "0ed4d94adc7565753ada5b864267392df92df4ce9171287ccbfd3691e50a9c17",
+  "passed": true,
+  "checks": [
+    "exact packaged backend label/build and served frontend contain R2 fixes; 17 maps, BO9 and exact supplied names seeded, OCLR disabled",
+    "packaged HTTP commands retain room settings on mid-match initialization and restore the prior MP5 match with one undo",
+    "restart preserves existing data rather than overwriting with template; legacy OCLR directory untouched"
+  ]
+}

@@ -5,7 +5,7 @@ import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
 const { view, state, motionScope } = useOverlay();
 const maxColumns = 4;
-const groups = computed(() => ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'].map(mod => ({
+const groups = computed(() => ['NM', 'HD', 'HR', 'DT', 'FM', 'CA', 'TB'].map(mod => ({
   mod, entries: view.value.pool.filter(entry => entry.mod === mod)
 })).filter(group => group.entries.length).map(group => ({ ...group, rows: Math.ceil(group.entries.length / maxColumns) })));
 const columns = computed(() => Math.min(maxColumns, Math.max(1, ...groups.value.map(group => group.entries.length))));

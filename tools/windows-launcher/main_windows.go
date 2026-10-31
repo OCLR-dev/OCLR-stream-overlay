@@ -21,7 +21,10 @@ import (
 
 var buildID string
 
-const base = "http://127.0.0.1:3001"
+var base = "http://127.0.0.1:3001"
+var entryScript = "portable.js"
+var mutexName = "Local\\OCLR.StreamOverlay.Portable"
+var windowTitle = "OCLR 直播服务"
 
 var user = syscall.NewLazyDLL("user32.dll")
 var kernel = syscall.NewLazyDLL("kernel32.dll")
@@ -123,7 +126,7 @@ func start() (*backend, error) {
 	}
 	root := filepath.Dir(exe)
 	b := &backend{done: make(chan error, 1)}
-	b.cmd = exec.Command(filepath.Join(root, "runtime", "node.exe"), filepath.Join(root, "app", "server", "portable.js"))
+	b.cmd = exec.Command(filepath.Join(root, "runtime", "node.exe"), filepath.Join(root, "app", "server", entryScript))
 	b.cmd.Dir = root
 	// Fixed production data location; development/test overrides do not leak in.
 	for _, v := range os.Environ() {
@@ -279,7 +282,7 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 }
 func main() {
 	runtime.LockOSThread()
-	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr("Local\\OCLR.StreamOverlay.Portable"))
+	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr(mutexName))
 	if mutex == 0 {
 		message("无法建立本机启动保护，请重新登录 Windows 后重试。")
 		os.Exit(1)
@@ -319,7 +322,7 @@ func main() {
 		message("无法创建启动窗口。")
 		return
 	}
-	window = call(user, "CreateWindowExW", 0, uintptr(unsafe.Pointer(name)), ptr("OCLR 直播服务"), 0x00CA0000, 200, 200, 640, 290, 0, 0, instance, 0)
+	window = call(user, "CreateWindowExW", 0, uintptr(unsafe.Pointer(name)), ptr(windowTitle), 0x00CA0000, 200, 200, 640, 290, 0, 0, instance, 0)
 	if window == 0 {
 		message("无法创建启动窗口。")
 		return
@@ -331,7 +334,7 @@ func main() {
 		return h
 	}
 	label = add("STATIC", "正在启动本机服务，请稍候…", 24, 24, 580, 48, 0, 0)
-	add("STATIC", "OBS 固定地址：http://127.0.0.1:3001/overlay\r\n比赛自动保存在本机。游戏数据状态请查看控制台顶部。", 24, 82, 580, 52, 0, 0)
+	add("STATIC", "输出固定地址："+base+"/overlay\r\n比赛自动保存在本机。游戏数据状态请查看控制台顶部。", 24, 82, 580, 52, 0, 0)
 	for i, b := range []struct {
 		title string
 		id    uintptr

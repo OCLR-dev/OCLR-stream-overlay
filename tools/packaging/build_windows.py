@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -23,7 +24,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--node-archive', type=Path)
     parser.add_argument('--go', default='go')
+    parser.add_argument('--custom-config', type=Path, help='Build isolated custom-match portable with this configuration')
+    parser.add_argument('--package-name', help='Explicit output folder and ZIP label')
     args = parser.parse_args()
+    if args.package_name and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,119}', args.package_name):
+        raise RuntimeError('Invalid package name')
+    if args.custom_config:
+        config = json.loads(args.custom_config.read_text(encoding='utf-8'))
+        if config.get('format') != 'custom-match-config-v1':
+            raise RuntimeError('Invalid custom match configuration')
     subprocess.run(['npm.cmd' if os.name == 'nt' else 'npm', 'run', 'build'], cwd=ROOT, check=True)
     out = ROOT / 'release'
     out.mkdir(exist_ok=True)
@@ -32,7 +41,8 @@ def main():
         urllib.request.urlretrieve(NODE_URL, archive)
     if sha(archive) != NODE_SHA256:
         raise RuntimeError('Official Windows Node archive SHA256 mismatch')
-    stage = out / 'OCLR-Windows-x64'
+    package_name = args.package_name or ('MP5-Xronicle-Windows-x64' if args.custom_config else 'OCLR-Windows-x64')
+    stage = out / package_name
     if stage.exists():
         shutil.rmtree(stage)
     app = stage / 'app'
@@ -41,6 +51,8 @@ def main():
         shutil.copytree(ROOT / folder, app / folder)
     shutil.copytree(ROOT / 'node_modules/rosu-pp-js', app / 'node_modules/rosu-pp-js')
     (app / 'package.json').write_text('{"type":"module","private":true}\n', encoding='utf-8')
+    if args.custom_config:
+        shutil.copyfile(args.custom_config, app / 'match-template.json')
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
     inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.go'))
@@ -49,7 +61,7 @@ def main():
         digest.update(path.read_bytes())
     digest.update(NODE_SHA256.encode())
     build = digest.hexdigest()
-    (app / 'portable-build.json').write_text(json.dumps({'build': build, 'node': NODE_VERSION, 'architecture': 'x64'}, indent=2)+'\n')
+    (app / 'portable-build.json').write_text(json.dumps({'build': build, 'label': package_name, 'node': NODE_VERSION, 'architecture': 'x64', 'kind': 'custom-match' if args.custom_config else 'oclr'}, indent=2)+'\n')
     runtime = stage / 'runtime'
     runtime.mkdir()
     with zipfile.ZipFile(archive) as source:
@@ -58,10 +70,18 @@ def main():
             (runtime / name).write_bytes(source.read(prefix + name))
     env = dict(os.environ, GOOS='windows', GOARCH='amd64', CGO_ENABLED='0')
     env.setdefault('GOCACHE', str(out / '.go-cache'))
-    subprocess.run([args.go, 'build', '-trimpath', '-ldflags', f'-H=windowsgui -s -w -X main.buildID={build}',
-                    '-o', str(stage / 'OCLR.exe'), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
-    shutil.copyfile(ROOT / 'docs/windows-portable.md', stage / '使用说明.txt')
-    shutil.copyfile(ROOT / 'docs/verification/windows-portable/README.md', stage / '验证状态.txt')
+    flags = f'-H=windowsgui -s -w -X main.buildID={build}'
+    if args.custom_config:
+        flags += ' -X main.base=http://127.0.0.1:3011 -X main.entryScript=custom-portable.js'
+        flags += ' -X main.mutexName=Local\\OCLR.StreamOverlay.CustomMatchTest -X main.windowTitle=MP5-Xronicle-Test'
+    exe_name = 'MP5-Xronicle-Test.exe' if args.custom_config else 'OCLR.exe'
+    subprocess.run([args.go, 'build', '-trimpath', '-ldflags', flags,
+                    '-o', str(stage / exe_name), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
+    shutil.copyfile(ROOT / ('docs/custom-match-windows.md' if args.custom_config else 'docs/windows-portable.md'), stage / '使用说明.txt')
+    shutil.copyfile(ROOT / ('docs/verification/custom-match/README.md' if args.custom_config else 'docs/verification/windows-portable/README.md'), stage / '验证状态.txt')
+    if args.custom_config:
+        shutil.copyfile(args.custom_config, stage / '比赛配置.json')
+        (stage / '图池录入.txt').write_text('\n'.join(f"{entry['label']} {entry['beatmapId']} {entry.get('title', '')}".rstrip() for entry in config['pool'])+'\n', encoding='utf-8')
     license_dir = stage / 'licenses'
     license_dir.mkdir()
     for path in (ROOT / 'tools/packaging/licenses').glob('*'):
@@ -73,12 +93,12 @@ def main():
     shutil.copyfile(Path(goroot) / 'LICENSE', license_dir / 'Go-LICENSE')
     manifest = {str(p.relative_to(stage)).replace('\\', '/'): sha(p) for p in sorted(stage.rglob('*')) if p.is_file()}
     (stage / 'SHA256SUMS.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
-    result = out / 'OCLR-Windows-x64.zip'
+    result = out / f'{package_name}.zip'
     with zipfile.ZipFile(result, 'w', zipfile.ZIP_DEFLATED) as target:
         for path in sorted(stage.rglob('*')):
             if path.is_file():
                 target.write(path, str(path.relative_to(out)))
-    (out / 'OCLR-Windows-x64.zip.sha256').write_text(f'{sha(result)}  {result.name}\n')
+    (out / f'{package_name}.zip.sha256').write_text(f'{sha(result)}  {result.name}\n')
     print(json.dumps({'zip': str(result), 'bytes': result.stat().st_size, 'sha256': sha(result), 'build': build}, indent=2))
 
 

@@ -32,7 +32,7 @@ const score = (team: 'a' | 'b') => {
     </section>
 
     <section class="event-block">
-      <div class="event-shield"><span class="event-title">OCLR <b>{{ view.season }}</b></span><span class="event-bo">{{ view.meta.format }}</span></div>
+      <div class="event-shield"><span class="event-title" :class="{ 'event-title--custom': view.brand }" :title="view.brand || undefined"><template v-if="view.brand">{{ view.brand }}</template><template v-else>OCLR <b>{{ view.season }}</b></template></span><span class="event-bo">{{ view.meta.format }}</span></div>
       <span class="event-meta"><span data-stage-label>{{ view.meta.label }}</span> · <span data-series-target>{{ view.seriesTarget }}</span></span>
       <span class="event-context">
         <span class="event-context-line"><span data-header-scene>{{ sceneLabels[state.scene] }}</span> · <span class="format-chip" :data-format="view.format" :data-ex-team="view.ex ? state.exTeam : undefined" :title="view.ex ? view.exLabel : undefined" :aria-label="view.ex ? view.exLabel : view.formatLabel" data-format-label>{{ view.formatLabel }}</span></span>

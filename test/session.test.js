@@ -197,7 +197,11 @@ test('map stabilizing while Playing begins preserves new edge; initial Playing b
   sim.feed(999); sim.feed(103, 1); sim.feed(103, 3, 10); sim.feed(103, 3, 500);
   assert.equal(sim.state.scene, 'playing');
   const reconnect = simulate(pick(ready())); reconnect.feed(103, 3); reconnect.feed(103, 3);
-  assert.equal(reconnect.state.scene, 'mappool');
+  assert.equal(reconnect.state.scene, 'playing');
+  assert.equal(currentRound(reconnect.state).status, 'prepared');
+  assert.equal(currentRound(reconnect.state).runId, null);
+  reconnect.feed(103, 4); reconnect.feed(103, 4);
+  assert.deepEqual(seriesOf(reconnect.state), { a: 0, b: 0 });
 });
 
 test('prestart abort preserves one Pick, EX and queue without creating a replay attempt', () => {

@@ -14,14 +14,15 @@ export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked
 export interface Session {
   schema: number; id: string; version: number;
   match: { title: string; edition: string | null; fixtureId: string | null; poolId: string | null; provenance: string;
-    stage: 'group' | 'elimination' | 'final'; mode: '3v3' | '4v4'; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam> };
+    custom?: boolean; stageName?: string; bestOf?: number | null; bpRule?: string; bpPreset?: 'single-ban-alternate' | null; stage: 'group' | 'elimination' | 'final'; mode: '3v3' | '4v4'; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam> };
   pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; paused: boolean; sceneOverride: { scene: string; until: 'next-match-event' } | null;
+  poolChoice?: { team: Team; kind: 'ban' | 'pick' } | null;
   arrived: Record<Team, boolean>; ready: Record<Team, boolean>;
   roll: { a: number | null; b: number | null; winner: Team | null; pickFirst: Team | null; banFirst: Team | null };
   action: BpAction | null; queue: BpAction[]; planVerification?: string | null; bans: Record<Team, [string | null, string | null]>;
   emptyBans?: Record<Team, [boolean, boolean]>;
-  bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; canApply: boolean; canReplace: boolean; rollChanged: boolean };
-  auto: { bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
+  bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; canApply: boolean; canReplace: boolean; rollChanged: boolean; preset?: string | null };
+  auto: { wsUrl?: string; bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
   incident?: { kind: 'prestart-abort' | 'abort' | 'player-disconnect' | 'spectator' | 'unverified'; roundId: string; reason: string; source: string; at: string } | null;
   series: Record<Team, number>; seriesAdjustment: Record<Team, number>;
@@ -31,11 +32,11 @@ export interface Session {
 export interface Envelope {
   session: Session; persistence: string;
   live: {
-    sources?: { tosu: 'simulated'; oclr: 'remote-read-only' | 'offline-fixture' };
+    sources?: { tosu: 'simulated' | 'live'; oclr: 'remote-read-only' | 'offline-fixture' | 'disabled-custom' };
     note: string;
     oclr: { status: string; updatedAt: string | null; error: string | null };
     tosu: { status: string; updatedAt: string | null; data: null | {
-      beatmap: { id: number | null; title: string | null;
+      beatmap: { id: number | null; title: string | null; artist?: string | null; difficulty?: string | null;
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
         stats: null | { stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
           ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null } } };

@@ -1,0 +1,8 @@
+{
+  "label": "MP5-Xronicle-Windows-x64-20261030-r3",
+  "manifestFiles": 51,
+  "sha256": "42f60377f735fe39fe9b60597a3ebe1dd3a32296c257425e67b33498e4d9754d",
+  "allHashesValid": true,
+  "amd64Executables": true,
+  "noSessionOrEnv": true
+}

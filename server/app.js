@@ -123,13 +123,14 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     }
     if (await serveUi(url.pathname, res, uiRoot)) return;
     if (url.pathname === '/api/config') {
-      return reply(res, 200, { oclrBaseUrl: '/api/oclr', tosuWsUrl: config.wsUrl, authMode: config.mode });
+      return reply(res, 200, { oclrBaseUrl: '/api/oclr', tosuWsUrl: activeSession?.state.match.custom ? activeSession.state.auto.wsUrl : config.wsUrl, authMode: config.mode });
     }
     if (MODULES.some(name => url.pathname === `/src/${name}.js`)) {
       const body = await readFile(new URL(`../src/${url.pathname.split('/').pop()}`, import.meta.url));
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(body);
     }
+    if (config.customMatch && url.pathname.startsWith('/api/oclr/')) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
     if (!url.pathname.startsWith('/api/oclr/')) return fail(res, 404, 'NOT_FOUND');
     const resource = url.pathname.slice('/api/oclr/'.length);
     if (!isAllowedResource(resource, url.searchParams)) return fail(res, 400, 'RESOURCE_NOT_ALLOWED');

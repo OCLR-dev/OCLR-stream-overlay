@@ -18,7 +18,7 @@ const { state, view, motionScope } = useOverlay();
       <div class="victory-hero">
         <div class="victory-mark" aria-hidden="true">WINNER</div>
         <div class="victory-copy" v-emphasize="{ value: view.winner, scope: motionScope, enabled: state.scene === 'victory', kind: 'winner' }">
-          <span class="victory-kicker">OCLR {{ view.season }} · <span data-victory-stage>{{ view.meta.label }}</span></span>
+          <span class="victory-kicker">{{ view.brand || `OCLR ${view.season}` }} · <span data-victory-stage>{{ view.meta.label }}</span></span>
           <h3>{{ view.winner || '全场胜者待确认' }}</h3>
           <p class="victory-status">{{ view.names.a }} <span>VS</span> {{ view.names.b }}</p>
         </div>

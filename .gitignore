@@ -14,3 +14,5 @@ dist/
 
 # Offline Windows distributions and compiler cache
 /release/
+
+node_modules

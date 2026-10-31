@@ -1,0 +1,762 @@
+[
+  {
+    "ex": "0",
+    "mode": "4v4",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 30,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "a-4",
+        "width": 459,
+        "x": 491,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 970,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-4",
+        "width": 459,
+        "x": 1431,
+        "y": 542
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 30,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "a-4",
+        "width": 459,
+        "x": 491,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 970,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-4",
+        "width": 459,
+        "x": 1431,
+        "y": 542
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-4v4 layout-4v4 source-4x3 shared-output motion-ready"
+  },
+  {
+    "ex": "0",
+    "mode": "4v4",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 30,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "a-4",
+        "width": 459,
+        "x": 491,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 970,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-4",
+        "width": 459,
+        "x": 1431,
+        "y": 542
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 30,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "a-4",
+        "width": 459,
+        "x": 491,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 970,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-4",
+        "width": 459,
+        "x": 1431,
+        "y": 542
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-4v4 layout-4v4 source-16x9 shared-output motion-ready"
+  },
+  {
+    "ex": "1",
+    "mode": "4v4",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-4v4 layout-3v3 source-4x3 shared-output motion-ready"
+  },
+  {
+    "ex": "1",
+    "mode": "4v4",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-4v4 layout-3v3 source-16x9 shared-output motion-ready"
+  },
+  {
+    "ex": "0",
+    "mode": "3v3",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-3v3 layout-3v3 source-4x3 shared-output motion-ready"
+  },
+  {
+    "ex": "0",
+    "mode": "3v3",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "a-3",
+        "width": 459,
+        "x": 260.5,
+        "y": 542
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 196
+      },
+      {
+        "height": 344,
+        "id": "b-3",
+        "width": 459,
+        "x": 1200.5,
+        "y": 542
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-3v3 layout-3v3 source-16x9 shared-output motion-ready"
+  },
+  {
+    "ex": "1",
+    "mode": "3v3",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 369
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 369
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-3v3 layout-2v2 source-4x3 shared-output motion-ready"
+  },
+  {
+    "ex": "1",
+    "mode": "3v3",
+    "pips": 5,
+    "playing": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 369
+      }
+    ],
+    "result": [
+      {
+        "height": 344,
+        "id": "a-1",
+        "width": 459,
+        "x": 30,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "a-2",
+        "width": 459,
+        "x": 491,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-1",
+        "width": 459,
+        "x": 970,
+        "y": 369
+      },
+      {
+        "height": 344,
+        "id": "b-2",
+        "width": 459,
+        "x": 1431,
+        "y": 369
+      }
+    ],
+    "scene": "playing",
+    "source": "broadcast-canvas mode-3v3 layout-2v2 source-16x9 shared-output motion-ready"
+  }
+]

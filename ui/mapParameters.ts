@@ -1,4 +1,4 @@
-export const testModForCategory = (mod: string | null) => ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
+export const testModForCategory = (mod: string | null) => mod === 'CA' ? null : ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
 export interface TestMapMetadata {
   beatmapId: number;
   source: 'osu-file';

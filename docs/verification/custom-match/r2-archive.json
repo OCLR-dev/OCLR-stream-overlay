@@ -1,0 +1,12 @@
+{
+  "archive": "/Users/me/Documents/osu!tour/overlay-custom-match/release/MP5-Xronicle-Windows-x64-20261030-r2.zip",
+  "label": "MP5-Xronicle-Windows-x64-20261030-r2",
+  "build": "0ed4d94adc7565753ada5b864267392df92df4ce9171287ccbfd3691e50a9c17",
+  "sha256": "c84e9b1078e4036222a7ef32b106e23076e429190deb011cf66fc0d72a60fd0a",
+  "verifiedFiles": 51,
+  "amd64Executables": true,
+  "poolCount": 17,
+  "bestOf": 9,
+  "mainCommonRevision": "b622db1",
+  "nativeWindowsExecuted": false
+}

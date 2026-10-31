@@ -49,3 +49,10 @@ test('free mod and tiebreaker test data explicitly use an NM baseline without gu
     assert.equal(display.mod, 'NM');
   }
 });
+
+test('CA keeps its category and never receives an invented NM simulation baseline', () => {
+  assert.equal(testModForCategory('CA'), null);
+  const nm = { ...calculated, calculation: { ...calculated.calculation, mod: 'NM' } };
+  assert.equal(mapParameterDisplay(101, 'official-test', live, nm, 'CA').source, 'none');
+  assert.equal(mapParameterDisplay(101, 'tosu', live, null, 'CA').source, 'tosu');
+});

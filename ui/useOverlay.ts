@@ -2,7 +2,9 @@ import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, watc
 import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
 import { useSession } from './session';
 import { useMotionReady } from './motion';
+import { matchFormat } from './matchFormat';
 import { poolDisplay } from './poolDisplay';
+import { liveBeatmap, livePlayingMap, liveTeamScores } from './liveScores';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -19,7 +21,7 @@ export function createOverlay(shared = false) {
     state.pauseType = s.pauseType; state.exTeam = s.ex.team || 'none'; state.exA = s.ex.remaining.a; state.exB = s.ex.remaining.b;
     const entry = s.pool.find(e => e.id === s.rounds.find(r => r.id === s.currentRoundId)?.entryId);
     state.mapType = entry?.mod === 'TB' ? 'tb' : 'normal';
-    state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
+    state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM', 'CA'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
   }, { immediate: true });
   const view = computed(() => {
     const base = derive(state);
@@ -27,7 +29,7 @@ export function createOverlay(shared = false) {
     const envelope = sessionClient?.snapshot.value;
     const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
     const round = s?.rounds.find(r => r.id === s.currentRoundId);
-    const currentMap = s?.pool.find(e => e.id === round?.entryId) || null;
+    const recordedMap = s?.pool.find(e => e.id === round?.entryId) || null;
     const roster = (team: Team) => shared ? Array.from({ length: base.count }, (_, i) => ({
       team, id: `${team}-${i + 1}`, slot: i + 1, role: '', syntheticEx: false,
       name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null
@@ -35,9 +37,9 @@ export function createOverlay(shared = false) {
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = sessionClient?.connection.value === 'synced' && envelope?.live.tosu.status === 'live' && s?.auto.profile === 'stable-tourney' &&
       envelope.live.tosu.data?.tourney?.teams.left === s.auto.left && envelope.live.tosu.data?.tourney?.teams.right === s.auto.right;
-    const sameLiveMap = currentMap && envelope?.live.tosu.data?.beatmap.id === currentMap.beatmapId;
-    const scores = bound && sameLiveMap && !s?.incident ? envelope?.live.tosu.data?.tourney?.totalScore : null;
-    const liveMap = bound ? envelope?.live.tosu.data?.beatmap : null;
+    const scores = liveTeamScores(envelope, sessionClient?.connection.value);
+    const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
+    const currentMap = state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) || recordedMap : recordedMap;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
     const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
@@ -54,7 +56,8 @@ export function createOverlay(shared = false) {
       return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null,
         statusLabel: status === 'open' ? '' : mapLabels[status], icon: status === 'open' ? '' : mapIcons[status] };
     });
-    return { ...base, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
+    const meta = s ? matchFormat(s.match) : base.meta;
+    return { ...base, meta, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', brand: s?.match.custom ? s.match.title : null, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {
@@ -64,6 +67,7 @@ export function createOverlay(shared = false) {
           .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
         return pool.find(e => e.id === ids[index])?.label || '未确认';
       },
+      mapRule: s?.match.custom ? '' : base.mapRule,
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
       winner: s?.winner ? names[s.winner] : null,
@@ -109,7 +113,7 @@ export function createOverlay(shared = false) {
   };
   const onLocation = () => Object.assign(state, parseLocation(location.search, location.hash));
   const stopWatch = watch(state, () => {
-    if (shared) { document.body.classList.add('is-clean'); document.title = 'OCLR · 共享直播输出'; return; }
+    if (shared) { document.body.classList.add('is-clean'); document.title = session.value?.match.custom ? `${session.value.match.title} · 共享输出` : 'OCLR · 共享直播输出'; return; }
     const url = new URL(location.href);
     for (const key of [...Object.values(urlKeys), 'banA1', 'banA2', 'banB1', 'banB2']) url.searchParams.delete(key);
     url.hash = serializeState(state);
