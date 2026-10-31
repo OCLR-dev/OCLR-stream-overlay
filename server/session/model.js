@@ -415,13 +415,20 @@ function applyCommand(s, command) {
       const built = syncRollFlow(s);
       return built ? '已同步 Roll，按独立先 Ban / 先 Pick 自动建立 BP 当前动作与后续顺序' : '已同步 Roll 点数与先手，保留当前局、BP 和比分；后续有误可在手动调整中修正';
     }
+    case 'import-streaming': {
+      requireValue(!s.match.fixtureId && !s.pool.length && !s.rounds.length && !s.bpHistory?.length && !s.action && !s.queue.length &&
+        s.phase === 'arrival' && s.scene === 'waiting' && !s.paused && !s.incident && s.roll.a === null && s.roll.b === null && !s.roll.winner && !s.roll.pickFirst && !s.roll.banFirst &&
+        !s.poolMarks?.length && SIDES.every(t => !s.bans[t].some(Boolean) && seriesOf(s)[t] === 0),
+      '请先初始化并存档本场，再使用下一场资料');
+      p.source = s.match.source;
+    } // fall through: same validated setup transition, guarded atomically above
     case 'update-setup':
     case 'setup': {
       if (command.type === 'setup') requireValue(s.rounds.length === 0 && !SIDES.some(t => s.bans[t].some(Boolean)), '已有 BP/赛果，请先准备下一场，避免覆盖比赛记录');
       requireValue(text(p.title) && ['group', 'elimination', 'final'].includes(p.stage) && ['3v3', '4v4'].includes(p.mode) && ['4x3', '16x9'].includes(p.source), '本场设置无效');
       updatePool(s, p.pool);
       s.match = { title: p.title, edition: p.edition || null, fixtureId: p.fixtureId || null, poolId: p.poolId || null,
-        provenance: ['oclr', 'oclr-archive'].includes(p.provenance) ? p.provenance : 'manual', stage: p.stage, mode: p.mode, source: p.source, teams: normalizeTeams(p.teams) };
+        provenance: ['oclr', 'oclr-archive', 'oclr-streaming'].includes(p.provenance) ? p.provenance : 'manual', stage: p.stage, mode: p.mode, source: p.source, teams: normalizeTeams(p.teams) };
       requireValue(SIDES.every(t => seriesOf(s)[t] <= targetOf(s)), '现有比分超出该阶段目标，请先校正比分');
       if (s.winner && seriesOf(s)[s.winner] < targetOf(s)) leaveInvalidWinner(s);
       if (command.type === 'setup' && s.bpFlow?.mode !== 'roll') { s.action = null; s.queue = []; }

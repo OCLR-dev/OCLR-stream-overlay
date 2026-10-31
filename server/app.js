@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { StreamingSource } from './streaming.js';
+import { streamingHttp } from './streaming-http.js';
 import { sessionHttp } from './session/http.js';
 import { createArtworkHandler } from './artwork.js';
 
@@ -98,7 +100,11 @@ export async function readBoundedJson(response) {
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session);
-  return createServer(async (req, res) => {
+  const streaming = new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
+    const store = config.session || session;
+    if (store) { store.live.streaming = value; store.emit(); }
+  } });
+  const server = createServer(async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
     const origins = hosts.map(host => `http://${host}`);
@@ -115,6 +121,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
+    if (await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await artwork(req, res, url)) return;
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
@@ -161,4 +168,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       clearTimeout(timeout);
     }
   });
+  server.on('close', () => streaming.disconnect());
+  return server;
 }
