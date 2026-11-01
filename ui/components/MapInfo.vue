@@ -5,6 +5,8 @@ import MapArtwork from './MapArtwork.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
 const { state, view } = useOverlay();
 const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
+const pickName = computed(() => view.value.pickTeam ? view.value.names[view.value.pickTeam] : '');
+const pickSide = computed(() => view.value.pickTeam === 'a' ? '红队 PICK' : '蓝队 PICK');
 const mapMod = computed(() => view.value.shared ? view.value.currentMap?.mod : view.value.mod);
 const mapTitle = computed(() => {
   if (!view.value.shared) return '谱面标题占位 [难度]';
@@ -53,6 +55,11 @@ const parameterLabel = computed(() => {
       <span v-if="parameterLabel" class="map-parameter-source" :title="view.parameterMode === 'official-test' ? ['FM', 'TB'].includes(mapMod || '') ? '模拟测试：尚未指定自由模组，此处显示 NM 计算基准。' : '模拟测试：根据官方谱面文件和当前模组计算星级及参数，正式参数以 tosu 为准。' : '读取当前赛事客户端的 MOD 后参数；选手间不一致或缺失的项目显示 —。'">{{ parameterLabel }}</span>
       <span v-for="param in parameters.rows" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
     </div>
-    <div class="map-slot"><span>NOW PLAYING</span><b :title="mapLabel">{{ mapLabel }}</b><span>{{ view.formatLabel }} · {{ view.modeLabel }}</span></div>
+    <div class="map-slot">
+      <span class="map-pick-banner" :data-team="view.pickTeam" :title="view.pickTeam ? `${pickName} · ${pickSide}` : undefined" :aria-label="view.pickTeam ? `${pickName} · ${pickSide}` : undefined">{{ view.pickTeam ? pickSide : mapMod === 'TB' ? '决胜图' : '选图方未知' }}</span>
+      <span>NOW PLAYING</span>
+      <b :title="mapLabel">{{ mapLabel }}</b>
+      <span>{{ view.formatLabel }} · {{ view.modeLabel }}</span>
+    </div>
   </div>
 </template>

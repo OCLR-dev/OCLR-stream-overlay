@@ -2,8 +2,8 @@ import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, shal
 import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, normalizeScene, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
 import { useSession } from './session';
 import { useMotionReady } from './motion';
-import { poolDisplay } from './poolDisplay';
-import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, liveTeamScores, resultTeamScores } from './liveScores';
+import { poolDisplay, poolWinner } from './poolDisplay';
+import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, liveTeamScores, playingPickTeam, resultTeamScores } from './liveScores';
 import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
 
 export function createOverlay(shared = false) {
@@ -53,11 +53,12 @@ export function createOverlay(shared = false) {
     const resultB = shared ? formatted(resultScores?.right) : base.resultB;
     const pool = shared ? (s?.pool || []).map(entry => {
       const { status, team } = poolDisplay(s!, entry.id);
-      return { ...entry, status, actionTeam: team,
-        statusLabel: team && status !== 'open' ? `${names[team]} ${status === 'banned' ? 'Ban' : status === 'used' ? '已打' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
+      const winnerTeam = status === 'picked' || status === 'used' ? poolWinner(s!, entry.id) : null;
+      return { ...entry, status, actionTeam: team, winnerTeam,
+        statusLabel: winnerTeam ? `${names[winnerTeam]} 胜` : team && status !== 'open' ? `${names[team]} ${status === 'banned' ? 'Ban' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
     }) : mapMods.map((mod, index) => {
       const status = index === 0 ? state.map : 'open';
-      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null,
+      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null, winnerTeam: null,
         statusLabel: status === 'open' ? '' : mapLabels[status], icon: status === 'open' ? '' : mapIcons[status] };
     });
     return { ...base, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
@@ -71,6 +72,7 @@ export function createOverlay(shared = false) {
         return pool.find(e => e.id === ids[index])?.label || '未确认';
       },
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
+      pickTeam: playingPickTeam(s, currentMap),
       showPlayingScores: !shared || !!scores,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
       winner: s?.winner ? names[s.winner] : null,
