@@ -6,6 +6,7 @@ import { sceneLabels } from './model';
 import ReviewControls from './components/ReviewControls.vue';
 import BroadcastHeader from './components/BroadcastHeader.vue';
 import BroadcastAmbient from './components/BroadcastAmbient.vue';
+import SpectrumGrid from './components/SpectrumGrid.vue';
 import WaitingScene from './components/WaitingScene.vue';
 import MappoolScene from './components/MappoolScene.vue';
 import ArenaScene from './components/ArenaScene.vue';
@@ -30,6 +31,7 @@ const { stage, scale } = useCanvasFit();
           :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-current-scene="state.scene"
           :aria-label="`1920×1080 OCLR ${view.season} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})` }">
+          <SpectrumGrid />
           <BroadcastAmbient />
           <BroadcastHeader />
           <!-- One Playing capture grid remains mounted through gameplay and Ranking. -->
