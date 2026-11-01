@@ -20,23 +20,31 @@ const banState = (team: 'a' | 'b', index: 0 | 1) => view.value.shared
       </div>
 
       <div class="mappool-status" aria-label="本场选图状态">
-        <div class="mappool-team-status">
-          <span class="mappool-team-name">{{ view.names.a }}</span>
+        <div class="mappool-team-status" data-team="a">
+          <div class="mappool-team-heading">
+            <span class="mappool-team-name" :title="view.names.a">{{ view.names.a }}</span>
+            <span v-if="state.pickFirst === 'a' || state.banFirst === 'a'" class="mappool-first-actions">
+              <span v-if="state.pickFirst === 'a'" class="mappool-first-action" data-first-action="pick">先 Pick</span>
+              <span v-if="state.banFirst === 'a'" class="mappool-first-action" data-first-action="ban">先 Ban</span>
+            </span>
+          </div>
           <span class="ban-slot-chip" :data-state="banState('a', 0)"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="a0">{{ view.banText('a', 0) }}</b></span>
           <span class="ban-slot-chip" :data-state="banState('a', 1)"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="a1">{{ view.banText('a', 1) }}</b></span>
           <span class="ex-counter">EX 剩余 <b data-ex-remaining="a">{{ state.exA }}</b></span>
+          <span v-if="view.ex && state.exTeam === 'a'" class="map-ex-mark" data-mappool-ex data-ex-team="a">EX 开启</span>
         </div>
-        <div class="mappool-mid">
-          <span>先Pick <b data-pick-first>{{ view.orderLabel(state.pickFirst) }}</b></span>
-          <span>先Ban <b data-ban-first>{{ view.orderLabel(state.banFirst) }}</b></span>
-          <span>当前 <b data-mappool-format>{{ view.formatLabel }}</b> · <b data-mappool-mod>{{ view.mod }}</b></span>
-          <span class="map-ex-mark" data-mappool-ex :data-ex-team="view.ex ? state.exTeam : undefined">{{ view.exLabel }}</span>
-        </div>
-        <div class="mappool-team-status mappool-team-status--b">
-          <span class="mappool-team-name">{{ view.names.b }}</span>
+        <div class="mappool-team-status mappool-team-status--b" data-team="b">
+          <div class="mappool-team-heading">
+            <span v-if="state.pickFirst === 'b' || state.banFirst === 'b'" class="mappool-first-actions">
+              <span v-if="state.pickFirst === 'b'" class="mappool-first-action" data-first-action="pick">先 Pick</span>
+              <span v-if="state.banFirst === 'b'" class="mappool-first-action" data-first-action="ban">先 Ban</span>
+            </span>
+            <span class="mappool-team-name" :title="view.names.b">{{ view.names.b }}</span>
+          </div>
+          <span v-if="view.ex && state.exTeam === 'b'" class="map-ex-mark" data-mappool-ex data-ex-team="b">EX 开启</span>
+          <span class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
           <span class="ban-slot-chip" :data-state="banState('b', 0)"><span class="ban-slot-index">Ban 1</span><b data-ban-slot-view="b0">{{ view.banText('b', 0) }}</b></span>
           <span class="ban-slot-chip" :data-state="banState('b', 1)"><span class="ban-slot-index">Ban 2</span><b data-ban-slot-view="b1">{{ view.banText('b', 1) }}</b></span>
-          <span class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
         </div>
       </div>
 

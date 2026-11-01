@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // Staggered paths give a loose scatter without timers or match-state updates.
-const particles = Array.from({ length: 16 }, (_, index) => ({
+const particles = Array.from({ length: 26 }, (_, index) => ({
   x: 20 + index * 67 % 200,
   y: 18 + index * 41 % 112,
   dx: index * 43 % 108 - 54,
   dy: index * 29 % 72 - 36,
-  size: 1.4 + index % 4 * .45,
-  opacity: .28 + index % 3 * .1,
+  size: 2.4 + index % 4 * .7,
+  opacity: .4 + index % 3 * .12,
   duration: 11 + index * 7 % 10,
   delay: -(index * 13 % 23),
 }));
