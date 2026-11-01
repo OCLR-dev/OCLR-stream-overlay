@@ -108,6 +108,25 @@
     repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 48px),
     var(--canvas);
 }
+/* Short straight accents pulse along the fixed grid, behind all content.
+   The baseline grid never bends, moves, or depends on match/audio input. */
+.spectrum-grid { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; overflow: hidden; contain: paint; pointer-events: none; opacity: .3; }
+.spectrum-segment { stroke: #b99be5; stroke-width: 1px; transform-origin: 0 0; opacity: 0; animation: spectrum-horizontal var(--spectrum-duration) ease-in-out var(--spectrum-delay) infinite; }
+.spectrum-segment[data-axis='vertical'] { animation-name: spectrum-vertical; }
+@keyframes spectrum-horizontal {
+  0%, 52%, 100% { transform: scaleX(.08); opacity: 0; }
+  12% { transform: scaleX(.75); opacity: .75; }
+  23% { transform: scaleX(.38); opacity: .35; }
+  35% { transform: scaleX(1); opacity: .8; }
+}
+@keyframes spectrum-vertical {
+  0%, 52%, 100% { transform: scaleY(.08); opacity: 0; }
+  12% { transform: scaleY(.75); opacity: .75; }
+  23% { transform: scaleY(.38); opacity: .35; }
+  35% { transform: scaleY(1); opacity: .8; }
+}
+@media (prefers-reduced-motion: reduce) { .spectrum-grid { display: none; } }
+
 /* Independent, clipped geometry behind all content and pure-green captures. */
 .broadcast-ambient { position: absolute; inset: 0; z-index: 0; overflow: hidden; contain: paint; pointer-events: none; }
 .broadcast-ambient[hidden] { display: none; }
@@ -226,11 +245,12 @@
 .roll-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 28px 30px 14px; }
 .roll-order { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 24px; border: 0; padding: 0 24px; }
 .roll-order-row { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
-.roll-order-row .footer-kicker { font-size: 22px; }
-.roll-order-row p { font-size: 30px; line-height: 1.25; overflow-wrap: anywhere; }
+.roll-first-actions { display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 40px; }
+.roll-order-row .footer-kicker { font-size: 32px; line-height: 40px; white-space: nowrap; }
+.roll-order-pending { color: var(--muted); font-size: 20px; line-height: 40px; }
+.roll-order-row p { height: 75px; font-size: 30px; line-height: 1.25; overflow-wrap: anywhere; }
 /* Bound long room names without reducing broadcast type size. */
 .roll-sides h3, .roll-order-row p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%; }
-.roll-body > p { max-width: 1000px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roll-order-row p[data-team='a'] { color: var(--team-a); }
 .roll-order-row p[data-team='b'] { color: var(--team-b); }
 .roll-room-chat, .roll-stream-chat { min-width: 0; min-height: 0; }
