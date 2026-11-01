@@ -10,12 +10,31 @@ const validRoom = (config, frame) => {
     ([1, 2].includes(room.ipcState) || room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0)) &&
     [0, 1, 2, 3, 4].includes(room.ipcState) && Number.isSafeInteger(frame?.beatmap?.id) && frame.beatmap.id > 0;
 };
+const preparedContext = (state, frame) => {
+  const round = currentRound(state); const room = frame?.tourney;
+  const expectedMap = entryOf(state, round?.entryId)?.beatmapId;
+  const mapId = frame?.beatmap?.id;
+  const unresolvedReplayMap = round?.replayOf && !(Number.isSafeInteger(mapId) && mapId > 0);
+  if (round?.status !== 'prepared' || state.phase !== 'bp' || state.action || state.paused || state.incident || seriesComplete(state) ||
+    !tosuRoomTeams(frame) || state.auto.profile !== 'stable-tourney' || room.teams.left !== state.auto.left || room.teams.right !== state.auto.right ||
+    !expectedMap || mapId !== expectedMap && !unresolvedReplayMap) return null;
+  return JSON.stringify([state.id, round.id, round.entryId, expectedMap, state.auto.left, state.auto.right]);
+};
 
 // Only the server owns this observer. Browsers never ingest frames or advance BP.
 // Continuity is deliberately volatile: restore/reconnect always establishes a baseline.
 export class RoomAutomation {
   constructor() { this.reset(); }
-  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; this.confirmedPlayers = null; }
+  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; this.confirmedPlayers = null; this.preparedStart = null; }
+
+  observePreparedStart(state, frame, now) {
+    const key = preparedContext(state, frame); const ipc = frame?.tourney?.ipcState;
+    const previous = this.preparedStart;
+    const continuous = previous?.key === key && now >= previous.at && now - previous.at <= 5000;
+    // Only an observed ready room arms this intent. Loading/restoring at
+    // Playing or Ranking cannot manufacture it. No run is created here.
+    this.preparedStart = key && ([1, 2].includes(ipc) || continuous && [0, 3].includes(ipc)) ? { key, at: now } : null;
+  }
 
   rebase(state, frame, now) {
     const presentation = this.presentation;
@@ -32,6 +51,7 @@ export class RoomAutomation {
       this.baseline = { mapId: frame.beatmap.id, ipc: frame.tourney.ipcState };
       this.lastAt = now;
     }
+    this.observePreparedStart(state, frame, now);
   }
 
   hold(state, reason) {
@@ -110,8 +130,16 @@ export class RoomAutomation {
     }
     const room = frame?.tourney;
     const mapId = frame?.beatmap?.id;
+    this.observePreparedStart(state, frame, now);
     const valid = validRoom(config, frame);
-    if (!valid) return this.hold(state, '房间或观战客户端资料不完整，不能据此判断 abort、选手掉线或 Panic');
+    if (!valid) {
+      const preparedStart = this.preparedStart;
+      const held = this.hold(state, '房间或观战客户端资料不完整，不能据此判断 abort、选手掉线或 Panic');
+      // Loading can temporarily clear player IDs after a known ready room.
+      // Keep only that prepared start intent, never a previous run or finish.
+      if (preparedStart?.key === preparedContext(held.state, frame)) this.preparedStart = preparedStart;
+      return held;
+    }
     const ipc = room.ipcState;
     if (this.lastAt !== null && (now - this.lastAt > 5000 || now < this.lastAt)) return this.hold(state, '观战数据连续性中断，请核对比赛是否仍在进行');
     this.lastAt = now;
@@ -143,7 +171,22 @@ export class RoomAutomation {
     }
     if (!this.baseline) {
       this.baseline = { mapId, ipc };
-      return { state, note: '已建立房间基线，等待新的换图 / Playing 转换' };
+      if (ipc === 3 && this.preparedStart?.key === preparedContext(state, frame)) this.playEdge = mapId;
+      else return { state, note: '已建立房间基线，等待新的换图 / Playing 转换' };
+    }
+    const leaving = currentRound(state);
+    if (leaving?.status === 'playing' && this.observedRun === leaving.runId && this.ranking?.runId === leaving.runId &&
+      this.baseline.ipc === 4 && ([1, 2].includes(ipc) || ipc === 4 && mapId !== entryOf(state, leaving.entryId)?.beatmapId)) {
+      // A fast room return / next selection can follow a single Ranking frame.
+      // Release BP from the observed finish, without treating its transient
+      // scores (or the next map's scores) as a confirmed result.
+      state = automaticTransition(state, draft => {
+        const finished = currentRound(draft);
+        finished.status = 'ranking'; finished.finalScore = null;
+        releaseRoundBp(draft, finished);
+      }, 'tosu 已离开本图 Ranking：开放下一 BP，原局成绩待核对', randomUUID());
+      this.observedRun = null; this.ranking = null; this.endRun = null;
+      this.scoreCandidate = null; this.runPlayers = null;
     }
     const active = currentRound(state);
     if (['playing', 'ranking'].includes(active?.status) && (this.observedRun || this.endRun || this.ranking)) {
@@ -193,6 +236,7 @@ export class RoomAutomation {
       } else note = '等待换图稳定';
     }
 
+    this.observePreparedStart(next, frame, now);
     const round = currentRound(next);
     const sameMap = round && entryOf(next, round.entryId)?.beatmapId === mapId;
     if (ipc === 4 && sameMap) {
@@ -214,6 +258,7 @@ export class RoomAutomation {
         this.observedRun = currentRound(next).runId;
         this.runPlayers = playerKeys(room);
         this.playEdge = null;
+        this.preparedStart = null;
       } else if (ipc === 3 && round.status === 'playing') {
         // This also arms a manual start, but only on a continuous live Playing frame.
         this.observedRun = round.runId;
@@ -241,7 +286,7 @@ export class RoomAutomation {
     // Keep observing a known continuous finish if totals arrive after Ranking.
     // A fresh connection at Ranking has no endRun and can never backfill a win.
     const finished = currentRound(next);
-    if (config.results && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted'].includes(finished.resultSource)) {
+    if (config.results && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted', 'series-correction'].includes(finished.resultSource)) {
       const score = this.scoreCandidate;
       // Agreement is a necessary consistency check, not proof that every player finished.
       const consistent = ['left', 'right'].every(side => {

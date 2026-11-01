@@ -17,6 +17,15 @@ test('load/reconnect/new match baselines and hidden scenes never replay history'
   assert.equal(shouldEmphasize({ value: 6, scope }, { value: 0, scope, enabled: false }), false);
 });
 
+test('a fresh Pick can emphasize on the same update that reveals the pool, while earlier hidden Picks stay silent', () => {
+  const previous = { value: ['open', null], scope, enabled: true, visible: false, kind: 'confirm' as const };
+  const picked = { ...previous, value: ['picked', 'b'], visible: true };
+  assert.equal(shouldEmphasize(picked, previous), true);
+  assert.equal(shouldEmphasize({ ...picked, visible: false }, previous), false);
+  assert.equal(shouldEmphasize(picked, { ...picked, visible: false }), false);
+  assert.equal(shouldEmphasize(picked, { ...previous, enabled: false }), false);
+});
+
 test('rapid emphasis replaces the old animation; live totals/no-op values do not restart it', () => {
   const preference = { matches: false, addEventListener(_, handler) { this.change = handler; } };
   globalThis.matchMedia = () => preference;
@@ -75,7 +84,7 @@ test('scene entry targets safe surfaces, cancels on rapid switch and stays silen
     }
   });
   const footer = surface(false), captureAncestor = surface(true);
-  const stack = { contains: e => e === footer, querySelector: () => ({ querySelectorAll: () => [footer, captureAncestor] }) };
+  const stack = { contains: e => e === footer, querySelector: () => ({ contains: e => e === footer, querySelectorAll: () => [footer, captureAncestor] }) };
   const update = (value, oldValue) => vSceneReveal.updated(stack, { value, oldValue });
   update({ value: 'playing', scope }, { value: 'mappool', scope });
   assert.equal(animations.length, 1);
@@ -92,5 +101,25 @@ test('scene entry targets safe surfaces, cancels on rapid switch and stays silen
   update({ value: 'playing', scope, enabled: true }, { value: 'waiting', scope, enabled: false });
   assert.equal(animations.length, 2);
   vSceneReveal.beforeUnmount(stack);
+  delete globalThis.matchMedia;
+});
+
+test('incoming scene reveal preserves its child Pick confirmation but scope changes cancel it', () => {
+  globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
+  const animations = [];
+  const element = { animate() {
+    const animation = { cancelled: false, cancel() { this.cancelled = true; this.oncancel?.(); } };
+    animations.push(animation); return animation;
+  } };
+  const scene = { contains: e => e === element, querySelectorAll: () => [] };
+  const stack = { contains: e => e === element, querySelector: () => scene };
+  vEmphasize.updated(element, { value: { value: ['picked', 'b'], scope, enabled: true, visible: true, kind: 'confirm' },
+    oldValue: { value: ['open', null], scope, enabled: true, visible: false, kind: 'confirm' } });
+  assert.equal(animations.length, 1);
+  vSceneReveal.updated(stack, { value: { value: 'mappool', scope }, oldValue: { value: 'playing', scope } });
+  assert.equal(animations[0].cancelled, false);
+  vSceneReveal.updated(stack, { value: { value: 'mappool', scope: 'reconnected' }, oldValue: { value: 'mappool', scope } });
+  assert.equal(animations[0].cancelled, true);
+  vEmphasize.beforeUnmount(element);
   delete globalThis.matchMedia;
 });

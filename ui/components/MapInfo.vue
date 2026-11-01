@@ -28,6 +28,7 @@ watch([() => view.value.currentMap?.beatmapId, () => view.value.parameterMode, (
   } catch { if (active) metadataStatus.value = 'unavailable'; }
 }, { immediate: true, flush: 'sync' });
 const parameters = computed(() => mapParameterDisplay(view.value.currentMap?.beatmapId ?? null, view.value.parameterMode, view.value.mapParameters, metadata.value, view.value.currentMap?.mod || null));
+const compactParameters = computed(() => parameters.value.rangeMode && parameters.value.rows.reduce((length, row) => length + row.label.length + row.value.length, 0) > 64);
 const parameterLabel = computed(() => {
   if (view.value.parameterMode === 'official-test') return parameters.value.source === 'official-test' ? ['FM', 'TB'].includes(mapMod.value || '') ? '测试 · NM 基准' : `测试 · ${parameters.value.mod} 参数` : metadataStatus.value === 'loading' ? '测试参数读取中' : '测试参数不可用';
   return '';
@@ -44,10 +45,11 @@ const parameterLabel = computed(() => {
       <strong :title="mapTitle">{{ mapTitle }}</strong>
       <div class="map-subline">
         <span class="map-sub" :title="view.shared ? view.currentMap?.artist : undefined">{{ view.shared ? view.currentMap?.artist || '—' : '艺术家' }}</span>
+        <span v-if="parameters.rangeMode" class="map-range-note">选手参数范围</span>
         <span class="map-rule" data-map-rule :hidden="!view.mapRule" :title="view.mapRule">{{ view.mapRule }}</span>
       </div>
     </div>
-    <div class="map-params" aria-label="谱面参数">
+    <div class="map-params" :data-range="parameters.rangeMode" :data-compact="compactParameters" :aria-label="parameters.rangeMode ? '谱面参数：各选手实际数值范围，相同值合并显示' : '谱面参数'">
       <span v-if="parameterLabel" class="map-parameter-source" :title="view.parameterMode === 'official-test' ? ['FM', 'TB'].includes(mapMod || '') ? '模拟测试：尚未指定自由模组，此处显示 NM 计算基准。' : '模拟测试：根据官方谱面文件和当前模组计算星级及参数，正式参数以 tosu 为准。' : '读取当前赛事客户端的 MOD 后参数；选手间不一致或缺失的项目显示 —。'">{{ parameterLabel }}</span>
       <span v-for="param in parameters.rows" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
     </div>

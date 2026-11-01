@@ -4,6 +4,7 @@ interface Emphasis {
   value: unknown;
   scope: string;
   enabled?: boolean;
+  visible?: boolean;
   kind?: 'panel' | 'winner' | 'confirm' | 'pip';
   when?: boolean;
 }
@@ -21,7 +22,8 @@ function reducedMotion() {
   return preference.matches;
 }
 export function shouldEmphasize(next: Emphasis, previous: Emphasis) {
-  return next.when !== false && next.enabled !== false && previous.enabled !== false && next.scope === previous.scope &&
+  return next.when !== false && next.enabled !== false && previous.enabled !== false && next.visible !== false &&
+    (previous.visible !== false || next.kind === 'confirm') && next.scope === previous.scope &&
     JSON.stringify(next.value) !== JSON.stringify(previous.value);
 }
 
@@ -51,7 +53,7 @@ function emphasize(element: HTMLElement, kind?: Emphasis['kind']) {
 export const vEmphasize: Directive<HTMLElement, Emphasis> = {
   updated(element, { value, oldValue }) {
     if (!oldValue) return;
-    if (value.scope !== oldValue.scope || value.enabled === false || value.when === false) cancelEmphasis(element);
+    if (value.scope !== oldValue.scope || value.enabled === false || value.visible === false || value.when === false) cancelEmphasis(element);
     if (!shouldEmphasize(value, oldValue) || reducedMotion()) return;
     emphasize(element, value.kind);
   },
@@ -64,11 +66,14 @@ const sceneSurfaces = ':scope > .scene-footer, :scope > .scene-body:not(.playing
 export const vSceneReveal: Directive<HTMLElement, Emphasis> = {
   updated(stack, { value, oldValue }) {
     if (!oldValue) return;
+    const scene = stack.querySelector<HTMLElement>(':scope > .scene.is-active');
     if (value.scope !== oldValue.scope || value.enabled === false || value.value !== oldValue.value) {
-      for (const element of running.keys()) if (stack.contains(element)) cancelEmphasis(element);
+      // Child directives update first. Preserve a fresh confirmation already
+      // started in the incoming scene; cancel outgoing or obsolete-scope work.
+      for (const element of running.keys()) if (stack.contains(element) &&
+        (value.scope !== oldValue.scope || value.enabled === false || !scene?.contains(element))) cancelEmphasis(element);
     }
     if (!shouldEmphasize(value, oldValue) || reducedMotion()) return;
-    const scene = stack.querySelector<HTMLElement>(':scope > .scene.is-active');
     scene?.querySelectorAll<HTMLElement>(sceneSurfaces).forEach(element => {
       // Guard future layout changes: a surface containing a capture is never animated.
       if (element.matches('[data-game-capture]') || element.querySelector('[data-game-capture]')) return;

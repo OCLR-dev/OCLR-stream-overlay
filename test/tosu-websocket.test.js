@@ -234,12 +234,11 @@ test('prestart abort, missing client replay and Panic recovery remain distinct o
   await simulate(stack, 'panic'); await until(() => stack.store.state.incident, 'Panic observation gap');
   await until(() => !stack.simulator.demo && stack.simulator.room.ipcState === 3, 'simulated spectators recover');
   assert.equal(stack.simulator.room.clientsHidden, false);
-  await operator(stack, 'incident', { kind: 'spectator', reason: '仅观战端 Panic，重赛本身仍在进行' });
-  await operator(stack, 'resolve-incident', { reason: '核对后继续同一次开打' });
-  await delay(250);
+  await until(() => !stack.store.state.incident, 'same live run automatically rejoins after Panic without operator recovery');
+  assert.equal(current(stack).status, 'playing');
   assert.equal(current(stack).id, replay.id); assert.equal(current(stack).runId, replay.runId);
   await simulate(stack, 'set', { ipcState: 4, left: 900, right: 800 });
-  await until(() => current(stack)?.status === 'recorded', 'valid result after verified spectator recovery');
+  await until(() => current(stack)?.status === 'recorded', 'valid result after automatic spectator recovery');
   assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
   assert.equal(stack.store.state.rounds.length, 2); assert.deepEqual(stack.store.state.bpHistory, originalBp);
 });
@@ -272,4 +271,28 @@ test('simulator allows direct document navigation but blocks cross-site data req
   });
   assert.equal(await status('/'), 200);
   assert.equal(await status('/json/v2'), 403);
+});
+
+test('referee replay at ready automatically rejoins after empty startup clients, awards the real finish and continues BP without manual winners', { timeout: 18000 }, async t => {
+  const stack = await boot(t); await prepare(stack);
+  await simulate(stack, 'set', { ipcState: 3 }); await until(() => current(stack)?.status === 'playing', 'original start');
+  const old = structuredClone(current(stack)); const bpCount = stack.store.state.bpHistory.length;
+  await simulate(stack, 'set', { ipcState: 1 }); await until(() => stack.store.state.incident, 'abort held');
+  await operator(stack, 'referee-replay', { reason: '合成复现：裁判 abort 后在 ready 确认同图重赛' });
+  assert.equal(stack.store.state.incident, null); assert.equal(current(stack).replayOf, old.id);
+  await simulate(stack, 'set', { ipcState: 3, clientsHidden: true, growing: false, left: 0, right: 0 });
+  await until(() => stack.store.live.tosu.data?.tourney.ipcState === 3 && stack.store.live.tosu.data.tourney.players.length === 0, 'startup empty clients received');
+  await delay(200); assert.equal(current(stack).status, 'prepared'); assert.equal(current(stack).runId, null);
+  await simulate(stack, 'set', { clientsHidden: false });
+  await until(() => current(stack)?.status === 'playing', 'new run automatically rejoined');
+  assert.notEqual(current(stack).runId, old.runId); assert.equal(stack.store.state.bpHistory.length, bpCount);
+  await simulate(stack, 'set', { ipcState: 4, left: 900, right: 800 });
+  await until(() => current(stack)?.status === 'recorded', 'replay auto winner');
+  assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
+  assert.equal(stack.store.state.rounds.find(r => r.id === old.id).status, 'void');
+  await map(stack, 710002); await until(() => current(stack)?.entryId === 'sim-nm2', 'next Pick automatically followed');
+  await simulate(stack, 'set', { ipcState: 3 }); await until(() => current(stack)?.status === 'playing', 'next start');
+  await simulate(stack, 'set', { ipcState: 4, left: 800, right: 900 }); await until(() => current(stack)?.status === 'recorded', 'next automatic winner');
+  assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 1 });
+  assert.equal(stack.store.state.rounds.filter(r => r.resultSource === 'manual').length, 0);
 });

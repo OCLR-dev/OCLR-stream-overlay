@@ -30,7 +30,7 @@ test('joining Playing without a BP round shows changing room scores without crea
   assert.equal(JSON.stringify(envelope.session), before);
 });
 
-test('live room scores use tosu sides without manual binding and clear on stale data or incident', () => {
+test('live room scores use tosu sides without manual binding and clear on stale data while an incident only holds result automation', () => {
   const { envelope } = fixture();
   for (const connection of ['connecting', 'disconnected', 'error']) assert.equal(liveTeamScores(envelope, connection), null);
   for (const status of ['stale', 'disconnected', 'invalid-data']) {
@@ -46,7 +46,7 @@ test('live room scores use tosu sides without manual binding and clear on stale 
     assert.equal(liveTeamScores(changed, 'synced'), null);
   }
   envelope.session.incident = { roundId: 'test', kind: 'unverified', reason: '', source: 'manual', at: '' };
-  assert.equal(liveTeamScores(envelope, 'synced'), null);
+  assert.deepEqual(liveTeamScores(envelope, 'synced'), { left: 123456, right: 654321 });
 });
 
 test('zero and partial missing totals stay distinct without falling back to saved result scores', () => {
@@ -88,6 +88,44 @@ test('duplicate beatmap IDs preserve a known round slot but never guess the firs
   assert.equal(livePlayingMap(envelope, 'synced', hr)!.label, 'HR1');
   assert.equal(livePlayingMap(envelope, 'synced')!.label, '—');
   envelope.session.pool = [hr]; assert.equal(livePlayingMap(envelope, 'synced')!.label, 'HR1');
+});
+
+test('selected pool maps fill missing text from the same fresh tosu beatmap without changing the session', () => {
+  const { envelope, raw } = fixture();
+  Object.assign(raw.beatmap, { title: 'Blue Zenith', artist: 'xi', version: 'FOUR DIMENSIONS' });
+  envelope.live.tosu.data = normalizeTosuV2(raw);
+  const entry = { id: 'hr1', beatmapId: raw.beatmap.id, mod: 'HR', label: 'HR1', title: 'Blue Zenith', artist: '', difficulty: '  ' };
+  envelope.session.pool = [entry];
+  const before = JSON.stringify(envelope);
+  for (const recorded of [null, entry]) {
+    const display = livePlayingMap(envelope, 'synced', recorded)!;
+    assert.deepEqual(display, { ...entry, artist: 'xi', difficulty: 'FOUR DIMENSIONS' });
+    assert.notEqual(display, entry);
+  }
+  assert.equal(JSON.stringify(envelope), before);
+  Object.assign(entry, { title: '', artist: '图池艺术家', difficulty: '图池难度' });
+  assert.deepEqual(livePlayingMap(envelope, 'synced', entry), { ...entry, title: 'Blue Zenith' });
+});
+
+test('live text never crosses beatmap IDs, stale sources or ambiguous pool slots', () => {
+  const { envelope } = fixture();
+  Object.assign(envelope.live.tosu.data!.beatmap, { title: '当前图', artist: '当前艺术家', difficulty: '当前难度' });
+  const entry = { id: 'nm1', beatmapId: 2635981, mod: 'NM', label: 'NM1', title: '', artist: '', difficulty: '' };
+  const other = { ...entry, id: 'old', beatmapId: 1, title: '旧图' };
+  envelope.session.pool = [entry, { ...entry, id: 'hr1', mod: 'HR', label: 'HR1' }];
+  assert.equal(livePlayingMap(envelope, 'synced', other)!.label, '—');
+  assert.equal(livePlayingMap(envelope, 'synced', other)!.difficulty, '当前难度');
+  assert.equal(livePlayingMap(envelope, 'synced', entry)!.label, 'NM1');
+  assert.equal(livePlayingMap(envelope, 'synced', entry)!.difficulty, '当前难度');
+  assert.equal(other.difficulty, '');
+  for (const status of ['stale', 'disconnected', 'invalid-data']) {
+    envelope.live.tosu.status = status;
+    assert.equal(livePlayingMap(envelope, 'synced', entry), null);
+  }
+  envelope.live.tosu.status = 'live';
+  assert.equal(livePlayingMap(envelope, 'disconnected', entry), null);
+  Object.assign(envelope.live.tosu.data!.beatmap, { title: null, artist: null, difficulty: null });
+  assert.equal(livePlayingMap(envelope, 'synced', entry)!.difficulty, '');
 });
 
 test('current tosu beatmap and its parameters display without joining or binding a room, independently of scores', () => {
@@ -161,4 +199,18 @@ test('room chat follows fresh tosu messages through Playing and Ranking without 
   assert.deepEqual(liveRoomChat(envelope, 'disconnected'), []);
   envelope.live.tosu.status = 'stale'; assert.deepEqual(liveRoomChat(envelope, 'synced'), []);
   assert.equal(JSON.stringify(envelope.session), before);
+});
+
+
+test('restored room totals remain live throughout a held Panic incident without clearing or resolving that incident', () => {
+  const { envelope, raw } = fixture();
+  envelope.session.incident = { roundId: 'test', kind: 'unverified', reason: '观战窗口暂缺', source: 'tosu', at: '' };
+  const before = JSON.stringify(envelope.session);
+  for (const ipc of [3, 4]) {
+    raw.tourney.ipcState = ipc; raw.tourney.totalScore = { left: 345678, right: 456789 };
+    envelope.live.tosu.data = normalizeTosuV2(raw);
+    assert.deepEqual(liveTeamScores(envelope, 'synced'), { left: 345678, right: 456789 });
+  }
+  assert.equal(JSON.stringify(envelope.session), before);
+  envelope.live.tosu.status = 'disconnected'; assert.equal(liveTeamScores(envelope, 'synced'), null);
 });

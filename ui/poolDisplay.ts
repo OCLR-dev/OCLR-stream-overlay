@@ -8,5 +8,5 @@ export function poolDisplay(s: Session, entryId: string) {
   const banning = (['a', 'b'] as const).find(team => s.bans[team].includes(entryId));
   if (banning) return { status: 'banned', team: banning };
   const round = s.rounds.find(item => item.entryId === entryId && item.status !== 'void');
-  return { status: round?.status === 'recorded' ? 'used' : round ? 'picked' : 'open', team: round?.pickedBy ?? null };
+  return { status: round?.status === 'recorded' || round?.resultSource === 'series-correction' ? 'used' : round ? 'picked' : 'open', team: round?.pickedBy ?? null };
 }

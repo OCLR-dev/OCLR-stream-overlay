@@ -103,3 +103,31 @@ for (const changed of [1000, 850]) test(`hidden aggregate cleanup still reviews 
   assert.equal(currentRound(h.s).winner, null); assert.ok(h.s.incident);
   assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
 });
+
+for (const ipc of [1, 2, 4]) test(`fast next Pick after only one Ranking frame is processed before the display returns, IPC ${ipc}`, async () => {
+  const h = harness();
+  await h.frame(799999); await h.change(720001); await h.change(730001); await h.change(710001);
+  await h.frame(710001, 3); await h.frame(710001, 4);
+  const oldId = currentRound(h.s).id;
+  assert.equal(currentRound(h.s).status, 'playing', 'finish debounce has not elapsed');
+  assert.equal(h.s.scene, 'playing');
+  await h.frame(710002, ipc); await h.frame(710002, ipc);
+  assert.equal(h.s.incident, null);
+  assert.equal(currentRound(h.s).entryId, 'sim-nm2');
+  assert.equal(currentRound(h.s).source, 'room-map');
+  assert.equal(h.s.rounds.find(r => r.id === oldId).status, 'ranking');
+  assert.equal(h.s.rounds.find(r => r.id === oldId).finalScore, null, 'a short Ranking does not prove final scores');
+  assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 }, 'progress never fabricates a win from transient scores');
+  const count = h.s.bpHistory.length;
+  await h.frame(710002, ipc); await h.frame(710002, ipc);
+  assert.equal(h.s.bpHistory.length, count, 'the same selection is consumed once');
+});
+
+test('a fast map change without an observed Ranking still holds the active run for review', async () => {
+  const h = harness();
+  await h.frame(799999); await h.change(720001); await h.change(730001); await h.change(710001);
+  await h.frame(710001, 3); const before = structuredClone(currentRound(h.s));
+  await h.frame(710002, 1); await h.frame(710002, 1);
+  assert.ok(h.s.incident); assert.equal(currentRound(h.s).id, before.id);
+  assert.equal(h.s.rounds.length, 1); assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
+});

@@ -98,7 +98,7 @@ export async function readBoundedJson(response) {
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session);
-  return createServer(async (req, res) => {
+  const server = createServer(async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
     const origins = hosts.map(host => `http://${host}`);
@@ -162,4 +162,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       clearTimeout(timeout);
     }
   });
+  server.on('close', () => (config.session || session)?.close?.());
+  return server;
 }
