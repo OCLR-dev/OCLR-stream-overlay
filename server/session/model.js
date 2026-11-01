@@ -526,8 +526,10 @@ function applyCommand(s, command) {
       }
       requireValue(round && ['playing', 'ranking'].includes(round.status), '该局未开打、已记录或已作废');
       requireValue(side(p.winner), '请指定本图胜方');
-      requireValue(seriesOf(s)[p.winner] < targetOf(s), '该队已达到系列目标，请核对比赛记录');
+      const coveredBySeries = round.resultSource === 'series-correction';
+      requireValue(coveredBySeries || seriesOf(s)[p.winner] < targetOf(s), '该队已达到系列目标，请核对比赛记录');
       round.status = 'recorded'; round.winner = p.winner; round.resultSource = 'manual';
+      if (coveredBySeries) s.seriesAdjustment[p.winner]--;
       releaseRoundBp(s, round);
       requireValue(p.keepDisplay === undefined || typeof p.keepDisplay === 'boolean', '赛果显示选项无效');
       if (p.keepDisplay) {
@@ -564,11 +566,20 @@ function applyCommand(s, command) {
       requireValue(SIDES.every(t => Number.isInteger(p[t]) && p[t] >= 0 && p[t] <= targetOf(s)), '系列比分须在 0 与赛制目标之间');
       requireValue(text(p.reason) && p.reason.trim(), '请填写系列比分校正原因');
       const old = seriesOf(s);
+      const current = currentRound(s);
+      const finish = !s.paused && current && ['prepared', 'playing', 'ranking'].includes(current.status) &&
+        (current.status === 'ranking' || p.finishRoundId === current.id);
+      if (finish) {
+        current.status = 'ranking'; current.resultSource = 'series-correction';
+        if (s.incident?.roundId === current.id) s.incident = null;
+        releaseRoundBp(s, current);
+        s.phase = 'bp';
+      }
       s.seriesAdjustment = Object.fromEntries(SIDES.map(t => [t, p[t] - s.rounds.filter(r => r.status === 'recorded' && r.winner === t).length]));
       // Explicit operator scores take precedence over all previously received results.
       for (const round of s.rounds) if (['ranking', 'recorded'].includes(round.status)) round.autoProtected = true;
       leaveInvalidWinner(s);
-      return `人工校正系列分 ${old.a}:${old.b} → ${p.a}:${p.b}：${p.reason}`;
+      return `人工校正系列分 ${old.a}:${old.b} → ${p.a}:${p.b}：${p.reason}${finish ? '；本图已按系列比分处理，可继续下一图（未指定单图胜方）' : ''}`;
     }
     case 'replay': {
       const round = currentRound(s);

@@ -15,9 +15,9 @@ export function liveRoomChat(envelope: Envelope | null | undefined, connection: 
 // Both Playing and Ranking display the room's current totals. Showing scores
 // does not establish a run or provide eligibility for automatic result recording.
 export function liveTeamScores(envelope: Envelope | null | undefined, connection: string | undefined) {
-  const session = envelope?.session;
   const room = liveRoom(envelope, connection);
-  if (!room || (room.ipcState !== 3 && room.ipcState !== 4) || session?.incident) return null;
+  // A result hold never hides fresh room totals. Source validity still applies.
+  if (!room || (room.ipcState !== 3 && room.ipcState !== 4)) return null;
   return room.totalScore;
 }
 
@@ -39,9 +39,15 @@ export function resultTeamScores(envelope: Envelope | null | undefined, connecti
 export function livePlayingMap(envelope: Envelope | null | undefined, connection: string | undefined, recordedMap: PoolEntry | null = null): PoolEntry | null {
   const map = liveBeatmap(envelope, connection);
   if (!map) return null;
-  if (recordedMap?.beatmapId === map.id) return recordedMap;
   const matches = envelope!.session.pool.filter(entry => entry.beatmapId === map.id);
-  if (matches.length === 1) return matches[0]!;
+  const entry = recordedMap?.beatmapId === map.id ? recordedMap : matches.length === 1 ? matches[0]! : null;
+  if (entry) {
+    // Pool imports may contain only a title. Fill display text from the same
+    // fresh beatmap without mutating the pool, round or its known mod/slot.
+    const text = (saved: string, live: string | null | undefined) => saved?.trim() ? saved : live?.trim() || '';
+    return { ...entry, title: text(entry.title, map.title), artist: text(entry.artist, map.artist),
+      difficulty: text(entry.difficulty, map.difficulty) };
+  }
   // Display the current tosu beatmap independently of room binding and scores.
   // Missing or ambiguous pool slots must not invent a mod/label or write BP.
   return { id: `room-map-${map.id}`, beatmapId: map.id, mod: '', label: '—',
@@ -53,6 +59,7 @@ export function liveBeatmap(envelope: Envelope | null | undefined, connection: s
   const map = source?.data?.beatmap;
   if (connection !== 'synced' || source?.status !== 'live' || !map?.id || !Number.isSafeInteger(map.id) || map.id <= 0) return null;
   const room = source.data?.tourney;
-  const stats = room && [3, 4].includes(room.ipcState ?? -1) && map.tourneyStats ? map.tourneyStats : map.stats;
+  const stats = room?.ipcState === 4 && map.rankingStats ? map.rankingStats
+    : room && [3, 4].includes(room.ipcState ?? -1) && map.tourneyStats ? map.tourneyStats : map.stats;
   return { ...map, stats, id: map.id };
 }

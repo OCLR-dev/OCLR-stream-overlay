@@ -29,7 +29,12 @@ export interface Session {
   ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'technical' | 'tactical';
   history: { id: string; at: string; version: number; message: string; source: string }[]; canUndo: boolean;
 }
+export type BeatmapRange = { min: number; max: number } | null;
+export type BeatmapRanges = Record<'stars' | 'cs' | 'hp' | 'ar' | 'od' | 'bpm' | 'clockRate', BeatmapRange>;
 export interface BeatmapStats {
+  clockRate?: number | null;
+  ranges?: BeatmapRanges;
+  availability?: 'ready' | 'mixed' | 'missing' | 'mismatched';
   stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
   ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null };
 }
@@ -46,7 +51,7 @@ export interface Envelope {
     tosu: { status: string; updatedAt: string | null; data: null | {
       beatmap: { id: number | null; title: string | null; artist?: string | null; difficulty?: string | null;
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
-        stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null };
+        stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null; rankingStats?: BeatmapStats | null };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
         totalScore: { left: number | null; right: number | null }; chat: { name?: string; message?: string; timestamp?: string }[] }
     } };

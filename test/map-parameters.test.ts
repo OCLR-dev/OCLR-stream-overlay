@@ -18,7 +18,7 @@ test('formal parameter display uses only matched tosu values, including HP and c
 test('simulation shows calculated HR stars and parameters, not NM or synthetic tosu values', () => {
   const display = mapParameterDisplay(101, 'official-test', live, calculated, 'HR');
   assert.equal(display.source, 'official-test');
-  assert.deepEqual(values(display), { '★': '6.85', CS: '5.2', HP: '7', AR: '10', OD: '10', BPM: '180', 时长: '—' });
+  assert.deepEqual(values(display), { '★': '6.85', CS: '5.2', HP: '7', AR: '10', OD: '10', BPM: '180', 时长: '4:05' });
   for (const metadata of [null, original]) assert.ok(mapParameterDisplay(101, 'official-test', live, metadata, 'HR').rows.every(row => row.value === '—'));
 });
 

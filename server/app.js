@@ -168,6 +168,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       clearTimeout(timeout);
     }
   });
-  server.on('close', () => streaming.disconnect());
+  server.on('close', () => { streaming.disconnect(); (config.session || session)?.close?.(); });
   return server;
 }

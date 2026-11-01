@@ -239,7 +239,7 @@ test('unexpected exit or missing spectator holds the current run without guessin
   assert.equal(sim.state.incident.kind, 'unverified'); assert.match(sim.state.incident.reason, /窗口缺失/);
 });
 
-test('Panic or transport recovery continues the same run only after live operator verification', async () => {
+test('transport recovery and an explicit spectator hold preserve the same run after live operator verification', async () => {
   const store = new SessionStore({ state: pick(ready()) });
   const submit = (type, payload) => store.command({ id: `incident-${++counter}`, version: store.state.version, type, payload });
   await store.frame(frame(103, 1), 1000); await store.frame(frame(103, 3), 1500);

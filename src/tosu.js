@@ -12,11 +12,27 @@ export function tosuRoomTeams(frame) {
     ? { left: names.left, right: names.right } : null;
 }
 
-function statsSnapshot(stats) {
+function playbackRate(mods) {
+  if (!mods || typeof mods !== 'object') return null;
+  if (mods.rate !== undefined) return number(mods.rate) > 0 ? mods.rate : null;
+  // Older tosu versions omit rate. Decode actual client mods, never the pool tag.
+  if (Number.isSafeInteger(mods.number) && mods.number >= 0) {
+    const fast = !!(mods.number & (64 | 512)); const slow = !!(mods.number & 256);
+    return fast && slow ? null : fast ? 1.5 : slow ? .75 : 1;
+  }
+  if (typeof mods.name !== 'string') return null;
+  const name = mods.name.toUpperCase().replace(/[\s+]/g, '');
+  const fast = /DT|NC/.test(name); const slow = /HT|DC/.test(name);
+  if (fast || slow) return fast && slow ? null : fast ? 1.5 : .75;
+  return /^(?:NM|NF|EZ|HD|HR|SD|PF|FL|SO|V2|RX|AP|AT|TD)*$/.test(name) ? 1 : null;
+}
+
+function statsSnapshot(stats, mods) {
   if (!stats || typeof stats !== 'object') return null;
   const pair = value => ({ original: number(value?.original), converted: number(value?.converted) });
   return {
     ...stats,
+    clockRate: playbackRate(mods),
     stars: { ...stats.stars, live: number(stats.stars?.live), total: number(stats.stars?.total) },
     cs: pair(stats.cs), ar: pair(stats.ar), od: pair(stats.od), hp: pair(stats.hp),
     bpm: { realtime: number(stats.bpm?.realtime), common: number(stats.bpm?.common),
@@ -29,32 +45,53 @@ function tourneyStatsSnapshot(raw) {
   const root = raw.beatmap;
   const clients = (Array.isArray(raw.tourney.clients) ? raw.tourney.clients : []).filter(client =>
     ['left', 'right'].includes(client.team) && number(client.user?.id) > 0);
+  let missing = clients.length === 0; let mismatched = false;
   const samples = clients.map(client => {
     const map = client.beatmap;
     const stats = map?.stats;
-    if (!stats || (number(map.id) > 0 && map.id !== root.id) ||
-      (map.checksum && root.checksum && map.checksum !== root.checksum)) return null;
+    if ((number(map?.id) > 0 && map.id !== root.id) ||
+      (map?.checksum && root.checksum && map.checksum !== root.checksum)) { mismatched = true; return null; }
+    if (!stats) { missing = true; return null; }
     // Older v2 clients expose only stats, without a map ID. Reject explicit
     // disagreements with the selected map rather than showing a stale sample.
     for (const key of ['ar', 'cs', 'od', 'hp']) {
       if (number(stats[key]?.original) !== null && number(root.stats?.[key]?.original) !== null &&
-        stats[key].original !== root.stats[key].original) return null;
+        stats[key].original !== root.stats[key].original) { mismatched = true; return null; }
     }
     for (const [value, expected] of [[stats.objects?.total, root.stats?.objects?.total], [stats.maxCombo, root.stats?.maxCombo]]) {
-      if (number(value) !== null && number(expected) !== null && value !== expected) return null;
+      if (number(value) !== null && number(expected) !== null && value !== expected) { mismatched = true; return null; }
     }
-    return stats;
+    const rate = playbackRate(client.play?.mods);
+    const hasDifficulty = [stats.stars?.total, ...['ar', 'cs', 'od', 'hp'].map(key => stats[key]?.converted)]
+      .some(value => number(value) !== null);
+    // Ranking can clear stats and reset mods to the empty NM placeholder.
+    // That is missing rate evidence, not a newly observed speed change.
+    const clearedMods = !hasDifficulty && !client.play?.mods?.name?.trim() && rate === 1;
+    return { ...stats, clockRate: clearedMods ? null : rate };
   });
   const common = pick => {
     const values = samples.map(stats => number(pick(stats)));
     return values.length && values[0] !== null && values.every(value => value === values[0]) ? values[0] : null;
   };
-  // A single broadcast row cannot represent different free-mod parameters.
-  // Resolve each attribute independently; never fill gaps with root NM data.
+  const range = pick => {
+    const values = samples.map(stats => number(pick(stats)));
+    return values.length && values.every(value => value !== null && value >= 0)
+      ? { min: Math.min(...values), max: Math.max(...values) } : null;
+  };
+  const attributes = [stats => stats?.stars?.total, ...['ar', 'cs', 'od', 'hp'].map(key => stats => stats?.[key]?.converted), stats => stats?.bpm?.common, stats => stats?.clockRate];
+  const mixed = attributes.some(pick => new Set(samples.map(stats => number(pick(stats))).filter(value => value !== null)).size > 1);
+  if (attributes.some(pick => samples.some(stats => number(pick(stats)) === null))) missing = true;
+  // Keep common values for fixed-mod rows and full client ranges for FM.
+  // Every client must supply the attribute; never fill gaps with root NM data.
   return {
+    availability: mismatched ? 'mismatched' : mixed ? 'mixed' : missing ? 'missing' : 'ready',
+    clockRate: common(stats => stats?.clockRate),
     stars: { total: common(stats => stats?.stars?.total) },
     ...Object.fromEntries(['ar', 'cs', 'od', 'hp'].map(key => [key, { converted: common(stats => stats?.[key]?.converted) }])),
     bpm: { common: common(stats => stats?.bpm?.common) },
+    ranges: { stars: range(stats => stats?.stars?.total),
+      ...Object.fromEntries(['ar', 'cs', 'od', 'hp'].map(key => [key, range(stats => stats?.[key]?.converted)])),
+      bpm: range(stats => stats?.bpm?.common), clockRate: range(stats => stats?.clockRate) },
   };
 }
 
@@ -78,7 +115,7 @@ export function normalizeTosuV2(raw) {
       id: number(map.id), setId: number(map.set), checksum: text(map.checksum),
       artist: text(map.artist), title: text(map.title), difficulty: text(map.version), mapper: text(map.mapper),
       time: { current: number(map.time?.live), firstObject: number(map.time?.firstObject), lastObject: number(map.time?.lastObject) },
-      stats: statsSnapshot(map.stats),
+      stats: statsSnapshot(map.stats, raw.play?.mods),
       tourneyStats: tourneyStatsSnapshot(raw),
     },
     play: playSnapshot(raw.play),

@@ -305,10 +305,13 @@
 .current-map strong { overflow: hidden; color: #fff; font-size: 26px; font-weight: 800; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .map-subline { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 17px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .map-rule { flex-shrink: 0; max-width: 60%; overflow: hidden; color: #e6cbff; font-size: 13px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .map-params { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
 .map-params span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
 .map-params b { color: #c9a8ff; font-weight: 700; }
+.map-params[data-range='true'] span { gap: 4px; padding-inline: 7px; white-space: nowrap; }
+.map-params[data-range='true'][data-compact='true'] span { gap: 3px; padding-inline: 5px; font-size: 18px; }
 .map-params .map-parameter-source { flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--muted); font: 11px var(--sans); }
 .map-slot { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--mod-color); color: #150a2c; }
 .map-slot b { max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
