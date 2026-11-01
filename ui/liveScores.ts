@@ -1,4 +1,10 @@
-import type { Envelope, PoolEntry } from './session';
+import type { Envelope, PoolEntry, Session } from './session';
+
+export function playingPickTeam(session: Session | null | undefined, map: PoolEntry | null) {
+  const round = session?.rounds.find(r => r.id === session.currentRoundId);
+  if (!map || map.mod === 'TB' || !round || round.status === 'void' || round.entryId !== map.id) return null;
+  return round.pickedBy;
+}
 
 export function liveRoom(envelope: Envelope | null | undefined, connection: string | undefined) {
   const source = envelope?.live.tosu;

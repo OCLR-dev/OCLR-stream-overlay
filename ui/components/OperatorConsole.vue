@@ -359,7 +359,7 @@ const showAdjustments = () => {
 function poolState(id: string) {
   if (!s.value) return '';
   const mark = poolDisplay(s.value, id);
-  return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已打' : 'Pick'}` : '';
+  return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已结束' : 'Pick'}` : '';
 }
 const nextStep = computed(() => {
   if (connection.value !== 'synced') return '控制台连接中断，正在重新连接。恢复后核对最近操作再继续。';
@@ -506,7 +506,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <button :disabled="disabled || !poolSelection || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
               <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <p v-if="!s.pool.length">还没有图池，请在本场设置选择真实资料。</p>
-              <p>已打过的图也可以修改标记。开打和记胜在 Playing 面板操作。</p>
+              <p>已结束的谱面仍可修改播出标记。开打和记胜在 Playing 面板操作。</p>
             </div>
             <div v-else-if="scorePanel" class="operator-action-stack">
               <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '正在显示 tosu 结算总分；显示分数不代表已记胜。' : '正在跟随房间，无需手动标记开打。' : '等待本场 Playing / Ranking 数据；连接有效后自动显示。' }}</p></section>
