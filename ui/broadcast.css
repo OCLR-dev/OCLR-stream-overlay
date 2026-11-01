@@ -108,23 +108,26 @@
     repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 48px),
     var(--canvas);
 }
-.broadcast-canvas::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  content: '';
-  pointer-events: none;
-  background: radial-gradient(ellipse 50% 40% at 50% 60%, #6d28d91a, transparent 80%);
-  animation: broadcast-glow 24s ease-in-out infinite alternate;
+/* Independent, clipped geometry behind all content and pure-green captures. */
+.broadcast-ambient { position: absolute; inset: 0; z-index: 0; overflow: hidden; contain: paint; pointer-events: none; }
+.broadcast-ambient[hidden] { display: none; }
+.ambient-diamond { position: absolute; border: 1px solid currentColor; color: #ba98ee; opacity: 0; transform: rotate(45deg); animation: ambient-diamond-drift var(--duration) linear var(--delay) infinite; }
+.ambient-diamond.is-solid { background: currentColor; }
+.ambient-diamond.is-pale { color: #ded7eb; }
+@keyframes ambient-diamond-drift {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(45deg); }
+  15% { opacity: var(--opacity); }
+  78% { opacity: var(--opacity); }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(45deg); }
 }
-@keyframes broadcast-glow { to { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .ambient-diamond { animation: none !important; opacity: .3; } }
 
 /* A loose scatter of fading points fills only the empty header wings.
    The fixed header clip keeps every particle and glow above the key surfaces. */
 .header-ambient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .header-ambient-wing { position: absolute; top: 8px; left: 10px; width: 240px; height: 148px; overflow: hidden; color: var(--team-a); }
 .header-ambient-wing[data-team='b'] { left: auto; right: 10px; color: var(--team-b); }
-.header-ambient-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; opacity: .25; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
+.header-ambient-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; opacity: .25; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
 .header-ambient-particle:nth-child(4n) { background: #f3eeff; }
 @keyframes header-diffuse {
   0% { opacity: 0; transform: translate(0, 0) scale(.7); }
@@ -316,10 +319,10 @@
 .mappool-body { display: flex; flex-direction: column; padding: 4px 60px 20px; }
 .mappool-head { flex-basis: 52px; height: 52px; }
 .mappool-head h2 { font-size: 40px; letter-spacing: .3em; }
-.mappool-status { display: grid; flex: 0 0 86px; grid-template-columns: 1fr 340px 1fr; align-items: center; gap: 18px; border-block: 1px solid #7c3aed66; background: #241349b3; padding: 10px 16px; }
+.mappool-status { display: grid; flex: 0 0 86px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 48px; border-block: 1px solid #7c3aed66; background: #241349b3; padding: 10px 16px; }
 .mappool-team-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; border-left: 3px solid var(--team-a); padding-left: 12px; }
 .mappool-team-status--b { justify-content: flex-end; border-left: 0; border-right: 3px solid var(--team-b); padding-left: 0; padding-right: 12px; }
-.mappool-team-name { width: 100%; color: #ff91a7; font-size: 18px; font-weight: 800; }
+.mappool-team-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ff91a7; font-size: 18px; font-weight: 800; }
 .mappool-team-status--b .mappool-team-name { color: #8abaff; text-align: right; }
 .ban-slot-chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #7653aa; padding: 4px 8px; color: #e1d3f5; font-size: 15px; white-space: nowrap; }
 .ban-slot-index { color: var(--muted); font-family: var(--display); font-size: 16px; }
@@ -327,10 +330,15 @@
 .ban-slot-chip[data-state='used'] { border-color: #e36b8c; background: #a3123a44; color: #ffd5e1; }
 .mappool-team-status--b .ban-slot-chip[data-state='used'] { border-color: #558fed; background: #123f9e66; color: #c5ddff; }
 .ex-counter { margin-left: 3px; color: var(--muted); font-size: 15px; white-space: nowrap; }
+.mappool-team-status--b .ex-counter { margin-left: 0; margin-right: 3px; }
 .ex-counter b { margin-left: 4px; color: #e4ccff; font-family: var(--display); font-size: 22px; }
-.mappool-mid { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; color: var(--muted); font-size: 13px; }
-.mappool-mid b { color: #e4d5fa; }
-.map-ex-mark { color: #dbc0ff; }
+.mappool-team-heading { display: flex; align-items: baseline; gap: 20px; width: 100%; min-width: 0; }
+.mappool-team-status--b .mappool-team-heading { justify-content: flex-end; }
+.mappool-first-actions { display: inline-flex; flex-shrink: 0; align-items: center; gap: 12px; }
+.mappool-first-action { color: var(--team-a); font-size: 18px; font-weight: 800; white-space: nowrap; }
+.mappool-team-status--b .mappool-first-action { color: var(--team-b); }
+.map-ex-mark { color: #ff91a7; font-size: 15px; font-weight: 700; }
+.mappool-team-status--b .map-ex-mark { color: #8abaff; }
 .mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 12px; }
 :is(.mappool-column, .map-entry, .operator-pool button, .map-row) { --mod-color: var(--mod-nm); }
 :is(.mappool-column, .map-entry, .operator-pool button, .map-row)[data-mod='HD'] { --mod-color: var(--mod-hd); }

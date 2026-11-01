@@ -1,0 +1,1830 @@
+{
+  "synthetic": true,
+  "baselineHead": "96f95f6a35a767e0878cfde7c28511908f3363d7",
+  "tests": 252,
+  "checks": [
+    {
+      "name": "main first-action ownership and team colors a/a",
+      "pass": true,
+      "detail": [
+        {
+          "team": "a",
+          "labels": [
+            {
+              "kind": "pick",
+              "text": "先 Pick",
+              "color": "rgb(255, 77, 109)"
+            },
+            {
+              "kind": "ban",
+              "text": "先 Ban",
+              "color": "rgb(255, 77, 109)"
+            }
+          ]
+        },
+        {
+          "team": "b",
+          "labels": []
+        }
+      ]
+    },
+    {
+      "name": "main first-action ownership and team colors a/b",
+      "pass": true,
+      "detail": [
+        {
+          "team": "a",
+          "labels": [
+            {
+              "kind": "pick",
+              "text": "先 Pick",
+              "color": "rgb(255, 77, 109)"
+            }
+          ]
+        },
+        {
+          "team": "b",
+          "labels": [
+            {
+              "kind": "ban",
+              "text": "先 Ban",
+              "color": "rgb(61, 139, 255)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "main first-action ownership and team colors b/a",
+      "pass": true,
+      "detail": [
+        {
+          "team": "a",
+          "labels": [
+            {
+              "kind": "ban",
+              "text": "先 Ban",
+              "color": "rgb(255, 77, 109)"
+            }
+          ]
+        },
+        {
+          "team": "b",
+          "labels": [
+            {
+              "kind": "pick",
+              "text": "先 Pick",
+              "color": "rgb(61, 139, 255)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "main first-action ownership and team colors b/b",
+      "pass": true,
+      "detail": [
+        {
+          "team": "a",
+          "labels": []
+        },
+        {
+          "team": "b",
+          "labels": [
+            {
+              "kind": "pick",
+              "text": "先 Pick",
+              "color": "rgb(61, 139, 255)"
+            },
+            {
+              "kind": "ban",
+              "text": "先 Ban",
+              "color": "rgb(61, 139, 255)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "main unknown first actions leave no labels",
+      "pass": true
+    },
+    {
+      "name": "main long names remain contained",
+      "pass": true
+    },
+    {
+      "name": "main mirrored heading order",
+      "pass": true,
+      "detail": [
+        {
+          "heading": [
+            {
+              "kind": "mappool-team-name",
+              "x": 91,
+              "right": 163
+            },
+            {
+              "kind": "mappool-first-actions",
+              "x": 183,
+              "right": 243.796875
+            }
+          ],
+          "items": [
+            "Ban 1",
+            "Ban 2",
+            "EX"
+          ]
+        },
+        {
+          "heading": [
+            {
+              "kind": "mappool-first-actions",
+              "x": 1679.828125,
+              "right": 1737
+            },
+            {
+              "kind": "mappool-team-name",
+              "x": 1757,
+              "right": 1829
+            }
+          ],
+          "items": [
+            "EX",
+            "Ban 1",
+            "Ban 2"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "main mirrored EX / Ban order",
+      "pass": true,
+      "detail": [
+        {
+          "heading": [
+            {
+              "kind": "mappool-team-name",
+              "x": 91,
+              "right": 163
+            },
+            {
+              "kind": "mappool-first-actions",
+              "x": 183,
+              "right": 243.796875
+            }
+          ],
+          "items": [
+            "Ban 1",
+            "Ban 2",
+            "EX"
+          ]
+        },
+        {
+          "heading": [
+            {
+              "kind": "mappool-first-actions",
+              "x": 1679.828125,
+              "right": 1737
+            },
+            {
+              "kind": "mappool-team-name",
+              "x": 1757,
+              "right": 1829
+            }
+          ],
+          "items": [
+            "EX",
+            "Ban 1",
+            "Ban 2"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "main current-mode and inactive EX copy removed",
+      "pass": true
+    },
+    {
+      "name": "main active EX belongs to a",
+      "pass": true
+    },
+    {
+      "name": "main active EX belongs to b",
+      "pass": true
+    },
+    {
+      "name": "main 36 full-canvas diamonds at 6–10 seconds",
+      "pass": true,
+      "detail": {
+        "diamonds": 36,
+        "durations": [
+          8,
+          9,
+          10,
+          7,
+          10,
+          6,
+          8,
+          9,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10,
+          8,
+          9,
+          10,
+          7,
+          10,
+          6,
+          8,
+          9,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10
+        ],
+        "particles": [
+          26,
+          26
+        ],
+        "sizes": [
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375
+        ],
+        "layers": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "clip": [
+          156,
+          156
+        ],
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080,
+          "top": 0,
+          "right": 1920,
+          "bottom": 1080,
+          "left": 0
+        },
+        "stage": "小组赛",
+        "ca": 0
+      }
+    },
+    {
+      "name": "main larger header particles stay above captures",
+      "pass": true,
+      "detail": {
+        "diamonds": 36,
+        "durations": [
+          8,
+          9,
+          10,
+          7,
+          10,
+          6,
+          8,
+          9,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10,
+          8,
+          9,
+          10,
+          7,
+          10,
+          6,
+          8,
+          9,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10,
+          9,
+          8,
+          7,
+          10
+        ],
+        "particles": [
+          26,
+          26
+        ],
+        "sizes": [
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375,
+          3.79688,
+          4.5,
+          2.39062,
+          3.09375
+        ],
+        "layers": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "clip": [
+          156,
+          156
+        ],
+        "canvas": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080,
+          "top": 0,
+          "right": 1920,
+          "bottom": 1080,
+          "left": 0
+        },
+        "stage": "小组赛",
+        "ca": 0
+      }
+    },
+    {
+      "name": "main capture geometry 3v3/4x3/false",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 3v3/4x3/true",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 360,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 3v3/16x9/false",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 3v3/16x9/true",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 405,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 4v4/4x3/false",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 0,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 0,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 4v4/4x3/true",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360
+          },
+          {
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 4v4/16x9/false",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 0,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 0,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main capture geometry 4v4/16x9/true",
+      "pass": true,
+      "detail": {
+        "expected": [
+          {
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "actual": [
+          {
+            "x": 0,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 480,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 240,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 960,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1440,
+            "y": 225,
+            "width": 480,
+            "height": 270
+          },
+          {
+            "x": 1200,
+            "y": 585,
+            "width": 480,
+            "height": 270
+          }
+        ],
+        "unsafe": []
+      }
+    },
+    {
+      "name": "main reduced motion stops decoration",
+      "pass": true
+    },
+    {
+      "name": "no browser exceptions",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "layout": [
+    {
+      "heading": [
+        {
+          "kind": "mappool-team-name",
+          "x": 91,
+          "right": 163
+        },
+        {
+          "kind": "mappool-first-actions",
+          "x": 183,
+          "right": 243.796875
+        }
+      ],
+      "items": [
+        "Ban 1",
+        "Ban 2",
+        "EX"
+      ]
+    },
+    {
+      "heading": [
+        {
+          "kind": "mappool-first-actions",
+          "x": 1679.828125,
+          "right": 1737
+        },
+        {
+          "kind": "mappool-team-name",
+          "x": 1757,
+          "right": 1829
+        }
+      ],
+      "items": [
+        "EX",
+        "Ban 1",
+        "Ban 2"
+      ]
+    }
+  ],
+  "decoration": {
+    "diamonds": 36,
+    "durations": [
+      8,
+      9,
+      10,
+      7,
+      10,
+      6,
+      8,
+      9,
+      7,
+      10,
+      9,
+      8,
+      7,
+      10,
+      9,
+      8,
+      7,
+      10,
+      8,
+      9,
+      10,
+      7,
+      10,
+      6,
+      8,
+      9,
+      7,
+      10,
+      9,
+      8,
+      7,
+      10,
+      9,
+      8,
+      7,
+      10
+    ],
+    "particles": [
+      26,
+      26
+    ],
+    "sizes": [
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375,
+      3.79688,
+      4.5,
+      2.39062,
+      3.09375
+    ],
+    "layers": [
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none"
+    ],
+    "clip": [
+      156,
+      156
+    ],
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "top": 0,
+      "right": 1920,
+      "bottom": 1080,
+      "left": 0
+    },
+    "stage": "小组赛",
+    "ca": 0
+  },
+  "captureGeometry": [
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "ex": false,
+      "captures": [
+        {
+          "x": 0,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 480,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 240,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 960,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1440,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1200,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "3v3",
+      "source": "4x3",
+      "ex": true,
+      "captures": [
+        {
+          "x": 0,
+          "y": 360,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 480,
+          "y": 360,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 960,
+          "y": 360,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1440,
+          "y": 360,
+          "width": 480,
+          "height": 360
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "ex": false,
+      "captures": [
+        {
+          "x": 0,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 480,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 240,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 960,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1440,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1200,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "3v3",
+      "source": "16x9",
+      "ex": true,
+      "captures": [
+        {
+          "x": 0,
+          "y": 405,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 480,
+          "y": 405,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 960,
+          "y": 405,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1440,
+          "y": 405,
+          "width": 480,
+          "height": 270
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "ex": false,
+      "captures": [
+        {
+          "x": 0,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 480,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 0,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 480,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 960,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1440,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 960,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1440,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "4v4",
+      "source": "4x3",
+      "ex": true,
+      "captures": [
+        {
+          "x": 0,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 480,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 240,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 960,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1440,
+          "y": 180,
+          "width": 480,
+          "height": 360
+        },
+        {
+          "x": 1200,
+          "y": 540,
+          "width": 480,
+          "height": 360
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "ex": false,
+      "captures": [
+        {
+          "x": 0,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 480,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 0,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 480,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 960,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1440,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 960,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1440,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        }
+      ],
+      "unsafe": []
+    },
+    {
+      "mode": "4v4",
+      "source": "16x9",
+      "ex": true,
+      "captures": [
+        {
+          "x": 0,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 480,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 240,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 960,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1440,
+          "y": 225,
+          "width": 480,
+          "height": 270
+        },
+        {
+          "x": 1200,
+          "y": 585,
+          "width": 480,
+          "height": 270
+        }
+      ],
+      "unsafe": []
+    }
+  ],
+  "greenPixels": [
+    {
+      "file": "main-3v3-4x3-false.png",
+      "checked": 1036800,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-3v3-4x3-true.png",
+      "checked": 691200,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-3v3-16x9-false.png",
+      "checked": 777600,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-3v3-16x9-true.png",
+      "checked": 518400,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-4v4-4x3-false.png",
+      "checked": 1382400,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-4v4-4x3-true.png",
+      "checked": 1036800,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-4v4-16x9-false.png",
+      "checked": 1036800,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-4v4-16x9-true.png",
+      "checked": 777600,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-phase-0.png",
+      "checked": 777600,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-phase-4000.png",
+      "checked": 777600,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    },
+    {
+      "file": "main-phase-8000.png",
+      "checked": 777600,
+      "bad": 0,
+      "examples": [],
+      "pass": true
+    }
+  ]
+}
