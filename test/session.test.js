@@ -296,7 +296,11 @@ test('EX/TB and display/pause preserve counters and stable round identity', () =
   s = command(s, 'start'); s = command(s, 'pause', { kind: 'technical' });
   assert.equal(s.phase, 'playing'); s = command(s, 'resume'); assert.equal(s.scene, 'playing');
   assert.equal(currentRound(s).id, id); assert.equal(s.ex.remaining.a, 1);
-  s = command(s, 'replay', { reason: 'manual rematch' }); s = command(s, 'apply-bp', { entryId: 'tb' });
+  s = command(s, 'replay', { reason: 'manual rematch' });
+  assert.throws(() => command(s, 'apply-bp', { entryId: 'tb' }), /TB 单独/);
+  s = command(s, 'void-round', { reason: '取消普通图，核对决胜比分' });
+  s = command(s, 'set-series', { a: 5, b: 5, reason: '核对比分' });
+  s = command(s, 'prepare-round', { entryId: 'tb', tiebreaker: true });
   assert.equal(s.ex.team, null); assert.throws(() => command(s, 'ex', { team: 'a', remaining: { a: 1, b: 2 } }), /TB/);
 });
 

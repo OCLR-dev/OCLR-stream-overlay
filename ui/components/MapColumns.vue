@@ -8,7 +8,12 @@ const maxColumns = 4;
 const groups = computed(() => ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'].map(mod => ({
   mod, entries: view.value.pool.filter(entry => entry.mod === mod)
 })).filter(group => group.entries.length).map(group => ({ ...group, rows: Math.ceil(group.entries.length / maxColumns) })));
-const columns = computed(() => Math.min(maxColumns, Math.max(1, ...groups.value.map(group => group.entries.length))));
+// Use the widest cards that preserve the four-column layout's row count.
+const columns = computed(() => {
+  const minimumRows = groups.value.reduce((sum, group) => sum + group.rows, 0);
+  return Array.from({ length: maxColumns }, (_, index) => index + 1).find(count =>
+    groups.value.reduce((sum, group) => sum + Math.ceil(group.entries.length / count), 0) === minimumRows) || maxColumns;
+});
 const rows = computed(() => Math.max(1, groups.value.reduce((sum, group) => sum + group.rows, 0)));
 </script>
 
@@ -21,12 +26,12 @@ const rows = computed(() => Math.max(1, groups.value.reduce((sum, group) => sum 
         <li v-for="entry in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used', 'has-winner': !!entry.winnerTeam }"
           :data-map-index="entry.id" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod">
-          <span class="map-confirmation" aria-hidden="true" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm' }"><b>{{ entry.status === 'banned' ? 'BAN' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
+          <span class="map-confirmation" aria-hidden="true" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <svg v-if="entry.status === 'banned'" class="map-ban-slash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke" /></svg>
           <MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" />
           <span class="map-thumbnail"><span class="map-index" :title="entry.label">{{ entry.label }}</span></span>
           <span class="map-copy"><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="entry.artist || entry.difficulty" class="map-meta">{{ entry.artist || '—' }} / {{ entry.difficulty || '—' }}</span></span>
-          <span v-if="entry.status === 'banned' || entry.winnerTeam" class="map-status" :class="{ 'state-winner': !!entry.winnerTeam }" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ entry.winnerTeam ? entry.winnerTeam === 'a' ? '红队 胜' : '蓝队 胜' : `${entry.actionTeam === 'a' ? '红 ' : entry.actionTeam === 'b' ? '蓝 ' : ''}Ban` }}</span>
+          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open')" class="map-status" :class="{ 'state-winner': !!entry.winnerTeam }" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ entry.winnerTeam ? entry.winnerTeam === 'a' ? '红队 胜' : '蓝队 胜' : group.mod === 'TB' ? '决胜图' : `${entry.actionTeam === 'a' ? '红 ' : entry.actionTeam === 'b' ? '蓝 ' : ''}Ban` }}</span>
         </li>
       </ol>
     </article>

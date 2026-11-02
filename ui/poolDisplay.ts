@@ -4,11 +4,12 @@ import type { Session } from './session';
 // Clearing a mark explicitly keeps a card open without deleting old results.
 export function poolDisplay(s: Session, entryId: string) {
   const mark = s.poolMarks?.find(item => item.entryId === entryId);
-  if (mark) return { status: mark.status, team: mark.team };
+  const isTb = s.pool.find(e => e.id === entryId)?.mod === 'TB';
+  if (mark && !isTb) return { status: mark.status, team: mark.team };
   const banning = (['a', 'b'] as const).find(team => s.bans[team].includes(entryId));
   if (banning) return { status: 'banned', team: banning };
   const round = s.rounds.find(item => item.entryId === entryId && item.status !== 'void');
-  return { status: round?.status === 'recorded' || round?.resultSource === 'series-correction' ? 'used' : round ? 'picked' : 'open', team: round?.pickedBy ?? null };
+  return { status: round?.status === 'recorded' || round?.resultSource === 'series-correction' ? 'used' : round ? 'picked' : 'open', team: isTb ? null : round?.pickedBy ?? null };
 }
 
 // A series correction does not identify a map winner. Only a recorded result does.

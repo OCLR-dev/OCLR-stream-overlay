@@ -2,6 +2,8 @@
 
 Vue 3 / Vite / TypeScript 的 Neon Broadcast 直播界面，配套独立直播员控制台与本机共享会话。沿用现有深紫 UI、红蓝横幅、系列菱形和稳定游戏窗口。
 
+后续改进范围与 TB 待办见 [后续改进与待处理事项](docs/design/backlog.md)。
+
 当前 main 的操作口径见 [自由操作与中途加入](docs/main-operator-contract.md)。Windows 便携版构建与使用见 [直播员使用说明](docs/windows-portable.md)。
 
 ## Windows 便携版
