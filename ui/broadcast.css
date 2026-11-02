@@ -447,34 +447,35 @@
 .roster-team strong { font-size: 23px; letter-spacing: .1em; }
 .roster-count { color: var(--muted); font-size: 14px; }
 .roster-grid { display: grid; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 14px; min-height: 0; padding-top: 16px; }
-.player-card { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; min-width: 0; min-height: 0; border: 1px solid color-mix(in srgb, var(--team-tint) 35%, #4b2b6b); border-top: 4px solid var(--team-tint); background: linear-gradient(165deg, color-mix(in srgb, var(--team-dark) 28%, #211039), #1b0f3acc); padding: 14px; }
+.player-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 100%; max-width: 152px; aspect-ratio: 1; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--team-tint) 35%, #4b2b6b); border-top: 4px solid var(--team-tint); background: linear-gradient(165deg, color-mix(in srgb, var(--team-dark) 28%, #211039), #1b0f3acc); padding: 0; justify-self: center; align-self: center; }
 .player-card[data-team='a'] { --team-tint: var(--team-a); --team-dark: var(--team-a-dark); }
 .player-card[data-team='b'] { --team-tint: var(--team-b); --team-dark: var(--team-b-dark); }
 .player-card.is-waiting { border-top-color: color-mix(in srgb, var(--team-tint) 60%, #321b4e); }
-.player-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.player-slot { color: var(--muted); font-family: var(--display); font-size: 14px; font-weight: 700; letter-spacing: .08em; }
-.arrival-chip { border: 1px solid #81629780; padding: 3px 6px; color: #c4b4d8; font-size: 12px; white-space: nowrap; }
-.is-arrived .arrival-chip { border-color: var(--team-tint); background: color-mix(in srgb, var(--team-dark) 65%, transparent); color: #fff; }
-.player-main { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-width: 0; min-height: 0; }
-.player-copy { flex: 0 0 auto; min-width: 0; max-width: 100%; text-align: center; }
-.player-name { margin: 0; overflow: hidden; font-size: 23px; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; }
-.role-chip { display: inline-block; margin-left: 7px; border: 1px solid #7653aa; padding: 3px 5px; color: #d4b9fa; font-family: var(--display); font-size: 13px; font-weight: 700; vertical-align: middle; }
-.player-sub { overflow: hidden; margin: 6px 0 0; color: var(--muted); font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
-.player-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #7653aa44; padding-top: 9px; }
-.player-status { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
-.player-status span { color: var(--muted); font-size: 10px; }
-.player-status strong { color: #ded1f5; }
+.player-identity { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.player-swap-enter-active { transition: opacity .2s ease, transform .2s ease; }
+.player-swap-leave-active { transition: opacity .1s ease, transform .1s ease; }
+.player-swap-enter-from { opacity: 0; transform: translateY(6px) scale(.98); }
+.player-swap-leave-to { opacity: 0; transform: translateY(-4px) scale(.99); }
+@media (prefers-reduced-motion: reduce) { .player-swap-enter-active, .player-swap-leave-active { transition: none; } }
+.player-card-bg, .player-cover, .player-cover-fallback { position: absolute; inset: 0; width: 100%; height: 100%; }
+.player-cover-fallback { background: radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--team-tint) 42%, transparent), transparent 58%), linear-gradient(165deg, color-mix(in srgb, var(--team-dark) 55%, #211039), #140b26); }
+.player-cover { object-fit: cover; filter: saturate(.9) brightness(.72); }
+.player-card-bg::after { position: absolute; inset: 0; background: linear-gradient(180deg, #120a2600 28%, #120a2699 62%, #120a26e6 100%); content: ''; }
+.player-avatar { position: absolute; z-index: 1; top: 40%; left: 50%; display: grid; place-items: center; width: 52%; aspect-ratio: 1; overflow: hidden; border: 2px solid color-mix(in srgb, var(--team-tint) 75%, #fff 10%); border-radius: 50%; background: #241349; object-fit: cover; transform: translate(-50%, -50%); box-shadow: 0 5px 16px #0009; }
+.player-avatar-fallback { color: #fff; font-family: var(--display); font-size: 28px; font-weight: 800; }
+.player-identity > img.player-avatar { z-index: 2; }
+.player-name { position: relative; z-index: 2; width: calc(100% - 12px); margin: 0 6px 15px; overflow: hidden; color: #fff; font-size: 14px; font-weight: 800; line-height: 1.25; text-align: center; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 4px #000c; }
 .layout-3v3 .roster-grid .player-card:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 7px); }
 .layout-2v2 .roster-grid { grid-template-rows: 1fr; align-items: center; }
 .layout-2v2 .roster-grid .player-card { height: calc(50% - 7px); }
-/* Waiting retains player cards below the same native-size capture grid. */
-.waiting-footer { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding: 14px 30px; }
-.waiting-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: stretch; gap: 8px; padding: 0; }
-.waiting-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: stretch; width: auto; height: auto; gap: 6px; padding: 10px; }
-.waiting-footer .player-main { gap: 0; }
-.waiting-footer .player-name { font-size: 20px; }
-.waiting-footer .player-sub { margin-top: 3px; }
-.waiting-footer .player-bottom { padding-top: 6px; }
+/* Waiting keeps Roll's room and stream chats at the footer edges; compact
+   identity cards fill the middle above the same native-size capture grid. */
+.waiting-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 14px 30px; }
+.waiting-room-chat, .waiting-stream-chat { min-width: 0; min-height: 0; }
+.waiting-room-chat .chat-box, .waiting-stream-chat .chat-box { border-radius: var(--radius-panel); }
+.waiting-rosters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; min-height: 0; }
+.waiting-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: center; gap: 8px; padding: 0; }
+.waiting-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: center; width: 100%; height: auto; max-width: 152px; }
 .readiness-column { display: flex; flex-direction: column; justify-content: center; min-height: 0; text-align: center; }
 .versus-bar { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; color: #d5c1ee; font-size: 15px; }
 .versus-bar b { color: #cba6ff; font-family: var(--display); font-size: 94px; font-weight: 800; font-style: italic; line-height: 1; text-shadow: 0 0 32px #7c3aed80; }
