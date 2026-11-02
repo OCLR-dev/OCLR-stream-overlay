@@ -231,6 +231,7 @@ export function bpStopReason(s) {
   if (seriesComplete(s) || s.phase === 'winner') return '比赛已结束，停止 BP；请核对比分并展示 Winner';
   const round = currentRound(s);
   if (round && entryOf(s, round.entryId)?.mod === 'TB') return ['ranking', 'recorded'].includes(round.status) ? 'TB 已结束，等待核对赛果；不推进普通 Pick' : null;
+  if (tiebreakerProgress(s).eligible) return '已到决胜比分，请核对赛果并单独准备 TB';
   if (['roll', 'rule'].includes(s.bpFlow?.mode)) {
     const finished = s.rounds.filter(r => ['ranking', 'recorded'].includes(r.status) && entryOf(s, r.entryId)?.mod !== 'TB').length;
     const regularLimit = s.match.custom && s.match.bestOf === 1 ? 1 : 2 * (targetOf(s) - 1);
@@ -239,11 +240,30 @@ export function bpStopReason(s) {
   return null;
 }
 
+export function tiebreakerProgress(s) {
+  const target = targetOf(s);
+  const score = seriesOf(s);
+  const eligible = target > 1 && SIDES.every(team => score[team] === target - 1);
+  const round = currentRound(s);
+  const active = !!round && round.status !== 'void' && entryOf(s, round.entryId)?.mod === 'TB';
+  const unresolved = s.rounds.some(r => ['playing', 'ranking'].includes(r.status) && r.resultSource !== 'series-correction' && !(active && r.id === round.id));
+  const reason = !eligible ? '先核对系列比分与赛制，双方均达到先胜目标减一才准备 TB'
+    : s.paused ? '暂停中，返回原画面后再准备 TB'
+    : s.incident || unresolved ? '先核对待处理的本图赛果，再准备 TB'
+    : round?.status === 'prepared' && !active ? '先作废误准备的普通选图，再单独准备 TB'
+    : active && round.status !== 'prepared' ? 'TB 已开打；核对赛果或按裁判决定重赛'
+    : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待开打；禁 Ban／EX'
+    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在开播前设置补齐本场 TB 谱面'
+    : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
+  return { eligible, active, canPrepare: eligible && !s.paused && !s.incident && !unresolved &&
+    (!round || round.status !== 'prepared' || active) && (!active || round.status === 'prepared') && s.pool.some(e => e.mod === 'TB'), reason };
+}
+
 export function bpProgress(s) {
   const round = currentRound(s);
   const stop = bpStopReason(s);
   const waiting = stop || (s.incident ? '本图异常待核对，BP 暂停推进' : s.paused ? '明确暂停中，返回原画面后继续'
-    : round?.status === 'prepared' ? `${s.match.teams[round.pickedBy].name}已选图，等待本图开打`
+    : round?.status === 'prepared' ? entryOf(s, round.entryId)?.mod === 'TB' ? 'TB 决胜图已准备，等待开打' : `${s.match.teams[round.pickedBy].name}已选图，等待本图开打`
     : round?.status === 'playing' ? '本图进行中，结束后继续 BP'
     : s.match.custom && !s.action && simplePreset(s) ? (SIDES.every(t => banDone(s, t)) ? '双方首 Ban 已完成，请选择先 Pick 方' : '请选择先 Ban 方，无需先选谱面')
     : s.match.custom && !s.action ? (s.match.bpRule ? s.bpFlow ? '已配置 BP 顺序用尽，等待明确后续或单独 TB' : '等待规则所需的独立先 Ban / 先 Pick' : '等待自定义 BP 顺序，不套用 OCLR 规则') : null);
@@ -251,6 +271,7 @@ export function bpProgress(s) {
     waiting, stopped: !!stop, mode: s.bpFlow?.mode || 'legacy',
     canApply: !waiting && !!s.action, canReplace: !stop && !s.incident && !s.paused && round?.status === 'prepared',
     preset: s.match.bpPreset || null,
+    tiebreaker: tiebreakerProgress(s),
     rollChanged: ['roll', 'rule'].includes(s.bpFlow?.mode) && (s.roll.banFirst !== s.bpFlow.banFirst || s.roll.pickFirst !== s.bpFlow.pickFirst) };
 }
 
@@ -258,6 +279,9 @@ function updatePool(s, entries) {
   const pool = normalizePool(entries);
   const used = new Set([...Object.values(s.bans).flat().filter(Boolean), ...s.rounds.filter(r => r.status !== 'void').map(r => r.entryId)]);
   requireValue([...used].every(id => pool.some(e => e.id === id)), '不能删除已 Ban、已选或已打的谱面；其他资料已保留，请先修正相关记录');
+  for (const round of s.rounds.filter(r => r.status !== 'void')) {
+    requireValue((entryOf(s, round.entryId)?.mod === 'TB') === (pool.find(e => e.id === round.entryId)?.mod === 'TB'), '不能通过图池设置转换普通图与 TB，请先处理本图记录');
+  }
   for (const slots of Object.values(s.bans)) {
     const mods = slots.filter(Boolean).map(id => pool.find(e => e.id === id).mod);
     requireValue(!mods.includes('TB') && ['HD', 'HR', 'DT'].every(mod => mods.filter(m => m === mod).length <= 1), '该谱面改动会使现有 Ban 不符合限制，请先修正 Ban');
@@ -296,7 +320,7 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
   requireValue(replace || (s.action && s.action.id === actionId), 'BP 动作已改变，请刷新当前动作');
   if (replace) {
     available(s, entryId, round.id);
-    requireValue(!['roll', 'rule'].includes(s.bpFlow?.mode) || (entryOf(s, entryId).mod === 'TB') === (entryOf(s, round.entryId)?.mod === 'TB'), 'TB 单独准备，不作为普通 Pick 或改图');
+    requireValue(entryOf(s, entryId).mod !== 'TB' && entryOf(s, round.entryId)?.mod !== 'TB', 'TB 单独准备，不作为普通 Pick 或改图');
     round.entryId = entryId;
     round.source = source;
     round.eventId = eventId;
@@ -318,7 +342,7 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
     requireValue(!['HD', 'HR', 'DT'].includes(entry.mod) || !s.bans[action.team].some(id => entryOf(s, id)?.mod === entry.mod), '同队不能重复 Ban 此 mod（NM/FM 例外）');
     s.bans[action.team][action.slot] = entryId;
   } else {
-    requireValue(!['roll', 'rule'].includes(s.bpFlow?.mode) || entry.mod !== 'TB', 'TB 单独准备，不混入普通 Pick 队列');
+    requireValue(entry.mod !== 'TB', 'TB 单独准备，不混入普通 Pick 队列');
     const next = { id: randomUUID(), entryId, pickedBy: action.team, status: 'prepared', winner: null,
       source, actionId: action.id, bpAction: clone(action), eventId, runId: null, finalScore: null, exTeam: null };
     s.rounds.push(next);
@@ -337,6 +361,7 @@ export function startRound(s, source = 'manual') {
   requireResolved(s);
   const round = currentRound(s);
   requireValue(round?.status === 'prepared', '尚未准备本轮谱面');
+  if (entryOf(s, round.entryId)?.mod === 'TB') requireValue(tiebreakerProgress(s).eligible, '系列比分已改变，请先核对决胜比分再开打 TB');
   requireValue(!s.action, '当前还有 BP 动作，完成后再开打');
   requireValue(!seriesComplete(s), '系列已达到目标，请核对 Winner 或人工修正比分');
   requireValue(!bpStopReason(s), bpStopReason(s));
@@ -371,6 +396,7 @@ function applyCommand(s, command) {
   switch (command.type) {
     case 'map-mark': {
       const entry = entryOf(s, p.entryId);
+      requireValue(entry?.mod !== 'TB' || p.status === 'open', 'TB 不可 Ban，也不归属普通 Pick；请单独准备 TB');
       requireValue(entry && ['open', 'banned', 'picked'].includes(p.status), '请选择谱面及 Ban / Pick 标记');
       requireValue(p.status === 'open' ? p.team === null : side(p.team), '请选择标记队伍');
       s.poolMarks = (s.poolMarks || []).filter(mark => mark.entryId !== entry.id);
@@ -392,26 +418,33 @@ function applyCommand(s, command) {
     }
     case 'prepare-round': {
       requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');
-      requireValue(side(p.pickedBy), '请选择本局选图队伍');
+      const isTb = entryOf(s, p.entryId)?.mod === 'TB';
+      requireValue(isTb || side(p.pickedBy), '请选择本局选图队伍');
       requireResolved(s);
       requireValue(!s.paused && !seriesComplete(s), '暂停中或比赛已结束，不能准备新图');
       const round = currentRound(s);
       requireValue(round?.status !== 'playing', '本图尚未结束，不能准备下一图');
+      if (entryOf(s, p.entryId)?.mod === 'TB') {
+        requireValue(p.tiebreaker === true, '请明确使用单独的 TB 准备');
+        const progress = tiebreakerProgress(s);
+        requireValue(progress.canPrepare, progress.reason);
+        available(s, p.entryId, round?.status === 'prepared' ? round.id : undefined);
+        if (round?.status === 'prepared') {
+          round.entryId = p.entryId; round.pickedBy = null; round.exTeam = null; s.ex.team = null;
+          return '已更换 TB 决胜图，等待开打';
+        }
+        const next = { id: randomUUID(), entryId: p.entryId, pickedBy: null, status: 'prepared', winner: null,
+          source: 'manual-tb', actionId: null, eventId: null, runId: null, finalScore: null, exTeam: null };
+        if (s.action) s.queue.unshift(s.action);
+        s.action = null; s.rounds.push(next); s.currentRoundId = next.id; s.ex.team = null; s.phase = 'bp';
+        return '人工确认当前 TB，单独准备（禁 EX，不补录此前 BP）';
+      }
       if (round?.status === 'prepared') {
         if (s.action) s.queue.unshift(s.action);
         s.action = null;
         applyBp(s, p.entryId);
         round.pickedBy = p.pickedBy;
         return `已替换本图 ${entryOf(s, p.entryId).label}，保留原 Pick 次数与后续顺序`;
-      }
-      if (entryOf(s, p.entryId)?.mod === 'TB') {
-        requireValue(p.tiebreaker === true, '请明确使用单独的 TB 准备');
-        available(s, p.entryId);
-        const next = { id: randomUUID(), entryId: p.entryId, pickedBy: p.pickedBy, status: 'prepared', winner: null,
-          source: 'manual-tb', actionId: null, eventId: null, runId: null, finalScore: null, exTeam: null };
-        if (s.action) s.queue.unshift(s.action);
-        s.action = null; s.rounds.push(next); s.currentRoundId = next.id; s.ex.team = null; s.phase = 'bp';
-        return '人工确认当前 TB，单独准备（禁 EX，不补录此前 BP）';
       }
       // A manual current-map declaration can join a match mid-series. Do not
       // invent prior Bans/Picks or force the operator through the old cursor.
@@ -541,12 +574,12 @@ function applyCommand(s, command) {
       const round = currentRound(s);
       requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');
       requireValue(round && ['prepared', 'playing', 'ranking'].includes(round.status), '请先选择尚未计胜的本图');
-      requireValue(side(p.pickedBy), '请选择 Pick 方');
       const entry = available(s, p.entryId, round.id);
-      requireValue(!['roll', 'rule'].includes(s.bpFlow?.mode) || (entry.mod === 'TB') === (entryOf(s, round.entryId)?.mod === 'TB'), 'TB 单独准备，不能把普通 Pick 与 TB 相互转换；需要时先撤销本次准备');
-      round.entryId = entry.id; round.pickedBy = p.pickedBy;
+      requireValue(entry.mod === 'TB' || side(p.pickedBy), '请选择 Pick 方');
+      requireValue((entry.mod === 'TB') === (entryOf(s, round.entryId)?.mod === 'TB'), 'TB 单独准备，不能把普通 Pick 与 TB 相互转换；需要时先撤销本次准备');
+      round.entryId = entry.id; round.pickedBy = entry.mod === 'TB' ? null : p.pickedBy;
       if (entry.mod === 'TB') { s.ex.team = null; round.exTeam = null; }
-      return `人工调整本图为 ${entry.label}，Pick 方 ${s.match.teams[p.pickedBy].name}；保留其他自动流程，可撤销`;
+      return `人工调整本图为 ${entry.label}，${entry.mod === 'TB' ? 'TB 决胜图' : `Pick 方 ${s.match.teams[p.pickedBy].name}`}；保留其他自动流程，可撤销`;
     }
     case 'set-roll': {
       for (const team of SIDES) {

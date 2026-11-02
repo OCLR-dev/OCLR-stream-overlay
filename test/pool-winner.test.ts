@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { poolWinner } from '../ui/poolDisplay.ts';
+import { poolDisplay, poolWinner } from '../ui/poolDisplay.ts';
 import { newSession } from '../server/session/model.js';
 import type { Session, Round } from '../ui/session';
 
@@ -38,4 +38,15 @@ test('a later active replay hides an older result until its own winner is record
   assert.equal(poolWinner(s, 'nm1'), null);
   s.rounds[1] = { ...replay, status: 'recorded', winner: 'a' };
   assert.equal(poolWinner(s, 'nm1'), 'a');
+});
+
+test('TB display has no team Pick attribution even for legacy marks; its recorded winner remains visible', () => {
+  const { s, round } = fixture();
+  s.pool = [{ id: 'nm1', mod: 'TB' } as Session['pool'][number]];
+  s.poolMarks = [{ entryId: 'nm1', status: 'picked', team: 'a' }];
+  assert.deepEqual(poolDisplay(s, 'nm1'), { status: 'used', team: null });
+  assert.equal(poolWinner(s, 'nm1'), 'b');
+  round.status = 'prepared'; round.winner = null;
+  assert.deepEqual(poolDisplay(s, 'nm1'), { status: 'picked', team: null });
+  assert.equal(poolWinner(s, 'nm1'), null);
 });

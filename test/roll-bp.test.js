@@ -221,7 +221,8 @@ test('ordinary Pick excludes TB, regular-map boundary waits without consuming it
   assert.equal(bpProgress(h.s).stopped, true); await assert.rejects(h.apply(14), /常规选图已结束/);
   const action = structuredClone(h.s.action); const picks = h.s.bpHistory.length;
   await assert.rejects(h.cmd('prepare-round', { entryId: 'tb', pickedBy: 'a' }), /单独的 TB/);
-  await h.cmd('prepare-round', { entryId: 'tb', pickedBy: 'a', tiebreaker: true });
+  for (const [i, r] of h.s.rounds.entries()) await h.cmd('record-result', { roundId: r.id, winner: i % 2 ? 'a' : 'b', keepDisplay: true });
+  await h.cmd('prepare-round', { entryId: 'tb', tiebreaker: true });
   assert.equal(h.s.action, null); assert.equal(h.s.bpHistory.length, picks); assert.equal(currentRound(h.s).source, 'manual-tb');
   assert.equal(bpProgress(h.s).canReplace, true);
   await assert.rejects(h.cmd('apply-bp', { entryId: 'm15' }), /TB 单独/);
