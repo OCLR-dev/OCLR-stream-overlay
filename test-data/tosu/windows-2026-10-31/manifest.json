@@ -1,0 +1,12 @@
+{
+  "format": "oclr-tosu-timing-v1",
+  "frames": 3921,
+  "records": 3925,
+  "sha256": "ef091603b2bd0eaaf411307b1d493d7c9bd250b34a4d38f5fdd10ffc15bc5cbc",
+  "anonymized": true,
+  "changes": [
+    "Removed connection URL from header",
+    "Replaced nonzero osuId with stable synthetic IDs; zero remains zero"
+  ],
+  "source": "Windows live capture, 2026-10-31, 10 minutes; projected fields, not raw WebSocket packets"
+}

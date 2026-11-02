@@ -31,6 +31,10 @@ npm start
 
 `npm run dev` 仍在 127.0.0.1:3003 提供独立 UI 演示；Vite 根目录仅为 `ui/`，不加载凭证。本轮完整控制流程通过构建后 `npm start` 验证，开发/preview 服务本身不提供会话 API。
 
+## 贡献者实机测试数据
+
+UI 贡献者与 code agent 可使用[匿名化 Windows tosu 采样与回放说明](test-data/tosu/windows-2026-10-31/README.md)：3921 帧、10 分钟，包含已知异常输入、数据限制和隔离 UI 回放命令。它不是完整比赛或完整 WebSocket 原包。
+
 ## 没有 tosu 的本机模拟测试
 
 ```sh
