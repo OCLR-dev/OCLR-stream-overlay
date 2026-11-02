@@ -29,7 +29,7 @@ npm start
 
 正式与模拟服务共用单实例检查：已有本项目服务时会提示现有地址，不再另起一套。当前保留的本机验证服务为 [3001 控制台](http://127.0.0.1:3001/control) 与同端口 `/overlay`，原有比赛与模拟房间已无损恢复；模拟器为 [24051](http://127.0.0.1:24051/)。记录见 [单实例服务验证](docs/verification/single-runtime/README.md)。
 
-`npm run dev` 仍在 127.0.0.1:3003 提供独立 UI 演示；Vite 根目录仅为 `ui/`，不加载凭证。本轮完整控制流程通过构建后 `npm start` 验证，开发/preview 服务本身不提供会话 API。
+改 Vue/`ui/` 代码时不需要重启或重新构建模拟服务：先启动 `npm run sim`，再另开终端运行 `npm run dev`，打开 [3003 控制台](http://127.0.0.1:3003/control) 或 [3003 输出](http://127.0.0.1:3003/overlay)。Vite 提供热更新，并把 `/api` 代理到默认的模拟服务 3005；模拟服务使用其他端口时用 `OCLR_DEV_API=http://127.0.0.1:<端口> npm run dev`。Vite 根目录仅为 `ui/`，不加载凭证。只改 `server/` 或 `tools/` 下的 Node 代码才需要重启对应服务；正式流程仍用构建后的 `npm start` 验收。
 
 ## 没有 tosu 的本机模拟测试
 
