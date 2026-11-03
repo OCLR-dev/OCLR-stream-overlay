@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
 import MapArtwork from './MapArtwork.vue';
 import { mapFileMetadata } from '../mapMetadata';
-import { mapStarDisplay, mapStatDisplay } from '../mapStats';
+import { mapStarDisplay } from '../mapStats';
 import { testModForCategory, type TestMapMetadata } from '../mapParameters';
 import type { PoolEntry } from '../session';
 const { view, state, motionScope, motionReady } = useOverlay();
@@ -28,12 +28,11 @@ const artistFor = (entry: PoolEntry) => trimmed(entry.artist);
 const metadataKey = (entry: PoolEntry) => `${entry.beatmapId}:${testModForCategory(entry.mod)}`;
 const metadataFor = (entry: PoolEntry) => resolvedMetadata[metadataKey(entry)] || null;
 const difficultyFor = (entry: PoolEntry) => trimmed(entry.difficulty) || metadataFor(entry)?.difficulty || '';
-const statsFor = (entry: PoolEntry) => mapStatDisplay(metadataFor(entry), testModForCategory(entry.mod));
 const starFor = (entry: PoolEntry) => mapStarDisplay(metadataFor(entry), testModForCategory(entry.mod));
 const loadMetadata = (entry: PoolEntry) => {
   const key = metadataKey(entry);
-  // Every card shows the mod-specific CS/AR/OD calculation, so load metadata
-  // even when the streaming session already supplied the difficulty name.
+  // Every card shows the mod-specific star rating, so load metadata even when
+  // the streaming session already supplied the difficulty name.
   if (entry.beatmapId <= 0 || requested.has(key)) return;
   requested.add(key);
   void mapFileMetadata(entry.beatmapId, testModForCategory(entry.mod)).then(metadata => {
@@ -44,17 +43,48 @@ const loadMetadata = (entry: PoolEntry) => {
 watch(groups, next => {
   for (const group of next) for (const entry of group.entries) loadMetadata(entry);
 }, { immediate: true });
+
+// A card's absolute star sits over the artwork. Once the card is too short for
+// the star and the title to clear each other, drop the star beside the
+// difficulty line and reserve the matching left gutter for it.
+const compactHeight = 96;
+const columnsRoot = ref<HTMLElement | null>(null);
+const compactCards = reactive(new Set<string>());
+let cardObserver: ResizeObserver | undefined;
+const measureCard = (element: HTMLElement) => {
+  const id = element.dataset.mapIndex;
+  if (!id) return;
+  if (element.offsetHeight < compactHeight) compactCards.add(id);
+  else compactCards.delete(id);
+};
+const observeCards = () => {
+  cardObserver?.disconnect();
+  const root = columnsRoot.value;
+  if (!root) return;
+  for (const element of root.querySelectorAll<HTMLElement>('[data-map-index]')) {
+    measureCard(element);
+    cardObserver?.observe(element);
+  }
+};
+onMounted(() => {
+  cardObserver = new ResizeObserver(entries => {
+    for (const entry of entries) measureCard(entry.target as HTMLElement);
+  });
+  void nextTick(observeCards);
+});
+watch(groups, () => { void nextTick(observeCards); });
+onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
 </script>
 
 <template>
-  <div class="mappool-columns mappool-columns--large" data-mappool-columns :style="{ '--mappool-rows': rows, '--pool-columns': columns }">
+  <div ref="columnsRoot" class="mappool-columns mappool-columns--large" data-mappool-columns :style="{ '--mappool-rows': rows, '--pool-columns': columns }">
     <p v-if="!groups.length" class="pool-empty">尚未加载本场图池 · 请在控制台设置</p>
     <article v-for="group in groups" :key="group.mod" class="mappool-column" :data-mod="group.mod" :aria-label="`${group.mod} 谱面列表`" :style="[modColorStyle(group.mod), { gridRow: `span ${group.rows}`, '--group-rows': group.rows }]">
       <header class="map-group-head"><strong>{{ group.mod }}</strong></header>
       <ol class="map-list">
         <li v-for="(entry, index) in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used', 'has-winner': !!entry.winnerTeam }"
-          :data-map-index="entry.id" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
+          :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
           <span class="map-confirmation" aria-hidden="true" :data-from="entry.actionTeam === 'b' ? 'right' : 'left'" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm', from: entry.actionTeam === 'b' ? 'right' : 'left' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <span v-if="entry.status === 'banned' || entry.status === 'picked' || entry.status === 'used'" class="map-state-veil" aria-hidden="true"></span>
           <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open')" class="map-state-label" :class="{ 'map-state-label--center': entry.status === 'banned' }">
@@ -66,9 +96,6 @@ watch(groups, next => {
           <span v-if="entry.beatmapId > 0" class="map-stat map-star" :style="{ '--stat-color': starFor(entry).color || undefined, '--stat-ink': starFor(entry).ink }" :title="`星数 ${starFor(entry).value}`" :aria-label="`星数 ${starFor(entry).value}`"><span class="map-stat-label">★</span><span class="map-stat-value">{{ starFor(entry).value }}</span></span>
           <span class="map-copy"><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="artistFor(entry) || difficultyFor(entry)" class="map-meta"><template v-if="artistFor(entry)"><span class="map-meta-artist">{{ artistFor(entry) }}</span><span class="map-meta-sep"> / </span></template><span class="map-meta-difficulty">{{ difficultyFor(entry) || '—' }}</span></span></span>
           <span class="map-index" :title="entry.label">#{{ cardNumber(entry, index) }}</span>
-          <span class="map-corner" :class="{ 'has-status': entry.status !== 'banned' && (entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open')) }">
-            <span v-if="entry.beatmapId > 0" class="map-stats" aria-label="谱面参数"><span v-for="stat in statsFor(entry)" :key="stat.label" class="map-stat" :style="{ '--stat-color': stat.color || undefined, '--stat-ink': stat.ink }"><span class="map-stat-label">{{ stat.label }}</span><span class="map-stat-value">{{ stat.value }}</span></span></span>
-          </span>
         </li>
       </ol>
     </article>

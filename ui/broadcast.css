@@ -369,14 +369,13 @@
 .map-entry-media .map-artwork[data-loaded='true'] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .map-entry > .map-base-artwork, .map-entry-media .map-artwork { transition: none; } }
 .map-entry > .map-copy { position: relative; z-index: 3; flex: 1 1 auto; align-self: stretch; justify-content: flex-start; padding-top: 0; padding-right: 0; }
-.map-corner { display: contents; }
 .map-index { position: absolute; right: 8px; bottom: 6px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
-/* Ban/Pick darkens every card element, including the star and CS/AR/OD
-   badges, while the Ban prompt itself sits centered above that veil. */
+/* Ban/Pick darkens every card element, including the star badge, while the
+   Ban prompt itself sits centered above that veil. */
 .map-state-veil { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #07040fa8; }
 .map-entry.is-banned .map-state-veil { background: #07040fd9; }
 .map-state-label { position: absolute; z-index: 7; pointer-events: none; }
@@ -385,23 +384,31 @@
 @media (prefers-reduced-motion: reduce) { .map-state-label--center { animation: none; } }
 .map-state-label:not(.map-state-label--center) { top: 6px; right: 6px; }
 .map-state-label--center .map-status { align-self: center; justify-self: center; width: auto; min-width: 88px; height: 42px; padding: 0 18px; border-color: color-mix(in srgb, var(--status-color) 55%, transparent); background: color-mix(in srgb, var(--status-color) 24%, #120a26); box-shadow: 0 8px 24px #0009; font-size: 22px; line-height: 1; letter-spacing: .04em; }
-/* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner. */
-.mappool-columns--large .map-entry { display: block; padding: 0; }
+/* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner.
+   62px keeps the two text lines (25px + 22px) plus the 7px bottom inset and the
+   2px border fully visible even when the pool needs many rows. */
+.mappool-columns--large .map-entry { display: block; padding: 0; min-height: 62px; }
+/* A short card keeps the star clear of the title by moving it onto the
+   difficulty line; the subtitle shifts right for the star's width. The copy
+   block spans the card so the space above the title and between the title and
+   the star/difficulty/number row stay equal. */
+.mappool-columns--large .map-entry[data-compact='true'] > .map-copy { top: 0; bottom: 7px; display: grid; grid-template-rows: 1fr auto 1fr auto; justify-content: normal; }
+.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] > .map-copy { grid-template-rows: 1fr auto 1fr 22px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-title { grid-row: 2; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-meta { grid-row: 4; transform: translateY(-2px); }
+.mappool-columns--large .map-entry[data-compact='true'] .map-star { top: auto; bottom: 8px; left: 6px; padding: 2px 4px 3px; font-size: 14px; line-height: 15px; }
+.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] .map-meta { padding-left: 58px; }
 .mappool-columns--large .map-entry-media { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-right: 0; border-radius: 0; }
 .mappool-columns--large .map-entry::before { z-index: 3; background: linear-gradient(0deg, #100a22f7 0%, #100a22e6 32%, #100a2299 58%, #100a2200 100%); }
 .mappool-columns--large .map-entry > .map-copy { position: absolute; left: 9px; right: 9px; bottom: 7px; z-index: 4; justify-content: flex-end; padding: 0; }
 .mappool-columns--large .map-title { max-height: 25px; font-size: 22px; line-height: 25px; }
 .mappool-columns--large .map-meta { padding-right: var(--map-number-reserve); font-size: 19px; line-height: 22px; }
 .mappool-columns--large .map-meta-artist, .mappool-columns--large .map-meta-sep { display: none; }
-.mappool-columns--large .map-corner { position: absolute; top: 6px; right: 6px; z-index: 5; display: flex; align-items: flex-start; gap: 6px; max-width: calc(100% - 12px); }
-.mappool-columns--large .map-corner.has-status { padding-right: 84px; }
 .mappool-columns--large .map-index { z-index: 5; }
 /* Content-sized chips mirror the #N badge without competing with the
    bottom-right card number. The value's range colour is the background. */
-.mappool-columns--large .map-stats { display: flex; align-items: center; gap: 3px; pointer-events: none; }
 .map-stat { display: flex; align-items: baseline; gap: 4px; padding: 3px 4px 4px; border-radius: 3px; background: var(--stat-color, #5f596b); box-shadow: inset 0 0 0 1px #ffffff38; color: var(--stat-ink, #fff); font-family: var(--display); font-size: 15px; font-weight: 700; line-height: 16px; white-space: nowrap; text-shadow: 0 1px 2px #0009; }
 .map-stat-label { color: inherit; font-size: 14px; letter-spacing: .04em; }
-.map-stats .map-stat { background: linear-gradient(rgb(0 0 0 / 20%), rgb(0 0 0 / 20%)), var(--stat-color, #5f596b); }
 .mappool-columns--large .map-star { position: absolute; top: 6px; left: 6px; z-index: 5; pointer-events: none; }
 .map-stat-value { color: inherit; font-weight: 800; font-variant-numeric: tabular-nums; }
 /* Team ownership, rather than Ban/Pick kind, determines the frame color.
@@ -547,8 +554,8 @@
    motion.ts reveals only safe information surfaces on a committed scene change. */
 .scene-stack > .scene { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
 .scene-stack > .scene.is-active { visibility: visible; pointer-events: auto; z-index: 1; }
-/* Ban/Pick confirmation covers the whole card, including the star and
-   CS/AR/OD badges, and sits above the persistent dark veil (z-index 6) and
+/* Ban/Pick confirmation covers the whole card, including the star badge,
+   and sits above the persistent dark veil (z-index 6) and
    centered Ban prompt (z-index 7). Its wipe and colour both enter from the
    acting team's side, so a blue Ban mirrors the red one. */
 .map-confirmation { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; gap: 14px; overflow: hidden; padding: 0 16px; border-left: 3px solid var(--map-team-color); border-radius: var(--radius-card); pointer-events: none; opacity: 0; background: linear-gradient(100deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); color: var(--map-team-ink); }
