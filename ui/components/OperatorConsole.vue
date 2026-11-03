@@ -88,16 +88,16 @@ const canEnableEx = computed(() => round.value?.status === 'prepared' && !!entry
 const exHint = computed(() => entry(round.value?.entryId)?.mod === 'TB' ? '本图为 TB，不能开启 EX。'
   : canEnableEx.value ? '由直播员手动设置；开启／关闭不会自动扣次数。'
   : !round.value || ['recorded', 'void'].includes(round.value.status) ? '先准备本局谱面，再开启 EX。'
-  : '本局已开打；可关闭 EX，不能更换开启方。');
+  : '本局已开始；可关闭 EX，不能更换开启方。');
 const exUnavailable = (team: Team) => s.value?.ex.team !== team && (!canEnableEx.value || !s.value?.ex.remaining[team]);
 const correctedScore = reactive({ a: 0, b: 0 });
 const incidentReason = ref('');
-const incidentLabels = { 'prestart-abort': '开打前取消启动 / 卡住', abort: '已开打后 abort', 'player-disconnect': '有人尚未结束 · 等待核对', spectator: '观战故障 / Panic', unverified: '观战信号异常 · 原因待核对' };
+const incidentLabels = { 'prestart-abort': '比赛未能开始', abort: '比赛开始后中止（abort）', 'player-disconnect': '有人尚未结束 · 等待核对', spectator: '观战故障 / Panic', unverified: '观战信号异常 · 原因待核对' };
 const plan = reactive({ rows: [] as { team: Team | ''; kind: 'ban' | 'pick' | ''; slot: number }[], verifiedBy: '' });
 const canHandleRound = computed(() => !!round.value && ['prepared', 'playing', 'ranking'].includes(round.value.status));
 const canContinueRound = computed(() => round.value?.status === 'prepared' || (round.value?.status === 'playing' && live.value?.tosu.status === 'live' &&
   live.value.tosu.data?.tourney?.ipcState === 3 && live.value.tosu.data?.beatmap.id === entry(round.value.entryId)?.beatmapId));
-const roundStatus = { prepared: '已选图 · 尚未开打', playing: '进行中', ranking: '结算待记录', recorded: '已计胜', void: '已作废' };
+const roundStatus = { prepared: '已选图 · 比赛尚未开始', playing: '本局进行中', ranking: '结算待记录', recorded: '已计胜', void: '已作废' };
 let initialized = '';
 let matchKey = '';
 let rollKey = '';
@@ -188,12 +188,12 @@ const run = async (type: string, payload: unknown = {}) => {
       display: `已切到${sceneLabels[normalizeScene(s.value?.scene)]}。`,
       pause: '已展示暂停画面，比赛记录保留。准备好后点击返回原画面。',
       resume: '已返回原画面，暂停期间的赛果请核对后补记。',
-      start: '本局已标记开打，正在播出比赛画面。正常结束后自动结算，异常时可先等待。',
+      start: '已标记本局开始，正在播出比赛画面。正常结束后自动结算，异常时可先等待。',
       'set-action': '已设置当前队伍与动作。点选谱面，或等待裁判在房间换图。',
       'next-match': keepRoomBinding.value ? '已初始化，保留房间连接并继续跟随；未跟踪的赛果不补记。' : '已初始化，请重新设置比赛。误操作可撤销上一项。',
       undo: `已撤销上一项。当前系列比分 ${series.value.a} : ${series.value.b}，请核对当前图后继续。`,
     };
-    feedback.value = messages[type] || ({ 'prepare-round': '本图已准备，等待开打。', 'record-result': '已记录本图胜方。', 'correct-result': '已修正本图胜方。', 'retract-result': '已撤回本图计胜，请核对赛果。', 'referee-replay': '已按裁判决定准备原图重赛。', 'resolve-incident': '已继续原局。', 'void-round': '已作废本图，可重新选图。', ranking: '已标记本图结束，成绩尚未计胜。' } as Record<string, string>)[type] || '操作已同步。';
+    feedback.value = messages[type] || ({ 'prepare-round': '本图已准备，等待比赛开始。', 'record-result': '已记录本图胜方。', 'correct-result': '已修正本图胜方。', 'retract-result': '已撤回本图计胜，请核对赛果。', 'referee-replay': '已按裁判决定准备原图重赛。', 'resolve-incident': '已继续原局。', 'void-round': '已作废本图，可重新选图。', ranking: '已标记本图结束，成绩尚未计胜。' } as Record<string, string>)[type] || '操作已同步。';
     feedbackKind.value = type === 'undo' ? 'undo' : 'success';
   }
   return ok;
@@ -476,7 +476,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <label v-if="s.match.custom">tosu WebSocket 地址<input v-model="autoForm.wsUrl" aria-label="tosu WebSocket 地址" maxlength="500" placeholder="ws://直播机地址:端口/websocket/v2" @input="scheduleSetting('auto')" @blur="dirtySettings.has('auto') && scheduleSetting('auto', true)"><span class="operator-hint">修改后重新连接；留空等待，保留自动化意图</span></label>
             <p>当前读数：{{ live?.tosu.data?.tourney?.teams.left || '—' }} / {{ live?.tosu.data?.tourney?.teams.right || '—' }} · IPC {{ live?.tosu.data?.tourney?.ipcState ?? '—' }} · 谱面 {{ live?.tosu.data?.beatmap.id ?? '—' }}</p>
             <label class="operator-check"><input v-model="autoForm.bp" type="checkbox" @change="scheduleSetting('auto', true)">按当前 BP 动作自动 Ban / Pick</label>
-            <label class="operator-check"><input v-model="autoForm.scenes" type="checkbox" @change="scheduleSetting('auto', true)">有效换图 / 开打 / 结算自动切换画面</label>
+            <label class="operator-check"><input v-model="autoForm.scenes" type="checkbox" @change="scheduleSetting('auto', true)">换图 / 比赛开始 / 结算时自动切换画面</label>
             <label class="operator-check"><input v-model="autoForm.results" type="checkbox" @change="scheduleSetting('auto', true)">正常结算按最终队分自动加赢图</label><p role="status">{{ settingMessages.auto || '自动化默认开启；资料不足时等待，恢复后自动建立基线。明确暂停保留，普通人工修正立即生效。' }}</p>
           </details>
         <details class="operator-follow"><summary>可选：后续 BP 顺序</summary><p>只用于需要自动跟随已知顺序的比赛。可直接从当前局开始，之前未跟踪的 Ban／Pick 无需补录；这里仅修改后续动作。</p>
@@ -510,12 +510,12 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <button :disabled="disabled || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
               <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <p v-if="!s.pool.length">还没有图池，请在本场设置选择真实资料。</p>
-              <p>已结束的谱面仍可修改播出标记。开打和记胜在 Playing 面板操作。</p>
+              <p>已结束的谱面仍可修改播出标记。本局开始标记和记胜在 Playing 面板操作。</p>
             </div>
             <div v-else-if="scorePanel" class="operator-action-stack">
               <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? '来自游戏房间，显示队分不代表已计胜。' : '等待房间队分，未知分数显示 —。' }}</p></section>
               <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效；已结束的本图无需再单独记胜，进行中的本局继续比赛。</p></section>
-              <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局开打</button>
+              <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
               <button v-if="round?.status === 'playing'" :disabled="disabled || !!s.incident || s.paused" @click="run('ranking')">本图已结束，继续 BP（暂不计胜）</button>
               <section v-if="resultRound" id="manual-result" class="operator-result">
                 <h3>人工记录胜方</h3><label>本图<ControlSelect v-model="resultRound"><option v-for="r in s.rounds.filter(needsResult)" :key="r.id" :value="r.id">{{ entry(r.entryId)?.label }} · {{ roundStatus[r.status] }}{{ r.id !== s.currentRoundId ? '（上一局）' : '' }}</option></ControlSelect></label>
@@ -526,7 +526,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             </div>
             <div v-else-if="panel === 'victory'" class="operator-action-stack"><h3>{{ s.winner ? names[s.winner] : '胜方待确认' }} · {{ series.a }} : {{ series.b }}</h3><button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled || !!s.incident || (!target || series[team] < target)" :data-unavailable="connection !== 'synced' || !!s.incident || (!target || series[team] < target)" @click="run('winner', { team })">确认 {{ names[team] }} 为胜方</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">存档并准备下一场</button></div>
             <div v-else-if="panel === 'pause'" class="operator-action-stack"><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'technical' })">技术暂停</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'tactical' })">战术暂停</button><button :disabled="disabled || !s.returnScene" :data-unavailable="connection !== 'synced' || !s.returnScene" @click="run('resume')">返回暂停前的画面</button></div>
-              <details v-if="scorePanel && !tb?.active" class="operator-prepare"><summary>{{ round?.status === 'prepared' ? '更换本局谱面' : round?.status === 'playing' ? '本局进行中，结束后再准备下一图' : round ? '选择下一局谱面' : '选择本局谱面' }}</summary><label>本局谱面<ControlSelect v-model="prepareForm.entryId" :disabled="disabled || round?.status === 'playing'" @change="scheduleSetting('prepare', true)"><option value="">请选择</option><option v-for="e in s.pool.filter(e => e.mod !== 'TB')" :key="e.id" :value="e.id">{{ e.label }} · {{ e.title || e.beatmapId }}</option></ControlSelect></label><label v-if="!preparingTb">选图队伍<ControlSelect v-model="prepareForm.pickedBy" :disabled="disabled || round?.status === 'playing'" @change="scheduleSetting('prepare', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p role="status">{{ settingMessages.prepare || (preparingTb ? tb?.reason : '谱面与选图队伍选全后立即准备；自动等待有效开打。') }}</p><p>准备后自动等待有效开打；已记录的赛果保留。TB 使用图池里的 TieBreaker 按钮直接准备。</p></details>
+              <details v-if="scorePanel && !tb?.active" class="operator-prepare"><summary>{{ round?.status === 'prepared' ? '更换本局谱面' : round?.status === 'playing' ? '本局进行中，结束后再准备下一图' : round ? '选择下一局谱面' : '选择本局谱面' }}</summary><label>本局谱面<ControlSelect v-model="prepareForm.entryId" :disabled="disabled || round?.status === 'playing'" @change="scheduleSetting('prepare', true)"><option value="">请选择</option><option v-for="e in s.pool.filter(e => e.mod !== 'TB')" :key="e.id" :value="e.id">{{ e.label }} · {{ e.title || e.beatmapId }}</option></ControlSelect></label><label v-if="!preparingTb">选图队伍<ControlSelect v-model="prepareForm.pickedBy" :disabled="disabled || round?.status === 'playing'" @change="scheduleSetting('prepare', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p role="status">{{ settingMessages.prepare || (preparingTb ? tb?.reason : '谱面与选图队伍选全后立即准备；自动等待比赛开始信号。') }}</p><p>准备后自动等待比赛开始信号；已记录的赛果保留。TB 使用图池里的 TieBreaker 按钮直接准备。</p></details>
           </section>
           <aside class="operator-side">
             <section class="operator-preview"><div class="operator-section-head"><h2>当前播出画面</h2><span>{{ sceneLabels[s.scene as Scene] }}</span></div><iframe ref="preview" src="/overlay" title="共享浏览器输出预览" @load="sharePreview"></iframe>
@@ -535,14 +535,14 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <section v-if="round && (incidentOpen || s.incident)" id="incident-panel" class="operator-incident" aria-label="现场处理"><div class="operator-section-head"><h2>现场处理</h2><button v-if="!s.incident" @click="incidentOpen = false">收起</button></div>
               <div v-if="s.incident" class="operator-incident-status" role="status"><strong>暂不加分 · 等待处理</strong><p>{{ round.resultSource === 'review' ? '成绩尚未确认' : incidentLabels[s.incident.kind] }}</p><p>{{ round.resultSource === 'review' ? '自动计胜后分数仍在变化。已撤回本图自动加分；等全部结束，再核对胜方。' : s.incident.source === 'tosu' ? '观战资料有变化，请核对比赛是否仍在继续。' : s.incident.reason }}</p></div>
               <template v-if="round.status !== 'void'">
-                <button v-if="round.status === 'prepared'" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="hold('abort', '开打前卡住或取消启动，保留原选图')">还没开始就卡住 / 取消启动</button>
+                <button v-if="round.status === 'prepared'" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="hold('abort', '比赛开始前卡住或取消，保留原选图')">比赛未能开始</button>
                 <button v-else :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="hold('player-disconnect', '有人卡住，先等全部结束，暂停本图自动加分')">有人卡住，先等一下</button>
-                <button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="hold('spectator', '直播观战画面异常，比赛可能仍在继续，保留本次开打')">直播画面异常，比赛仍在继续</button>
-                <button v-if="s.incident && round.status !== 'ranking'" class="operator-primary" :disabled="disabled || !canContinueRound" :data-unavailable="connection !== 'synced' || !canContinueRound" @click="run('resolve-incident', { reason: incidentNote(round.status === 'prepared' ? '保留原选图，继续等待开打' : '直播员确认观战恢复，继续同一次开打') })">{{ round.status === 'prepared' ? '保留原图，继续等开打' : '观战已恢复，继续原局' }}</button>
+                <button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="hold('spectator', '直播观战画面异常，比赛可能仍在继续，保留本局记录')">直播画面异常，比赛仍在继续</button>
+                <button v-if="s.incident && round.status !== 'ranking'" class="operator-primary" :disabled="disabled || !canContinueRound" :data-unavailable="connection !== 'synced' || !canContinueRound" @click="run('resolve-incident', { reason: incidentNote(round.status === 'prepared' ? '保留原选图，继续等待比赛开始' : '直播员确认观战恢复，继续原局') })">{{ round.status === 'prepared' ? '保留原图，等待重新开始' : '观战已恢复，继续原局' }}</button>
                 <p v-if="s.incident && round.status !== 'prepared'">恢复观战后仍在比赛，可继续原局；若已结束，请在 Playing 面板核对后人工记胜。</p>
                 <button v-if="round.status !== 'prepared'" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('referee-replay', { reason: incidentNote('裁判已明确要求本图重赛') })">裁判已要求重赛本图</button>
-                <label>补充说明（可选）<input v-model="incidentReason" maxlength="160" placeholder="无需填写也能处理"></label><p>等待或重赛会撤回本图已有计胜。重赛只更新播出记录，保留 Pick、BP、EX 与其余系列比分，等待房间重新开打。若比分曾直接校正，请同时核对系列比分。</p>
-              </template><p v-else>本次开打已作废，请等待重新开打。</p>
+                <label>补充说明（可选）<input v-model="incidentReason" maxlength="160" placeholder="无需填写也能处理"></label><p>等待或重赛会撤回本图已有计胜。重赛只更新播出记录，保留 Pick、BP、EX 与其余系列比分，等待裁判重新开始比赛。若比分曾直接校正，请同时核对系列比分。</p>
+              </template><p v-else>本次比赛已作废，请等待重新开始。</p>
             </section>
           </aside>
         </div>

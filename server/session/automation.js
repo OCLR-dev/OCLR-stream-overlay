@@ -254,7 +254,7 @@ export class RoomAutomation {
           startRound(draft, 'tosu');
           if (!config.scenes) draft.scene = scene;
           else draft.sceneOverride = null;
-        }, 'tosu Playing → 本局开打', randomUUID());
+        }, 'tosu Playing → 本局开始', randomUUID());
         this.observedRun = currentRound(next).runId;
         this.runPlayers = playerKeys(room);
         this.playEdge = null;
@@ -307,7 +307,7 @@ export class RoomAutomation {
       } else if (!ready) note = '成绩还未确认，暂不加分；请等待全部结束，必要时人工核对胜方';
     }
     this.baseline.ipc = ipc;
-    if (next.sceneOverride) note = `${config.scenes ? '画面人工覆盖中，下一有效换图 / 开打 / 结算自动接回。' : '自动选画面已关闭，保持人工画面；比赛数据跟随继续。'}${note}`;
+    if (next.sceneOverride) note = `${config.scenes ? '画面人工覆盖中，下一次有效换图 / 比赛开始 / 结算时自动接回。' : '自动选画面已关闭，保持人工画面；比赛数据跟随继续。'}${note}`;
     return { state: next, note };
   }
 }
