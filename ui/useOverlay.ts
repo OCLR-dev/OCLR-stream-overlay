@@ -56,21 +56,34 @@ export function createOverlay(shared = false) {
       const { status, team } = poolDisplay(s!, entry.id);
       const winnerTeam = status === 'picked' || status === 'used' ? poolWinner(s!, entry.id) : null;
       return { ...entry, status, actionTeam: team, winnerTeam,
-        statusLabel: entry.mod === 'TB' && !winnerTeam && status !== 'open' ? 'TB 决胜图' : winnerTeam ? `${names[winnerTeam]} 胜` : team && status !== 'open' ? `${names[team]} ${status === 'banned' ? 'Ban' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
+        statusLabel: entry.mod === 'TB' && !winnerTeam && status !== 'open' ? 'TB 决胜图' : winnerTeam ? `${names[winnerTeam]} 胜` : team && status !== 'open' ? `${names[team]} ${status === 'banned' ? '禁用' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
     }) : mapMods.map((mod, index) => {
       const status = index === 0 ? state.map : 'open';
       return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null, winnerTeam: null,
         statusLabel: status === 'open' ? '' : mapLabels[status], icon: status === 'open' ? '' : mapIcons[status] };
     });
+    const banEntry = (team: Team, index: 0 | 1) => {
+      if (!shared || s?.emptyBans?.[team][index]) return null;
+      const ids = [...new Set([...(s?.bans[team] || []), ...pool.map(e => e.id)])]
+        .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
+      return pool.find(e => e.id === ids[index]) || null;
+    };
     return { ...base, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {
         if (!shared) return banLabel(state.banSlots[team][index]);
         if (s?.emptyBans?.[team][index]) return '空 Ban';
-        const ids = [...new Set([...(s?.bans[team] || []), ...pool.map(e => e.id)])]
-          .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
-        return pool.find(e => e.id === ids[index])?.label || '未确认';
+        return banEntry(team, index)?.label || '未确认';
+      },
+      banMap: (team: Team, index: 0 | 1) => {
+        if (!shared) {
+          const value = state.banSlots[team][index];
+          return value === 'unknown' || value === 'empty' ? null : { mod: value, number: null as string | null };
+        }
+        const entry = banEntry(team, index);
+        if (!entry) return null;
+        return { mod: entry.mod, number: entry.label.match(/(\d+)$/)?.[1] || null };
       },
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
       pickTeam: playingPickTeam(s, currentMap),
@@ -119,7 +132,7 @@ export function createOverlay(shared = false) {
   };
   const onLocation = () => Object.assign(state, parseLocation(location.search, location.hash));
   const stopWatch = watch(state, () => {
-    if (shared) { document.body.classList.add('is-clean'); document.title = 'OCLR · 共享直播输出'; return; }
+    if (shared) { document.body.classList.add('is-clean', 'is-shared-output'); document.title = 'OCLR · 共享直播输出'; return; }
     const url = new URL(location.href);
     for (const key of [...Object.values(urlKeys), 'banA1', 'banA2', 'banB1', 'banB2']) url.searchParams.delete(key);
     url.hash = serializeState(state);
@@ -142,7 +155,7 @@ export function createOverlay(shared = false) {
     window.removeEventListener('keydown', onKeydown);
     window.removeEventListener('hashchange', onLocation);
     window.removeEventListener('popstate', onLocation);
-    document.body.classList.remove('is-clean');
+    document.body.classList.remove('is-clean', 'is-shared-output');
     for (const key of ['scene', 'clean', 'mode', 'activeMode', 'lead']) delete document.body.dataset[key];
   });
   return { state, view, motionScope, motionReady, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
