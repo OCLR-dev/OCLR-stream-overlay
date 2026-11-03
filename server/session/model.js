@@ -79,6 +79,18 @@ export function holdRound(s, kind, reason, source = 'manual') {
     roundId: round.id, reason, source, at: new Date().toISOString() };
 }
 
+// Returning to the ready room cancels only the observed unfinished attempt.
+// Preserve the displayed scene, selection, BP, EX and aggregate corrections.
+export function prepareAbortedRound(s) {
+  const round = currentRound(s);
+  requireValue(round?.status === 'playing' && round.runId && !round.bpReleased && !s.action, '本局不能自动恢复准备');
+  const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null,
+    runId: null, finalScore: null, exTeam: s.ex.team };
+  for (const key of ['bpReleased', 'bpReleaseHistory', 'resultSource', 'startedBy', 'autoProtected']) delete next[key];
+  round.status = 'void';
+  s.rounds.push(next); s.currentRoundId = next.id; s.phase = 'bp'; s.incident = null;
+}
+
 const requireResolved = (s, roundId = s.currentRoundId) => requireValue(!s.incident || s.incident.roundId !== roundId, '本图异常尚未处理，请确认继续本局或由裁判确认重赛');
 
 export function normalizePool(entries) {

@@ -273,13 +273,16 @@ test('simulator allows direct document navigation but blocks cross-site data req
   assert.equal(await status('/json/v2'), 403);
 });
 
-test('referee replay at ready automatically rejoins after empty startup clients, awards the real finish and continues BP without manual winners', { timeout: 18000 }, async t => {
+test('return to ready automatically restores the same map after dropout and continues BP without replay commands or manual winners', { timeout: 18000 }, async t => {
   const stack = await boot(t); await prepare(stack);
   await simulate(stack, 'set', { ipcState: 3 }); await until(() => current(stack)?.status === 'playing', 'original start');
   const old = structuredClone(current(stack)); const bpCount = stack.store.state.bpHistory.length;
-  await simulate(stack, 'set', { ipcState: 1 }); await until(() => stack.store.state.incident, 'abort held');
-  await operator(stack, 'referee-replay', { reason: '合成复现：裁判 abort 后在 ready 确认同图重赛' });
-  assert.equal(stack.store.state.incident, null); assert.equal(current(stack).replayOf, old.id);
+  const scene = stack.store.state.scene;
+  await simulate(stack, 'set', { missingClient: true }); await until(() => stack.store.state.incident, 'dropout held');
+  await simulate(stack, 'set', { ipcState: 1 });
+  await until(() => current(stack)?.status === 'prepared' && !stack.store.state.incident, 'room return automatically restores preparation');
+  assert.equal(current(stack).replayOf, old.id); assert.equal(stack.store.state.scene, scene);
+  await simulate(stack, 'set', { missingClient: false });
   await simulate(stack, 'set', { ipcState: 3, clientsHidden: true, growing: false, left: 0, right: 0 });
   await until(() => stack.store.live.tosu.data?.tourney.ipcState === 3 && stack.store.live.tosu.data.tourney.players.length === 0, 'startup empty clients received');
   await delay(200); assert.equal(current(stack).status, 'prepared'); assert.equal(current(stack).runId, null);

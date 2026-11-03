@@ -7,6 +7,7 @@ import { rankingMapParameters } from './map-parameters.js';
 import { PickSceneDelay } from './pick-scene-delay.js';
 import { SeriesCorrectionTracker } from './series-correction.js';
 import { SpectatorRecovery } from './spectator-recovery.js';
+import { ReadyReturnRecovery } from './ready-return-recovery.js';
 
 export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
@@ -14,6 +15,7 @@ export class SessionStore {
     this.parameterHold = null;
     this.seriesCorrection = new SeriesCorrectionTracker();
     this.spectatorRecovery = new SpectatorRecovery();
+    this.readyReturn = new ReadyReturnRecovery();
     this.live = { tosu: { status: 'idle', updatedAt: null, data: null }, oclr: { status: 'idle', updatedAt: null, error: null }, note: '等待房间资料，自动化意图保持开启' };
     this.persistence = file ? 'ready' : 'memory'; this.tail = Promise.resolve();
     this.pickScene = new PickSceneDelay(token => this.enqueue(async () => {
@@ -105,6 +107,7 @@ export class SessionStore {
         if (['display', 'undo', 'replay', 'referee-replay'].includes(command.type)) this.pickScene.cancel();
         if (reset) {
           this.spectatorRecovery.reset();
+          this.readyReturn.reset();
           if (this.live.tosu.status === 'live' && Date.now() - this.receivedAt < 5000) {
             this.automation.rebase(next, this.live.tosu.data, Date.parse(this.live.tosu.updatedAt));
           } else this.automation.reset();
@@ -125,6 +128,7 @@ export class SessionStore {
         this.pickScene.cancel();
         this.seriesCorrection.reset();
         this.spectatorRecovery.reset();
+        this.readyReturn.reset();
         this.parameterHold = null;
         if (!['stopped', 'connecting', 'idle'].includes(status) && !this.state.paused && (this.state.auto.bp || this.state.auto.scenes || this.state.auto.results)) {
           const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
@@ -145,15 +149,23 @@ export class SessionStore {
       if (!Number.isFinite(previousAt) || now - previousAt > 5000 || now < previousAt) this.parameterHold = null;
       this.receivedAt = Date.now();
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
+      const returned = this.readyReturn.recover(this.state, frame, now);
+      const restoredReady = returned !== this.state;
+      if (restoredReady) {
+        this.pickScene.cancel(); this.spectatorRecovery.reset(); this.seriesCorrection.reset(); this.parameterHold = null;
+        await this.save(returned, { allowPickScene: false });
+        this.automation.rebase(this.state, frame, now);
+      }
       const recovered = this.spectatorRecovery.recover(this.state, frame, now);
       if (recovered !== this.state) {
         await this.save(recovered);
         this.automation.rebase(this.state, frame, now);
       }
       const result = this.automation.ingest(this.state, frame, now);
-      this.live.note = result.note;
+      this.live.note = restoredReady ? '本局已返回准备状态，保留原图，等待裁判重新开始比赛。' : result.note;
       if (result.state !== this.state) await this.save(result.state);
       this.spectatorRecovery.observe(this.state, frame, now);
+      this.readyReturn.observe(this.state, frame, now, this.automation.observedRun);
       this.seriesCorrection.observe(this.state, frame, now);
       const display = rankingMapParameters(this.state, frame, this.parameterHold);
       this.parameterHold = display.hold;
