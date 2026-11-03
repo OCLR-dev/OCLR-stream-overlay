@@ -11,7 +11,7 @@ const frame = (stats: any[] = [nm, hr, nm, hr], ipcState = 3) => ({ state: { num
   tourney: { ipcState, team: { left: 'L', right: 'R' }, clients: stats.map((value, index) => ({ team: index % 2 ? 'right' : 'left', user: { id: index + 1 }, play: { mods: { name: index % 2 ? 'HR' : 'NM' } }, beatmap: { id: 101, stats: value } })) } });
 const display = (data: any, category = 'FM') => mapParameterDisplay(101, 'tosu', liveBeatmap({ live: { tosu: { status: 'live', data } } } as any, 'synced'), null, category);
 const values = (result: ReturnType<typeof display>) => Object.fromEntries(result.rows.map(row => [row.label, row.value]));
-const expected = { '★': '4.99–5.71', CS: '5–6.5', HP: '5–7', AR: '8–10', OD: '7–9.8', BPM: '175', 时长: '2:18' };
+const expected = { '★': '4.99–5.71', CS: '5–6.5', HP: '5–7', AR: '8–10', OD: '7–9.8', BPM: '175', TIME: '2:18' };
 
 test('FM displays the full range of actual client values in Playing and Ranking, without changing common single-value stats', () => {
   for (const ipc of [3, 4]) {

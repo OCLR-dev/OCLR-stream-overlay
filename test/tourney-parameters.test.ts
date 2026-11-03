@@ -19,7 +19,7 @@ test('real tourney HR parameters come from clients rather than root NM stats in 
   for (const ipc of [3, 4]) {
     const { data, values } = display(frame([hr, hr, hr, hr, hr, hr], ipc));
     assert.equal(data.beatmap.stats.cs.converted, 5, 'source NM stats remain intact');
-    assert.deepEqual(values, { '★': '5.71', CS: '6.5', HP: '7', AR: '10', OD: '9.8', BPM: '180', 时长: '—' });
+    assert.deepEqual(values, { '★': '5.71', CS: '6.5', HP: '7', AR: '10', OD: '9.8', BPM: '180', TIME: '—' });
   }
 });
 test('DT client star, timing attributes and BPM are read without applying mods twice', () => {

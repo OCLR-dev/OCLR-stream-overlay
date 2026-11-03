@@ -127,12 +127,17 @@ export function starRatingColor(stars: number | null | undefined): string | null
 
 const starInk = (stars: number) => stars < 4 ? '#08050f' : stars < 6.5 ? '#ffffff' : '#ffcc22';
 
-export function mapStarDisplay(metadata: TestMapMetadata | null | undefined, mod: string | null): MapStar {
-  const normalized = mod || 'NM';
-  const calculated = metadata?.calculation?.mod === normalized ? metadata.calculation : null;
-  const stars = calculated?.stars;
+// The Playing card and the pool cards share this conversion so the star block
+// background and text colour always come from the same middleware stops.
+export function starRatingDisplay(stars: number | null | undefined): MapStar {
   if (typeof stars !== 'number' || !Number.isFinite(stars) || stars < 0) {
     return { value: '—', color: null, ink: '#ffffff' };
   }
   return { value: fixed(stars, 2), color: starRatingColor(stars), ink: starInk(stars) };
+}
+
+export function mapStarDisplay(metadata: TestMapMetadata | null | undefined, mod: string | null): MapStar {
+  const normalized = mod || 'NM';
+  const calculated = metadata?.calculation?.mod === normalized ? metadata.calculation : null;
+  return starRatingDisplay(calculated?.stars);
 }

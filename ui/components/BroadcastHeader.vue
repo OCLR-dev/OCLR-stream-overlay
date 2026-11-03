@@ -6,6 +6,7 @@ import { modColorStyle } from '../modColors';
 import TeamFlagPreview from './TeamFlagPreview.vue';
 import TeamNameMarquee from './TeamNameMarquee.vue';
 import HeaderAmbient from './HeaderAmbient.vue';
+import TeamBlockParticles from './TeamBlockParticles.vue';
 import oclrLogo from '../assets/oclr-logo-light.svg';
 
 const { state, view, motionScope, motionReady } = useOverlay();
@@ -34,6 +35,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
   <header class="broadcast-header broadcast-header--flag-preview">
     <HeaderAmbient />
     <section class="team-block team-block--a" :aria-label="`左队（RED）：${view.names.a}`">
+      <TeamBlockParticles />
       <TeamFlagPreview team="a" />
       <TeamNameMarquee :name="view.names.a" />
       <div class="header-bans header-bans--a" data-header-bans="a" role="group" :aria-label="`${view.names.a} 先手、禁用与 EX 状态`">
@@ -69,6 +71,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
     </section>
 
     <section class="team-block team-block--b" :aria-label="`右队（BLUE）：${view.names.b}`">
+      <TeamBlockParticles />
       <TeamFlagPreview team="b" />
       <TeamNameMarquee :name="view.names.b" />
       <div class="header-bans header-bans--b" data-header-bans="b" role="group" :aria-label="`${view.names.b} 先手、禁用与 EX 状态`">

@@ -56,7 +56,7 @@ export function createOverlay(shared = false) {
       const { status, team } = poolDisplay(s!, entry.id);
       const winnerTeam = status === 'picked' || status === 'used' ? poolWinner(s!, entry.id) : null;
       return { ...entry, status, actionTeam: team, winnerTeam,
-        statusLabel: entry.mod === 'TB' && !winnerTeam && status !== 'open' ? 'TB 决胜图' : winnerTeam ? `${names[winnerTeam]} 胜` : team && status !== 'open' ? `${names[team]} ${status === 'banned' ? '禁用' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
+        statusLabel: entry.mod === 'TB' && !winnerTeam && status !== 'open' ? 'TB 决胜图' : winnerTeam ? `${names[winnerTeam]} 胜利` : team && status !== 'open' ? `${names[team]} ${status === 'banned' ? '禁用' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
     }) : mapMods.map((mod, index) => {
       const status = index === 0 ? state.map : 'open';
       return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null, winnerTeam: null,

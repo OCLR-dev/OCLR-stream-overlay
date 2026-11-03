@@ -157,6 +157,12 @@
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.15); }
 }
 
+/* White motes inside the two team colour blocks; the block's clip-path and
+   stacking context keep them behind the header copy and inside the slanted edges. */
+.team-particles { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.team-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: #fff; box-shadow: 0 0 8px #fff; opacity: 0; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
+@media (prefers-reduced-motion: reduce) { .team-particle { animation: none; opacity: .18; } }
+
 
 .roll-body { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px; }
 .roll-body > h2 { font: 800 72px var(--display); margin: 0; letter-spacing: .12em; }
@@ -178,6 +184,7 @@
   width: 880px;
   height: 130px;
   gap: 0;
+  isolation: isolate;
   color: #fff;
 }
 .team-block::after { position: absolute; inset: auto 0 0; height: 4px; content: ''; background: #ffffff99; }
@@ -376,36 +383,58 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .score-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* One full-card beatmap background, shaded behind the title and parameters. */
-.map-row { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 42px; width: 1000px; height: var(--stream-chat-height); min-height: 0; overflow: hidden; margin-top: var(--stream-chat-top); border: 1px solid var(--mod-bg); background: #241349f0; box-shadow: 0 0 30px color-mix(in srgb, var(--mod-bg) 26%, transparent); }
+.map-row { position: relative; isolation: isolate; display: grid; grid-template-columns: 118px minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 42px; width: 1000px; height: var(--stream-chat-height); min-height: 0; overflow: hidden; margin-top: var(--stream-chat-top); border: 0; background: #241349f0; box-shadow: 0 0 30px var(--pick-glow, #ffffff4d); }
+/* The whole card is framed and lit by the picking side's colour; unknown side (or TB) draws white. */
+.map-row[data-pick='a'] { --pick-edge: var(--team-a); --pick-glow: color-mix(in srgb, var(--team-a) 42%, transparent); }
+.map-row[data-pick='b'] { --pick-edge: var(--team-b); --pick-glow: color-mix(in srgb, var(--team-b) 42%, transparent); }
+.map-row::before { position: absolute; inset: 0; z-index: 2; border: 4px solid var(--pick-edge, transparent); border-radius: inherit; pointer-events: none; content: ''; }
 .map-row::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, #120a26b3, #120a2600 75%), linear-gradient(90deg, #120a26b3, #120a26b3 40%, #120a2699); pointer-events: none; content: ''; }
 .map-row > :not(.map-artwork) { position: relative; z-index: 1; }
 .map-row > .map-artwork { opacity: 1; object-position: center 45%; }
 .map-row > .map-artwork[data-loaded='false'] { opacity: 0; }
 .map-artwork { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .8; }
 .map-artwork[data-loaded='false'] { opacity: 0; }
-.current-map { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 8px 18px 3px; text-shadow: 0 1px 4px #0008; }
-.map-kicker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.map-star-slot { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; background: var(--star-bg, #5f596b); color: var(--star-ink, #ffffff); }
+.map-star-slot b { max-width: 100%; position: relative; z-index: 1; overflow: hidden; padding-inline: 6px; font-family: var(--display); font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
+.map-star-caption, .map-star-slot b,
+.map-slot > span:not(.map-pick-banner), .map-slot > b { text-shadow: var(--slot-shadow, none); }
+/* White diamonds rise toward the upper right inside both edge slots, below their copy. */
+.slot-particles { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.slot-particle { position: absolute; width: var(--size); height: var(--size); background: #fff; box-shadow: 0 0 6px #ffffff73; opacity: 0; transform: rotate(45deg); animation: slot-diamond-rise var(--duration) linear var(--delay) infinite; }
+@keyframes slot-diamond-rise {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(45deg) scale(.7); }
+  16% { opacity: var(--opacity); }
+  72% { opacity: var(--opacity); }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(45deg) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) { .slot-particle { animation: none; opacity: .22; } }
+.current-map { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 8px 18px 3px; text-align: center; text-shadow: 0 1px 4px #0008; }
 .map-chip { border: 1px solid #7c3aed99; padding: 2px 7px; background: #7c3aed26; color: #e0cdfa; font-size: 12px; font-weight: 700; }
 .map-chip[data-format='ex'] { color: var(--ex-ink); border-color: var(--ex-color); background: color-mix(in srgb, var(--ex-color) 12%, transparent); }
 [data-ex-team='a'] { --ex-color: var(--team-a); --ex-ink: #ffbdca; }
 [data-ex-team='b'] { --ex-color: var(--team-b); --ex-ink: #b7d3ff; }
 .map-ex-mark[data-ex-team] { color: var(--ex-ink); }
 .map-chip[data-format='tb'] { border-color: var(--mod-tb); background: var(--mod-tb); color: #ffffff; }
-.current-map strong { overflow: hidden; color: #fff; font-size: 26px; font-weight: 800; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.map-subline { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 17px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.current-map strong { max-width: 100%; overflow: hidden; color: #fff; font-size: 30px; font-weight: 800; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.map-subline { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; min-width: 0; }
+.map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 20px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .map-rule { flex-shrink: 0; max-width: 60%; overflow: hidden; color: #e6cbff; font-size: 13px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.map-params { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
-.map-params span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
-.map-params b { color: #c9a8ff; font-weight: 700; }
-.map-params[data-range='true'] span { gap: 4px; padding-inline: 7px; white-space: nowrap; }
-.map-params[data-range='true'][data-compact='true'] span { gap: 3px; padding-inline: 5px; font-size: 18px; }
-.map-params .map-parameter-source { flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--muted); font: 11px var(--sans); }
-.map-slot { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding-top: 28px; background: var(--mod-bg); color: var(--mod-ink); }
-.map-slot b { max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
+.map-params > span { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
+.map-params > span b { color: #c9a8ff; font-weight: 700; }
+.map-params[data-range='true'] > span { gap: 4px; padding-inline: 7px; white-space: nowrap; }
+.map-params[data-range='true'][data-compact='true'] > span { gap: 3px; padding-inline: 5px; font-size: 18px; }
+/* Conditional map status sits at the bottom-right, opposite the CS/AR chips. */
+.map-status-slot { display: flex; align-items: center; gap: 8px; overflow: hidden; margin-left: auto; min-width: 0; }
+.map-status-slot .map-rule { max-width: 340px; flex-shrink: 1; }
+.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; padding-top: 28px; background: var(--mod-bg); color: var(--mod-ink); }
+.map-slot[data-banner='false'] { padding-top: 0; }
+.map-slot b { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-slot span { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
-.map-slot .map-pick-banner { position: absolute; inset: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 28px; background: #241349; color: var(--ink); font-family: var(--sans); font-size: 14px; font-weight: 800; letter-spacing: .02em; }
+.map-slot > span:not(.map-pick-banner) { position: relative; z-index: 1; }
+.map-slot .map-pick-banner { position: absolute; inset: 0 0 auto; z-index: 2; display: flex; align-items: center; justify-content: center; height: 28px; background: #241349; color: var(--ink); font-family: var(--sans); font-size: 14px; font-weight: 800; letter-spacing: .02em; }
 .map-slot .map-pick-banner[data-team='a'] { background: var(--team-a); color: #150a2c; }
 .map-slot .map-pick-banner[data-team='b'] { background: var(--team-b); color: #150a2c; }
 
@@ -524,7 +553,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry::before, .map-entry::after { border-radius: inherit; }
 .team-flag-preview svg { overflow: hidden; }
 .map-row { border-radius: var(--radius-panel); }
-.map-cover { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
+.map-cover, .map-star-slot { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
 .map-slot { border-radius: 0 var(--radius-panel) var(--radius-panel) 0; }
 .map-chip, .map-status, .map-params span { border-radius: var(--radius-label); }
 /* One chat panel is shared by every broadcast scene. It stays mounted outside

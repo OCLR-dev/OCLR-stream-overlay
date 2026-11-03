@@ -29,6 +29,16 @@ const metadataKey = (entry: PoolEntry) => `${entry.beatmapId}:${testModForCatego
 const metadataFor = (entry: PoolEntry) => resolvedMetadata[metadataKey(entry)] || null;
 const difficultyFor = (entry: PoolEntry) => trimmed(entry.difficulty) || metadataFor(entry)?.difficulty || '';
 const starFor = (entry: PoolEntry) => mapStarDisplay(metadataFor(entry), testModForCategory(entry.mod));
+// Picked maps keep a persistent label until a winner is recorded. Once the
+// round has a red/blue winner, the winner label takes over instead.
+type PoolCardState = Pick<PoolEntry, 'mod'> & { status: string; actionTeam: 'a' | 'b' | null; winnerTeam: 'a' | 'b' | null };
+const chosen = (entry: PoolCardState) => entry.mod !== 'TB' && !entry.winnerTeam && (entry.status === 'picked' || entry.status === 'used');
+const stateText = (entry: PoolCardState) => {
+  if (entry.winnerTeam) return entry.winnerTeam === 'a' ? '红队胜利' : '蓝队胜利';
+  if (entry.mod === 'TB') return '决胜图';
+  const team = entry.actionTeam === 'a' ? '红队' : entry.actionTeam === 'b' ? '蓝队' : '';
+  return entry.status === 'banned' ? `${team}禁用` : team ? `${team}选择` : '已选择';
+};
 const loadMetadata = (entry: PoolEntry) => {
   const key = metadataKey(entry);
   // Every card shows the mod-specific star rating, so load metadata even when
@@ -87,8 +97,8 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
           :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
           <span class="map-confirmation" aria-hidden="true" :data-from="entry.actionTeam === 'b' ? 'right' : 'left'" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm', from: entry.actionTeam === 'b' ? 'right' : 'left' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <span v-if="entry.status === 'banned' || entry.status === 'picked' || entry.status === 'used'" class="map-state-veil" :data-winner="entry.winnerTeam" aria-hidden="true"></span>
-          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open')" class="map-state-label" :class="{ 'map-state-label--center': entry.status === 'banned' || !!entry.winnerTeam, 'map-state-label--winner': !!entry.winnerTeam }">
-            <span class="map-status" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ entry.winnerTeam ? entry.winnerTeam === 'a' ? '红队 胜' : '蓝队 胜' : group.mod === 'TB' ? '决胜图' : `${entry.actionTeam === 'a' ? '红队' : entry.actionTeam === 'b' ? '蓝队' : ''}禁用` }}</span>
+          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--center': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
+            <span class="map-status" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ stateText(entry) }}</span>
           </span>
           <svg v-if="entry.status === 'banned'" class="map-ban-slash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke" /></svg>
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />

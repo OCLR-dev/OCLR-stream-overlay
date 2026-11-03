@@ -12,7 +12,7 @@ const raw = (ipc = 3, stats: any[] = [hr, hr], id = 101, mod = 'HR') => ({ state
     clients: stats.map((value, index) => ({ team: index ? 'right' : 'left', user: { id: index + 1 }, play: { mods: { name: mod } }, beatmap: { id, stats: value } })) } });
 const absent = { bpm: { common: 180 } };
 const values = (store: any, id = 101) => Object.fromEntries(mapParameterDisplay(id, 'tosu', liveBeatmap(store.snapshot(), 'synced'), null, 'HR').rows.map(row => [row.label, row.value]));
-const expected = { '★': '5.5', CS: '5.2', HP: '7', AR: '10', OD: '9.8', BPM: '180', 时长: '2:03' };
+const expected = { '★': '5.5', CS: '5.2', HP: '7', AR: '10', OD: '9.8', BPM: '180', TIME: '2:03' };
 
 test('Ranking retains the same observed Playing parameter snapshot when client difficulty fields clear, without changing raw stats or session', async () => {
   const store = new SessionStore();
