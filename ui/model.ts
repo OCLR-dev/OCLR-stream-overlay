@@ -145,7 +145,8 @@ export function derive(state: OverlayState) {
   const count = (state.mode === '4v4' ? 4 : 3) - (ex ? 1 : 0);
   const roster = (team: Team) => Array.from({ length: count }, (_, i) => ({
     team, id: `${team.toUpperCase()}${i + (ex ? 3 : 1)}`, slot: i + 1,
-    role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null
+    role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null,
+    osuId: null as number | null
   }));
   const arrived = (team: Team) => state.arrival === 'both' || state.arrival === team;
   const orderLabel = (value: 'unknown' | Team) => value === 'unknown' ? '未确认' : teamNames[value];

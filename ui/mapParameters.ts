@@ -4,6 +4,14 @@ export const testModForCategory = (mod: string | null) => mod === 'CA' ? null : 
 export interface TestMapMetadata {
   beatmapId: number;
   source: 'osu-file';
+  title: string;
+  titleUnicode: string;
+  artist: string;
+  artistUnicode: string;
+  difficulty: string;
+  mapper: string;
+  length: number | null;
+  objects: number;
   stats: { cs: number | null; hp: number | null; ar: number | null; od: number | null; bpm: { min: number | null; max: number | null } };
   calculation?: { mod: string; stars: number; cs: number; hp: number; ar: number; od: number; clockRate: number;
     bpm: { min: number | null; max: number | null } };

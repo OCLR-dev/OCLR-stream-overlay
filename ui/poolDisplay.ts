@@ -4,7 +4,7 @@ import type { Session } from './session';
 // Clearing a mark explicitly keeps a card open without deleting old results.
 export function poolDisplay(s: Session, entryId: string) {
   const mark = s.poolMarks?.find(item => item.entryId === entryId);
-  const isTb = s.pool.find(e => e.id === entryId)?.mod === 'TB';
+  const isTb = s.pool?.find(e => e.id === entryId)?.mod === 'TB';
   if (mark && !isTb) return { status: mark.status, team: mark.team };
   const banning = (['a', 'b'] as const).find(team => s.bans[team].includes(entryId));
   if (banning) return { status: 'banned', team: banning };

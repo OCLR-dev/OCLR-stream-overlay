@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-const props = defineProps<{ beatmapId?: number | null; live?: boolean }>();
+const props = defineProps<{ beatmapId?: number | null; live?: boolean; variant?: 'cover' | 'list' }>();
 const loaded = ref(false);
 const failed = ref(false);
-const src = computed(() => Number.isSafeInteger(props.beatmapId) && props.beatmapId! > 0 ? `/api/beatmaps/${props.beatmapId}/${props.live ? 'background' : 'cover'}` : null);
+const kind = computed(() => props.live ? 'background' : props.variant || 'cover');
+const src = computed(() => Number.isSafeInteger(props.beatmapId) && props.beatmapId! > 0 ? `/api/beatmaps/${props.beatmapId}/${kind.value}` : null);
 watch(src, () => { loaded.value = false; failed.value = false; });
 </script>
 

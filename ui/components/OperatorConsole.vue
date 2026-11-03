@@ -6,8 +6,10 @@ import { matchFormat } from '../matchFormat';
 import { sceneLabels, normalizeScene, type Scene, type Team } from '../model';
 import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
+import { modColorStyle } from '../modColors';
 import { useMotionReady } from '../motion';
 import { liveRoom, liveTeamScores } from '../liveScores';
+import { formatRosterInput, parseRosterInput } from '../rosterInput';
 import '../control.css';
 
 const { snapshot, connection, error, busy, command, presentationEpoch } = useSession();
@@ -135,7 +137,7 @@ watch(s, value => {
   if (nextMatchKey !== matchKey) {
     matchKey = nextMatchKey;
     const fields = { stageName: value.match.stageName || '', bestOf: value.match.bestOf == null ? '' : String(value.match.bestOf), bpRule: value.match.bpRule || '', title: value.match.title, a: value.match.teams.a.name, b: value.match.teams.b.name,
-      rosterA: value.match.teams.a.roster.map(p => p.name).join('\n'), rosterB: value.match.teams.b.roster.map(p => p.name).join('\n'),
+      rosterA: formatRosterInput(value.match.teams.a.roster), rosterB: formatRosterInput(value.match.teams.b.roster),
       pool: value.pool.map(e => `${e.label} ${e.beatmapId} ${e.title}`).join('\n'), mode: value.match.mode, source: value.match.source };
     for (const [key, field] of Object.entries(fields)) {
       if (!dirtySettings.has(key)) (form as Record<string, string>)[key] = field;
@@ -309,8 +311,7 @@ async function drainSettings() {
         } else if (key === 'a' || key === 'b') payload = { field: 'team-name', team: key, value: form[key] };
         else if (key === 'rosterA' || key === 'rosterB') {
           const team = key === 'rosterA' ? 'a' : 'b';
-          const roster = form[key].split('\n').map(name => name.trim()).filter(Boolean).map(name => ({ name, osuId: s.value?.match.teams[team].roster.find(p => p.name === name)?.osuId ?? null }));
-          payload = { field: 'roster', team, value: roster };
+          payload = { field: 'roster', team, value: parseRosterInput(form[key]) };
         } else payload = { field: key, value: key === 'pool' ? parsePool() : form[key as keyof typeof form] };
         let ok = await run(type, payload);
         // A confirmed version conflict applied nothing. Retry this idempotent setting once against the returned snapshot.
@@ -459,8 +460,8 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         </details>
         <div>
           <div class="setup-teams">
-            <div><label>左队名称<input v-model="form.a" :readonly="automaticTeamNames" aria-label="左队名称" maxlength="80" required @input="scheduleSetting('a')" @blur="dirtySettings.has('a') && scheduleSetting('a', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.a || (automaticTeamNames ? '从 tosu 房间左队自动读取' : '') }}</span></label><label>左队上场名单 · 每行一人<textarea v-model="form.rosterA" aria-label="左队上场名单 · 每行一人" @input="scheduleSetting('rosterA')" @blur="dirtySettings.has('rosterA') && scheduleSetting('rosterA', true)" rows="4" placeholder="按窗口顺序录入实际选手"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterA }}</span></label></div>
-            <div><label>右队名称<input v-model="form.b" :readonly="automaticTeamNames" aria-label="右队名称" maxlength="80" required @input="scheduleSetting('b')" @blur="dirtySettings.has('b') && scheduleSetting('b', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.b || (automaticTeamNames ? '从 tosu 房间右队自动读取' : '') }}</span></label><label>右队上场名单 · 每行一人<textarea v-model="form.rosterB" aria-label="右队上场名单 · 每行一人" @input="scheduleSetting('rosterB')" @blur="dirtySettings.has('rosterB') && scheduleSetting('rosterB', true)" rows="4" placeholder="按窗口顺序录入实际选手"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterB }}</span></label></div>
+            <div><label>左队名称<input v-model="form.a" :readonly="automaticTeamNames" aria-label="左队名称" maxlength="80" required @input="scheduleSetting('a')" @blur="dirtySettings.has('a') && scheduleSetting('a', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.a || (automaticTeamNames ? '从 tosu 房间左队自动读取' : '') }}</span></label><label>左队上场名单 · 每行「用户名,UID」<textarea v-model="form.rosterA" aria-label="左队上场名单 · 每行「用户名,UID」" @input="scheduleSetting('rosterA')" @blur="dirtySettings.has('rosterA') && scheduleSetting('rosterA', true)" rows="4" placeholder="Alice,12345（UID 可省略）"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterA || '用户名可省略；只有 UID 时用 UID 作名称' }}</span></label></div>
+            <div><label>右队名称<input v-model="form.b" :readonly="automaticTeamNames" aria-label="右队名称" maxlength="80" required @input="scheduleSetting('b')" @blur="dirtySettings.has('b') && scheduleSetting('b', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.b || (automaticTeamNames ? '从 tosu 房间右队自动读取' : '') }}</span></label><label>右队上场名单 · 每行「用户名,UID」<textarea v-model="form.rosterB" aria-label="右队上场名单 · 每行「用户名,UID」" @input="scheduleSetting('rosterB')" @blur="dirtySettings.has('rosterB') && scheduleSetting('rosterB', true)" rows="4" placeholder="Alice,12345（UID 可省略）"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterB || '用户名可省略；只有 UID 时用 UID 作名称' }}</span></label></div>
             <label>本场图池 · 每行「标签 谱面ID 标题」<textarea v-model="form.pool" aria-label="本场图池 · 每行「标签 谱面ID 标题」" @input="scheduleSetting('pool')" @blur="dirtySettings.has('pool') && scheduleSetting('pool', true)" rows="7" placeholder="HD2 谱面ID 标题" spellcheck="false"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.pool }}</span></label>
           </div><p>文字输入停顿后自动同步；无效内容保留在输入框并显示原因，播出继续使用上一次有效设置。名单与图池修改会标为人工资料。</p>
         </div>
@@ -507,7 +508,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :aria-pressed="s.poolChoice?.team === team && s.poolChoice.kind === (kind === 'banned' ? 'ban' : 'pick')" :disabled="disabled || poolSelection?.mod === 'TB'" :data-unavailable="connection !== 'synced' || poolSelection?.mod === 'TB'" @click="choosePoolAction(team, kind === 'banned' ? 'ban' : 'pick')">{{ names[team] }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}</button></template></div>
               <button class="operator-tiebreaker" :aria-pressed="!!tb?.active" :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || !!tb?.active" :title="tbButtonHint" @click="prepareTiebreaker">TieBreaker</button>
               <button :disabled="disabled || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
-              <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
+              <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <p v-if="!s.pool.length">还没有图池，请在本场设置选择真实资料。</p>
               <p>已结束的谱面仍可修改播出标记。开打和记胜在 Playing 面板操作。</p>
             </div>
