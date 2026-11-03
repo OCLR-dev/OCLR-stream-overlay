@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useOverlay } from '../useOverlay';
 import MapColumns from './MapColumns.vue';
-import ChatPanel from './ChatPanel.vue';
 
 const { state, view } = useOverlay();
 const banState = (team: 'a' | 'b', index: 0 | 1) => view.value.shared
@@ -50,9 +49,5 @@ const banState = (team: 'a' | 'b', index: 0 | 1) => view.value.shared
 
       <MapColumns />
     </div>
-
-    <footer class="scene-footer chat-footer">
-      <ChatPanel />
-    </footer>
   </section>
 </template>

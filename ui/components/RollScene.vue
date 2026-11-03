@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
-import ChatBox from './ChatBox.vue';
 const { state, view, motionScope } = useOverlay();
 </script>
 <template>
@@ -11,7 +10,6 @@ const { state, view, motionScope } = useOverlay();
       <div class="roll-sides"><div v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team"><h3 :title="view.names[team]">{{ view.names[team] }}</h3><strong v-emphasize="{ value: view.roll?.[team], scope: motionScope, enabled: state.scene === 'roll' }">{{ view.roll?.[team] ?? '—' }}</strong></div></div>
     </div>
     <footer class="scene-footer roll-footer">
-      <div class="roll-room-chat"><ChatBox source="match" compact /></div>
       <div class="footer-cell roll-order" role="group" aria-label="先 Pick 与先 Ban">
         <div v-for="team in (['a', 'b'] as const)" :key="team" class="roll-order-row" :data-team="team">
           <div class="roll-first-actions" v-emphasize="{ value: [state.pickFirst === team, state.banFirst === team], scope: motionScope, enabled: state.scene === 'roll' }">
@@ -22,7 +20,6 @@ const { state, view, motionScope } = useOverlay();
           <p :title="view.names[team]" :data-team="team">{{ view.names[team] }}</p>
         </div>
       </div>
-      <div class="roll-stream-chat"><ChatBox source="stream" compact /></div>
     </footer>
   </section>
 </template>

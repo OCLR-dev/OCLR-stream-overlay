@@ -2,7 +2,6 @@
 import { useOverlay } from '../useOverlay';
 import PovGrid from './PovGrid.vue';
 import MapInfo from './MapInfo.vue';
-import ChatBox from './ChatBox.vue';
 import { computed } from 'vue';
 import { scoreDifference } from '../scoreDifference';
 const { state, view } = useOverlay();
@@ -34,13 +33,7 @@ const actualLead = computed(() => {
         <span class="score-caption">SCORE DIFFERENCE / 实时分差</span>
         <strong v-show="view.showPlayingScores" class="score-delta">{{ difference }}</strong>
       </div>
-      <aside class="playing-room-chat" aria-label="房间聊天区域">
-        <ChatBox source="match" compact />
-      </aside>
       <MapInfo />
-      <aside class="playing-stream-chat" aria-label="直播间聊天区域">
-        <ChatBox source="stream" compact />
-      </aside>
     </footer>
   </section>
 </template>
