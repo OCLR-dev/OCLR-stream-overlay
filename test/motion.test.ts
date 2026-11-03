@@ -58,6 +58,11 @@ test('rapid emphasis replaces the old animation; live totals/no-op values do not
   assert.equal(Math.round(animations[3].frames[1].offset * 1600), 220); // Same reveal speed.
   assert.equal(Math.round((1 - animations[3].frames[2].offset) * 1600), 352); // Same fade speed.
   assert.equal(Math.round((animations[3].frames[2].offset - animations[3].frames[1].offset) * 1600), 1028); // Hold +500ms.
+  // Blue team's Ban wipes in from the right; red stays left-to-right.
+  assert.equal(animations[3].frames[0].clipPath, 'inset(0 100% 0 0)');
+  update({ value: ['banned', 'b'], scope, kind: 'confirm', from: 'right' }, { value: ['open', null], scope });
+  assert.equal(animations[4].frames[0].clipPath, 'inset(0 0 0 100%)');
+  assert.equal(animations[4].frames[1].clipPath, 'inset(0 0% 0 0)');
 
   vEmphasize.beforeUnmount(element);
   delete globalThis.matchMedia;

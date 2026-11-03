@@ -196,9 +196,7 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%, 46px 100%);
 }
 .team-name { flex-shrink: 0; max-width: 100%; overflow: hidden; font-size: 22px; font-weight: 700; letter-spacing: .12em; line-height: 34px; white-space: nowrap; text-overflow: ellipsis; }
-.header-score { flex-shrink: 0; font-family: var(--display); font-size: 62px; font-weight: 800; line-height: .92; letter-spacing: .015em; text-shadow: 0 2px 18px #0006; }
-.header-score--series { font-size: 56px; }
-.header-score--hidden { visibility: hidden; }
+.header-score { flex-shrink: 0; font-family: var(--display); font-size: 56px; font-weight: 800; line-height: .92; letter-spacing: .015em; text-shadow: 0 2px 18px #0006; }
 .series-row { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
 .win-stars { display: flex; gap: 13px; padding: 2px; }
 .win-pip { width: 11px; height: 11px; border: 1.5px solid #ffffffa6; transform: rotate(45deg); }
@@ -382,6 +380,16 @@
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
+/* Ban/Pick darkens every card element, including the star and CS/AR/OD
+   badges, while the Ban prompt itself sits centered above that veil. */
+.map-state-veil { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #07040fa8; }
+.map-entry.is-banned .map-state-veil { background: #07040fd9; }
+.map-state-label { position: absolute; z-index: 7; pointer-events: none; }
+.map-state-label--center { inset: 0; display: grid; place-items: center; animation: map-status-reveal 352ms linear 1248ms both; }
+@keyframes map-status-reveal { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .map-state-label--center { animation: none; } }
+.map-state-label:not(.map-state-label--center) { top: 6px; right: 6px; }
+.map-state-label--center .map-status { align-self: center; justify-self: center; width: auto; min-width: 88px; height: 42px; padding: 0 18px; border-color: color-mix(in srgb, var(--status-color) 55%, transparent); background: color-mix(in srgb, var(--status-color) 24%, #120a26); box-shadow: 0 8px 24px #0009; font-size: 22px; line-height: 1; letter-spacing: .04em; }
 /* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner. */
 .mappool-columns--large .map-entry { display: block; padding: 0; }
 .mappool-columns--large .map-entry-media { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-right: 0; border-radius: 0; }
@@ -391,6 +399,7 @@
 .mappool-columns--large .map-meta { padding-right: var(--map-number-reserve); font-size: 19px; line-height: 22px; }
 .mappool-columns--large .map-meta-artist, .mappool-columns--large .map-meta-sep { display: none; }
 .mappool-columns--large .map-corner { position: absolute; top: 6px; right: 6px; z-index: 5; display: flex; align-items: flex-start; gap: 6px; max-width: calc(100% - 12px); }
+.mappool-columns--large .map-corner.has-status { padding-right: 84px; }
 .mappool-columns--large .map-index { z-index: 5; }
 /* Content-sized chips mirror the #N badge without competing with the
    bottom-right card number. The value's range colour is the background. */
@@ -405,8 +414,8 @@
 .map-entry { --map-team-color: #92929f; --map-team-ink: #eeeef2; }
 .map-entry[data-team='a'] { --map-team-color: var(--team-a); --map-team-ink: #ffbdca; }
 .map-entry[data-team='b'] { --map-team-color: var(--team-b); --map-team-ink: #b7d3ff; }
-.map-entry:is(.is-banned, .is-picked) { border-color: var(--map-team-color); }
-.map-entry:is(.is-banned, .is-picked)::after { position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 1px var(--map-team-color); content: ''; }
+.map-entry:is(.is-banned, .is-picked) { border-width: 2px; border-color: var(--map-team-color); }
+.map-entry:is(.is-banned, .is-picked)::after { position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 2px var(--map-team-color); content: ''; }
 .map-entry.is-banned { border-color: color-mix(in srgb, var(--map-team-color) 45%, #241349); background: #110c1c; }
 .map-entry.is-banned::after { box-shadow: none; }
 .map-entry.is-banned .map-entry-media { background: #211b2d; }
@@ -543,7 +552,12 @@
    motion.ts reveals only safe information surfaces on a committed scene change. */
 .scene-stack > .scene { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
 .scene-stack > .scene.is-active { visibility: visible; pointer-events: auto; z-index: 1; }
-.map-confirmation { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 14px; overflow: hidden; padding: 0 16px; border-left: 3px solid var(--map-team-color); border-radius: var(--radius-card); pointer-events: none; opacity: 0; background: linear-gradient(100deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); color: var(--map-team-ink); }
+/* Ban/Pick confirmation covers the whole card, including the star and
+   CS/AR/OD badges, and sits above the persistent dark veil (z-index 6) and
+   centered Ban prompt (z-index 7). Its wipe and colour both enter from the
+   acting team's side, so a blue Ban mirrors the red one. */
+.map-confirmation { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; gap: 14px; overflow: hidden; padding: 0 16px; border-left: 3px solid var(--map-team-color); border-radius: var(--radius-card); pointer-events: none; opacity: 0; background: linear-gradient(100deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); color: var(--map-team-ink); }
+.map-confirmation[data-from='right'] { border-left: 0; border-right: 3px solid var(--map-team-color); background: linear-gradient(260deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); }
 .map-confirmation b { flex-shrink: 0; font: 800 28px/1 var(--display); letter-spacing: .12em; }
 .map-confirmation > span { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 /* Totals update directly; the independent lead fill follows smoothly. */

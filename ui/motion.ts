@@ -6,6 +6,8 @@ interface Emphasis {
   enabled?: boolean;
   visible?: boolean;
   kind?: 'panel' | 'winner' | 'confirm' | 'pip';
+  // Confirmation wipes in from the banning/picking team's side.
+  from?: 'left' | 'right';
   when?: boolean;
 }
 
@@ -32,10 +34,11 @@ function cancelEmphasis(element: HTMLElement) {
   running.delete(element);
 }
 
-function emphasize(element: HTMLElement, kind?: Emphasis['kind']) {
+function emphasize(element: HTMLElement, kind?: Emphasis['kind'], from: Emphasis['from'] = 'left') {
   cancelEmphasis(element);
+  const hidden = from === 'right' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)';
   const frames: Keyframe[] = kind === 'confirm'
-    ? [{ opacity: 1, clipPath: 'inset(0 100% 0 0)' }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .1375 }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .78 }, { opacity: 0, clipPath: 'inset(0 0% 0 0)' }]
+    ? [{ opacity: 1, clipPath: hidden }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .1375 }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .78 }, { opacity: 0, clipPath: 'inset(0 0% 0 0)' }]
     : kind === 'pip'
       ? [{ opacity: .45, transform: 'rotate(45deg) scale(.8)' }, { opacity: 1, transform: 'rotate(45deg) scale(1)' }]
       : kind === 'winner'
@@ -55,7 +58,7 @@ export const vEmphasize: Directive<HTMLElement, Emphasis> = {
     if (!oldValue) return;
     if (value.scope !== oldValue.scope || value.enabled === false || value.visible === false || value.when === false) cancelEmphasis(element);
     if (!shouldEmphasize(value, oldValue) || reducedMotion()) return;
-    emphasize(element, value.kind);
+    emphasize(element, value.kind, value.from);
   },
   beforeUnmount: cancelEmphasis
 };
