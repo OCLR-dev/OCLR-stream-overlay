@@ -34,10 +34,10 @@
 .operator .operator-check { display: flex; align-items: center; gap: 12px; min-height: 36px; }.operator-check input { width: 20px; height: 20px; min-height: 0; padding: 0; accent-color: #b280f9; }
 .operator-two, .operator-bp-buttons { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.operator-bp-buttons button[data-team='a'] { border-left: 4px solid #ff7591; }.operator-bp-buttons button[data-team='b'] { border-left: 4px solid #70a9ff; }
 .operator-pool { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 420px; overflow: auto; padding: 4px; }
-.operator-pool button { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; align-items: center; gap: 0 8px; min-height: 48px; padding: 5px 8px; text-align: left; }
+.operator-pool button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-content: center; align-items: center; gap: 0 8px; min-height: 48px; padding: 5px 8px; text-align: left; }
 .operator-pool strong { grid-column: 1; grid-row: 1; padding: 1px 5px 2px; border-radius: 3px; background: var(--mod-bg); color: var(--mod-ink); font: 700 18px/20px var(--display); }
-.operator-pool span { grid-column: 1 / -1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; }
-.operator-pool small { grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 11px; line-height: 16px; color: var(--op-muted); }
+.operator-pool span { grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; }
+.operator-pool small { grid-column: 3; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 11px; line-height: 16px; color: var(--op-muted); }
 .operator-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }.operator-inline label { flex: 1; }.operator-hint { color: var(--op-muted); font-size: 13px; }
 .operator details { border-top: 1px solid var(--op-line); padding-top: 14px; }.operator summary { cursor: pointer; color: #e4d4f6; min-height: 44px; padding-block: 7px; font-weight: 600; }.operator summary > span { float: right; color: var(--op-muted); }.operator details[open] { display: grid; gap: 16px; }
 .operator-preview iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--op-line); border-radius: var(--radius-card); background: #120a26; margin-bottom: 16px; }.operator-preview { padding: 18px; }
@@ -87,6 +87,12 @@
 /* Fixed feedback slot keeps the scene controls, preview and inputs still while
    success/error/undo messages change. Long messages scroll inside the slot. */
 .operator-notice { position: relative; height: 82px; margin-bottom: 8px; }
+/* EX quick actions and the operation feedback share one row: EX stays on the
+   left, feedback reports to its right so both remain visible above the setup. */
+.operator-quick-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 460px); gap: 24px; align-items: stretch; margin-bottom: 8px; }
+.operator-quick-row .operator-ex-quick { padding-block: 0 16px; }
+.operator-quick-row .operator-notice { height: auto; min-height: 82px; margin-bottom: 0; }
+@media (max-width: 900px) { .operator-quick-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }.operator-quick-row .operator-notice { min-height: 116px; } }
 .operator-notice > p { position: absolute; inset: 0; max-height: 100%; overflow: auto; margin: 0 !important; }
 .operator-notice .operator-feedback:empty { visibility: hidden; }
 .operator-feedback--undo { border-left-color: #d6b1ff; background: #30203f; color: #ecd9ff !important; }

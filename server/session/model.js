@@ -342,6 +342,18 @@ function applyCommand(s, command) {
       s.poolMarks.push({ entryId: entry.id, status: p.status, team: p.team });
       return p.status === 'open' ? `已清除 ${entry.label} 的图池标记` : `已标记 ${s.match.teams[p.team].name} ${p.status === 'banned' ? 'Ban' : 'Pick'} ${entry.label}`;
     }
+    case 'clear-pool-marks': {
+      const entries = s.pool.filter(entry => entry.mod !== 'TB');
+      const visible = entries.filter(entry => {
+        const mark = (s.poolMarks || []).find(item => item.entryId === entry.id);
+        if (mark) return mark.status !== 'open';
+        if (SIDES.some(team => s.bans[team].includes(entry.id))) return true;
+        return s.rounds.some(round => round.entryId === entry.id && round.status !== 'void');
+      });
+      requireValue(visible.length, '当前没有图池标记');
+      s.poolMarks = entries.map(entry => ({ entryId: entry.id, status: 'open', team: null }));
+      return `已清除全部图池标记（${visible.length} 项）`;
+    }
     case 'choose-pool-map': {
       const choice = s.poolChoice;
       requireValue(choice && side(choice.team) && ['ban', 'pick'].includes(choice.kind), '先选择队伍的 Ban／Pick，或直接选择谱面后再点击动作');

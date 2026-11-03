@@ -6,6 +6,8 @@ interface Emphasis {
   enabled?: boolean;
   visible?: boolean;
   kind?: 'panel' | 'winner' | 'confirm' | 'pip';
+  // Confirmation wipes in from the banning/picking team's side.
+  from?: 'left' | 'right';
   when?: boolean;
 }
 
@@ -32,18 +34,23 @@ function cancelEmphasis(element: HTMLElement) {
   running.delete(element);
 }
 
-function emphasize(element: HTMLElement, kind?: Emphasis['kind']) {
+function emphasize(element: HTMLElement, kind?: Emphasis['kind'], from: Emphasis['from'] = 'left') {
   cancelEmphasis(element);
+  const hidden = from === 'right' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)';
   const frames: Keyframe[] = kind === 'confirm'
-    ? [{ opacity: 1, clipPath: 'inset(0 100% 0 0)' }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .1375 }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .78 }, { opacity: 0, clipPath: 'inset(0 0% 0 0)' }]
+    ? [{ opacity: 1, clipPath: hidden }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .1375 }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', offset: .78 }, { opacity: 0, clipPath: 'inset(0 0% 0 0)' }]
     : kind === 'pip'
       ? [{ opacity: .45, transform: 'rotate(45deg) scale(.8)' }, { opacity: 1, transform: 'rotate(45deg) scale(1)' }]
       : kind === 'winner'
         ? [{ opacity: .55, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }]
         : kind === 'panel'
-          ? [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'translateY(0)' }]
+          // A long decelerating translate spends its last third under one device
+          // pixel. Pixel snapping turns that tail into a held edge plus a 1px
+          // hop, which reads as a hitch right before the panel settles. Finish
+          // the travel while it still moves about a pixel per frame, then hold.
+          ? [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'translateY(0)', offset: .86 }, { opacity: 1, transform: 'translateY(0)' }]
           : [{ opacity: .45 }, { opacity: 1 }];
-  const duration = kind === 'confirm' ? 1600 : kind === 'panel' ? 720 : kind === 'winner' ? 380 : kind === 'pip' ? 300 : 220;
+  const duration = kind === 'confirm' ? 1600 : kind === 'panel' ? 460 : kind === 'winner' ? 380 : kind === 'pip' ? 300 : 220;
   const animation = element.animate(frames, { duration, easing: kind === 'confirm' ? 'linear' : 'cubic-bezier(.2,.7,.3,1)' });
   running.set(element, animation);
   animation.onfinish = () => { if (running.get(element) === animation) running.delete(element); };
@@ -55,14 +62,14 @@ export const vEmphasize: Directive<HTMLElement, Emphasis> = {
     if (!oldValue) return;
     if (value.scope !== oldValue.scope || value.enabled === false || value.visible === false || value.when === false) cancelEmphasis(element);
     if (!shouldEmphasize(value, oldValue) || reducedMotion()) return;
-    emphasize(element, value.kind);
+    emphasize(element, value.kind, value.from);
   },
   beforeUnmount: cancelEmphasis
 };
 
 // Scene roots and capture ancestors switch instantly. Only these explicitly
 // selected information surfaces may enter; outgoing animations never queue.
-const sceneSurfaces = ':scope > .scene-footer, :scope > .scene-body:not(.playing-body):not(.victory-body), .victory-mark, .victory-copy, .victory-result, .victory-supports, .victory-body > .scene-head';
+const sceneSurfaces = ':scope > .scene-footer, :scope > .scene-body:not(.playing-body):not(.victory-body), .victory-mark, .victory-copy, .victory-result, .victory-body > .scene-head';
 export const vSceneReveal: Directive<HTMLElement, Emphasis> = {
   updated(stack, { value, oldValue }) {
     if (!oldValue) return;

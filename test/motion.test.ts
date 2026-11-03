@@ -58,6 +58,11 @@ test('rapid emphasis replaces the old animation; live totals/no-op values do not
   assert.equal(Math.round(animations[3].frames[1].offset * 1600), 220); // Same reveal speed.
   assert.equal(Math.round((1 - animations[3].frames[2].offset) * 1600), 352); // Same fade speed.
   assert.equal(Math.round((animations[3].frames[2].offset - animations[3].frames[1].offset) * 1600), 1028); // Hold +500ms.
+  // Blue team's Ban wipes in from the right; red stays left-to-right.
+  assert.equal(animations[3].frames[0].clipPath, 'inset(0 100% 0 0)');
+  update({ value: ['banned', 'b'], scope, kind: 'confirm', from: 'right' }, { value: ['open', null], scope });
+  assert.equal(animations[4].frames[0].clipPath, 'inset(0 0 0 100%)');
+  assert.equal(animations[4].frames[1].clipPath, 'inset(0 0% 0 0)');
 
   vEmphasize.beforeUnmount(element);
   delete globalThis.matchMedia;
@@ -88,8 +93,11 @@ test('scene entry targets safe surfaces, cancels on rapid switch and stays silen
   const update = (value, oldValue) => vSceneReveal.updated(stack, { value, oldValue });
   update({ value: 'playing', scope }, { value: 'mappool', scope });
   assert.equal(animations.length, 1);
-  assert.equal(animations[0].options.duration, 720);
+  assert.equal(animations[0].options.duration, 460);
   assert.equal(animations[0].frames[0].opacity, 0);
+  // Travel settles before the budget ends so it never crawls into place.
+  assert.equal(animations[0].frames[1].offset, .86);
+  assert.equal(animations[0].frames[1].transform, 'translateY(0)');
   update({ value: 'playing', scope }, { value: 'playing', scope }); // Duplicate SSE / score ticks.
   assert.equal(animations.length, 1);
   update({ value: 'waiting', scope }, { value: 'playing', scope });
