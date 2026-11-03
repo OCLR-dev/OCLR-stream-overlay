@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useOverlay } from '../useOverlay';
-import PlayerRoster from './PlayerRoster.vue';
+import RosterFooter from './RosterFooter.vue';
 import PovGrid from './PovGrid.vue';
 
 const { state } = useOverlay();
@@ -9,11 +9,6 @@ const { state } = useOverlay();
 <template>
   <section class="scene" :class="{ 'is-active': state.scene === 'waiting' }" :inert="state.scene !== 'waiting'" :aria-hidden="state.scene !== 'waiting'" data-scene-panel="waiting" aria-label="等待选手">
     <div class="scene-body playing-body"><PovGrid waiting /></div>
-    <footer class="scene-footer waiting-footer" aria-label="双方选手卡">
-      <div class="waiting-rosters">
-        <PlayerRoster team="a" />
-        <PlayerRoster team="b" />
-      </div>
-    </footer>
+    <RosterFooter />
   </section>
 </template>

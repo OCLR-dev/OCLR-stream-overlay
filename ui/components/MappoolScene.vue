@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useOverlay } from '../useOverlay';
 import MapColumns from './MapColumns.vue';
+import RosterFooter from './RosterFooter.vue';
 
 const { state, view } = useOverlay();
 const banState = (team: 'a' | 'b', index: 0 | 1) => view.value.shared
@@ -49,5 +50,6 @@ const banState = (team: 'a' | 'b', index: 0 | 1) => view.value.shared
 
       <MapColumns />
     </div>
+    <RosterFooter />
   </section>
 </template>

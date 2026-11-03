@@ -206,7 +206,7 @@
 /* Flag placement trial shared by the console preview and standalone output. */
 .broadcast-header--flag-preview .team-block--a { padding-left: 172px; }
 .broadcast-header--flag-preview .team-block--b { padding-right: 172px; }
-.team-flag-preview { position: absolute; top: 40px; width: 120px; margin: 0; }
+.team-flag-preview { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
 .team-block--a .team-flag-preview { left: 28px; }
 .team-block--b .team-flag-preview { right: 28px; }
 .team-flag-preview svg { display: block; width: 120px; height: 72px; border: 1px solid #ffffff70; object-fit: contain; }
@@ -241,17 +241,12 @@
 .footer-kicker { color: var(--purple-light); font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: .16em; }
 .footer-cell p { margin: 0; color: var(--ink-soft); font-size: 20px; line-height: 1.5; }
 .footer-cell .footer-lead { font-size: 30px; font-weight: 800; }
-.roll-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 28px 30px 14px; }
-.roll-order { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 24px; border: 0; padding: 0 24px; }
-.roll-order-row { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
-.roll-first-actions { display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 40px; }
-.roll-order-row .footer-kicker { font-size: 32px; line-height: 40px; white-space: nowrap; }
-.roll-order-pending { color: var(--muted); font-size: 20px; line-height: 40px; }
-.roll-order-row p { height: 75px; font-size: 30px; line-height: 1.25; overflow-wrap: anywhere; }
+.roll-sides > div { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.roll-first-actions { display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 40px; margin-top: 8px; }
+.roll-first-actions .footer-kicker { font-size: 30px; line-height: 40px; white-space: nowrap; }
+.roll-order-pending { margin: -4px 0 0; color: var(--muted); font-size: 20px; line-height: 40px; }
 /* Bound long room names without reducing broadcast type size. */
-.roll-sides h3, .roll-order-row p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%; }
-.roll-order-row p[data-team='a'] { color: var(--team-a); }
-.roll-order-row p[data-team='b'] { color: var(--team-b); }
+.roll-sides h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%; }
 .versus-inline { margin-inline: 12px; color: var(--purple-light); font-family: var(--display); }
 
 /* Height=1080 / TeamSize=3 produces 480×360 clients on the measured Windows
@@ -487,12 +482,12 @@
 .layout-3v3 .roster-grid .player-card:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 7px); }
 .layout-2v2 .roster-grid { grid-template-rows: 1fr; align-items: center; }
 .layout-2v2 .roster-grid .player-card { height: calc(50% - 7px); }
-/* Waiting keeps compact identity cards in the middle; the shared chat panel
-   sits over the empty side columns. */
-.waiting-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 14px 30px; }
-.waiting-rosters { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; min-height: 0; }
-.waiting-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: center; gap: 8px; padding: 0; }
-.waiting-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: center; width: 100%; height: auto; max-width: 152px; }
+/* Waiting, Roll and Mappool keep compact identity cards in the middle; the
+   shared chat panel sits over the empty side columns. */
+.roster-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 14px 30px; }
+.roster-footer-grid { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; min-height: 0; }
+.roster-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: center; gap: 8px; padding: 0; }
+.roster-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: center; width: 100%; height: auto; max-width: 152px; }
 .readiness-column { display: flex; flex-direction: column; justify-content: center; min-height: 0; text-align: center; }
 .versus-bar { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; color: #d5c1ee; font-size: 15px; }
 .versus-bar b { color: #cba6ff; font-family: var(--display); font-size: 94px; font-weight: 800; font-style: italic; line-height: 1; text-shadow: 0 0 32px #7c3aed80; }

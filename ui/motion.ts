@@ -44,9 +44,13 @@ function emphasize(element: HTMLElement, kind?: Emphasis['kind'], from: Emphasis
       : kind === 'winner'
         ? [{ opacity: .55, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }]
         : kind === 'panel'
-          ? [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'translateY(0)' }]
+          // A long decelerating translate spends its last third under one device
+          // pixel. Pixel snapping turns that tail into a held edge plus a 1px
+          // hop, which reads as a hitch right before the panel settles. Finish
+          // the travel while it still moves about a pixel per frame, then hold.
+          ? [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'translateY(0)', offset: .86 }, { opacity: 1, transform: 'translateY(0)' }]
           : [{ opacity: .45 }, { opacity: 1 }];
-  const duration = kind === 'confirm' ? 1600 : kind === 'panel' ? 720 : kind === 'winner' ? 380 : kind === 'pip' ? 300 : 220;
+  const duration = kind === 'confirm' ? 1600 : kind === 'panel' ? 460 : kind === 'winner' ? 380 : kind === 'pip' ? 300 : 220;
   const animation = element.animate(frames, { duration, easing: kind === 'confirm' ? 'linear' : 'cubic-bezier(.2,.7,.3,1)' });
   running.set(element, animation);
   animation.onfinish = () => { if (running.get(element) === animation) running.delete(element); };

@@ -93,8 +93,11 @@ test('scene entry targets safe surfaces, cancels on rapid switch and stays silen
   const update = (value, oldValue) => vSceneReveal.updated(stack, { value, oldValue });
   update({ value: 'playing', scope }, { value: 'mappool', scope });
   assert.equal(animations.length, 1);
-  assert.equal(animations[0].options.duration, 720);
+  assert.equal(animations[0].options.duration, 460);
   assert.equal(animations[0].frames[0].opacity, 0);
+  // Travel settles before the budget ends so it never crawls into place.
+  assert.equal(animations[0].frames[1].offset, .86);
+  assert.equal(animations[0].frames[1].transform, 'translateY(0)');
   update({ value: 'playing', scope }, { value: 'playing', scope }); // Duplicate SSE / score ticks.
   assert.equal(animations.length, 1);
   update({ value: 'waiting', scope }, { value: 'playing', scope });
