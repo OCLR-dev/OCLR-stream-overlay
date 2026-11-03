@@ -33,6 +33,14 @@ npm start
 
 改 Vue/`ui/` 代码时不需要重启或重新构建模拟服务：先启动 `npm run sim`，再另开终端运行 `npm run dev`，打开 [3003 控制台](http://127.0.0.1:3003/control) 或 [3003 输出](http://127.0.0.1:3003/overlay)。Vite 提供热更新，并把 `/api` 代理到默认的模拟服务 3005；模拟服务使用其他端口时用 `OCLR_DEV_API=http://127.0.0.1:<端口> npm run dev`。Vite 根目录仅为 `ui/`，不加载凭证。只改 `server/` 或 `tools/` 下的 Node 代码才需要重启对应服务；正式流程仍用构建后的 `npm start` 验收。
 
+需要构建版预览、又不想每次手跑 `npm run build` 与 `npm run sim` 时：
+
+```sh
+npm run watch
+```
+
+首次会执行一次 `npm run build`，然后启动模拟服务；若本项目已有服务在运行则直接复用，不会结束不是它启动的进程。之后 `ui/` 修改在安静 5 秒后自动重新构建（刷新页面即可，模拟服务和 OBS 连接不中断）；`server/`、`src/`、`tools/tosu-simulator/` 修改会重启由本命令启动的模拟服务，沿用已保存比赛。修改 `server/` 等代码但使用的是已有外部服务时，脚本会提示手动重启。按 `Ctrl+C` 退出并关闭由它启动的模拟服务。可用 `--watch-delay <毫秒>` 调整安静期，`--app-port`、`--ws-port`、`--offline-oclr` 等参数原样传给模拟器，例如 `npm run watch -- --app-port 3006 --ws-port 24052`。
+
 ## 贡献者实机测试数据
 
 UI 贡献者与 code agent 可使用[匿名化 Windows tosu 采样与回放说明](test-data/tosu/windows-2026-10-31/README.md)：3921 帧、10 分钟，包含已知异常输入、数据限制和隔离 UI 回放命令。它不是完整比赛或完整 WebSocket 原包。

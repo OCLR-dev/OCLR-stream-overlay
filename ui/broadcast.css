@@ -157,6 +157,12 @@
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.15); }
 }
 
+/* White motes inside the two team colour blocks; the block's clip-path and
+   stacking context keep them behind the header copy and inside the slanted edges. */
+.team-particles { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.team-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: #fff; box-shadow: 0 0 8px #fff; opacity: 0; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
+@media (prefers-reduced-motion: reduce) { .team-particle { animation: none; opacity: .18; } }
+
 
 .roll-body { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px; }
 .roll-body > h2 { font: 800 72px var(--display); margin: 0; letter-spacing: .12em; }
@@ -175,40 +181,93 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 620px;
+  width: 880px;
   height: 130px;
   gap: 0;
+  isolation: isolate;
   color: #fff;
 }
 .team-block::after { position: absolute; inset: auto 0 0; height: 4px; content: ''; background: #ffffff99; }
 .team-block--a {
-  left: 260px;
+  left: 0;
   align-items: flex-end;
   padding: 4px 90px 10px 28px;
   background: linear-gradient(100deg, #1c0716, var(--team-a-dark) 55%, var(--team-a));
   clip-path: polygon(0 0, 100% 0, calc(100% - 46px) 100%, 0 100%);
 }
 .team-block--b {
-  right: 260px;
+  right: 0;
   align-items: flex-start;
   padding: 4px 28px 10px 90px;
   background: linear-gradient(-100deg, #071228, var(--team-b-dark) 55%, var(--team-b));
   clip-path: polygon(0 0, 100% 0, 100% 100%, 46px 100%);
 }
-.team-name { flex-shrink: 0; max-width: 100%; overflow: hidden; font-size: 22px; font-weight: 700; letter-spacing: .12em; line-height: 34px; white-space: nowrap; text-overflow: ellipsis; }
-.header-score { flex-shrink: 0; font-family: var(--display); font-size: 56px; font-weight: 800; line-height: .92; letter-spacing: .015em; text-shadow: 0 2px 18px #0006; }
-.series-row { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.team-name { position: absolute; top: 24px; max-width: 360px; overflow: hidden; font-size: 26px; font-weight: 700; letter-spacing: .12em; line-height: 34px; white-space: nowrap; }
+.team-block--a .team-name { left: 180px; text-align: left; }
+.team-block--b .team-name { right: 180px; text-align: right; }
+.team-name-track { display: inline-flex; }
+.team-name-copy { display: inline-block; flex: none; }
+.team-name.is-scrolling { text-align: left; }
+.team-name.is-scrolling .team-name-copy { padding-right: 40px; }
+.team-name.is-scrolling .team-name-track { animation: team-name-marquee var(--team-name-duration, 14s) linear infinite; will-change: transform; }
+@keyframes team-name-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-name.is-scrolling .team-name-track { animation: none; }
+}
+.header-score { flex-shrink: 0; font-family: var(--display); font-size: 56px; font-weight: 800; line-height: .92; letter-spacing: .015em; text-shadow: 0 2px 18px #0006; transform: translateY(-2px); }
+.header-score-stack { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+/* Gilded series wins: #ffcc22 inner stroke over a metallic fill; room totals stay white. */
+.header-score--series, .series-mini {
+  background: linear-gradient(180deg, #fff9e0 0%, #ffe9a0 34%, #e5b32d 48%, #ffcc22 56%, #ffe27a 72%, #fff6cf 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1.5px #ffcc22;
+  filter: drop-shadow(0 1px 0 #6b4300) drop-shadow(0 0 22px #ffcc2240);
+}
+.header-score--series { opacity: 0; text-shadow: none; transition: opacity .42s cubic-bezier(.2,.7,.3,1); }
+.header-score--series.is-visible { opacity: 1; }
+.header-score--room { position: absolute; top: 0; opacity: 0; white-space: nowrap; transition: opacity .42s cubic-bezier(.2,.7,.3,1); }
+.header-score--room.is-visible { opacity: 1; }
+.team-block--a .header-score--room { right: 0; }
+.team-block--b .header-score--room { left: 0; }
+.series-row { position: relative; display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+/* While the room total owns the big score, the series wins move beside the
+   diamonds. It stays absolute so showing it never shifts the pips. */
+.series-mini {
+  position: absolute;
+  top: 50%;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  -webkit-text-stroke: 1px #ffcc22;
+  filter: drop-shadow(0 1px 0 #6b4300) drop-shadow(0 0 12px #ffcc2233);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(.82);
+  transition: opacity .42s cubic-bezier(.2,.7,.3,1), transform .42s cubic-bezier(.2,.7,.3,1);
+}
+.series-mini.is-visible { opacity: 1; transform: translateY(-50%) scale(1); }
+.team-block--a .series-mini { right: calc(100% + 12px); }
+.team-block--b .series-mini { left: calc(100% + 12px); }
+@media (prefers-reduced-motion: reduce) {
+  .header-score--series, .header-score--room, .series-mini { transition: none; }
+}
 .win-stars { display: flex; gap: 13px; padding: 2px; }
 .win-pip { width: 11px; height: 11px; border: 1.5px solid #ffffffa6; transform: rotate(45deg); }
 .win-pip.is-filled { background: #fff; border-color: #fff; box-shadow: 0 0 10px #ffffff8c; }
 .team-block--b .series-row, .team-block--b .win-stars { flex-direction: row-reverse; }
 .header-score-line { display: contents; }
 /* Flag placement trial shared by the console preview and standalone output. */
-.broadcast-header--flag-preview .team-block--a { padding-left: 172px; }
-.broadcast-header--flag-preview .team-block--b { padding-right: 172px; }
 .team-flag-preview { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
-.team-block--a .team-flag-preview { left: 28px; }
-.team-block--b .team-flag-preview { right: 28px; }
+.team-block--a .team-flag-preview { left: 32px; }
+.team-block--b .team-flag-preview { right: 32px; }
 .team-flag-preview svg { display: block; width: 120px; height: 72px; border: 1px solid #ffffff70; object-fit: contain; }
 .broadcast-header--flag-preview .header-score-line { display: flex; align-items: center; gap: 12px; max-width: 100%; }
 .broadcast-header--flag-preview .team-block--a .header-score-line { flex-direction: row-reverse; }
@@ -256,10 +315,39 @@
 .playfield { position: relative; display: grid; flex: 1; grid-template-columns: repeat(2, var(--pov-width)) 0px repeat(2, var(--pov-width)); grid-template-rows: repeat(2, var(--pov-height)); gap: 0; min-height: 0; }
 .pov-cell { position: relative; display: flex; min-width: 0; min-height: 0; overflow: hidden; background: #10091e; }
 .pov-frame { display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: hidden; background: #0f091c; }
-/* Keep key surfaces opaque, flat and empty; OBS keys only the browser source. */
+/* The demo review page marks capture rectangles in green so reviewers can see
+   where the game windows land. The shared browser output instead carries real
+   alpha: the page paints nothing behind the canvas and every capture rectangle
+   is cut out, so the game windows underneath show through without a colour key.
+   Coordinates are native canvas pixels (1920x1080), listed per layout/aspect. */
 [data-game-capture] { background: var(--capture-key); }
+/* The green surface is a review marker only. Shared output must not paint it at
+   all: when the canvas is scaled to a fractional size the antialiased hole edge
+   keeps a sub-pixel sliver of whatever sits under it, which otherwise shows up
+   as a thin green line around every game window. */
+body.is-shared-output [data-game-capture] { background: transparent; }
 .pov-source { display: flex; flex: none; width: var(--pov-width); height: var(--pov-height); overflow: hidden; }
 .source-16x9 .pov-source { height: calc(var(--pov-width) * 9 / 16); }
+body.is-shared-output { background: transparent; }
+body.is-shared-output .canvas-stage { background: transparent; }
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-4v4.source-4x3 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 180H1920V900H0Z');
+}
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-4v4.source-16x9 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 225H1920V495H0Z M0 585H1920V855H0Z');
+}
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-3v3.source-4x3 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 180H1920V540H0Z M240 540H720V900H240Z M1200 540H1680V900H1200Z');
+}
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-3v3.source-16x9 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 225H1920V495H0Z M240 585H720V855H240Z M1200 585H1680V855H1200Z');
+}
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2.source-4x3 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 360H1920V720H0Z');
+}
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2.source-16x9 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 405H1920V675H0Z');
+}
 .pov-cell[data-team='a'][data-slot='1'] { grid-column: 1; grid-row: 1; }
 .pov-cell[data-team='a'][data-slot='2'] { grid-column: 2; grid-row: 1; }
 .pov-cell[data-team='a'][data-slot='3'] { grid-column: 1; grid-row: 2; }
@@ -295,65 +383,84 @@
 .score-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* One full-card beatmap background, shaded behind the title and parameters. */
-.map-row { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 42px; width: 1000px; height: var(--stream-chat-height); min-height: 0; overflow: hidden; margin-top: var(--stream-chat-top); border: 1px solid var(--mod-bg); background: #241349f0; box-shadow: 0 0 30px color-mix(in srgb, var(--mod-bg) 26%, transparent); }
+.map-row { position: relative; isolation: isolate; display: grid; grid-template-columns: 118px minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 42px; width: 1000px; height: var(--stream-chat-height); min-height: 0; overflow: hidden; margin-top: var(--stream-chat-top); border: 0; background: #241349f0; box-shadow: 0 0 30px var(--pick-glow, #ffffff4d); }
+/* The whole card is framed and lit by the picking side's colour; unknown side (or TB) draws white. */
+.map-row[data-pick='a'] { --pick-edge: var(--team-a); --pick-glow: color-mix(in srgb, var(--team-a) 42%, transparent); }
+.map-row[data-pick='b'] { --pick-edge: var(--team-b); --pick-glow: color-mix(in srgb, var(--team-b) 42%, transparent); }
+.map-row::before { position: absolute; inset: 0; z-index: 2; border: 4px solid var(--pick-edge, transparent); border-radius: inherit; pointer-events: none; content: ''; }
 .map-row::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, #120a26b3, #120a2600 75%), linear-gradient(90deg, #120a26b3, #120a26b3 40%, #120a2699); pointer-events: none; content: ''; }
 .map-row > :not(.map-artwork) { position: relative; z-index: 1; }
 .map-row > .map-artwork { opacity: 1; object-position: center 45%; }
 .map-row > .map-artwork[data-loaded='false'] { opacity: 0; }
 .map-artwork { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .8; }
 .map-artwork[data-loaded='false'] { opacity: 0; }
-.current-map { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 8px 18px 3px; text-shadow: 0 1px 4px #0008; }
-.map-kicker-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.map-star-slot { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; background: var(--star-bg, #5f596b); color: var(--star-ink, #ffffff); }
+.map-star-slot b { max-width: 100%; position: relative; z-index: 1; overflow: hidden; padding-inline: 6px; font-family: var(--display); font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
+.map-star-caption, .map-star-slot b,
+.map-slot > span:not(.map-pick-banner), .map-slot > b { text-shadow: var(--slot-shadow, none); }
+/* White diamonds rise toward the upper right inside both edge slots, below their copy. */
+.slot-particles { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.slot-particle { position: absolute; width: var(--size); height: var(--size); background: #fff; box-shadow: 0 0 6px #ffffff73; opacity: 0; transform: rotate(45deg); animation: slot-diamond-rise var(--duration) linear var(--delay) infinite; }
+@keyframes slot-diamond-rise {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(45deg) scale(.7); }
+  16% { opacity: var(--opacity); }
+  72% { opacity: var(--opacity); }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(45deg) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) { .slot-particle { animation: none; opacity: .22; } }
+.current-map { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 8px 18px 3px; text-align: center; text-shadow: 0 1px 4px #0008; }
 .map-chip { border: 1px solid #7c3aed99; padding: 2px 7px; background: #7c3aed26; color: #e0cdfa; font-size: 12px; font-weight: 700; }
 .map-chip[data-format='ex'] { color: var(--ex-ink); border-color: var(--ex-color); background: color-mix(in srgb, var(--ex-color) 12%, transparent); }
 [data-ex-team='a'] { --ex-color: var(--team-a); --ex-ink: #ffbdca; }
 [data-ex-team='b'] { --ex-color: var(--team-b); --ex-ink: #b7d3ff; }
 .map-ex-mark[data-ex-team] { color: var(--ex-ink); }
 .map-chip[data-format='tb'] { border-color: var(--mod-tb); background: var(--mod-tb); color: #ffffff; }
-.current-map strong { overflow: hidden; color: #fff; font-size: 26px; font-weight: 800; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.map-subline { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 17px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.current-map strong { max-width: 100%; overflow: hidden; color: #fff; font-size: 30px; font-weight: 800; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.map-subline { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; min-width: 0; }
+.map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 20px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .map-rule { flex-shrink: 0; max-width: 60%; overflow: hidden; color: #e6cbff; font-size: 13px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.map-params { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
-.map-params span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
-.map-params b { color: #c9a8ff; font-weight: 700; }
-.map-params[data-range='true'] span { gap: 4px; padding-inline: 7px; white-space: nowrap; }
-.map-params[data-range='true'][data-compact='true'] span { gap: 3px; padding-inline: 5px; font-size: 18px; }
-.map-params .map-parameter-source { flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--muted); font: 11px var(--sans); }
-.map-slot { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding-top: 28px; background: var(--mod-bg); color: var(--mod-ink); }
-.map-slot b { max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
+.map-params > span { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
+.map-params > span b { color: #c9a8ff; font-weight: 700; }
+.map-params[data-range='true'] > span { gap: 4px; padding-inline: 7px; white-space: nowrap; }
+.map-params[data-range='true'][data-compact='true'] > span { gap: 3px; padding-inline: 5px; font-size: 18px; }
+/* Conditional map status sits at the bottom-right, opposite the CS/AR chips. */
+.map-status-slot { display: flex; align-items: center; gap: 8px; overflow: hidden; margin-left: auto; min-width: 0; }
+.map-status-slot .map-rule { max-width: 340px; flex-shrink: 1; }
+.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; padding-top: 28px; background: var(--mod-bg); color: var(--mod-ink); }
+.map-slot[data-banner='false'] { padding-top: 0; }
+.map-slot b { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-slot span { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
-.map-slot .map-pick-banner { position: absolute; inset: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 28px; background: #241349; color: var(--ink); font-family: var(--sans); font-size: 14px; font-weight: 800; letter-spacing: .02em; }
+.map-slot > span:not(.map-pick-banner) { position: relative; z-index: 1; }
+.map-slot .map-pick-banner { position: absolute; inset: 0 0 auto; z-index: 2; display: flex; align-items: center; justify-content: center; height: 28px; background: #241349; color: var(--ink); font-family: var(--sans); font-size: 14px; font-weight: 800; letter-spacing: .02em; }
 .map-slot .map-pick-banner[data-team='a'] { background: var(--team-a); color: #150a2c; }
 .map-slot .map-pick-banner[data-team='b'] { background: var(--team-b); color: #150a2c; }
 
-/* Mappool keeps the S11 status strip, using the reference's mod-grouped rows,
-   cover tiles, mod colours, stronger picks and subdued bans. */
+/* Mappool keeps the S11 mod-grouped rows, cover tiles, mod colours, stronger
+   picks and subdued bans; team Ban/EX status is rendered in the shared header. */
 .mappool-body { display: flex; flex-direction: column; padding: 4px 60px 20px; }
 .mappool-head { flex-basis: 52px; height: 52px; }
 .mappool-head h2 { font-size: 40px; letter-spacing: .3em; }
-.mappool-status { display: grid; flex: 0 0 86px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 48px; border-block: 1px solid #7c3aed66; background: #241349b3; padding: 10px 16px; }
-.mappool-team-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; border-left: 3px solid var(--team-a); padding-left: 12px; }
-.mappool-team-status--b { justify-content: flex-end; border-left: 0; border-right: 3px solid var(--team-b); padding-left: 0; padding-right: 12px; }
-.mappool-team-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ff91a7; font-size: 18px; font-weight: 800; }
-.mappool-team-status--b .mappool-team-name { color: #8abaff; text-align: right; }
-.ban-slot-chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #7653aa; padding: 4px 8px; color: #e1d3f5; font-size: 15px; white-space: nowrap; }
-.ban-slot-index { color: var(--muted); font-family: var(--display); font-size: 16px; }
-.ban-slot-chip[data-state='empty'] { border-style: dashed; color: var(--muted); }
-.ban-slot-chip[data-state='used'] { border-color: #e36b8c; background: #a3123a44; color: #ffd5e1; }
-.mappool-team-status--b .ban-slot-chip[data-state='used'] { border-color: #558fed; background: #123f9e66; color: #c5ddff; }
-.ex-counter { margin-left: 3px; color: var(--muted); font-size: 15px; white-space: nowrap; }
-.mappool-team-status--b .ex-counter { margin-left: 0; margin-right: 3px; }
-.ex-counter b { margin-left: 4px; color: #e4ccff; font-family: var(--display); font-size: 22px; }
-.mappool-team-heading { display: flex; align-items: baseline; gap: 20px; width: 100%; min-width: 0; }
-.mappool-team-status--b .mappool-team-heading { justify-content: flex-end; }
-.mappool-first-actions { display: inline-flex; flex-shrink: 0; align-items: center; gap: 12px; }
-.mappool-first-action { color: var(--team-a); font-size: 18px; font-weight: 800; white-space: nowrap; }
-.mappool-team-status--b .mappool-first-action { color: var(--team-b); }
-.map-ex-mark { color: #ff91a7; font-size: 15px; font-weight: 700; }
-.mappool-team-status--b .map-ex-mark { color: #8abaff; }
-.mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 12px; }
+/* Mappool-only ban badges sit under each team title, bottom-aligned with the
+   flag. The blue side mirrors the row; Ban 1 stays nearest its flag. */
+.header-bans { position: absolute; bottom: 29px; display: flex; align-items: center; gap: 12px; max-width: 560px; white-space: nowrap; }
+.team-block--a .header-bans { left: 180px; }
+.team-block--b .header-bans { right: 180px; flex-direction: row-reverse; }
+.ban-group { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; }
+.ban-label { color: #ffffffb3; font-size: 14px; font-weight: 700; line-height: 1; }
+.ban-badges { display: inline-flex; align-items: center; gap: 6px; }
+.header-bans--b .ban-badges { flex-direction: row-reverse; }
+.ban-index { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 32px; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; white-space: nowrap; }
+.ban-index--empty { border: 1px dashed #ffffff59; background: transparent; color: #ffffff73; }
+.ex-counter { color: #ffffffb3; font-size: 13px; white-space: nowrap; }
+.ex-counter b { margin-left: 4px; color: #fff; font-family: var(--display); font-size: 20px; }
+.mappool-first-action { flex-shrink: 0; color: #ffe1e7; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.header-bans--b .mappool-first-action { color: #dfeeff; }
+.map-ex-mark { border: 1px solid currentColor; padding: 1px 5px; color: #ffe1e7; font-size: 13px; font-weight: 700; }
+.header-bans--b .map-ex-mark { color: #dfeeff; }
+.mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 20px; }
 /* Mod colours arrive per element from ui/modColors.ts (--mod-bg / --mod-ink). */
 .mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
 .map-group-head { display: grid; place-items: center; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); }
@@ -369,39 +476,56 @@
 .map-entry-media .map-artwork[data-loaded='true'] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .map-entry > .map-base-artwork, .map-entry-media .map-artwork { transition: none; } }
 .map-entry > .map-copy { position: relative; z-index: 3; flex: 1 1 auto; align-self: stretch; justify-content: flex-start; padding-top: 0; padding-right: 0; }
-.map-corner { display: contents; }
 .map-index { position: absolute; right: 8px; bottom: 6px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
-/* Ban/Pick darkens every card element, including the star and CS/AR/OD
-   badges, while the Ban prompt itself sits centered above that veil. */
+/* Ban/Pick darkens every card element, including the star badge, while the
+   Ban prompt itself sits centered above that veil. */
 .map-state-veil { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #07040fa8; }
 .map-entry.is-banned .map-state-veil { background: #07040fd9; }
+/* Keep the card's black selection veil, then tint it with the team that owns
+   the Ban/Pick. Once a map result exists, the winning team's colour wins over
+   the original owner so a blue win on a red pick still reads blue. */
+.map-state-veil::after { position: absolute; inset: 0; content: ''; background: var(--map-team-color); opacity: .1; }
+.map-state-veil[data-winner='a']::after { background: var(--team-a); }
+.map-state-veil[data-winner='b']::after { background: var(--team-b); }
 .map-state-label { position: absolute; z-index: 7; pointer-events: none; }
 .map-state-label--center { inset: 0; display: grid; place-items: center; animation: map-status-reveal 352ms linear 1248ms both; }
+/* Winner labels share the Ban pill's centered treatment, but no confirmation
+   banner precedes them, so they should not wait out the Ban reveal delay. */
+.map-state-label--center.map-state-label--winner { animation-delay: 0ms; }
 @keyframes map-status-reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .map-state-label--center { animation: none; } }
 .map-state-label:not(.map-state-label--center) { top: 6px; right: 6px; }
 .map-state-label--center .map-status { align-self: center; justify-self: center; width: auto; min-width: 88px; height: 42px; padding: 0 18px; border-color: color-mix(in srgb, var(--status-color) 55%, transparent); background: color-mix(in srgb, var(--status-color) 24%, #120a26); box-shadow: 0 8px 24px #0009; font-size: 22px; line-height: 1; letter-spacing: .04em; }
-/* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner. */
-.mappool-columns--large .map-entry { display: block; padding: 0; }
+/* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner.
+   62px keeps the two text lines (25px + 22px) plus the 7px bottom inset and the
+   2px border fully visible even when the pool needs many rows. */
+.mappool-columns--large .map-entry { display: block; padding: 0; min-height: 62px; }
+/* A short card keeps the star clear of the title by moving it onto the
+   difficulty line; the subtitle shifts right for the star's width. The copy
+   block spans the card so the space above the title and between the title and
+   the star/difficulty/number row stay equal. */
+.mappool-columns--large .map-entry[data-compact='true'] > .map-copy { top: 0; bottom: 7px; display: grid; grid-template-rows: 1fr auto 1fr auto; justify-content: normal; }
+.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] > .map-copy { grid-template-rows: 1fr auto 1fr 22px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-title { grid-row: 2; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-meta { grid-row: 4; transform: translateY(-2px); }
+.mappool-columns--large .map-entry[data-compact='true'] .map-star { top: auto; bottom: 10px; left: 8px; padding: 2px 4px 3px; font-size: 14px; line-height: 15px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-index { right: 10px; bottom: 8px; }
+.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] .map-meta { padding-left: 58px; }
 .mappool-columns--large .map-entry-media { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-right: 0; border-radius: 0; }
 .mappool-columns--large .map-entry::before { z-index: 3; background: linear-gradient(0deg, #100a22f7 0%, #100a22e6 32%, #100a2299 58%, #100a2200 100%); }
 .mappool-columns--large .map-entry > .map-copy { position: absolute; left: 9px; right: 9px; bottom: 7px; z-index: 4; justify-content: flex-end; padding: 0; }
 .mappool-columns--large .map-title { max-height: 25px; font-size: 22px; line-height: 25px; }
 .mappool-columns--large .map-meta { padding-right: var(--map-number-reserve); font-size: 19px; line-height: 22px; }
 .mappool-columns--large .map-meta-artist, .mappool-columns--large .map-meta-sep { display: none; }
-.mappool-columns--large .map-corner { position: absolute; top: 6px; right: 6px; z-index: 5; display: flex; align-items: flex-start; gap: 6px; max-width: calc(100% - 12px); }
-.mappool-columns--large .map-corner.has-status { padding-right: 84px; }
 .mappool-columns--large .map-index { z-index: 5; }
 /* Content-sized chips mirror the #N badge without competing with the
    bottom-right card number. The value's range colour is the background. */
-.mappool-columns--large .map-stats { display: flex; align-items: center; gap: 3px; pointer-events: none; }
 .map-stat { display: flex; align-items: baseline; gap: 4px; padding: 3px 4px 4px; border-radius: 3px; background: var(--stat-color, #5f596b); box-shadow: inset 0 0 0 1px #ffffff38; color: var(--stat-ink, #fff); font-family: var(--display); font-size: 15px; font-weight: 700; line-height: 16px; white-space: nowrap; text-shadow: 0 1px 2px #0009; }
 .map-stat-label { color: inherit; font-size: 14px; letter-spacing: .04em; }
-.map-stats .map-stat { background: linear-gradient(rgb(0 0 0 / 20%), rgb(0 0 0 / 20%)), var(--stat-color, #5f596b); }
 .mappool-columns--large .map-star { position: absolute; top: 6px; left: 6px; z-index: 5; pointer-events: none; }
 .map-stat-value { color: inherit; font-weight: 800; font-variant-numeric: tabular-nums; }
 /* Team ownership, rather than Ban/Pick kind, determines the frame color.
@@ -421,7 +545,6 @@
 .map-ban-slash { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; opacity: .45; mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); pointer-events: none; }
 .map-ban-slash line { stroke: var(--map-team-color); stroke-width: 1px; }
 
-.map-entry .map-status.state-winner { border-left: 2px solid var(--status-color); padding-left: 5px; }
 .map-entry .map-status[data-winner='a'] { --status-color: var(--team-a); --status-ink: #ffbdca; }
 .map-entry .map-status[data-winner='b'] { --status-color: var(--team-b); --status-ink: #b7d3ff; }
 
@@ -429,10 +552,10 @@
 .map-entry, .map-group-head, .team-flag-preview svg { border-radius: var(--radius-card); }
 .map-entry::before, .map-entry::after { border-radius: inherit; }
 .team-flag-preview svg { overflow: hidden; }
-.mappool-status, .map-row { border-radius: var(--radius-panel); }
-.map-cover { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
+.map-row { border-radius: var(--radius-panel); }
+.map-cover, .map-star-slot { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
 .map-slot { border-radius: 0 var(--radius-panel) var(--radius-panel) 0; }
-.ban-slot-chip, .map-chip, .map-status, .map-params span { border-radius: var(--radius-label); }
+.map-chip, .map-status, .map-params span { border-radius: var(--radius-label); }
 /* One chat panel is shared by every broadcast scene. It stays mounted outside
    the scene stack; scene changes only toggle visibility, so neither chat
    surface is re-created or reloaded. */
@@ -547,8 +670,8 @@
    motion.ts reveals only safe information surfaces on a committed scene change. */
 .scene-stack > .scene { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
 .scene-stack > .scene.is-active { visibility: visible; pointer-events: auto; z-index: 1; }
-/* Ban/Pick confirmation covers the whole card, including the star and
-   CS/AR/OD badges, and sits above the persistent dark veil (z-index 6) and
+/* Ban/Pick confirmation covers the whole card, including the star badge,
+   and sits above the persistent dark veil (z-index 6) and
    centered Ban prompt (z-index 7). Its wipe and colour both enter from the
    acting team's side, so a blue Ban mirrors the red one. */
 .map-confirmation { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; gap: 14px; overflow: hidden; padding: 0 16px; border-left: 3px solid var(--map-team-color); border-radius: var(--radius-card); pointer-events: none; opacity: 0; background: linear-gradient(100deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); color: var(--map-team-ink); }
