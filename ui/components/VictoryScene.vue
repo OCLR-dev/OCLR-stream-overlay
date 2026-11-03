@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
+import ChatBox from './ChatBox.vue';
 
 const { state, view, motionScope } = useOverlay();
 </script>
@@ -27,40 +28,11 @@ const { state, view, motionScope } = useOverlay();
           <strong><span>{{ state.seriesA ?? '—' }}</span><i>:</i><span>{{ state.seriesB ?? '—' }}</span></strong>
         </div>
       </div>
-
-      <div class="victory-supports">
-        <div>
-          <span>赛制目标</span>
-          <strong data-victory-target>{{ view.seriesTarget }}</strong>
-        </div>
-        <div>
-          <span>比赛阶段</span>
-          <strong data-victory-stage>{{ view.meta.label }}</strong>
-        </div>
-        <div>
-          <span>常规人数</span>
-          <strong data-mode-short>{{ state.mode }}</strong>
-        </div>
-        <div>
-          <span>下一张图</span>
-          <strong>无</strong>
-        </div>
-      </div>
     </div>
 
-    <footer class="scene-footer">
-      <section class="footer-cell">
-        <span class="footer-kicker">全场胜者</span>
-        <p class="footer-lead">{{ view.winner || '待确认' }}</p>
-      </section>
-      <section class="footer-cell">
-        <span class="footer-kicker">赛制目标</span>
-        <p class="footer-lead" data-victory-target>{{ view.seriesTarget }}</p>
-      </section>
-      <section class="footer-cell">
-        <span class="footer-kicker">比赛阶段</span>
-        <p data-victory-stage>{{ view.meta.label }}</p>
-      </section>
+    <footer class="scene-footer victory-footer">
+      <div class="victory-room-chat"><ChatBox source="match" compact /></div>
+      <div class="victory-stream-chat"><ChatBox source="stream" compact /></div>
     </footer>
   </section>
 </template>

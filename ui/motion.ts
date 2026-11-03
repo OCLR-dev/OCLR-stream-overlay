@@ -62,7 +62,7 @@ export const vEmphasize: Directive<HTMLElement, Emphasis> = {
 
 // Scene roots and capture ancestors switch instantly. Only these explicitly
 // selected information surfaces may enter; outgoing animations never queue.
-const sceneSurfaces = ':scope > .scene-footer, :scope > .scene-body:not(.playing-body):not(.victory-body), .victory-mark, .victory-copy, .victory-result, .victory-supports, .victory-body > .scene-head';
+const sceneSurfaces = ':scope > .scene-footer, :scope > .scene-body:not(.playing-body):not(.victory-body), .victory-mark, .victory-copy, .victory-result, .victory-body > .scene-head';
 export const vSceneReveal: Directive<HTMLElement, Emphasis> = {
   updated(stack, { value, oldValue }) {
     if (!oldValue) return;
