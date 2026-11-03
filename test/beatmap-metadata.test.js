@@ -7,6 +7,7 @@ const file = sections => `osu file format v14\n[Metadata]\nBeatmapID:101\nBeatma
 test('official files provide original CS/HP/AR/OD and BPM range without applying guessed mods', () => {
   const result = parseBeatmapMetadata(file('[Difficulty]\nCircleSize:0\nHPDrainRate:4.5\nApproachRate:9.8\nOverallDifficulty:8.4\n[TimingPoints]\n0,500,4,0,0,100,1,0\n1000,-50,4,0,0,100,0,0\n2000, 250, 4, 0, 0, 100, 1, 0'), 101);
   assert.deepEqual(result, { beatmapId: 101, setId: 42, source: 'osu-file',
+    title: '', titleUnicode: '', artist: '', artistUnicode: '', difficulty: '', mapper: '', length: null, objects: 0,
     stats: { cs: 0, hp: 4.5, ar: 9.8, od: 8.4, bpm: { min: 120, max: 240 } } });
 });
 

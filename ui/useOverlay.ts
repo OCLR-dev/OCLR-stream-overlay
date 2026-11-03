@@ -37,7 +37,8 @@ export function createOverlay(shared = false) {
     const recordedMap = s?.pool.find(e => e.id === round?.entryId) || null;
     const roster = (team: Team) => shared ? Array.from({ length: base.count }, (_, i) => ({
       team, id: `${team}-${i + 1}`, slot: i + 1, role: '', syntheticEx: false,
-      name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null
+      name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null,
+      osuId: s?.ex.team ? null : s?.match.teams[team].roster[i]?.osuId ?? null
     })) : base.roster(team);
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = liveRoom(envelope, sessionClient?.connection.value);

@@ -30,12 +30,50 @@ export function parseBeatmapMetadata(body, id) {
   if (Number(metadata.BeatmapID) !== id) return null;
   const difficulty = values('Difficulty');
   const number = value => value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
-  const bpms = (sections.TimingPoints || []).flatMap(line => {
-    const fields = line.split(',').map(field => field.trim()); const beatLength = Number(fields[1]);
-    return beatLength > 0 && (fields[6] === '1' || fields.length < 7) ? [60000 / beatLength] : [];
-  }).filter(Number.isFinite);
+  const timing = (sections.TimingPoints || []).flatMap(line => {
+    const fields = line.split(',').map(field => field.trim());
+    const time = Number(fields[0]); const beatLength = Number(fields[1]);
+    if (!Number.isFinite(time) || !Number.isFinite(beatLength) || beatLength === 0) return [];
+    return [{ time, beatLength, uninherited: fields[6] === undefined ? beatLength > 0 : fields[6] === '1' }];
+  }).sort((a, b) => a.time - b.time);
+  const bpms = timing.filter(point => point.uninherited && point.beatLength > 0).map(point => 60000 / point.beatLength);
+  const sliderMultiplier = number(difficulty.SliderMultiplier) || 1.4;
+  const objects = (sections.HitObjects || []).flatMap(line => {
+    const fields = line.split(',');
+    const time = Number(fields[2]); const type = Number(fields[3]);
+    return Number.isFinite(time) && Number.isFinite(type) ? [{ time, type, fields }] : [];
+  }).sort((a, b) => a.time - b.time);
+  let timingIndex = 0; let redBeatLength = null; let inheritedBeatLength = null;
+  let firstObject = null; let lastObject = null;
+  for (const object of objects) {
+    while (timingIndex < timing.length && timing[timingIndex].time <= object.time) {
+      const point = timing[timingIndex++];
+      if (point.uninherited) redBeatLength = point.beatLength;
+      else inheritedBeatLength = point.beatLength;
+    }
+    let end = object.time;
+    if (object.type & 2) {
+      const spans = Math.max(1, Math.trunc(Number(object.fields[6]) || 1));
+      const pixelLength = Number(object.fields[7]);
+      const sv = inheritedBeatLength !== null && inheritedBeatLength < 0 ? -100 / inheritedBeatLength : 1;
+      if (redBeatLength !== null && redBeatLength > 0 && pixelLength > 0 && sliderMultiplier > 0 && sv > 0) {
+        end += redBeatLength * (pixelLength / (sliderMultiplier * 100 * sv)) * spans;
+      }
+    } else if (object.type & 8 || object.type & 128) {
+      const endTime = Number(String(object.fields[5] ?? '').split(':')[0]);
+      if (Number.isFinite(endTime)) end = Math.max(object.time, endTime);
+    }
+    firstObject = firstObject === null ? object.time : Math.min(firstObject, object.time);
+    lastObject = lastObject === null ? end : Math.max(lastObject, end);
+  }
   const setId = Number(metadata.BeatmapSetID);
   return { beatmapId: id, setId: positiveId(setId) ? setId : null, source: 'osu-file',
+    title: metadata.Title || '', titleUnicode: metadata.TitleUnicode || '',
+    artist: metadata.Artist || '', artistUnicode: metadata.ArtistUnicode || '',
+    difficulty: metadata.Version || '',
+    mapper: metadata.Creator || '',
+    length: firstObject === null || lastObject === null ? null : Math.round((lastObject - firstObject) / 1000),
+    objects: objects.length,
     stats: { cs: number(difficulty.CircleSize), hp: number(difficulty.HPDrainRate),
       ar: number(difficulty.ApproachRate), od: number(difficulty.OverallDifficulty),
       bpm: { min: bpms.length ? bpms.reduce((a, b) => Math.min(a, b)) : null, max: bpms.length ? bpms.reduce((a, b) => Math.max(a, b)) : null } } };

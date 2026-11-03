@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
+import { modColorStyle } from '../modColors';
 const { state, view } = useOverlay();
 const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
 const pickName = computed(() => view.value.pickTeam ? view.value.names[view.value.pickTeam] : '');
@@ -38,7 +39,7 @@ const parameterLabel = computed(() => {
 </script>
 
 <template>
-  <div class="map-row" :data-mod="mapMod">
+  <div class="map-row" :data-mod="mapMod" :style="modColorStyle(mapMod)">
     <MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" />
     <div class="current-map">
       <span v-if="view.ex" class="map-kicker-row">
