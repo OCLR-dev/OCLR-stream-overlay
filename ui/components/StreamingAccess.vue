@@ -7,8 +7,16 @@ const edition = ref('s11');
 const localOrigin = location.origin;
 const tokenInput = ref<HTMLInputElement>();
 const pending = ref(false);
+const pendingAction = ref('');
 const message = ref('');
 const source = computed(() => props.snapshot.live.streaming);
+const connected = computed(() => ['ready', 'connecting', 'stale'].includes(source.value?.status || ''));
+const connectionLabel = computed(() => {
+  if (pending.value) return pendingAction.value === 'login' ? '正在登录 OCLR…' :
+    pendingAction.value === 'connect' ? '正在连接任务…' : pendingAction.value === 'disconnect' ? '正在断开连接…' : '正在处理…';
+  if (connected.value) return '断开连接';
+  return ['unauthorized', 'error'].includes(source.value?.status || '') ? '重新登录 OCLR 并连接任务' : '登录 OCLR 并连接任务';
+});
 const validEdition = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(edition.value) && edition.value.length <= 80);
 const accessUrl = computed(() => `https://oclr.org/streaming/${validEdition.value ? edition.value : 's11'}`);
 const status = computed(() => ({ ready: '已连接，直播任务自动更新', connecting: '正在读取直播任务', stale: '连接中断，本场记录保留，任务待更新', unauthorized: '授权已失效，请重新登录 OCLR', error: '无法读取此赛季或任务，请重新连接', disconnected: '尚未登录 OCLR 直播授权' }[source.value?.status || 'disconnected']));
@@ -28,7 +36,7 @@ async function login() {
   stopPopup();
   popup = window.open('about:blank', 'oclr-streaming-login', 'popup,width=620,height=760');
   if (!popup) { message.value = '登录窗口被拦截，请允许弹出窗口，或使用手动复制授权。'; return; }
-  pending.value = true; message.value = '请在 OCLR 网站登录并授权，完成后自动连接直播任务。';
+  pendingAction.value = 'login'; pending.value = true; message.value = '请在 OCLR 网站登录并授权，完成后自动连接直播任务。';
   try {
     const result = await request({ action: 'authorize', edition: edition.value });
     if (!popup) return;
@@ -51,6 +59,7 @@ async function receive(event: MessageEvent) {
   }
   if (event.data.type !== 'oclr-streaming-token' || typeof event.data.token !== 'string') return;
   handoff = null; clearInterval(popupTimer);
+  pendingAction.value = 'connect';
   try {
     const result = await request({ action: 'complete-authorization', state: active.state, edition: active.edition, token: event.data.token });
     if (result.status !== 'ready') throw new Error('已收到授权，但任务读取失败；请核对网站权限或稍后重试。');
@@ -65,7 +74,7 @@ onUnmounted(() => { window.removeEventListener('message', receive); stopPopup();
 async function act(action: string, extra: Record<string, unknown> = {}) {
   if (pending.value && action !== 'disconnect') return;
   if (action === 'disconnect') stopPopup();
-  pending.value = true; message.value = '';
+  pendingAction.value = action; pending.value = true; message.value = '';
   const input = tokenInput.value;
   const payload = action === 'connect' ? { action, edition: edition.value, token: input?.value || '' } :
     { action, id: crypto.randomUUID(), version: props.snapshot.session.version, fixtureId: source.value?.data?.nextFixture?.id, ...extra };
@@ -83,8 +92,7 @@ async function act(action: string, extra: Record<string, unknown> = {}) {
     <p>登录后自动读取本人已指派的直播任务，选择场次即可预览；本场记录不会被自动覆盖。</p>
     <div class="setup-meta">
       <label>授权赛季<input v-model="edition" maxlength="80" :disabled="pending" autocomplete="off"></label>
-      <button :disabled="disabled || pending || !validEdition" @click="login">登录 OCLR 并连接任务</button>
-      <button :disabled="disabled" @click="act('disconnect')">断开连接</button>
+      <button :disabled="disabled || pending || (!connected && !validEdition)" :aria-busy="pending" @click="connected ? act('disconnect') : login()">{{ connectionLabel }}</button>
     </div>
     <p role="status">{{ source?.edition?.toUpperCase() || 'OCLR' }} · {{ status }} · {{ source?.updatedAt || '尚无成功读取' }}</p>
     <template v-if="source?.status === 'ready' && source.tasks?.length">
