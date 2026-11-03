@@ -17,7 +17,7 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (round?.status === 'playing') return panel === 'mappool' ? '本图仍在比赛，可切到 Playing 查看队分，结束后再继续 Ban／Pick。' : '本图正在比赛，等待结束；需要等待或重赛时使用「处理异常」。';
   if (round?.status === 'ranking' && round.resultSource !== 'series-correction') return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。' : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';
   if (matchPanel && target > 0 && Object.values(s.series).some(score => score >= target)) return '系列比分已到先胜目标，请核对后在 Playing 展示 Winner。';
-  if (tb?.active && round?.status === 'prepared') return tb.eligible ? 'TB 决胜图已准备，等待开打，双方使用常规人数。' : '系列比分已改变，请先核对决胜比分再开打 TB。';
+  if (tb?.active && round?.status === 'prepared') return tb.eligible ? 'TB 决胜图已准备，等待比赛开始，双方使用常规人数。' : '系列比分已改变，请先核对决胜比分再开始 TB。';
   if (tb?.eligible) {
     if (!tb.canPrepare) return tb.reason;
     const count = s.pool.filter(e => e.mod === 'TB').length;
@@ -25,7 +25,7 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
     return panel === 'mappool' ? '已到决胜比分，按裁判确认点击 TieBreaker 准备决胜图。' : '已到决胜比分，请切到图池点击 TieBreaker。';
   }
   if (round?.resultSource === 'series-correction' || round?.status === 'recorded') return panel === 'mappool' ? '本图比分已处理，可继续现场 Ban／Pick。' : '本图比分已处理，可切回图池继续，无需重复记胜。';
-  if (round?.status === 'prepared') return '本图已准备，等待房间开打；尚未开打时可更换选图。';
+  if (round?.status === 'prepared') return '本图已准备，等待比赛开始；比赛开始前可更换选图。';
   if (panel === 'mappool') {
     if (!s.pool.length) return '本场尚无图池，请在「开播前设置」选择或录入本场图池。';
     if (s.pool.find(e => e.id === selectedMap)?.mod === 'TB') return '已选中 TB，请核对决胜比分后点击 TieBreaker。';
@@ -33,5 +33,5 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
     return '选择现场 Ban／Pick 队伍与谱面，中途加入无需补录之前的操作。';
   }
   if (hasScores) return '房间队分正在显示，本局尚无记录；可继续播出，结束后核对系列比分。';
-  return '等待房间开打；需要手动准备时展开「选择本局谱面」。';
+  return '等待比赛开始；需要手动准备时展开「选择本局谱面」。';
 }

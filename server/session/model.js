@@ -181,8 +181,8 @@ export function tiebreakerProgress(s) {
     : s.paused ? '暂停中，返回原画面后再准备 TB'
     : s.incident || unresolved ? '先核对待处理的本图赛果，再准备 TB'
     : round?.status === 'prepared' && !active ? '先作废误准备的普通选图，再单独准备 TB'
-    : active && round.status !== 'prepared' ? 'TB 已开打；核对赛果或按裁判决定重赛'
-    : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待开打；禁 Ban／EX'
+    : active && round.status !== 'prepared' ? 'TB 已开始；核对赛果或按裁判决定重赛'
+    : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待比赛开始；禁 Ban／EX'
     : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在开播前设置补齐本场 TB 谱面'
     : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
   return { eligible, active, canPrepare: eligible && !s.paused && !s.incident && !unresolved &&
@@ -193,7 +193,7 @@ export function bpProgress(s) {
   const round = currentRound(s);
   const stop = bpStopReason(s);
   const waiting = stop || (s.incident ? '本图异常待核对，BP 暂停推进' : s.paused ? '明确暂停中，返回原画面后继续'
-    : round?.status === 'prepared' ? entryOf(s, round.entryId)?.mod === 'TB' ? 'TB 决胜图已准备，等待开打' : `${s.match.teams[round.pickedBy].name}已选图，等待本图开打`
+    : round?.status === 'prepared' ? entryOf(s, round.entryId)?.mod === 'TB' ? 'TB 决胜图已准备，等待比赛开始' : `${s.match.teams[round.pickedBy].name}已选图，等待本局开始`
     : round?.status === 'playing' ? '本图进行中，结束后继续 BP' : null);
   return { current: waiting ? null : s.action, next: stop ? null : waiting ? s.action || s.queue[0] || null : s.queue[0] || null,
     waiting, stopped: !!stop, mode: s.bpFlow?.mode || 'legacy',
@@ -261,7 +261,7 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
     return '替换本轮准备图';
   }
   const action = s.action;
-  requireValue(round?.status !== 'prepared' || (source === 'manual' && action.kind === 'ban' && s.bpFlow?.mode !== 'roll'), '当前图已准备，请开打或作废本轮后再执行新动作');
+  requireValue(round?.status !== 'prepared' || (source === 'manual' && action.kind === 'ban' && s.bpFlow?.mode !== 'roll'), '当前图已准备，请等待本局开始，或作废本轮后再执行新动作');
   const entry = available(s, entryId);
   if (action.kind === 'ban') {
     requireValue(entry.mod !== 'TB', 'TB 不可 Ban');
@@ -288,8 +288,8 @@ export function startRound(s, source = 'manual') {
   requireResolved(s);
   const round = currentRound(s);
   requireValue(round?.status === 'prepared', '尚未准备本轮谱面');
-  if (entryOf(s, round.entryId)?.mod === 'TB') requireValue(tiebreakerProgress(s).eligible, '系列比分已改变，请先核对决胜比分再开打 TB');
-  requireValue(!s.action, '当前还有 BP 动作，完成后再开打');
+  if (entryOf(s, round.entryId)?.mod === 'TB') requireValue(tiebreakerProgress(s).eligible, '系列比分已改变，请先核对决胜比分再开始 TB');
+  requireValue(!s.action, '当前还有 BP 动作，请完成后再开始本局');
   requireValue(!seriesComplete(s), '系列已达到目标，请核对 Winner 或人工修正比分');
   requireValue(!bpStopReason(s), bpStopReason(s));
   round.status = 'playing'; round.runId = randomUUID(); round.startedBy = source; round.exTeam = s.ex.team;
@@ -358,7 +358,7 @@ function applyCommand(s, command) {
         available(s, p.entryId, round?.status === 'prepared' ? round.id : undefined);
         if (round?.status === 'prepared') {
           round.entryId = p.entryId; round.pickedBy = null; round.exTeam = null; s.ex.team = null;
-          return '已更换 TB 决胜图，等待开打';
+          return '已更换 TB 决胜图，等待比赛开始';
         }
         const next = { id: randomUUID(), entryId: p.entryId, pickedBy: null, status: 'prepared', winner: null,
           source: 'manual-tb', actionId: null, eventId: null, runId: null, finalScore: null, exTeam: null };
@@ -379,15 +379,15 @@ function applyCommand(s, command) {
       if (!followsCurrent && s.bpFlow?.mode === 'roll') { s.queue = []; s.bpFlow = { mode: 'manual' }; }
       s.action = { id: randomUUID(), kind: 'pick', team: p.pickedBy, slot: null };
       applyBp(s, p.entryId);
-      return `已准备本图 ${entryOf(s, p.entryId).label}，等待开打`;
+      return `已准备本图 ${entryOf(s, p.entryId).label}，等待比赛开始`;
     }
     case 'wait-result': {
       const round = currentRound(s);
-      requireValue(round && ['playing', 'ranking', 'recorded'].includes(round.status), '本图尚未开打');
+      requireValue(round && ['playing', 'ranking', 'recorded'].includes(round.status), '本局尚未开始');
       if (round.status === 'recorded') applyCommand(s, { type: 'retract-result', payload: { roundId: round.id, reason: p.reason } });
       requireValue(['player-disconnect', 'spectator'].includes(p.kind) && text(p.reason) && p.reason.trim(), '请选择现场情况');
       holdRound(s, p.kind, p.reason);
-      return `本图暂不加分，保留本次开打：${p.reason}`;
+      return `本图暂不加分，保留本局记录：${p.reason}`;
     }
     case 'referee-replay': {
       const round = currentRound(s);
@@ -404,7 +404,7 @@ function applyCommand(s, command) {
       requireValue(s.incident && s.incident.roundId === s.currentRoundId && text(p.reason) && p.reason.trim(), '请填写本图恢复核对说明');
       requireValue(currentRound(s)?.status !== 'ranking', '本局已进入结算，请填写核对说明后人工记录赛果，或由裁判确认重赛');
       s.incident = null;
-      return `确认继续同一本局（保留选图与开打记录）：${p.reason.trim()}`;
+      return `确认继续原局（保留选图与本局记录）：${p.reason.trim()}`;
     }
     case 'set-stage': {
       requireValue(['group', 'elimination', 'final'].includes(p.stage), '比赛阶段无效');
@@ -557,7 +557,7 @@ function applyCommand(s, command) {
         if (round) round.finalScore = null;
         s.incident = null;
       }
-      requireValue(round && ['playing', 'ranking'].includes(round.status), '该局未开打、已记录或已作废');
+      requireValue(round && ['playing', 'ranking'].includes(round.status), '该局尚未开始、已记录或已作废');
       requireValue(side(p.winner), '请指定本图胜方');
       const coveredBySeries = round.resultSource === 'series-correction';
       requireValue(coveredBySeries || seriesOf(s)[p.winner] < targetOf(s), '该队已达到系列目标，请核对比赛记录');
@@ -618,7 +618,7 @@ function applyCommand(s, command) {
       const round = currentRound(s);
       requireValue(round && ['prepared', 'playing', 'ranking'].includes(round.status) && text(p.reason) && p.reason.trim(), '请填写未记录本轮的重赛原因；已计胜请先撤回');
       s.incident = null;
-      if (round.status === 'prepared') return `尚未开打，保留原选图继续准备（不新增重赛）：${p.reason}`;
+      if (round.status === 'prepared') return `比赛尚未开始，保留原选图继续准备（不新增重赛）：${p.reason}`;
       requireValue(round.bpReleaseHistory == null || (s.bpHistory || []).length <= round.bpReleaseHistory, '本图结束后已有新的 BP 记录；请先撤销后续 BP，再确认原图重赛');
       const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null, runId: null, finalScore: null };
       delete next.bpReleased; delete next.bpReleaseHistory;
