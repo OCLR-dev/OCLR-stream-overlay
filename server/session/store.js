@@ -13,6 +13,9 @@ export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
     this.file = file; this.state = restoreAutomation(state); this.listeners = new Set(); this.automation = new RoomAutomation();
     this.parameterHold = null;
+    // Remember when the room itself changed map, so "use the current room map"
+    // cannot silently consume a selection that has been sitting there for long.
+    this.roomMap = { id: null, at: 0 };
     this.seriesCorrection = new SeriesCorrectionTracker();
     this.spectatorRecovery = new SpectatorRecovery();
     this.readyReturn = new ReadyReturnRecovery();
@@ -89,7 +92,20 @@ export class SessionStore {
           ...(this.seriesCorrection.canFinish(this.state, this.live.tosu, Date.now() - this.receivedAt < 5000)
             ? { finishRoundId: this.state.currentRoundId } : {}) } };
       }
-      const next = transition(this.state, effective);
+      let next = transition(this.state, effective);
+      // A room map can be selected before the operator picks the BP action. Use
+      // that already-visible map once, but only for an explicit action request
+      // and only when the map is still fresh and uniquely identified by the pool.
+      if (next !== this.state && (command.type === 'select-bp-action' || command.type === 'set-action') &&
+        command.payload?.applyRoomMap && next.action) {
+        const entry = this.currentRoomMap(next);
+        if (entry) {
+          try {
+            next = transition(next, { id: randomUUID(), version: next.version, type: 'apply-room-map',
+              payload: { entryId: entry.id, eventId: randomUUID() } });
+          } catch { /* keep the armed action; a pool card or the next map can still apply it */ }
+        }
+      }
       if (next !== this.state) {
         // Archive before replacing the match, without exposing local files over HTTP.
         if (command.type === 'next-match' && this.file) {
@@ -120,6 +136,16 @@ export class SessionStore {
     });
   }
 
+  currentRoomMap(state) {
+    const frame = this.live.tosu.data; const room = frame?.tourney;
+    const seenAt = Date.parse(this.live.tosu.updatedAt);
+    if (this.live.tosu.status !== 'live' || !Number.isFinite(seenAt) || Date.now() - seenAt > 5000 || !room ||
+      ![1, 2].includes(room.ipcState) || room.teams?.left !== state.auto.left || room.teams?.right !== state.auto.right) return null;
+    if (this.roomMap.id !== frame.beatmap?.id || Date.now() - this.roomMap.at > 10000) return null;
+    const candidates = state.pool.filter(entry => entry.beatmapId === frame.beatmap?.id);
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+
   sourceStatus(status) {
     return this.enqueue(async () => { if (status !== 'live') {
       this.pickScene.cancel();
@@ -131,7 +157,7 @@ export class SessionStore {
         const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
         if (held.state !== this.state) await this.save(held.state);
       }
-      this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
+      this.automation.reset(); this.roomMap = { id: null, at: 0 }; this.live.tosu = { status, updatedAt: null, data: null };
       this.live.note = ['connecting', 'error', 'disconnected'].includes(status)
         ? '尚未连接 tosu，请确认 tosu 已启动并核对 WebSocket 地址。程序会自动重连，比赛资料与自动化设置已保留。'
         : `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`;
@@ -143,6 +169,11 @@ export class SessionStore {
       const previousAt = Date.parse(this.live.tosu.updatedAt);
       if (!Number.isFinite(previousAt) || now - previousAt > 5000 || now < previousAt) this.parameterHold = null;
       this.receivedAt = Date.now();
+      const mapId = frame?.beatmap?.id;
+      if (Number.isSafeInteger(mapId) && mapId > 0) {
+        if (this.roomMap.id === null) this.roomMap.id = mapId;
+        else if (this.roomMap.id !== mapId) this.roomMap = { id: mapId, at: now };
+      }
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
       const returned = this.readyReturn.recover(this.state, frame, now);
       const restoredReady = returned !== this.state;

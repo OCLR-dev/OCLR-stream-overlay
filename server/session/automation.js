@@ -223,13 +223,14 @@ export class RoomAutomation {
             if (occupied) throw new Error('房间谱面已 Ban / 已打 / 正在使用，请手动纠正');
             const returnToBp = config.scenes && (['ranking', 'recorded'].includes(round?.status) || state.sceneOverride);
             const consumeBp = config.bp && (state.action || round?.status === 'prepared');
+            const replacing = !state.action && round?.status === 'prepared';
             if (returnToBp || consumeBp) next = automaticTransition(state, draft => {
               if (returnToBp) { draft.phase = 'bp'; draft.scene = 'mappool'; draft.sceneOverride = null; }
               if (config.bp && (draft.action || currentRound(draft)?.status === 'prepared')) {
                 draft.phase = 'bp';
                 applyBp(draft, entry.id, 'room-map', pending.actionId, pending.eventId);
               }
-            }, `房间换图 ${entry.label} · 按当前动作跟随`, pending.eventId);
+            }, `房间换图 ${entry.label} · ${consumeBp ? (replacing ? '替换本轮准备图' : '按当前动作跟随') : '同步房间谱面'}`, pending.eventId);
           } catch (error) { note = error.message; }
         } else note = '当前阶段不应用自动 BP';
         this.notice = note === '自动跟随房间' ? null : note;

@@ -368,7 +368,8 @@ const markPool = (status: 'open' | 'banned' | 'picked', team: Team | null) => ru
 const clearAllPoolMarks = () => run('clear-pool-marks');
 const choosePoolAction = async (team: Team, kind: 'ban' | 'pick') => {
   if (poolSelection.value?.mod === 'TB') { localError.value = 'TB 单独准备，不指定 Ban／Pick 队伍。'; return; }
-  if (await run('select-bp-action', { team, kind })) {
+  const useRoomMap = !(poolNeedsAction.value && poolEntryId.value);
+  if (await run('select-bp-action', { team, kind, applyRoomMap: useRoomMap })) {
     if (poolNeedsAction.value && poolEntryId.value && await run('choose-pool-map', { entryId: poolEntryId.value })) poolNeedsAction.value = false;
   }
 };

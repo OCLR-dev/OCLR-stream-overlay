@@ -547,6 +547,9 @@ function applyCommand(s, command) {
       s.planVerification = p.verifiedBy?.trim() || null;
       return `更新明确配置的后续 BP 顺序（不修改当前动作）${s.planVerification ? `：${s.planVerification}` : ''}`;
     case 'apply-bp': return applyBp(s, p.entryId, 'manual', p.actionId);
+    case 'apply-room-map':
+      requireValue(s.action, '当前没有已选择的 BP 动作，等待房间换图');
+      return applyBp(s, p.entryId, 'room-map', s.action.id, p.eventId || null);
     case 'skip-ban': {
       const progress = bpProgress(s);
       requireValue(progress.canApply && s.action.kind === 'ban' && s.action.id === p.actionId, '当前不是可处理的 Ban，或动作已改变');
