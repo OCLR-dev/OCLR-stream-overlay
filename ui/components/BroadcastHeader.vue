@@ -7,6 +7,7 @@ import TeamFlagPreview from './TeamFlagPreview.vue';
 import TeamNameMarquee from './TeamNameMarquee.vue';
 import HeaderAmbient from './HeaderAmbient.vue';
 import TeamBlockParticles from './TeamBlockParticles.vue';
+import MapWinBanner from './MapWinBanner.vue';
 import oclrLogo from '../assets/oclr-logo-light.svg';
 
 const { state, view, motionScope, motionReady } = useOverlay();
@@ -98,5 +99,6 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
         <span class="win-stars" data-series-stars="b" :aria-label="state.seriesB === null ? '赢图未知' : `已赢 ${state.seriesB} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesB ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesB !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesB ?? 0) }" aria-hidden="true"></i></span>
       </div>
     </section>
+    <MapWinBanner />
   </header>
 </template>

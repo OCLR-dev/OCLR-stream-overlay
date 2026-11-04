@@ -3,7 +3,7 @@ import { useOverlay } from '../useOverlay';
 import MapColumns from './MapColumns.vue';
 import RosterFooter from './RosterFooter.vue';
 
-const { state } = useOverlay();
+const { state, view } = useOverlay();
 </script>
 
 <template>
@@ -11,8 +11,8 @@ const { state } = useOverlay();
     <div class="scene-body mappool-body">
       <div class="scene-head mappool-head">
         <div class="title-line">
-          <span class="scene-eyebrow">禁用 / 选择 · 02</span>
-          <h2 id="mappool-title">MAPPOOL</h2>
+          <span class="scene-eyebrow">{{ view.pool.length }} 张谱面</span>
+          <h2 id="mappool-title">图池</h2>
         </div>
       </div>
 

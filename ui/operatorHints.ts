@@ -29,6 +29,7 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (panel === 'mappool') {
     if (!s.pool.length) return '本场尚无图池，请在「开播前设置」选择或录入本场图池。';
     if (s.pool.find(e => e.id === selectedMap)?.mod === 'TB') return '已选中 TB，请核对决胜比分后点击 TieBreaker。';
+    if (s.action) return `自动待处理：${s.match.teams[s.action.team].name} ${s.action.kind === 'ban' ? `Ban${s.action.slot == null ? '' : ` ${s.action.slot + 1}`}` : 'Pick'}；房间换图后自动记录，也可直接选择谱面。`;
     if (s.poolChoice) return `已选择 ${s.match.teams[s.poolChoice.team].name} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'}，请选择本图或等待房间换图。`;
     return '选择现场 Ban／Pick 队伍与谱面，中途加入无需补录之前的操作。';
   }

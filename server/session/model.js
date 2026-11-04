@@ -20,7 +20,7 @@ export function newSession() {
     auto: { bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', mapDebounceMs: 400, rankingDebounceMs: 250 },
     action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] }, planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
     rounds: [], currentRoundId: null, incident: null, winner: null, seriesAdjustment: { a: 0, b: 0 },
-    ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'technical',
+    ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
     history: [], undo: [], commandIds: [],
   };
 }
@@ -137,9 +137,22 @@ function syncRollFlow(s) {
   if (s.bpFlow?.banFirst === banFirst && s.bpFlow?.pickFirst === pickFirst) return true;
   const other = team => team === 'a' ? 'b' : 'a';
   const ban = (team, slot) => normalizeAction({ kind: 'ban', team, slot });
-  const pick = team => ({ ...normalizeAction({ kind: 'pick', team }), ordinal: 1 });
+  const pick = (team, ordinal) => ({ ...normalizeAction({ kind: 'pick', team }), ordinal });
   s.bpFlow = { version: 1, mode: 'roll', banFirst, pickFirst, nextPair: 2 };
-  s.queue = [ban(banFirst, 0), ban(other(banFirst), 0), pick(pickFirst), pick(other(pickFirst)), ban(banFirst, 1), ban(other(banFirst), 1)];
+  // OCLR S11 rule 8:
+  //   Ban 1 (first-Ban team) -> Ban 1 (other) ->
+  //   Pick 1 + Pick 2 (first-Pick team, then the other, one map each) ->
+  //   Ban 2 (first-Ban team) -> Ban 2 (other) ->
+  //   Pick 3 + Pick 4 -> Pick 5 + Pick 6 ... alternating from the first-Pick team
+  //   for as long as BP keeps being needed.
+  // Both Ban rounds are materialised at Roll time so a manual Pick can never
+  // advance past the still-pending second Bans. Later Picks are replenished in
+  // alternating pairs indefinitely by takeBpAction.
+  s.queue = [
+    ban(banFirst, 0), ban(other(banFirst), 0),
+    pick(pickFirst, 1), pick(other(pickFirst), 1),
+    ban(banFirst, 1), ban(other(banFirst), 1),
+  ];
   s.action = s.queue.shift();
   if (['arrival', 'roll'].includes(s.phase)) s.phase = 'bp';
   return true;
@@ -155,7 +168,40 @@ function takeBpAction(s) {
     s.bpFlow.nextPair++;
   };
   replenish();
-  const action = s.queue.shift() || null;
+  let action = null;
+  // A manual action can jump over an entry that is already recorded (a Ban the
+  // operator filled by hand, or a skipped empty Ban). Drop those instead of
+  // arming a Ban that can never be applied.
+  while (s.queue.length) {
+    const next = s.queue.shift();
+    if (next.kind === 'ban' && (s.bans[next.team][next.slot] || s.emptyBans?.[next.team]?.[next.slot])) continue;
+    action = next;
+    break;
+  }
+  // Before the first Pick, both first Bans must be filled. Before a later Pick,
+  // both second Bans must be filled too. An action override can drop a queued
+  // Ban, so repair the automatic cursor instead of advancing to a Pick.
+  if (action?.kind === 'pick' && s.bpFlow?.mode === 'roll') {
+    const banFirst = s.bpFlow.banFirst;
+    const slots = action.ordinal >= 2 ? [0, 1] : [0];
+    let missing = null;
+    for (const slot of slots) {
+      const team = [banFirst, banFirst === 'a' ? 'b' : 'a'].find(candidate =>
+        !s.bans[candidate][slot] && !s.emptyBans?.[candidate]?.[slot]);
+      if (team) { missing = { team, slot }; break; }
+    }
+    if (missing) {
+      const queued = s.queue.findIndex(item =>
+        item.kind === 'ban' && item.team === missing.team && item.slot === missing.slot);
+      if (queued >= 0) {
+        s.queue.unshift(action);
+        action = s.queue.splice(queued + 1, 1)[0];
+      } else {
+        s.queue.unshift(action);
+        action = normalizeAction({ kind: 'ban', ...missing });
+      }
+    }
+  }
   replenish();
   return action;
 }
@@ -517,13 +563,13 @@ function applyCommand(s, command) {
       if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || ['prepared', 'playing'].includes(currentRound(s)?.status)) return '已选择图池标记动作；当前局与比赛记录保留';
       const slot = p.kind === 'ban' ? [0, 1].find(slot => !s.bans[p.team][slot] && !s.emptyBans?.[p.team]?.[slot]) : null;
       if (slot === undefined) return '已选择 Ban 标记；该队 Ban 记录已满，仅修改播出标记';
-      // An explicit jump to a current Pick does not prove where a late join
-      // sits in the generated OCLR order. Keep unknown earlier actions unknown.
-      if (p.kind === 'pick' && s.bpFlow?.mode === 'roll' && (s.action?.kind !== 'pick' || s.action.team !== p.team)) {
-        s.queue = []; s.bpFlow = { mode: 'manual' };
-      }
       // Arm one event under the established rule; move a queued match here once.
       // A pending old map event is invalidated by the new action ID in Store.
+      // A manual Pick keeps the rest of the generated order alive: clearing the
+      // queue here used to drop the pending second Ban round, so the console
+      // silently fell back to manual Picks and never asked for Ban 2 again.
+      // The hand being replaced is discarded on purpose - the operator's new
+      // choice takes its place in the order.
       const queued = s.queue.findIndex(action => action.team === p.team && action.kind === p.kind && (p.kind !== 'ban' || action.slot === slot));
       const selected = queued < 0 ? {} : s.queue.splice(queued, 1)[0];
       s.action = { ...selected, ...normalizeAction({ ...p, slot }) };
@@ -547,6 +593,9 @@ function applyCommand(s, command) {
       s.planVerification = p.verifiedBy?.trim() || null;
       return `更新明确配置的后续 BP 顺序（不修改当前动作）${s.planVerification ? `：${s.planVerification}` : ''}`;
     case 'apply-bp': return applyBp(s, p.entryId, 'manual', p.actionId);
+    case 'apply-room-map':
+      requireValue(s.action, '当前没有已选择的 BP 动作，等待房间换图');
+      return applyBp(s, p.entryId, 'room-map', s.action.id, p.eventId || null);
     case 'skip-ban': {
       const progress = bpProgress(s);
       requireValue(progress.canApply && s.action.kind === 'ban' && s.action.id === p.actionId, '当前不是可处理的 Ban，或动作已改变');
@@ -683,14 +732,32 @@ function applyCommand(s, command) {
       s.scene = scene; s.sceneOverride = { scene, until: 'next-match-event' };
       return '手动覆盖播出画面，下一有效比赛事件自动接回；数据跟随继续';
     }
-    case 'pause':
-      requireValue(['technical', 'tactical'].includes(p.kind), '暂停类型无效');
-      if (!s.paused) s.returnScene = s.scene;
-      s.paused = true; s.scene = 'pause'; s.pauseType = p.kind;
+    case 'pause': {
+      const kind = p.kind === undefined ? 'normal' : p.kind;
+      requireValue(['normal', 'technical', 'tactical'].includes(kind), '暂停类型无效');
+      if (!s.paused) { s.returnScene = s.scene; s.pauseTimer = null; s.resumeAt = null; }
+      s.paused = true; s.scene = 'pause'; s.pauseType = kind;
       return '暂停（保留原阶段和返回位置）';
+    }
+    case 'pause-timer': {
+      requireValue(s.paused && s.scene === 'pause', '请先展示暂停画面');
+      if (p.clear === true) {
+        requireValue(s.pauseTimer, '当前没有暂停倒计时');
+        s.pauseTimer = null;
+        return '已清除暂停倒计时';
+      }
+      requireValue(Number.isSafeInteger(p.seconds) && p.seconds >= 1 && p.seconds <= 3600, '倒计时需在 1 秒到 60 分钟之间');
+      s.pauseTimer = { durationSeconds: p.seconds, endsAt: Date.now() + p.seconds * 1000 };
+      const clock = `${String(Math.floor(p.seconds / 60)).padStart(2, '0')}:${String(p.seconds % 60).padStart(2, '0')}`;
+      return `暂停倒计时已开始：${clock}（到 0 不会自动返回画面）`;
+    }
+    case 'resume-soon':
+      requireValue(s.paused && s.scene === 'pause' && s.returnScene, '请先展示暂停画面');
+      s.resumeAt = Date.now() + 10000;
+      return '10 秒后自动返回暂停前的画面';
     case 'resume':
       requireValue(s.returnScene, '没有暂停返回位置');
-      s.scene = s.returnScene; s.returnScene = null; s.paused = false; s.sceneOverride = null;
+      s.scene = s.returnScene; s.returnScene = null; s.paused = false; s.sceneOverride = null; s.pauseTimer = null; s.resumeAt = null;
       return '恢复暂停前画面';
     case 'auto':
       requireValue(typeof p.bp === 'boolean' && typeof p.scenes === 'boolean', '自动跟随开关无效');
@@ -708,6 +775,24 @@ function applyCommand(s, command) {
       requireResolved(s);
       requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
       s.winner = p.team; s.phase = 'winner'; s.scene = 'victory'; return '展示人工核对的 Winner';
+    }
+    case 'clear-records': {
+      // Keep the setup the operator typed in (teams, rosters, pool, stage,
+      // source, automation), but forget the played series. One undo entry
+      // remains the safety net.
+      const kept = { schema: s.schema, id: s.id, match: s.match, pool: s.pool, auto: s.auto, automationVersion: s.automationVersion };
+      Object.assign(s, {
+        poolMarks: [], poolChoice: null, arrived: { a: false, b: false }, ready: { a: false, b: false },
+        roll: { a: null, b: null, winner: null, pickFirst: null, banFirst: null },
+        phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null,
+        action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] },
+        planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
+        rounds: [], currentRoundId: null, incident: null, winner: null, seriesAdjustment: { a: 0, b: 0 },
+        ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
+        history: [], undo: [], commandIds: [],
+      });
+      Object.assign(s, kept);
+      return '已清空比赛记录；保留本场队伍、名单、图池、标题、阶段与自动跟随设置';
     }
     case 'next-match': {
       requireValue(p.keepRoomBinding === undefined || typeof p.keepRoomBinding === 'boolean', '房间连接保留选项无效');

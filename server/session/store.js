@@ -12,7 +12,14 @@ import { ReadyReturnRecovery } from './ready-return-recovery.js';
 export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
     this.file = file; this.state = restoreAutomation(state); this.listeners = new Set(); this.automation = new RoomAutomation();
+    if (this.state.pauseTimer === undefined) this.state.pauseTimer = null;
+    if (this.state.resumeAt === undefined) this.state.resumeAt = null;
+    if (!['normal', 'technical', 'tactical'].includes(this.state.pauseType)) this.state.pauseType = 'normal';
+    this.resumeTimer = null;
     this.parameterHold = null;
+    // Remember when the room itself changed map, so "use the current room map"
+    // cannot silently consume a selection that has been sitting there for long.
+    this.roomMap = { id: null, at: 0 };
     this.seriesCorrection = new SeriesCorrectionTracker();
     this.spectatorRecovery = new SpectatorRecovery();
     this.readyReturn = new ReadyReturnRecovery();
@@ -23,10 +30,11 @@ export class SessionStore {
       this.pickScene.cancel();
       const next = automaticTransition(this.state, draft => {
         draft.scene = 'playing'; draft.sceneOverride = null;
-      }, '本次 Pick 展示满 2.5 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
+      }, '本次 Pick 展示满 5 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
       await this.save(next);
       this.emit();
     }).catch(() => { this.live.note = '自动切换画面未保存，请检查本机存储'; this.emit(); }));
+    this.scheduleResume();
   }
 
   static async open(file) {
@@ -47,7 +55,36 @@ export class SessionStore {
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }
   enqueue(fn) { const task = this.tail.then(fn); this.tail = task.catch(() => {}); return task; }
-  close() { this.pickScene.cancel(); }
+  close() { this.pickScene.cancel(); clearTimeout(this.resumeTimer); this.resumeTimer = null; }
+
+  // "即将开始" gives a 10 second grace period. The deadline lives in the
+  // session, so a reload keeps counting and the output does not depend on the
+  // console staying open.
+  scheduleResume() {
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = null;
+    if (!this.state.paused || !Number.isSafeInteger(this.state.resumeAt)) return;
+    const delay = Math.max(0, this.state.resumeAt - Date.now());
+    this.resumeTimer = setTimeout(() => {
+      this.resumeTimer = null;
+      this.resumeNow();
+    }, delay);
+    this.resumeTimer.unref?.();
+  }
+
+  resumeNow() {
+    this.enqueue(async () => {
+      if (!this.state.paused || !this.state.returnScene || !Number.isSafeInteger(this.state.resumeAt)) return;
+      if (this.state.resumeAt > Date.now()) { this.scheduleResume(); return; }
+      const next = automaticTransition(this.state, draft => {
+        draft.scene = draft.returnScene; draft.returnScene = null; draft.paused = false;
+        draft.sceneOverride = null; draft.pauseTimer = null; draft.resumeAt = null;
+      }, '“即将开始”倒计时结束：已自动返回暂停前的画面', randomUUID(), { undo: false });
+      await this.save(next);
+      this.live.note = '“即将开始”倒计时结束，已自动返回暂停前的画面';
+      this.emit();
+    }).catch(() => { this.live.note = '“即将开始”自动返回未保存，请检查本机存储'; this.emit(); });
+  }
 
   async save(next, { allowPickScene = true } = {}) {
     if (this.file) {
@@ -63,6 +100,7 @@ export class SessionStore {
     const before = this.state;
     this.state = next;
     this.pickScene.update(before, next, allowPickScene);
+    this.scheduleResume();
   }
 
   command(command) {
@@ -89,7 +127,20 @@ export class SessionStore {
           ...(this.seriesCorrection.canFinish(this.state, this.live.tosu, Date.now() - this.receivedAt < 5000)
             ? { finishRoundId: this.state.currentRoundId } : {}) } };
       }
-      const next = transition(this.state, effective);
+      let next = transition(this.state, effective);
+      // A room map can be selected before the operator picks the BP action. Use
+      // that already-visible map once, but only for an explicit action request
+      // and only when the map is still fresh and uniquely identified by the pool.
+      if (next !== this.state && (command.type === 'select-bp-action' || command.type === 'set-action') &&
+        command.payload?.applyRoomMap && next.action) {
+        const entry = this.currentRoomMap(next);
+        if (entry) {
+          try {
+            next = transition(next, { id: randomUUID(), version: next.version, type: 'apply-room-map',
+              payload: { entryId: entry.id, eventId: randomUUID() } });
+          } catch { /* keep the armed action; a pool card or the next map can still apply it */ }
+        }
+      }
       if (next !== this.state) {
         // Archive before replacing the match, without exposing local files over HTTP.
         if (command.type === 'next-match' && this.file) {
@@ -120,6 +171,16 @@ export class SessionStore {
     });
   }
 
+  currentRoomMap(state) {
+    const frame = this.live.tosu.data; const room = frame?.tourney;
+    const seenAt = Date.parse(this.live.tosu.updatedAt);
+    if (this.live.tosu.status !== 'live' || !Number.isFinite(seenAt) || Date.now() - seenAt > 5000 || !room ||
+      ![1, 2].includes(room.ipcState) || room.teams?.left !== state.auto.left || room.teams?.right !== state.auto.right) return null;
+    if (this.roomMap.id !== frame.beatmap?.id || Date.now() - this.roomMap.at > 10000) return null;
+    const candidates = state.pool.filter(entry => entry.beatmapId === frame.beatmap?.id);
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+
   sourceStatus(status) {
     return this.enqueue(async () => { if (status !== 'live') {
       this.pickScene.cancel();
@@ -131,7 +192,7 @@ export class SessionStore {
         const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
         if (held.state !== this.state) await this.save(held.state);
       }
-      this.automation.reset(); this.live.tosu = { status, updatedAt: null, data: null };
+      this.automation.reset(); this.roomMap = { id: null, at: 0 }; this.live.tosu = { status, updatedAt: null, data: null };
       this.live.note = ['connecting', 'error', 'disconnected'].includes(status)
         ? '尚未连接 tosu，请确认 tosu 已启动并核对 WebSocket 地址。程序会自动重连，比赛资料与自动化设置已保留。'
         : `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`;
@@ -143,6 +204,12 @@ export class SessionStore {
       const previousAt = Date.parse(this.live.tosu.updatedAt);
       if (!Number.isFinite(previousAt) || now - previousAt > 5000 || now < previousAt) this.parameterHold = null;
       this.receivedAt = Date.now();
+      const mapId = frame?.beatmap?.id;
+      let mapPushed = false;
+      if (Number.isSafeInteger(mapId) && mapId > 0) {
+        if (this.roomMap.id === null) { this.roomMap.id = mapId; mapPushed = true; }
+        else if (this.roomMap.id !== mapId) { this.roomMap = { id: mapId, at: now }; mapPushed = true; }
+      }
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
       const returned = this.readyReturn.recover(this.state, frame, now);
       const restoredReady = returned !== this.state;
@@ -159,6 +226,7 @@ export class SessionStore {
       const result = this.automation.ingest(this.state, frame, now);
       this.live.note = restoredReady ? '本局已返回准备状态，保留原图，等待裁判重新开始比赛。' : result.note;
       if (result.state !== this.state) await this.save(result.state);
+      if (mapPushed) this.pickScene.observeRoomMap(this.state, mapId);
       this.spectatorRecovery.observe(this.state, frame, now);
       this.readyReturn.observe(this.state, frame, now, this.automation.observedRun);
       this.seriesCorrection.observe(this.state, frame, now);

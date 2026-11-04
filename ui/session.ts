@@ -26,7 +26,9 @@ export interface Session {
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
   incident?: { kind: 'prestart-abort' | 'abort' | 'player-disconnect' | 'spectator' | 'unverified'; roundId: string; reason: string; source: string; at: string } | null;
   series: Record<Team, number>; seriesAdjustment: Record<Team, number>;
-  ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'technical' | 'tactical';
+  ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'normal' | 'technical' | 'tactical';
+  pauseTimer?: { durationSeconds: number; endsAt: number } | null;
+  resumeAt?: number | null;
   history: { id: string; at: string; version: number; message: string; source: string }[]; canUndo: boolean;
 }
 export type BeatmapRange = { min: number; max: number } | null;

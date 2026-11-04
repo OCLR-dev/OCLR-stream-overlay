@@ -1,5 +1,7 @@
 import { currentRound, entryOf, seriesComplete } from './model.js';
 
+const DISPLAY_MS = 5000;
+
 function pickKey(state) {
   const round = currentRound(state);
   const entry = entryOf(state, round?.entryId);
@@ -26,8 +28,22 @@ export class PickSceneDelay {
     if (!allowNew || !key || !eligible(after) || key === pickKey(before)) return;
     this.cancel();
     const token = { key, timer: null };
-    token.timer = setTimeout(() => { void this.onDue(token); }, 2500);
+    token.timer = setTimeout(() => { void this.onDue(token); }, DISPLAY_MS);
     token.timer.unref?.();
     this.pending = token;
+  }
+  // The room pushes the picked map after the Pick is recorded. Restart the
+  // presentation hold from that push so the picture does not leave Mappool
+  // immediately after the map appears. The store only calls this for a new
+  // beatmap ID, so repeated frames cannot extend the hold.
+  observeRoomMap(state, mapId) {
+    const token = this.pending;
+    const entry = entryOf(state, currentRound(state)?.entryId);
+    if (!token || !eligible(state) || !entry || entry.beatmapId !== mapId) return;
+    this.cancel();
+    const next = { key: token.key, timer: null };
+    next.timer = setTimeout(() => { void this.onDue(next); }, DISPLAY_MS);
+    next.timer.unref?.();
+    this.pending = next;
   }
 }

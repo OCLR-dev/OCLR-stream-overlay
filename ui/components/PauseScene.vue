@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useOverlay } from '../useOverlay';
+import MapInfo from './MapInfo.vue';
 
 const { state, view } = useOverlay();
 </script>
@@ -9,17 +10,20 @@ const { state, view } = useOverlay();
     <div class="scene-body pause-body">
       <div class="scene-head pause-head">
         <div class="title-line">
-          <span class="scene-eyebrow">MATCH ON HOLD / 06</span>
+          <span class="scene-eyebrow">比赛暂停</span>
           <h2 id="pause-title" data-pause-title>{{ view.pauseTitle }}</h2>
         </div>
       </div>
 
       <div class="pause-layout">
         <section class="pause-primary">
+          <div class="pause-stripes" aria-hidden="true"></div>
           <div class="pause-mark" aria-hidden="true"><span></span><span></span></div>
           <h3 data-pause-headline>{{ view.pauseTitle }}</h3>
-          <p class="pause-time" v-show="state.pauseType === 'tactical'" data-pause-duration>暂定 3:00</p>
-          <p class="pause-recovery">恢复时间：未确认</p>
+          <div v-if="view.pauseClock" class="pause-countdown" :class="{ 'is-ended': view.pauseTimerEnded }" data-pause-countdown>
+            <span>暂停剩余</span>
+            <strong :class="{ 'is-soon': view.pauseTimerEnded }">{{ view.pauseTimerEnded ? '即将开始...' : view.pauseClock }}</strong>
+          </div>
         </section>
 
         <section class="pause-side">
@@ -27,24 +31,12 @@ const { state, view } = useOverlay();
           <div class="pause-row"><span>A 队战术暂停</span><strong data-pause-a-status>{{ view.pauseA }}</strong></div>
           <div class="pause-row"><span>B 队战术暂停</span><strong data-pause-b-status>{{ view.pauseB }}</strong></div>
           <div class="pause-row"><span>断线重赛机会</span><strong data-rematch-status>{{ view.rematch }}</strong></div>
-          <div class="pause-row"><span>当前谱面</span><strong>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '未选择' : '谱面标题占位' }}</strong></div>
         </section>
       </div>
     </div>
 
-    <footer class="scene-footer">
-      <section class="footer-cell">
-        <span class="footer-kicker">暂停类型</span>
-        <p class="footer-lead" data-pause-footer-type>{{ view.pauseTypeLabel }}</p>
-      </section>
-      <section class="footer-cell">
-        <span class="footer-kicker">恢复时间</span>
-        <p class="footer-lead">未确认</p>
-      </section>
-      <section class="footer-cell">
-        <span class="footer-kicker">当前谱面</span>
-        <p>{{ view.shared ? view.currentMap?.title || view.currentMap?.label || '未选择' : '谱面标题占位' }}</p>
-      </section>
+    <footer class="scene-footer playing-footer pause-footer">
+      <MapInfo />
     </footer>
   </section>
 </template>

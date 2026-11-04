@@ -146,6 +146,7 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
         <section class="s11-group">
           <header class="s11-group-head"><h3>暂停演示</h3><span>人工状态</span></header>
           <div class="segmented" role="group" aria-label="暂停类型">
+            <button class="mode-button" type="button" data-pause-type-target="normal" :class="{ 'is-active': state.pauseType === 'normal' }" :aria-pressed="state.pauseType === 'normal'" @click="update('pauseType', 'normal')">普通暂停</button>
             <button class="mode-button" type="button" data-pause-type-target="tactical" :class="{ 'is-active': state.pauseType === 'tactical' }" :aria-pressed="state.pauseType === 'tactical'" @click="update('pauseType', 'tactical')">战术暂停</button>
             <button class="mode-button" type="button" data-pause-type-target="technical" :class="{ 'is-active': state.pauseType === 'technical' }" :aria-pressed="state.pauseType === 'technical'" @click="update('pauseType', 'technical')">技术处理</button>
           </div>
@@ -163,7 +164,7 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
               <select class="s11-select" id="rematchBSelect" :value="state.rematchB" @change="select('rematchB', $event)"><option value="unknown">未确认</option><option value="available">可用（人工确认）</option><option value="used">已用</option></select>
             </label>
           </div>
-          <p class="s11-help">战术暂停暂定 3:00；恢复时间未确认，不做倒计时。技术处理不自动消耗战术暂停；30 秒后重赛机会须人工确认，不自动判罚。</p>
+          <p class="s11-help">战术暂停倒计时由直播员在控制台输入分、秒后手动开始，结束不自动返回。技术处理不自动消耗战术暂停；30 秒后重赛机会须人工确认，不自动判罚。</p>
         </section>
 
         <section class="s11-group s11-group--demos">

@@ -16,14 +16,14 @@ function harness() {
   return { store, frame, cmd };
 }
 
-test('an explicit current Pick can join before prior Bans without inventing history or following an unknown old cursor', async () => {
+test('an explicit current Pick joins the generated order and discards only the replaced hand', async () => {
   const { store, cmd } = harness();
   store.state.pool = [1, 2].map(n => ({ id: `nm${n}`, beatmapId: n, mod: 'NM', label: `NM${n}`, title: '', artist: '', difficulty: '' }));
   await cmd('set-roll', { banFirst: 'a', pickFirst: 'a', winner: 'a', a: 80, b: 10 });
   await cmd('set-series', { a: 2, b: 1, reason: '测试：中途加入的核对比分' });
   await cmd('select-bp-action', { team: 'b', kind: 'pick' });
   assert.equal(store.state.action.team, 'b'); assert.equal(store.state.action.kind, 'pick');
-  assert.deepEqual(store.state.queue, []);
+  assert.deepEqual(store.state.queue.slice(0, 2).map(a => [a.kind, a.team]), [['ban', 'b'], ['pick', 'a']]);
   await cmd('choose-pool-map', { entryId: 'nm1' });
   assert.equal(store.state.rounds.length, 1); assert.equal(store.state.rounds[0].pickedBy, 'b');
   assert.deepEqual(store.state.bans, { a: [null, null], b: [null, null] });

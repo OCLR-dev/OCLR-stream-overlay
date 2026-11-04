@@ -52,6 +52,15 @@ test('choosing an already queued action moves it forward once and preserves the 
  s=apply(s,'m0');assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'b');
 });
 
+test('a first-phase Ban skipped by an action override still comes before any Pick',()=>{
+ let s=cmd(setup(),'set-roll',{winner:null,banFirst:'b',pickFirst:'a'});
+ assert.equal(s.action.team,'b');assert.equal(s.action.kind,'ban');assert.equal(s.action.slot,0);
+ s=choose(s,'a','ban');s=apply(s,'m0');
+ assert.equal(s.action.kind,'ban');assert.equal(s.action.team,'b');assert.equal(s.action.slot,0);
+ s=apply(s,'m1');
+ assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'a');assert.equal(s.action.ordinal,1);
+});
+
 test('an old session without poolChoice can undo a newly selected mode completely',()=>{
  let s=setup();delete s.poolChoice;const action=structuredClone(s.action);
  s=choose(s,'b','pick');assert.equal(s.poolChoice.team,'b');

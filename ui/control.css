@@ -30,6 +30,7 @@
 .operator-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }.operator-section-head > span { color: var(--op-muted); font-size: 13px; text-align: right; }
 .operator-actions, .operator-setup, .operator-records, .operator-preview, .operator-incident { min-width: 0; border: 1px solid var(--op-line); background: var(--op-panel); padding: 24px; border-radius: 8px; }
 .operator-action-stack, .operator-side, .operator-incident { display: grid; gap: 16px; }.operator-action-now { color: #f0e3ff !important; padding: 12px; border-left: 3px solid var(--op-purple); background: #322045; }
+.operator-bp-auto { margin: 0; padding-left: 10px; border-left: 2px solid #6a4b91; color: var(--op-muted); font-size: 13px; }
 .operator-team-status { padding: 16px; background: #251739; border-radius: 6px; display: grid; gap: 12px; border-top: 3px solid #ff7591; }.operator-team-status[data-team='b'] { border-color: #70a9ff; }
 .operator .operator-check { display: flex; align-items: center; gap: 12px; min-height: 36px; }.operator-check input { width: 20px; height: 20px; min-height: 0; padding: 0; accent-color: #b280f9; }
 .operator-two, .operator-bp-buttons { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.operator-bp-buttons button[data-team='a'] { border-left: 4px solid #ff7591; }.operator-bp-buttons button[data-team='b'] { border-left: 4px solid #70a9ff; }

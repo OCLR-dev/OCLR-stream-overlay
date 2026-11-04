@@ -262,7 +262,10 @@
 .win-stars { display: flex; gap: 13px; padding: 2px; }
 .win-pip { width: 11px; height: 11px; border: 1.5px solid #ffffffa6; transform: rotate(45deg); }
 .win-pip.is-filled { background: #fff; border-color: #fff; box-shadow: 0 0 10px #ffffff8c; }
-.team-block--b .series-row, .team-block--b .win-stars { flex-direction: row-reverse; }
+/* Win pips fill from the centre outward: the first pip is nearest the event
+   block on both sides, then the row grows toward the outer edge. */
+.team-block--a .win-stars { flex-direction: row-reverse; }
+.team-block--b .win-stars { flex-direction: row; }
 .header-score-line { display: contents; }
 /* Flag placement trial shared by the console preview and standalone output. */
 .team-flag-preview { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
@@ -284,6 +287,63 @@
 .event-meta { position: absolute; top: 94px; left: 50%; display: inline-flex; align-items: center; gap: 10px; max-width: 400px; height: 28px; border: 1px solid var(--purple); border-radius: 6px; padding: 2px 18px; background: var(--paper); color: var(--purple-light); font-family: var(--display); font-size: 14px; font-weight: 700; letter-spacing: .1em; white-space: nowrap; transform: translateX(-50%); }
 .event-meta strong { overflow: hidden; color: var(--ink); font-size: 20px; text-overflow: ellipsis; }
 .event-meta > span { flex-shrink: 0; border-left: 1px solid #7c3aed99; padding-left: 10px; }
+
+/* Automatic tosu win: a full-header colour sweep enters from the winning side,
+   holds the flag and result copy for three seconds, then exits the other way. */
+.map-win-layer { position: absolute; inset: 0; z-index: 20; overflow: hidden; pointer-events: none; }
+.map-win-banner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  color: #fff;
+  animation: map-win-sweep-a 5s cubic-bezier(.65, 0, .35, 1) both;
+  will-change: transform;
+}
+.map-win-banner[data-team='a'] { background: linear-gradient(100deg, #1c0716 0%, var(--team-a-dark) 48%, var(--team-a) 100%); }
+.map-win-banner[data-team='b'] {
+  flex-direction: row-reverse;
+  background: linear-gradient(260deg, #071228 0%, var(--team-b-dark) 48%, var(--team-b) 100%);
+  animation-name: map-win-sweep-b;
+}
+.map-win-banner::before {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, #ffffff30, transparent 56%),
+    repeating-linear-gradient(115deg, #ffffff00 0 68px, #ffffff0d 68px 70px),
+    linear-gradient(180deg, #ffffff1f, transparent 24%, transparent 76%, #00000033);
+  content: '';
+}
+.map-win-banner::after { position: absolute; inset: 0 0 auto; height: 3px; background: #ffffffa6; content: ''; }
+.map-win-copy { position: relative; display: flex; align-items: baseline; gap: 18px; min-width: 0; }
+.map-win-name {
+  max-width: 760px;
+  min-width: 0;
+  overflow: hidden;
+  font: 800 62px/1 var(--display);
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-shadow: 0 3px 26px #0009;
+  white-space: nowrap;
+}
+.map-win-suffix { flex: none; font: 700 40px/1 var(--display); letter-spacing: .2em; opacity: .92; text-shadow: 0 2px 18px #0007; white-space: nowrap; }
+.map-win-banner .team-flag-preview { position: static; width: 150px; margin: 0; transform: none; }
+.map-win-banner .team-flag-preview svg { width: 150px; height: 90px; border: 2px solid #ffffffb3; box-shadow: 0 14px 44px #00000073; }
+@keyframes map-win-sweep-a {
+  0% { transform: translate3d(-101%, 0, 0); }
+  20%, 80% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(101%, 0, 0); }
+}
+@keyframes map-win-sweep-b {
+  0% { transform: translate3d(101%, 0, 0); }
+  20%, 80% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-101%, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .map-win-banner { animation: none; } }
+
 
 /* Six scenes stay mounted. Gameplay and Ranking use one Playing capture grid. */
 .scene-stack { position: relative; flex: 0 0 900px; height: 900px; z-index: 1; }
@@ -364,8 +424,9 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 
 /* The raised label leaves a continuous track through the centre. Only the
    lead fill scales; the capture grid and its ancestors stay fixed. */
-.playing-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
+.playing-footer, .pause-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
 .playing-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, var(--team-a) 0 50%, var(--team-b) 50% 100%); pointer-events: none; content: ''; }
+.pause-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, #7c3aed66, #b794ff99 50%, #7c3aed66); pointer-events: none; content: ''; }
 .score-stage { position: absolute; top: -768px; left: 340px; width: 1240px; height: 40px; overflow: visible; }
 .score-stage::before { position: absolute; top: 28px; left: 0; right: 0; height: 8px; border-radius: 4px; background: #352547; content: ''; }
 .score-center-anchor { position: absolute; top: 25px; left: 50%; width: 2px; height: 14px; background: #c9a8ff; }
@@ -398,7 +459,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-star-slot b { max-width: 100%; position: relative; z-index: 1; overflow: hidden; padding-inline: 6px; font-family: var(--display); font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
 .map-star-caption, .map-star-slot b,
-.map-slot > span:not(.map-pick-banner), .map-slot > b { text-shadow: var(--slot-shadow, none); }
+.map-slot > span, .map-slot > b { text-shadow: var(--slot-shadow, none); }
 /* White diamonds rise toward the upper right inside both edge slots, below their copy. */
 .slot-particles { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .slot-particle { position: absolute; width: var(--size); height: var(--size); background: #fff; box-shadow: 0 0 6px #ffffff73; opacity: 0; transform: rotate(45deg); animation: slot-diamond-rise var(--duration) linear var(--delay) infinite; }
@@ -420,7 +481,16 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-subline { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; min-width: 0; }
 .map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 20px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.map-rule { flex-shrink: 0; max-width: 60%; overflow: hidden; color: #e6cbff; font-size: 13px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.map-rule { flex: 0 1 auto; min-width: 0; max-width: 60%; color: #e6cbff; font-size: 13px; line-height: 1.2; }
+/* A long map rule becomes a seamless two-copy ticker; short rules stay put.
+   Keep the 28px gap in sync with ScrollingText.vue's GAP. */
+.scrolling-text { display: block; overflow: hidden; white-space: nowrap; }
+.scrolling-text-track { display: inline-flex; }
+.scrolling-text-copy { display: inline-block; flex: none; }
+.scrolling-text.is-scrolling .scrolling-text-copy { padding-right: 28px; }
+.scrolling-text.is-scrolling .scrolling-text-track { animation: scrolling-text-marquee var(--scrolling-text-duration, 12s) linear infinite; will-change: transform; }
+@keyframes scrolling-text-marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .scrolling-text.is-scrolling .scrolling-text-track { animation: none; } }
 .map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
 .map-params > span { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
 .map-params > span b { color: #c9a8ff; font-weight: 700; }
@@ -429,14 +499,10 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Conditional map status sits at the bottom-right, opposite the CS/AR chips. */
 .map-status-slot { display: flex; align-items: center; gap: 8px; overflow: hidden; margin-left: auto; min-width: 0; }
 .map-status-slot .map-rule { max-width: 340px; flex-shrink: 1; }
-.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; padding-top: 28px; background: var(--mod-bg); color: var(--mod-ink); }
-.map-slot[data-banner='false'] { padding-top: 0; }
+.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; background: var(--mod-bg); color: var(--mod-ink); }
 .map-slot b { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-slot span { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
-.map-slot > span:not(.map-pick-banner) { position: relative; z-index: 1; }
-.map-slot .map-pick-banner { position: absolute; inset: 0 0 auto; z-index: 2; display: flex; align-items: center; justify-content: center; height: 28px; background: #241349; color: var(--ink); font-family: var(--sans); font-size: 14px; font-weight: 800; letter-spacing: .02em; }
-.map-slot .map-pick-banner[data-team='a'] { background: var(--team-a); color: #150a2c; }
-.map-slot .map-pick-banner[data-team='b'] { background: var(--team-b); color: #150a2c; }
+.map-slot > span { position: relative; z-index: 1; }
 
 /* Mappool keeps the S11 mod-grouped rows, cover tiles, mod colours, stronger
    picks and subdued bans; team Ban/EX status is rendered in the shared header. */
@@ -481,16 +547,13 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
-/* Ban/Pick darkens every card element, including the star badge, while the
-   Ban prompt itself sits centered above that veil. */
+/* Ban darkens every card element, including the star badge, while the Ban
+   prompt itself sits centered above that veil. Picked maps keep their normal
+   artwork and team-tinted frame with no dark overlay. */
 .map-state-veil { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #07040fa8; }
 .map-entry.is-banned .map-state-veil { background: #07040fd9; }
-/* Keep the card's black selection veil, then tint it with the team that owns
-   the Ban/Pick. Once a map result exists, the winning team's colour wins over
-   the original owner so a blue win on a red pick still reads blue. */
+/* Tint the Ban veil with the team that owns it so a blue Ban still reads blue. */
 .map-state-veil::after { position: absolute; inset: 0; content: ''; background: var(--map-team-color); opacity: .1; }
-.map-state-veil[data-winner='a']::after { background: var(--team-a); }
-.map-state-veil[data-winner='b']::after { background: var(--team-b); }
 .map-state-label { position: absolute; z-index: 7; pointer-events: none; }
 .map-state-label--center { inset: 0; display: grid; place-items: center; animation: map-status-reveal 352ms linear 1248ms both; }
 /* Winner labels share the Ban pill's centered treatment, but no confirmation
@@ -535,6 +598,14 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry[data-team='b'] { --map-team-color: var(--team-b); --map-team-ink: #b7d3ff; }
 .map-entry:is(.is-banned, .is-picked) { border-width: 2px; border-color: var(--map-team-color); }
 .map-entry:is(.is-banned, .is-picked)::after { position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 2px var(--map-team-color); content: ''; }
+/* A picked map keeps its team-tinted frame and adds a chasing light around the
+   card while the pick still belongs to a red/blue selection state. The SVG
+   normalises its perimeter to 100 units, so one dash cycle stays even on cards
+   of different widths. */
+.map-turn-marquee { position: absolute; inset: 3px; z-index: 9; width: calc(100% - 6px); height: calc(100% - 6px); overflow: visible; pointer-events: none; color: var(--map-team-color); }
+.map-turn-marquee rect { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1.1 .9; filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 5px color-mix(in srgb, currentColor 60%, transparent)); animation: map-turn-marquee 800ms linear infinite; }
+@keyframes map-turn-marquee { to { stroke-dashoffset: -2; } }
+@media (prefers-reduced-motion: reduce) { .map-turn-marquee rect { animation: none; } }
 .map-entry.is-banned { border-color: color-mix(in srgb, var(--map-team-color) 45%, #241349); background: #110c1c; }
 .map-entry.is-banned::after { box-shadow: none; }
 .map-entry.is-banned .map-entry-media { background: #211b2d; }
@@ -623,14 +694,23 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .readiness-state { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 20px; color: var(--muted); font-size: 13px; }
 
 /* Series result: reference winner typography, with an honest unconfirmed state. */
-.victory-body { display: flex; flex-direction: column; padding: 4px 60px 24px; background: repeating-linear-gradient(115deg, #ffffff04 0 60px, transparent 60px 120px); }
+.victory-body { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; padding: 4px 60px 24px; }
+.victory-body::before { content: ""; position: absolute; inset: -2px -160px; background: repeating-linear-gradient(115deg, #ffffff04 0 60px, #ffffff00 60px 120px); animation: victory-stripes-drift 13.24s linear infinite; pointer-events: none; z-index: -1; }
+@keyframes victory-stripes-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-132.405px); }
+}
+@media (prefers-reduced-motion: reduce) { .victory-body::before { animation: none; } }
 .result-head { flex-basis: 52px; height: 52px; }
 .victory-hero { position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 0; text-align: center; }
 .victory-mark { color: #b794ff; font-family: var(--display); font-size: 82px; font-weight: 800; letter-spacing: .4em; line-height: 1; padding-left: .4em; text-shadow: 0 0 44px #7c3aed66; }
 .victory-kicker { color: #c4ade5; font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .2em; }
 .victory-copy h3 { margin: 18px 0 0; font-size: 82px; font-weight: 800; letter-spacing: .03em; }
-.victory-status { display: flex; justify-content: center; gap: 22px; margin: 22px 0 0; color: #e9dcff; font-size: 24px; font-weight: 700; }
-.victory-status span { color: var(--purple-light); font-family: var(--display); }
+.victory-status { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 22px; align-items: baseline; margin: 22px 0 0; color: #e9dcff; font-size: 24px; font-weight: 700; }
+.victory-status .status-team { min-width: 0; }
+.victory-status .status-team--a { justify-self: end; text-align: right; }
+.victory-status .status-team--b { justify-self: start; text-align: left; }
+.victory-status .status-vs { color: var(--purple-light); font-family: var(--display); }
 .victory-result { display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .victory-result > span { color: var(--muted); font-size: 13px; }
 .victory-result strong { display: flex; align-items: center; gap: 50px; font-family: var(--display); font-size: 112px; font-weight: 800; line-height: 1; }
@@ -641,15 +721,24 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Pause uses the same angular, purple-lit stage instead of a separate theme. */
 .pause-body { display: flex; flex-direction: column; padding: 8px 60px 28px; }
 .pause-layout { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr) 500px; gap: 30px; min-height: 0; }
-.pause-primary { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #7c3aed80; background: radial-gradient(ellipse at 50% 30%, #6a2c9b55, transparent 70%), repeating-linear-gradient(115deg, #ffffff04 0 45px, transparent 45px 90px), #1b0f3ab3; text-align: center; }
+.pause-primary { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #7c3aed80; background: radial-gradient(ellipse at 50% 30%, #6a2c9b55, transparent 70%), #1b0f3ab3; text-align: center; }
+.pause-stripes { position: absolute; inset: -2px -160px; z-index: -1; background: repeating-linear-gradient(115deg, #ffffff04 0 45px, #ffffff00 45px 90px); animation: pause-stripes-drift 9.93s linear infinite; pointer-events: none; }
+@keyframes pause-stripes-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-99.304px); }
+}
+@media (prefers-reduced-motion: reduce) { .pause-stripes { animation: none; } }
 .pause-primary::before, .pause-primary::after { position: absolute; width: 56px; height: 56px; border-color: #b794ff; border-style: solid; content: ''; }
 .pause-primary::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
 .pause-primary::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
 .pause-mark { display: flex; gap: 18px; margin-bottom: 18px; }
 .pause-mark span { width: 30px; height: 96px; background: linear-gradient(#c5a3ff, #7c3aed); box-shadow: 0 0 32px #7c3aed66; transform: skew(-8deg); }
 .pause-primary h3 { margin: 18px 0 0; font-size: 64px; font-weight: 800; letter-spacing: .12em; }
-.pause-time { margin: 24px 0 0; color: #dcc3ff; font-family: var(--display); font-size: 46px; font-weight: 700; }
-.pause-recovery { margin: 18px 0 0; color: var(--muted); font-size: 20px; }
+.pause-countdown { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 24px; }
+.pause-countdown span { color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .2em; }
+.pause-countdown strong { color: #e6d6ff; font-family: var(--display); font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; line-height: 1; text-shadow: 0 0 30px #7c3aed55; }
+.pause-countdown strong.is-soon { font-size: 44px; letter-spacing: .12em; padding: 12px 0; }
+.pause-countdown.is-ended span, .pause-countdown.is-ended strong { color: #ffb38a; }
 .pause-side { display: flex; flex-direction: column; justify-content: center; border-top: 4px solid var(--purple); background: #241349b3; padding: 30px; }
 .pause-row { display: flex; justify-content: space-between; align-items: center; gap: 22px; border-bottom: 1px solid #7653aa66; padding: 25px 0; }
 .pause-row:last-child { border-bottom: 0; }

@@ -96,10 +96,13 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used', 'has-winner': !!entry.winnerTeam }"
           :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
           <span class="map-confirmation" aria-hidden="true" :data-from="entry.actionTeam === 'b' ? 'right' : 'left'" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm', from: entry.actionTeam === 'b' ? 'right' : 'left' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
-          <span v-if="entry.status === 'banned' || entry.status === 'picked' || entry.status === 'used'" class="map-state-veil" :data-winner="entry.winnerTeam" aria-hidden="true"></span>
+          <span v-if="entry.status === 'banned'" class="map-state-veil" aria-hidden="true"></span>
           <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--center': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
             <span class="map-status" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ stateText(entry) }}</span>
           </span>
+          <svg v-if="chosen(entry)" class="map-turn-marquee" aria-hidden="true" focusable="false">
+            <rect x="0" y="0" width="100%" height="100%" rx="4" pathLength="100" />
+          </svg>
           <svg v-if="entry.status === 'banned'" class="map-ban-slash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke" /></svg>
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />
           <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" variant="list" /></span>
