@@ -424,8 +424,9 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 
 /* The raised label leaves a continuous track through the centre. Only the
    lead fill scales; the capture grid and its ancestors stay fixed. */
-.playing-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
+.playing-footer, .pause-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
 .playing-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, var(--team-a) 0 50%, var(--team-b) 50% 100%); pointer-events: none; content: ''; }
+.pause-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, #7c3aed66, #b794ff99 50%, #7c3aed66); pointer-events: none; content: ''; }
 .score-stage { position: absolute; top: -768px; left: 340px; width: 1240px; height: 40px; overflow: visible; }
 .score-stage::before { position: absolute; top: 28px; left: 0; right: 0; height: 8px; border-radius: 4px; background: #352547; content: ''; }
 .score-center-anchor { position: absolute; top: 25px; left: 50%; width: 2px; height: 14px; background: #c9a8ff; }
@@ -714,15 +715,24 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Pause uses the same angular, purple-lit stage instead of a separate theme. */
 .pause-body { display: flex; flex-direction: column; padding: 8px 60px 28px; }
 .pause-layout { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr) 500px; gap: 30px; min-height: 0; }
-.pause-primary { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #7c3aed80; background: radial-gradient(ellipse at 50% 30%, #6a2c9b55, transparent 70%), repeating-linear-gradient(115deg, #ffffff04 0 45px, transparent 45px 90px), #1b0f3ab3; text-align: center; }
+.pause-primary { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #7c3aed80; background: radial-gradient(ellipse at 50% 30%, #6a2c9b55, transparent 70%), #1b0f3ab3; text-align: center; }
+.pause-stripes { position: absolute; inset: -2px -160px; z-index: -1; background: repeating-linear-gradient(115deg, #ffffff04 0 45px, #ffffff00 45px 90px); animation: pause-stripes-drift 9.93s linear infinite; pointer-events: none; }
+@keyframes pause-stripes-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-99.304px); }
+}
+@media (prefers-reduced-motion: reduce) { .pause-stripes { animation: none; } }
 .pause-primary::before, .pause-primary::after { position: absolute; width: 56px; height: 56px; border-color: #b794ff; border-style: solid; content: ''; }
 .pause-primary::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
 .pause-primary::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
 .pause-mark { display: flex; gap: 18px; margin-bottom: 18px; }
 .pause-mark span { width: 30px; height: 96px; background: linear-gradient(#c5a3ff, #7c3aed); box-shadow: 0 0 32px #7c3aed66; transform: skew(-8deg); }
 .pause-primary h3 { margin: 18px 0 0; font-size: 64px; font-weight: 800; letter-spacing: .12em; }
-.pause-time { margin: 24px 0 0; color: #dcc3ff; font-family: var(--display); font-size: 46px; font-weight: 700; }
-.pause-recovery { margin: 18px 0 0; color: var(--muted); font-size: 20px; }
+.pause-countdown { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 24px; }
+.pause-countdown span { color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .2em; }
+.pause-countdown strong { color: #e6d6ff; font-family: var(--display); font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; line-height: 1; text-shadow: 0 0 30px #7c3aed55; }
+.pause-countdown strong.is-soon { font-size: 44px; letter-spacing: .12em; padding: 12px 0; }
+.pause-countdown.is-ended span, .pause-countdown.is-ended strong { color: #ffb38a; }
 .pause-side { display: flex; flex-direction: column; justify-content: center; border-top: 4px solid var(--purple); background: #241349b3; padding: 30px; }
 .pause-row { display: flex; justify-content: space-between; align-items: center; gap: 22px; border-bottom: 1px solid #7653aa66; padding: 25px 0; }
 .pause-row:last-child { border-bottom: 0; }

@@ -21,8 +21,9 @@ provide(overlayKey, controller);
 const { state, view, motionReady, motionScope } = controller;
 const { stage, scale } = useCanvasFit();
 // Chat mounts once outside the scene stack. Scene changes only toggle its
-// visibility, so neither chat surface is re-created or reloaded.
-const chatScene = new Set(['waiting', 'roll', 'mappool', 'playing', 'victory']);
+// visibility, so neither chat surface is re-created or reloaded. Pause keeps
+// the same bottom chat and map layout as Playing.
+const chatScene = new Set(['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause']);
 const chatVisible = computed(() => chatScene.has(state.scene));
 </script>
 

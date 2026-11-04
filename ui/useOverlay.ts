@@ -11,6 +11,15 @@ export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
   const sessionClient = shared ? useSession() : null;
   const session = computed(() => sessionClient?.snapshot.value?.session || null);
+  // The pause countdown is an absolute deadline from the local session service;
+  // tick locally only while it exists, so the shared output stays cheap.
+  const clock = ref(Date.now());
+  let pauseClockTimer: ReturnType<typeof setInterval> | undefined;
+  if (shared) pauseClockTimer = setInterval(() => {
+    if (session.value?.scene === 'pause' && (session.value?.pauseTimer || session.value?.resumeAt)) clock.value = Date.now();
+  }, 250);
+  watch(() => [session.value?.pauseTimer, session.value?.resumeAt], () => { clock.value = Date.now(); });
+  onUnmounted(() => clearInterval(pauseClockTimer));
   const motionScope = computed(() => shared ? `${session.value?.id}:${sessionClient?.presentationEpoch.value}:${sessionClient?.connection.value}` : 'demo');
   const motionReady = useMotionReady(motionScope);
   if (shared) watch(session, s => {
@@ -75,6 +84,14 @@ export function createOverlay(shared = false) {
     const resultScores = rankingScores.value?.scores || resultTeamScores(envelope, sessionClient?.connection.value);
     const resultA = shared ? formatted(resultScores?.left) : base.resultA;
     const resultB = shared ? formatted(resultScores?.right) : base.resultB;
+    const pauseTimer = shared ? s?.pauseTimer || null : null;
+    const pauseRemainingMs = pauseTimer ? Math.max(0, Math.min(pauseTimer.durationSeconds * 1000, pauseTimer.endsAt - clock.value)) : 0;
+    const pauseSecondsLeft = Math.ceil(pauseRemainingMs / 1000);
+    const pauseClock = pauseTimer ? `${String(Math.floor(pauseSecondsLeft / 60)).padStart(2, '0')}:${String(pauseSecondsLeft % 60).padStart(2, '0')}` : '';
+    const resumeAt = shared ? s?.resumeAt || null : null;
+    const resumeRemainingMs = resumeAt ? Math.max(0, Math.min(10000, resumeAt - clock.value)) : 0;
+    const resumeSecondsLeft = Math.ceil(resumeRemainingMs / 1000);
+    const resumeClock = resumeAt ? `00:${String(resumeSecondsLeft).padStart(2, '0')}` : '';
     const pool = shared ? (s?.pool || []).map(entry => {
       const { status, team } = poolDisplay(s!, entry.id);
       const winnerTeam = status === 'picked' || status === 'used' ? poolWinner(s!, entry.id) : null;
@@ -109,6 +126,8 @@ export function createOverlay(shared = false) {
         return { mod: entry.mod, number: entry.label.match(/(\d+)$/)?.[1] || null };
       },
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
+      pauseTimer, pauseClock, pauseTimerEnded: !!pauseTimer && pauseSecondsLeft === 0,
+      resumeAt, resumeClock,
       pickTeam: playingPickTeam(s, currentMap),
       showPlayingScores: !shared || !!scores,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,

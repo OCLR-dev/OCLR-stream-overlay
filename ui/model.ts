@@ -44,7 +44,7 @@ export interface OverlayState {
   pickFirst: 'unknown' | Team;
   banFirst: 'unknown' | Team;
   banSlots: Record<Team, [Ban, Ban]>;
-  pauseType: 'tactical' | 'technical';
+  pauseType: 'normal' | 'technical' | 'tactical';
   tacticalA: 'available' | 'used';
   tacticalB: 'available' | 'used';
   rematchA: 'unknown' | 'available' | 'used';
@@ -106,7 +106,7 @@ export function parseLocation(search = '', hash = ''): OverlayState {
     pickFirst: known(get('pickFirst'), ['unknown', 'a', 'b'], 'unknown'),
     banFirst: known(get('banFirst'), ['unknown', 'a', 'b'], 'unknown'),
     banSlots: { a: readBans('A'), b: readBans('B') },
-    pauseType: known(get('pauseType'), ['tactical', 'technical'], 'tactical'),
+    pauseType: known(get('pauseType'), ['normal', 'tactical', 'technical'], 'normal'),
     tacticalA: known(get('tacticalA'), ['available', 'used'], 'available'),
     tacticalB: known(get('tacticalB'), ['available', 'used'], 'available'),
     rematchA: known(get('rematchA'), ['unknown', 'available', 'used'], 'unknown'),
@@ -166,8 +166,8 @@ export function derive(state: OverlayState) {
     commentary: state.arrival === 'both' ? '双方选手已到场，等待就绪。' : state.arrival === 'a' ? '示例A队已到场，示例B队等待中。' : '等待双方选手入场。',
     scoreA: leadDemos[state.lead][0], scoreB: leadDemos[state.lead][1],
     resultA: resultTotal([350000, 320000, 300000, 280000]), resultB: resultTotal([330000, 310000, 290000, 260000]),
-    pauseTitle: state.pauseType === 'tactical' ? '战术暂停' : '技术处理中',
-    pauseTypeLabel: state.pauseType === 'tactical' ? '战术暂停' : '技术处理',
+    pauseTitle: state.pauseType === 'normal' ? '请稍候' : state.pauseType === 'tactical' ? '战术暂停' : '技术处理中',
+    pauseTypeLabel: state.pauseType === 'normal' ? '普通暂停' : state.pauseType === 'tactical' ? '战术暂停' : '技术处理',
     pauseA: state.tacticalA === 'used' ? '已用' : '可用', pauseB: state.tacticalB === 'used' ? '已用' : '可用',
     rematch: `A ${rematchLabel(state.rematchA)} · B ${rematchLabel(state.rematchB)}`
   };

@@ -12,6 +12,10 @@ import { ReadyReturnRecovery } from './ready-return-recovery.js';
 export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
     this.file = file; this.state = restoreAutomation(state); this.listeners = new Set(); this.automation = new RoomAutomation();
+    if (this.state.pauseTimer === undefined) this.state.pauseTimer = null;
+    if (this.state.resumeAt === undefined) this.state.resumeAt = null;
+    if (!['normal', 'technical', 'tactical'].includes(this.state.pauseType)) this.state.pauseType = 'normal';
+    this.resumeTimer = null;
     this.parameterHold = null;
     // Remember when the room itself changed map, so "use the current room map"
     // cannot silently consume a selection that has been sitting there for long.
@@ -30,6 +34,7 @@ export class SessionStore {
       await this.save(next);
       this.emit();
     }).catch(() => { this.live.note = '自动切换画面未保存，请检查本机存储'; this.emit(); }));
+    this.scheduleResume();
   }
 
   static async open(file) {
@@ -50,7 +55,36 @@ export class SessionStore {
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }
   enqueue(fn) { const task = this.tail.then(fn); this.tail = task.catch(() => {}); return task; }
-  close() { this.pickScene.cancel(); }
+  close() { this.pickScene.cancel(); clearTimeout(this.resumeTimer); this.resumeTimer = null; }
+
+  // "即将开始" gives a 10 second grace period. The deadline lives in the
+  // session, so a reload keeps counting and the output does not depend on the
+  // console staying open.
+  scheduleResume() {
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = null;
+    if (!this.state.paused || !Number.isSafeInteger(this.state.resumeAt)) return;
+    const delay = Math.max(0, this.state.resumeAt - Date.now());
+    this.resumeTimer = setTimeout(() => {
+      this.resumeTimer = null;
+      this.resumeNow();
+    }, delay);
+    this.resumeTimer.unref?.();
+  }
+
+  resumeNow() {
+    this.enqueue(async () => {
+      if (!this.state.paused || !this.state.returnScene || !Number.isSafeInteger(this.state.resumeAt)) return;
+      if (this.state.resumeAt > Date.now()) { this.scheduleResume(); return; }
+      const next = automaticTransition(this.state, draft => {
+        draft.scene = draft.returnScene; draft.returnScene = null; draft.paused = false;
+        draft.sceneOverride = null; draft.pauseTimer = null; draft.resumeAt = null;
+      }, '“即将开始”倒计时结束：已自动返回暂停前的画面', randomUUID(), { undo: false });
+      await this.save(next);
+      this.live.note = '“即将开始”倒计时结束，已自动返回暂停前的画面';
+      this.emit();
+    }).catch(() => { this.live.note = '“即将开始”自动返回未保存，请检查本机存储'; this.emit(); });
+  }
 
   async save(next, { allowPickScene = true } = {}) {
     if (this.file) {
@@ -66,6 +100,7 @@ export class SessionStore {
     const before = this.state;
     this.state = next;
     this.pickScene.update(before, next, allowPickScene);
+    this.scheduleResume();
   }
 
   command(command) {
