@@ -5,6 +5,7 @@ import { useMotionReady } from './motion';
 import { poolDisplay, poolWinner } from './poolDisplay';
 import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, liveTeamScores, playingPickTeam, resultTeamScores } from './liveScores';
 import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
+import { formatTeamScore } from './scoreFormat';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -24,14 +25,37 @@ export function createOverlay(shared = false) {
     state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
   }, { immediate: true });
   const rankingScores = shallowRef<RankingScoreHold | null>(null);
+  // Display memory for the brief Panic reload gap. It never supplies a result,
+  // and it is dropped as soon as the connection or scene changes.
+  const lastScores = shallowRef<{ key: string; left: number; right: number } | null>(null);
+  const scoreKey = (envelope: { session: { id: string; currentRoundId: string | null } } | null | undefined) =>
+    envelope?.session ? `${envelope.session.id}:${envelope.session.currentRoundId || ''}` : '';
   if (shared) watch([() => sessionClient?.snapshot.value, () => sessionClient?.connection.value, () => state.scene],
     ([envelope, connection, scene]) => {
       rankingScores.value = retainRankingScores(envelope, connection, scene, rankingScores.value);
+      const scores = rankingScores.value?.scores || liveTeamScores(envelope, connection);
+      if (connection === 'synced' && scene === 'playing' && scores &&
+        Number.isSafeInteger(scores.left) && scores.left! >= 0 && Number.isSafeInteger(scores.right) && scores.right! >= 0) {
+        lastScores.value = { key: scoreKey(envelope), left: scores.left!, right: scores.right! };
+      } else if (connection !== 'synced' || scene !== 'playing') {
+        lastScores.value = null;
+      }
     }, { immediate: true, flush: 'sync' });
+  // Panic reloads briefly report an invalid room. Keep the last complete totals
+  // on screen until Playing comes back or the scene switches.
+  const automaticPanicGap = computed(() => {
+    const s = session.value;
+    return !!s?.incident && s.incident.source === 'tosu' && s.incident.kind === 'unverified' &&
+      s.incident.roundId === s.currentRoundId && sessionClient?.connection.value === 'synced';
+  });
   const view = computed(() => {
     const base = derive(state);
     const s = session.value;
     const envelope = sessionClient?.snapshot.value;
+    const remembered = automaticPanicGap.value && lastScores.value?.key === (s ? `${s.id}:${s.currentRoundId || ''}` : '')
+      ? lastScores.value : null;
+    const scores = rankingScores.value?.scores || liveTeamScores(envelope, sessionClient?.connection.value) ||
+      (remembered ? { left: remembered.left, right: remembered.right } : null);
     const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
     const round = s?.rounds.find(r => r.id === s.currentRoundId);
     const recordedMap = s?.pool.find(e => e.id === round?.entryId) || null;
@@ -42,11 +66,10 @@ export function createOverlay(shared = false) {
     })) : base.roster(team);
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = liveRoom(envelope, sessionClient?.connection.value);
-    const scores = rankingScores.value?.scores || liveTeamScores(envelope, sessionClient?.connection.value);
     const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
     const currentMap = state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) || recordedMap : recordedMap;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
-    const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
+    const formatted = (n: number | null | undefined) => formatTeamScore(n);
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
     const scoreB = shared ? formatted(scores?.right) : base.scoreB;
     const resultScores = rankingScores.value?.scores || resultTeamScores(envelope, sessionClient?.connection.value);
@@ -158,7 +181,7 @@ export function createOverlay(shared = false) {
     document.body.classList.remove('is-clean', 'is-shared-output');
     for (const key of ['scene', 'clean', 'mode', 'activeMode', 'lead']) delete document.body.dataset[key];
   });
-  return { state, view, motionScope, motionReady, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
+  return { state, view, motionScope, motionReady, session, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
 }
 export type OverlayController = ReturnType<typeof createOverlay>;
 export const overlayKey: InjectionKey<OverlayController> = Symbol('overlay');

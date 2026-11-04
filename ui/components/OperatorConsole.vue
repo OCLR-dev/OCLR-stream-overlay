@@ -10,6 +10,7 @@ import { modColorStyle } from '../modColors';
 import { useMotionReady } from '../motion';
 import { liveRoom, liveTeamScores } from '../liveScores';
 import { formatRosterInput, parseRosterInput } from '../rosterInput';
+import { formatTeamScore } from '../scoreFormat';
 import '../control.css';
 
 const { snapshot, connection, error, busy, command, presentationEpoch } = useSession();
@@ -27,8 +28,33 @@ const live = computed(() => snapshot.value?.live);
 const catalog = computed(() => snapshot.value?.catalog);
 const disabled = computed(() => busy.value || connection.value !== 'synced');
 const round = computed(() => s.value?.rounds.find(r => r.id === s.value?.currentRoundId));
-const roomScores = computed(() => liveTeamScores(snapshot.value, connection.value));
-const teamScore = (value: number | null | undefined) => value == null ? '—' : value.toLocaleString('en-US');
+// Keep the last complete totals on screen while a Panic reload temporarily
+// invalidates the room; fresh room scores replace them as soon as they arrive.
+const lastRoomScores = ref<{ key: string; left: number; right: number } | null>(null);
+const automaticPanicGap = computed(() => {
+  const session = s.value;
+  return connection.value === 'synced' && !!session?.incident && session.incident.source === 'tosu' &&
+    session.incident.kind === 'unverified' && session.incident.roundId === session.currentRoundId;
+});
+const roomScores = computed(() => {
+  const live = liveTeamScores(snapshot.value, connection.value);
+  if (live) return live;
+  const session = s.value;
+  if (automaticPanicGap.value && session && lastRoomScores.value?.key === `${session.id}:${session.currentRoundId || ''}`)
+    return { left: lastRoomScores.value.left, right: lastRoomScores.value.right };
+  return null;
+});
+watch([snapshot, connection, () => s.value?.scene], ([envelope, link, scene]) => {
+  const scores = liveTeamScores(envelope, link);
+  if (link === 'synced' && normalizeScene(scene) === 'playing' && scores &&
+    Number.isSafeInteger(scores.left) && scores.left! >= 0 && Number.isSafeInteger(scores.right) && scores.right! >= 0) {
+    lastRoomScores.value = { key: envelope?.session ? `${envelope.session.id}:${envelope.session.currentRoundId || ''}` : '',
+      left: scores.left!, right: scores.right! };
+  } else if (link !== 'synced' || normalizeScene(scene) !== 'playing') {
+    lastRoomScores.value = null;
+  }
+}, { immediate: true, flush: 'sync' });
+const teamScore = (value: number | null | undefined) => formatTeamScore(value);
 const entry = (id?: string | null) => s.value?.pool.find(e => e.id === id);
 const automaticTeamNames = computed(() => !!liveRoom(snapshot.value, connection.value));
 const names = computed(() => ({ a: s.value?.match.teams.a.name || '左队', b: s.value?.match.teams.b.name || '右队' }));

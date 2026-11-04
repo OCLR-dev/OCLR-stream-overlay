@@ -100,6 +100,9 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
           <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--center': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
             <span class="map-status" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ stateText(entry) }}</span>
           </span>
+          <svg v-if="chosen(entry)" class="map-turn-marquee" aria-hidden="true" focusable="false">
+            <rect x="0" y="0" width="100%" height="100%" rx="4" pathLength="100" />
+          </svg>
           <svg v-if="entry.status === 'banned'" class="map-ban-slash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke" /></svg>
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />
           <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" variant="list" /></span>
