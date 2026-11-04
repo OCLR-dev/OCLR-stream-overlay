@@ -712,6 +712,24 @@ function applyCommand(s, command) {
       requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
       s.winner = p.team; s.phase = 'winner'; s.scene = 'victory'; return '展示人工核对的 Winner';
     }
+    case 'clear-records': {
+      // Keep the setup the operator typed in (teams, rosters, pool, stage,
+      // source, automation), but forget the played series. One undo entry
+      // remains the safety net.
+      const kept = { schema: s.schema, id: s.id, match: s.match, pool: s.pool, auto: s.auto, automationVersion: s.automationVersion };
+      Object.assign(s, {
+        poolMarks: [], poolChoice: null, arrived: { a: false, b: false }, ready: { a: false, b: false },
+        roll: { a: null, b: null, winner: null, pickFirst: null, banFirst: null },
+        phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null,
+        action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] },
+        planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
+        rounds: [], currentRoundId: null, incident: null, winner: null, seriesAdjustment: { a: 0, b: 0 },
+        ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'technical',
+        history: [], undo: [], commandIds: [],
+      });
+      Object.assign(s, kept);
+      return '已清空比赛记录；保留本场队伍、名单、图池、标题、阶段与自动跟随设置';
+    }
     case 'next-match': {
       requireValue(p.keepRoomBinding === undefined || typeof p.keepRoomBinding === 'boolean', '房间连接保留选项无效');
       const fresh = newSession();

@@ -98,6 +98,8 @@ const localError = ref('');
 const settings = ref(false);
 const initializeDialog = ref<HTMLDialogElement>();
 const initializeError = ref('');
+const clearRecordsDialog = ref<HTMLDialogElement>();
+const clearRecordsError = ref('');
 const keepRoomBinding = ref(false);
 const canKeepRoomBinding = computed(() => s.value?.auto.profile === 'stable-tourney' && !!s.value.auto.left && !!s.value.auto.right);
 let initializeMatchId = '';
@@ -127,6 +129,7 @@ const plan = reactive({ rows: [] as { team: Team | ''; kind: 'ban' | 'pick' | ''
 const canHandleRound = computed(() => !!round.value && ['prepared', 'playing', 'ranking'].includes(round.value.status));
 const canContinueRound = computed(() => round.value?.status === 'prepared' || (round.value?.status === 'playing' && live.value?.tosu.status === 'live' &&
   live.value.tosu.data?.tourney?.ipcState === 3 && live.value.tosu.data?.beatmap.id === entry(round.value.entryId)?.beatmapId));
+const hasMatchRecords = computed(() => !!s.value?.canUndo);
 const roundStatus = { prepared: '已选图 · 比赛尚未开始', playing: '本局进行中', ranking: '结算待记录', recorded: '已计胜', void: '已作废' };
 let initialized = '';
 let matchKey = '';
@@ -221,6 +224,7 @@ const run = async (type: string, payload: unknown = {}) => {
       start: '已标记本局开始，正在播出比赛画面。正常结束后自动结算，异常时可先等待。',
       'set-action': '已设置当前队伍与动作。点选谱面，或等待裁判在房间换图。',
       'next-match': keepRoomBinding.value ? '已初始化，保留房间连接并继续跟随；未跟踪的赛果不补记。' : '已初始化，请重新设置比赛。误操作可撤销上一项。',
+      'clear-records': '已撤销全部比赛记录；队伍、名单、图池与自动跟随设置保留。',
       undo: `已撤销上一项。当前系列比分 ${series.value.a} : ${series.value.b}，请核对当前图后继续。`,
     };
     feedback.value = messages[type] || ({ 'prepare-round': '本图已准备，等待比赛开始。', 'record-result': '已记录本图胜方。', 'correct-result': '已修正本图胜方。', 'retract-result': '已撤回本图计胜，请核对赛果。', 'referee-replay': '已按裁判决定准备原图重赛。', 'resolve-incident': '已继续原局。', 'void-round': '已作废本图，可重新选图。', ranking: '已标记本图结束，成绩尚未计胜。' } as Record<string, string>)[type] || '操作已同步。';
@@ -234,6 +238,18 @@ function openInitialize() {
   initializeError.value = '';
   keepRoomBinding.value = !!roomScores.value;
   initializeDialog.value?.showModal();
+}
+function openClearRecords() {
+  if (!s.value || disabled.value || !hasMatchRecords.value) return;
+  clearRecordsError.value = '';
+  clearRecordsDialog.value?.showModal();
+}
+async function clearAllRecords() {
+  if (await run('clear-records')) {
+    clearRecordsDialog.value?.close();
+    clearRecordsError.value = '';
+    feedbackKind.value = 'undo';
+  } else clearRecordsError.value = error.value || '未能撤销，请稍后重试。';
 }
 async function initializeMatch() {
   if (s.value?.id !== initializeMatchId) {
@@ -446,6 +462,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'technical' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
+        <button :disabled="disabled || !hasMatchRecords" :data-unavailable="connection !== 'synced' || !hasMatchRecords" @click="openClearRecords">全部撤销</button>
         <button v-if="round" @click="showIncidents()">处理异常</button><button @click="showAdjustments">手动调整 / 改比分</button>
         <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
       </section>
@@ -592,6 +609,16 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <p>当前比赛会先存档。误操作可用“撤销上一项”恢复。</p>
         <div class="operator-initialize-actions"><button type="button" autofocus @click="initializeDialog?.close()">取消</button><button type="submit" class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'">清空并重新设置</button></div>
         <p class="operator-initialize-error" role="alert">{{ initializeError }}</p>
+      </form>
+    </dialog>
+    <dialog ref="clearRecordsDialog" class="operator-initialize-dialog" aria-labelledby="clear-records-title" aria-describedby="clear-records-description" @cancel="clearRecordsError = ''">
+      <form @submit.prevent="clearAllRecords">
+        <h2 id="clear-records-title">撤销全部比赛记录？</h2>
+        <p id="clear-records-description">Roll、Ban/Pick、逐局赛果、系列比分、EX、暂停与画面覆盖都会清空，回到开场等待。</p>
+        <p><strong>保留</strong>本场队伍、名单、图池、标题、阶段、人数、比例和自动跟随设置。</p>
+        <p>此前操作记录会清空，只保留本次“全部撤销”；误操作可用“撤销上一项”恢复一次。</p>
+        <div class="operator-initialize-actions"><button type="button" autofocus @click="clearRecordsDialog?.close()">取消</button><button type="submit" class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'">全部撤销</button></div>
+        <p class="operator-initialize-error" role="alert">{{ clearRecordsError }}</p>
       </form>
     </dialog>
   </main>

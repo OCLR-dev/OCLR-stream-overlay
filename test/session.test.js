@@ -785,6 +785,42 @@ test('initializing the whole match archives all prior content, clears every matc
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
+test('clearing match records keeps the entered teams, roster, pool and automation, and can be undone once', () => {
+  let state = setup();
+  state = command(state, 'setting', { field: 'roster', team: 'a', value: [{ name: 'Test player', osuId: 123 }] });
+  state = action(ready(), 'ban', 'b');
+  state = command(state, 'apply-bp', { entryId: 'hd1' });
+  state = command(pick(state), 'start');
+  state = command(state, 'record-result', { roundId: currentRound(state).id, winner: 'a', keepDisplay: true });
+  state = command(state, 'set-series', { a: 2, b: 1, reason: '测试清空前的系列分' });
+  state = command(state, 'map-mark', { entryId: 'nm2', status: 'picked', team: 'b' });
+  state = command(state, 'set-roll', { a: 83, b: 52, winner: 'a', pickFirst: 'b', banFirst: 'a' });
+  state = command(state, 'pause', { kind: 'tactical' });
+  const before = structuredClone(state);
+
+  const cleared = command(state, 'clear-records');
+  assert.equal(cleared.id, before.id);
+  assert.deepEqual(cleared.match, before.match);
+  assert.deepEqual(cleared.pool, before.pool);
+  assert.deepEqual(cleared.auto, before.auto);
+  assert.deepEqual(cleared.rounds, []);
+  assert.deepEqual(cleared.bans, { a: [null, null], b: [null, null] });
+  assert.deepEqual(cleared.roll, { a: null, b: null, winner: null, pickFirst: null, banFirst: null });
+  assert.deepEqual(cleared.poolMarks, []);
+  assert.equal(cleared.phase, 'arrival'); assert.equal(cleared.scene, 'waiting');
+  assert.equal(cleared.paused, false); assert.equal(cleared.currentRoundId, null);
+  assert.deepEqual(seriesOf(cleared), { a: 0, b: 0 });
+  assert.equal(cleared.history.length, 1);
+  assert.match(cleared.history[0].message, /已清空比赛记录/);
+  assert.equal(cleared.undo.length, 1);
+
+  const restored = command(cleared, 'undo');
+  for (const key of Object.keys(before).filter(key => !['version', 'history', 'undo', 'commandIds'].includes(key))) {
+    assert.deepEqual(restored[key], before[key], key);
+  }
+  assert.deepEqual(seriesOf(restored), { a: 2, b: 1 });
+});
+
 test('failed archive prevents initialization and leaves the previous session untouched', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'oclr-initialize-fail-'));
   try {
