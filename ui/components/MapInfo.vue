@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
+import ScrollingText from './ScrollingText.vue';
 import SlotParticles from './SlotParticles.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
 import { starRatingDisplay } from '../mapStats';
@@ -80,7 +81,7 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
       <div v-if="view.ex || parameters.rangeMode || view.mapRule" class="map-status-slot">
         <span v-if="view.ex" class="map-chip" data-map-ex data-format="ex" :data-ex-team="state.exTeam" :title="view.exLabel" :aria-label="view.exLabel">{{ view.exLabel }}</span>
         <span v-if="parameters.rangeMode" class="map-range-note">选手参数范围</span>
-        <span v-if="view.mapRule" class="map-rule" data-map-rule :title="view.mapRule">{{ view.mapRule }}</span>
+        <ScrollingText v-if="view.mapRule" class="map-rule" data-map-rule :text="view.mapRule" :title="view.mapRule" />
       </div>
     </div>
     <div class="map-slot" :style="{ '--slot-shadow': slotShadow }">

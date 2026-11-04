@@ -481,7 +481,16 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-subline { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; min-width: 0; }
 .map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 20px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.map-rule { flex-shrink: 0; max-width: 60%; overflow: hidden; color: #e6cbff; font-size: 13px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.map-rule { flex: 0 1 auto; min-width: 0; max-width: 60%; color: #e6cbff; font-size: 13px; line-height: 1.2; }
+/* A long map rule becomes a seamless two-copy ticker; short rules stay put.
+   Keep the 28px gap in sync with ScrollingText.vue's GAP. */
+.scrolling-text { display: block; overflow: hidden; white-space: nowrap; }
+.scrolling-text-track { display: inline-flex; }
+.scrolling-text-copy { display: inline-block; flex: none; }
+.scrolling-text.is-scrolling .scrolling-text-copy { padding-right: 28px; }
+.scrolling-text.is-scrolling .scrolling-text-track { animation: scrolling-text-marquee var(--scrolling-text-duration, 12s) linear infinite; will-change: transform; }
+@keyframes scrolling-text-marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .scrolling-text.is-scrolling .scrolling-text-track { animation: none; } }
 .map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
 .map-params > span { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
 .map-params > span b { color: #c9a8ff; font-weight: 700; }
@@ -538,16 +547,13 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
-/* Ban/Pick darkens every card element, including the star badge, while the
-   Ban prompt itself sits centered above that veil. */
+/* Ban darkens every card element, including the star badge, while the Ban
+   prompt itself sits centered above that veil. Picked maps keep their normal
+   artwork and team-tinted frame with no dark overlay. */
 .map-state-veil { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #07040fa8; }
 .map-entry.is-banned .map-state-veil { background: #07040fd9; }
-/* Keep the card's black selection veil, then tint it with the team that owns
-   the Ban/Pick. Once a map result exists, the winning team's colour wins over
-   the original owner so a blue win on a red pick still reads blue. */
+/* Tint the Ban veil with the team that owns it so a blue Ban still reads blue. */
 .map-state-veil::after { position: absolute; inset: 0; content: ''; background: var(--map-team-color); opacity: .1; }
-.map-state-veil[data-winner='a']::after { background: var(--team-a); }
-.map-state-veil[data-winner='b']::after { background: var(--team-b); }
 .map-state-label { position: absolute; z-index: 7; pointer-events: none; }
 .map-state-label--center { inset: 0; display: grid; place-items: center; animation: map-status-reveal 352ms linear 1248ms both; }
 /* Winner labels share the Ban pill's centered treatment, but no confirmation
