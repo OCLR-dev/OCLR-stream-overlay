@@ -47,9 +47,10 @@ test('an old pending map never transfers to a newly armed action; the next fresh
 
 
 test('choosing an already queued action moves it forward once and preserves the other future actions',()=>{
- let s=setup();const before=s.queue;assert.equal(before[0].team,'b');
- s=choose(s,'b','ban');assert.equal(s.action.team,'b');assert.deepEqual(s.queue,before.slice(1));
- s=apply(s,'m0');assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'b');
+ let s=setup();const before=s.queue;const displaced=s.action;assert.equal(before[0].team,'b');
+ s=choose(s,'b','ban');assert.equal(s.action.team,'b');assert.deepEqual(s.queue,[displaced,...before.slice(1)]);
+ s=apply(s,'m0');assert.equal(s.action.kind,'ban');assert.equal(s.action.team,'a');
+ s=apply(s,'m1');assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'b');
 });
 
 test('a first-phase Ban skipped by an action override still comes before any Pick',()=>{

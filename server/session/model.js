@@ -123,6 +123,21 @@ function normalizeAction(action) {
   return { id: randomUUID(), kind: action.kind, team: action.team, slot: action.kind === 'ban' ? action.slot : null };
 }
 
+// Promote an existing action without discarding the one waiting at the cursor.
+// A new ID prevents an earlier room-map event from applying to this selection.
+function promoteBpAction(s, choice) {
+  const matches = action => action && action.kind === choice.kind && action.team === choice.team &&
+    (choice.kind !== 'ban' || action.slot === choice.slot);
+  let selected = s.action;
+  if (!matches(selected)) {
+    const index = s.queue.findIndex(matches);
+    selected = index < 0 ? {} : s.queue.splice(index, 1)[0];
+    if (s.action) s.queue.unshift(s.action);
+  }
+  s.action = { ...selected, ...normalizeAction(choice) };
+  s.bpFlow ||= { mode: 'manual' };
+}
+
 // The two Roll choices are independent. Only a pristine match is enrolled;
 // existing/manual sessions and their undo domains keep their original order.
 const bpStarted = s => s.rounds.length > 0 || (s.bpHistory || []).length > 0 || SIDES.some(t => s.bans[t].some(Boolean));
@@ -145,9 +160,8 @@ function syncRollFlow(s) {
   //   Ban 2 (first-Ban team) -> Ban 2 (other) ->
   //   Pick 3 + Pick 4 -> Pick 5 + Pick 6 ... alternating from the first-Pick team
   //   for as long as BP keeps being needed.
-  // Both Ban rounds are materialised at Roll time so a manual Pick can never
-  // advance past the still-pending second Bans. Later Picks are replenished in
-  // alternating pairs indefinitely by takeBpAction.
+  // Keep both Ban rounds in the order when an operator promotes an action.
+  // Later Picks are replenished in alternating pairs by takeBpAction.
   s.queue = [
     ban(banFirst, 0), ban(other(banFirst), 0),
     pick(pickFirst, 1), pick(other(pickFirst), 1),
@@ -167,43 +181,13 @@ function takeBpAction(s) {
     })));
     s.bpFlow.nextPair++;
   };
-  replenish();
-  let action = null;
-  // A manual action can jump over an entry that is already recorded (a Ban the
-  // operator filled by hand, or a skipped empty Ban). Drop those instead of
-  // arming a Ban that can never be applied.
-  while (s.queue.length) {
-    const next = s.queue.shift();
-    if (next.kind === 'ban' && (s.bans[next.team][next.slot] || s.emptyBans?.[next.team]?.[next.slot])) continue;
-    action = next;
-    break;
+  for (;;) {
+    replenish();
+    const action = s.queue.shift() || null;
+    if (action?.kind === 'ban' && (s.bans[action.team][action.slot] || s.emptyBans?.[action.team]?.[action.slot])) continue;
+    replenish();
+    return action;
   }
-  // Before the first Pick, both first Bans must be filled. Before a later Pick,
-  // both second Bans must be filled too. An action override can drop a queued
-  // Ban, so repair the automatic cursor instead of advancing to a Pick.
-  if (action?.kind === 'pick' && s.bpFlow?.mode === 'roll') {
-    const banFirst = s.bpFlow.banFirst;
-    const slots = action.ordinal >= 2 ? [0, 1] : [0];
-    let missing = null;
-    for (const slot of slots) {
-      const team = [banFirst, banFirst === 'a' ? 'b' : 'a'].find(candidate =>
-        !s.bans[candidate][slot] && !s.emptyBans?.[candidate]?.[slot]);
-      if (team) { missing = { team, slot }; break; }
-    }
-    if (missing) {
-      const queued = s.queue.findIndex(item =>
-        item.kind === 'ban' && item.team === missing.team && item.slot === missing.slot);
-      if (queued >= 0) {
-        s.queue.unshift(action);
-        action = s.queue.splice(queued + 1, 1)[0];
-      } else {
-        s.queue.unshift(action);
-        action = normalizeAction({ kind: 'ban', ...missing });
-      }
-    }
-  }
-  replenish();
-  return action;
 }
 
 // End-of-map and awarding a win are deliberately separate. Release once at a
@@ -443,11 +427,9 @@ function applyCommand(s, command) {
         round.pickedBy = p.pickedBy;
         return `已替换本图 ${entryOf(s, p.entryId).label}，保留原 Pick 次数与后续顺序`;
       }
-      // A manual current-map declaration can join a match mid-series. Do not
-      // invent prior Bans/Picks or force the operator through the old cursor.
-      const followsCurrent = s.action?.kind === 'pick' && s.action.team === p.pickedBy;
-      if (!followsCurrent && s.bpFlow?.mode === 'roll') { s.queue = []; s.bpFlow = { mode: 'manual' }; }
-      s.action = { id: randomUUID(), kind: 'pick', team: p.pickedBy, slot: null };
+      // The legacy preparation API follows the same promotion rule as the pool.
+      // A match without a known order still stays manual, without invented BP.
+      promoteBpAction(s, { kind: 'pick', team: p.pickedBy });
       applyBp(s, p.entryId);
       return `已准备本图 ${entryOf(s, p.entryId).label}，等待比赛开始`;
     }
@@ -563,17 +545,7 @@ function applyCommand(s, command) {
       if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || ['prepared', 'playing'].includes(currentRound(s)?.status)) return '已选择图池标记动作；当前局与比赛记录保留';
       const slot = p.kind === 'ban' ? [0, 1].find(slot => !s.bans[p.team][slot] && !s.emptyBans?.[p.team]?.[slot]) : null;
       if (slot === undefined) return '已选择 Ban 标记；该队 Ban 记录已满，仅修改播出标记';
-      // Arm one event under the established rule; move a queued match here once.
-      // A pending old map event is invalidated by the new action ID in Store.
-      // A manual Pick keeps the rest of the generated order alive: clearing the
-      // queue here used to drop the pending second Ban round, so the console
-      // silently fell back to manual Picks and never asked for Ban 2 again.
-      // The hand being replaced is discarded on purpose - the operator's new
-      // choice takes its place in the order.
-      const queued = s.queue.findIndex(action => action.team === p.team && action.kind === p.kind && (p.kind !== 'ban' || action.slot === slot));
-      const selected = queued < 0 ? {} : s.queue.splice(queued, 1)[0];
-      s.action = { ...selected, ...normalizeAction({ ...p, slot }) };
-      s.bpFlow ||= { mode: 'manual' };
+      promoteBpAction(s, { ...p, slot });
       s.phase = 'bp';
       return `下一动作：${s.match.teams[p.team].name} ${p.kind === 'ban' ? 'Ban' : 'Pick'}；等待新的房间换图，尚未操作谱面`;
     }
@@ -607,6 +579,26 @@ function applyCommand(s, command) {
       recordBp(s, action, null, 'manual', null, 'empty-ban');
       s.action = takeBpAction(s);
       return `裁判确认 ${s.match.teams[action.team].name} 空 Ban：${p.reason}`;
+    }
+    case 'correct-ban': {
+      requireValue(side(p.team) && [0, 1].includes(p.slot), '请选择队伍及 Ban 1／Ban 2');
+      requireValue(p.entryId === null || typeof p.entryId === 'string', '请选择 Ban 谱面、空 Ban 或未确认');
+      requireValue(typeof p.empty === 'boolean' && (!p.empty || p.entryId === null), 'Ban 槽位内容无效');
+      const before = s.bans[p.team][p.slot];
+      const entry = p.entryId === null ? null : entryOf(s, p.entryId);
+      if (p.entryId !== null) {
+        requireValue(entry && entry.mod !== 'TB', '请选择本场图池中的普通谱面，TB 不可 Ban');
+        requireValue(!SIDES.some(team => s.bans[team].some((id, slot) => id === entry.id && (team !== p.team || slot !== p.slot))), '该图已在其他 Ban 槽位中');
+        requireValue(!s.rounds.some(round => round.entryId === entry.id && round.status !== 'void'), '该图已选用或已打，不能改为 Ban');
+        requireValue(!['HD', 'HR', 'DT'].includes(entry.mod) || !s.bans[p.team].some((id, slot) => slot !== p.slot && entryOf(s, id)?.mod === entry.mod), '同队不能重复 Ban 此 mod（NM/FM 例外）');
+      }
+      s.bans[p.team][p.slot] = p.entryId;
+      s.emptyBans ||= { a: [false, false], b: [false, false] };
+      s.emptyBans[p.team][p.slot] = p.empty;
+      s.poolMarks = (s.poolMarks || []).filter(mark => mark.entryId !== p.entryId &&
+        !(mark.entryId === before && mark.status === 'banned' && mark.team === p.team));
+      if (entry) s.poolMarks.push({ entryId: entry.id, status: 'banned', team: p.team });
+      return `已修正 ${s.match.teams[p.team].name} Ban ${p.slot + 1}：${entry?.label || (p.empty ? '空 Ban' : '未确认')}；当前局与后续顺序保留`;
     }
     case 'clear-ban':
       requireValue(side(p.team) && [0, 1].includes(p.slot), 'Ban 槽无效');

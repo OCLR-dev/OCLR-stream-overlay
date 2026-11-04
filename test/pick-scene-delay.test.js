@@ -32,7 +32,7 @@ test('a replacement Pick restarts the delay; unrelated EX and score updates do n
   await h.tick(500); assert.equal(h.store.state.scene, 'mappool');
   await h.cmd('ex', { team: 'a', remaining: { a: 2, b: 2 } });
   await h.cmd('set-series', { a: 1, b: 0, reason: '核对系列分' });
-  await h.tick(4999); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(4499); assert.equal(h.store.state.scene, 'mappool');
   await h.tick(1); assert.equal(h.store.state.scene, 'playing'); assert.equal(currentRound(h.store.state).entryId, 'm2');
 });
 

@@ -132,7 +132,7 @@ export class SessionStore {
       // that already-visible map once, but only for an explicit action request
       // and only when the map is still fresh and uniquely identified by the pool.
       if (next !== this.state && (command.type === 'select-bp-action' || command.type === 'set-action') &&
-        command.payload?.applyRoomMap && next.action) {
+        command.payload?.applyRoomMap && next.action && next.action.id !== this.state.action?.id) {
         const entry = this.currentRoomMap(next);
         if (entry) {
           try {

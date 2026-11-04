@@ -34,5 +34,5 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
     return '选择现场 Ban／Pick 队伍与谱面，中途加入无需补录之前的操作。';
   }
   if (hasScores) return '房间队分正在显示，本局尚无记录；可继续播出，结束后核对系列比分。';
-  return '等待比赛开始；需要手动准备时展开「选择本局谱面」。';
+  return '等待比赛开始；需要手动准备时切到图池，选择队伍 Pick 与本局谱面。';
 }
