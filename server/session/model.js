@@ -139,6 +139,7 @@ function syncRollFlow(s) {
   const ban = (team, slot) => normalizeAction({ kind: 'ban', team, slot });
   const pick = team => ({ ...normalizeAction({ kind: 'pick', team }), ordinal: 1 });
   s.bpFlow = { version: 1, mode: 'roll', banFirst, pickFirst, nextPair: 2 };
+  // OCLR S11 rule 8: both first Bans -> both first Picks -> both second Bans.
   s.queue = [ban(banFirst, 0), ban(other(banFirst), 0), pick(pickFirst), pick(other(pickFirst)), ban(banFirst, 1), ban(other(banFirst), 1)];
   s.action = s.queue.shift();
   if (['arrival', 'roll'].includes(s.phase)) s.phase = 'bp';
@@ -155,7 +156,31 @@ function takeBpAction(s) {
     s.bpFlow.nextPair++;
   };
   replenish();
-  const action = s.queue.shift() || null;
+  let action = s.queue.shift() || null;
+  // Before the first Pick, both first Bans must be filled. Before a later Pick,
+  // both second Bans must be filled too. An action override can drop a queued
+  // Ban, so repair the automatic cursor instead of advancing to a Pick.
+  if (action?.kind === 'pick' && s.bpFlow?.mode === 'roll') {
+    const banFirst = s.bpFlow.banFirst;
+    const slots = action.ordinal >= 2 ? [0, 1] : [0];
+    let missing = null;
+    for (const slot of slots) {
+      const team = [banFirst, banFirst === 'a' ? 'b' : 'a'].find(candidate =>
+        !s.bans[candidate][slot] && !s.emptyBans?.[candidate]?.[slot]);
+      if (team) { missing = { team, slot }; break; }
+    }
+    if (missing) {
+      const queued = s.queue.findIndex(item =>
+        item.kind === 'ban' && item.team === missing.team && item.slot === missing.slot);
+      if (queued >= 0) {
+        s.queue.unshift(action);
+        action = s.queue.splice(queued + 1, 1)[0];
+      } else {
+        s.queue.unshift(action);
+        action = normalizeAction({ kind: 'ban', ...missing });
+      }
+    }
+  }
   replenish();
   return action;
 }
@@ -524,9 +549,19 @@ function applyCommand(s, command) {
       }
       // Arm one event under the established rule; move a queued match here once.
       // A pending old map event is invalidated by the new action ID in Store.
+      const previous = s.action;
       const queued = s.queue.findIndex(action => action.team === p.team && action.kind === p.kind && (p.kind !== 'ban' || action.slot === slot));
       const selected = queued < 0 ? {} : s.queue.splice(queued, 1)[0];
       s.action = { ...selected, ...normalizeAction({ ...p, slot }) };
+      // A manual Ban override replaces the armed Ban; keep the replaced turn
+      // queued so the other team's pending Ban is not silently lost.
+      const replaced = previous && (previous.kind !== s.action.kind ||
+        previous.team !== s.action.team || previous.slot !== s.action.slot);
+      if (p.kind === 'ban' && previous?.kind === 'ban' && replaced) {
+        const duplicate = s.queue.some(action => action.kind === 'ban' &&
+          action.team === previous.team && action.slot === previous.slot);
+        if (!duplicate) s.queue.unshift(previous);
+      }
       s.bpFlow ||= { mode: 'manual' };
       s.phase = 'bp';
       return `下一动作：${s.match.teams[p.team].name} ${p.kind === 'ban' ? 'Ban' : 'Pick'}；等待新的房间换图，尚未操作谱面`;

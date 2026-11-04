@@ -26,7 +26,7 @@ export class SessionStore {
       this.pickScene.cancel();
       const next = automaticTransition(this.state, draft => {
         draft.scene = 'playing'; draft.sceneOverride = null;
-      }, '本次 Pick 展示满 2.5 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
+      }, '本次 Pick 展示满 5 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
       await this.save(next);
       this.emit();
     }).catch(() => { this.live.note = '自动切换画面未保存，请检查本机存储'; this.emit(); }));
@@ -170,9 +170,10 @@ export class SessionStore {
       if (!Number.isFinite(previousAt) || now - previousAt > 5000 || now < previousAt) this.parameterHold = null;
       this.receivedAt = Date.now();
       const mapId = frame?.beatmap?.id;
+      let mapPushed = false;
       if (Number.isSafeInteger(mapId) && mapId > 0) {
-        if (this.roomMap.id === null) this.roomMap.id = mapId;
-        else if (this.roomMap.id !== mapId) this.roomMap = { id: mapId, at: now };
+        if (this.roomMap.id === null) { this.roomMap.id = mapId; mapPushed = true; }
+        else if (this.roomMap.id !== mapId) { this.roomMap = { id: mapId, at: now }; mapPushed = true; }
       }
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
       const returned = this.readyReturn.recover(this.state, frame, now);
@@ -190,6 +191,7 @@ export class SessionStore {
       const result = this.automation.ingest(this.state, frame, now);
       this.live.note = restoredReady ? '本局已返回准备状态，保留原图，等待裁判重新开始比赛。' : result.note;
       if (result.state !== this.state) await this.save(result.state);
+      if (mapPushed) this.pickScene.observeRoomMap(this.state, mapId);
       this.spectatorRecovery.observe(this.state, frame, now);
       this.readyReturn.observe(this.state, frame, now, this.automation.observedRun);
       this.seriesCorrection.observe(this.state, frame, now);

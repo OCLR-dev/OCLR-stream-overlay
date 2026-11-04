@@ -687,14 +687,23 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .readiness-state { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 20px; color: var(--muted); font-size: 13px; }
 
 /* Series result: reference winner typography, with an honest unconfirmed state. */
-.victory-body { display: flex; flex-direction: column; padding: 4px 60px 24px; background: repeating-linear-gradient(115deg, #ffffff04 0 60px, transparent 60px 120px); }
+.victory-body { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; padding: 4px 60px 24px; }
+.victory-body::before { content: ""; position: absolute; inset: -2px -160px; background: repeating-linear-gradient(115deg, #ffffff04 0 60px, #ffffff00 60px 120px); animation: victory-stripes-drift 13.24s linear infinite; pointer-events: none; z-index: -1; }
+@keyframes victory-stripes-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-132.405px); }
+}
+@media (prefers-reduced-motion: reduce) { .victory-body::before { animation: none; } }
 .result-head { flex-basis: 52px; height: 52px; }
 .victory-hero { position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 0; text-align: center; }
 .victory-mark { color: #b794ff; font-family: var(--display); font-size: 82px; font-weight: 800; letter-spacing: .4em; line-height: 1; padding-left: .4em; text-shadow: 0 0 44px #7c3aed66; }
 .victory-kicker { color: #c4ade5; font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .2em; }
 .victory-copy h3 { margin: 18px 0 0; font-size: 82px; font-weight: 800; letter-spacing: .03em; }
-.victory-status { display: flex; justify-content: center; gap: 22px; margin: 22px 0 0; color: #e9dcff; font-size: 24px; font-weight: 700; }
-.victory-status span { color: var(--purple-light); font-family: var(--display); }
+.victory-status { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 22px; align-items: baseline; margin: 22px 0 0; color: #e9dcff; font-size: 24px; font-weight: 700; }
+.victory-status .status-team { min-width: 0; }
+.victory-status .status-team--a { justify-self: end; text-align: right; }
+.victory-status .status-team--b { justify-self: start; text-align: left; }
+.victory-status .status-vs { color: var(--purple-light); font-family: var(--display); }
 .victory-result { display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .victory-result > span { color: var(--muted); font-size: 13px; }
 .victory-result strong { display: flex; align-items: center; gap: 50px; font-family: var(--display); font-size: 112px; font-weight: 800; line-height: 1; }

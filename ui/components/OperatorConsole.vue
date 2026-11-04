@@ -227,7 +227,12 @@ const run = async (type: string, payload: unknown = {}) => {
       'clear-records': '已撤销全部比赛记录；队伍、名单、图池与自动跟随设置保留。',
       undo: `已撤销上一项。当前系列比分 ${series.value.a} : ${series.value.b}，请核对当前图后继续。`,
     };
-    feedback.value = messages[type] || ({ 'prepare-round': '本图已准备，等待比赛开始。', 'record-result': '已记录本图胜方。', 'correct-result': '已修正本图胜方。', 'retract-result': '已撤回本图计胜，请核对赛果。', 'referee-replay': '已按裁判决定准备原图重赛。', 'resolve-incident': '已继续原局。', 'void-round': '已作废本图，可重新选图。', ranking: '已标记本图结束，成绩尚未计胜。' } as Record<string, string>)[type] || '操作已同步。';
+    const recorded = s.value?.history.at(-1)?.message || '';
+    const hintText = type === 'undo'
+      ? `当前系列比分 ${series.value.a} : ${series.value.b}。下一步：${nextStep.value}`
+      : nextStep.value ? `下一步：${nextStep.value}` : '';
+    const fallback = messages[type] || ({ 'prepare-round': '本图已准备，等待比赛开始。', 'record-result': '已记录本图胜方。', 'correct-result': '已修正本图胜方。', 'retract-result': '已撤回本图计胜，请核对赛果。', 'referee-replay': '已按裁判决定准备原图重赛。', 'resolve-incident': '已继续原局。', 'void-round': '已作废本图，可重新选图。', ranking: '已标记本图结束，成绩尚未计胜。' } as Record<string, string>)[type] || '';
+    feedback.value = recorded ? [recorded, hintText].filter(Boolean).join(' ') : [fallback, hintText].filter(Boolean).join(' ') || '操作已同步。';
     feedbackKind.value = type === 'undo' ? 'undo' : 'success';
   }
   return ok;
