@@ -60,6 +60,11 @@ const poolEntryId = ref('');
 const poolNeedsAction = ref(false);
 const poolSelection = computed(() => s.value?.pool.find(e => e.id === poolEntryId.value));
 const selectedMark = computed(() => s.value && poolSelection.value ? poolDisplay(s.value, poolEntryId.value) : null);
+const hasPoolMarks = computed(() => {
+  const state = s.value;
+  if (!state) return false;
+  return state.pool.some(entry => entry.mod !== 'TB' && poolDisplay(state, entry.id).status !== 'open');
+});
 const prepareForm = reactive({ entryId: '', pickedBy: '' });
 const selection = reactive({ edition: 's11', fixtureId: '', poolId: '', leftTeamId: '', rightTeamId: '' });
 const resultRound = ref('');
@@ -339,6 +344,7 @@ function recordResult(winner: Team) {
     reviewReason: s.value?.incident?.roundId === resultRound.value ? incidentNote('直播员已核对实际成绩，人工记录胜方') : undefined });
 }
 const markPool = (status: 'open' | 'banned' | 'picked', team: Team | null) => run('map-mark', { entryId: poolEntryId.value, status, team });
+const clearAllPoolMarks = () => run('clear-pool-marks');
 const choosePoolAction = async (team: Team, kind: 'ban' | 'pick') => {
   if (poolSelection.value?.mod === 'TB') { localError.value = 'TB 单独准备，不指定 Ban／Pick 队伍。'; return; }
   if (await run('select-bp-action', { team, kind })) {
@@ -421,20 +427,22 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <button v-if="round" @click="showIncidents()">处理异常</button><button @click="showAdjustments">手动调整 / 改比分</button>
         <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
       </section>
-      <section class="operator-ex-quick" aria-label="EX 常用操作">
-        <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
-          <span>本图 EX</span>
-          <button :aria-pressed="!s.ex.team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="setExTeam(null)">关闭 EX</button>
-          <button v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team" :aria-pressed="s.ex.team === team" :aria-label="`${names[team]} 开启 EX`" :disabled="disabled || exUnavailable(team)" :data-unavailable="connection !== 'synced' || exUnavailable(team)" :title="s.ex.remaining[team] <= 0 && s.ex.team !== team ? '该队没有 EX 剩余次数' : exHint" @click="setExTeam(team)">{{ names[team] }} {{ s.ex.team === team ? '已开启 EX' : '开启 EX' }}</button>
+      <div class="operator-quick-row">
+        <section class="operator-ex-quick" aria-label="EX 常用操作">
+          <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
+            <span>本图 EX</span>
+            <button :aria-pressed="!s.ex.team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="setExTeam(null)">关闭 EX</button>
+            <button v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team" :aria-pressed="s.ex.team === team" :aria-label="`${names[team]} 开启 EX`" :disabled="disabled || exUnavailable(team)" :data-unavailable="connection !== 'synced' || exUnavailable(team)" :title="s.ex.remaining[team] <= 0 && s.ex.team !== team ? '该队没有 EX 剩余次数' : exHint" @click="setExTeam(team)">{{ names[team] }} {{ s.ex.team === team ? '已开启 EX' : '开启 EX' }}</button>
+          </div>
+          <div class="operator-ex-counters" role="group" aria-label="EX 剩余次数">
+            <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
+          </div>
+          <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
+        </section>
+        <div class="operator-notice" aria-label="操作反馈" :aria-busy="busy">
+          <p v-show="error || localError" role="alert" class="operator-error">{{ localError || error }}</p>
+          <p v-show="!error && !localError" class="operator-feedback" :class="{ 'operator-feedback--undo': feedbackKind === 'undo' }" role="status">{{ feedback }}</p>
         </div>
-        <div class="operator-ex-counters" role="group" aria-label="EX 剩余次数">
-          <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
-        </div>
-        <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
-      </section>
-      <div class="operator-notice" aria-label="操作反馈" :aria-busy="busy">
-        <p v-show="error || localError" role="alert" class="operator-error">{{ localError || error }}</p>
-        <p v-show="!error && !localError" class="operator-feedback" :class="{ 'operator-feedback--undo': feedbackKind === 'undo' }" role="status">{{ feedback }}</p>
       </div>
       <section v-show="settings" class="operator-setup" aria-label="本场设置">
         <div class="operator-section-head"><h2>本场设置</h2><span>修改后自动同步，无需保存；已有比赛记录保留</span></div>
@@ -507,7 +515,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : round ? `当前图 ${entry(round.entryId)?.label || '—'} · ${roundStatusLabel(round)}` : s.poolChoice ? `${names[s.poolChoice.team]} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'} · 等待选图` : '选择 Ban／Pick 或谱面' }}</p>
               <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :aria-pressed="s.poolChoice?.team === team && s.poolChoice.kind === (kind === 'banned' ? 'ban' : 'pick')" :disabled="disabled || poolSelection?.mod === 'TB'" :data-unavailable="connection !== 'synced' || poolSelection?.mod === 'TB'" @click="choosePoolAction(team, kind === 'banned' ? 'ban' : 'pick')">{{ names[team] }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}</button></template></div>
               <button class="operator-tiebreaker" :aria-pressed="!!tb?.active" :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || !!tb?.active" :title="tbButtonHint" @click="prepareTiebreaker">TieBreaker</button>
-              <button :disabled="disabled || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
+              <button :disabled="disabled || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button :disabled="disabled || !hasPoolMarks" :data-unavailable="connection !== 'synced' || !hasPoolMarks" @click="clearAllPoolMarks">清除所有标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
               <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <p v-if="!s.pool.length">还没有图池，请在本场设置选择真实资料。</p>
               <p>已结束的谱面仍可修改播出标记。本局开始标记和记胜在 Playing 面板操作。</p>

@@ -64,7 +64,7 @@ export function mapParameterDisplay(id: number | null, mode: 'tosu' | 'official-
     { label: 'AR', value: calculated ? numeric(calculated.ar) : actual('ar', map?.stats?.ar?.converted) },
     { label: 'OD', value: calculated ? numeric(calculated.od) : actual('od', map?.stats?.od?.converted) },
     { label: 'BPM', value: calculated ? min === max ? min : min !== '—' && max !== '—' ? `${min}–${max}` : '—' : actual('bpm', map?.stats?.bpm?.common) },
-    { label: '时长', value: calculated ? playbackDuration(timing, calculated.clockRate)
+    { label: 'TIME', value: calculated ? playbackDuration(timing, calculated.clockRate)
       : map ? playbackDuration(timing, map.stats?.clockRate, clientRanges?.clockRate) : '—' },
   ] };
 }

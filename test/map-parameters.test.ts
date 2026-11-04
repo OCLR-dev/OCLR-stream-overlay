@@ -11,14 +11,14 @@ const values = (display: ReturnType<typeof mapParameterDisplay>) => Object.fromE
 test('formal parameter display uses only matched tosu values, including HP and converted attributes', () => {
   const display = mapParameterDisplay(101, 'tosu', live, calculated, 'HR');
   assert.equal(display.source, 'tosu');
-  assert.deepEqual(values(display), { '★': '6.2', CS: '5.2', HP: '7', AR: '10.3', OD: '9.7', BPM: '210.5', 时长: '4:05' });
+  assert.deepEqual(values(display), { '★': '6.2', CS: '5.2', HP: '7', AR: '10.3', OD: '9.7', BPM: '210.5', TIME: '4:05' });
   assert.ok(mapParameterDisplay(101, 'tosu', null, calculated, 'HR').rows.every(row => row.value === '—'), 'test calculations never become a formal fallback');
 });
 
 test('simulation shows calculated HR stars and parameters, not NM or synthetic tosu values', () => {
   const display = mapParameterDisplay(101, 'official-test', live, calculated, 'HR');
   assert.equal(display.source, 'official-test');
-  assert.deepEqual(values(display), { '★': '6.85', CS: '5.2', HP: '7', AR: '10', OD: '10', BPM: '180', 时长: '4:05' });
+  assert.deepEqual(values(display), { '★': '6.85', CS: '5.2', HP: '7', AR: '10', OD: '10', BPM: '180', TIME: '4:05' });
   for (const metadata of [null, original]) assert.ok(mapParameterDisplay(101, 'official-test', live, metadata, 'HR').rows.every(row => row.value === '—'));
 });
 
@@ -33,7 +33,7 @@ test('old or wrong-map metadata cannot remain on the next map in either paramete
 
 test('partial current tosu data preserves zero without filling missing converted values from original settings', () => {
   const display = mapParameterDisplay(101, 'tosu', { id: 101, stats: { cs: { converted: 0 }, hp: { converted: null }, ar: { converted: NaN } }, time: { lastObject: 0 } }, calculated, 'HR');
-  assert.deepEqual(values(display), { '★': '—', CS: '0', HP: '—', AR: '—', OD: '—', BPM: '—', 时长: '0:00' });
+  assert.deepEqual(values(display), { '★': '—', CS: '0', HP: '—', AR: '—', OD: '—', BPM: '—', TIME: '0:00' });
 });
 
 test('calculated BPM range is displayed and a mod change cannot retain old HR values', () => {

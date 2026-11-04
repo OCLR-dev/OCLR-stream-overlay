@@ -1,5 +1,7 @@
 # 自定义赛事本地测试分支
 
+本分支 UI 已同步主线 `3d20f5a`（PR #6 / #10）：通栏顶栏、Ban/EX 徽章、Playing 本图队分与鎏金系列小比分、图池星数和状态层、队名滚动及共享聊天。保留自定义赛事标题、独立阶段/BO/BP 和 CA 分类；不接入 OCLR 登录任务。正式 `/overlay` 的 Playing 游戏区域改为透明，OBS 旧色值键/色度键应停用；捕获坐标与尺寸不变。根路径演示仍以绿色标记捕获区域。已有 Windows R4 包未重新打包，不能代表此源码版本。验证见 [UI 同步记录](docs/verification/pr10-ui-sync/README.md)。
+
 本分支 `test/custom-match` 的独立工作区为 `overlay-custom-match`。使用 `npm run build` 后运行 **`npm run custom`**；需隔离 tosu 测试信号时运行 `npm run custom -- --simulate`。控制台为 `http://127.0.0.1:3011/control`，只读输出为同端口 `/overlay`。请勿用下方保留的 OCLR 启动／模拟命令操作这场测试。
 
 本场资料均从现有“开播前设置”录入，阶段名称与 BO 独立；BP 没有默认规则，未明确时等待。会话独立保存在 `.local/custom-match/session.json`，不加载环境凭证，OCLR 接口禁用，不向 osu! 房间发送命令。

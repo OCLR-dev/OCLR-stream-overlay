@@ -100,6 +100,22 @@ test('empty Ban, broadcast marks, manual recovery and undo remain separate from 
   s = finish(s); assert.equal(s.action.team, 'b');
 });
 
+test('clearing broadcast marks preserves custom BP, rounds, score and undo', () => {
+  let s = apply(opening(), 4);
+  s = finish(s);
+  s = command(s, 'map-mark', { entryId: 'm5', status: 'picked', team: 'b' });
+  const before = structuredClone(s);
+  s = command(s, 'clear-pool-marks');
+  assert.ok(s.poolMarks.every(mark => mark.status === 'open' && mark.team === null));
+  assert.deepEqual(s.match, before.match);
+  assert.deepEqual(s.rounds, before.rounds);
+  assert.deepEqual(s.series, before.series);
+  assert.deepEqual(s.bans, before.bans);
+  assert.deepEqual(s.bpHistory, before.bpHistory);
+  assert.deepEqual(s.action, before.action);
+  assert.deepEqual(command(s, 'undo').poolMarks, before.poolMarks);
+});
+
 test('BO edits validate score and target independently from phase; series end blocks actions; TB stays separate', () => {
   let s = apply(opening(), 4); s = finish(s);
   s = command(s, 'set-series', { a: 3, b: 0, reason: '隔离测试' });

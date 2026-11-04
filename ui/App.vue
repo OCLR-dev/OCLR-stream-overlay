@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide } from 'vue';
+import { computed, provide } from 'vue';
 import { vSceneReveal } from './motion';
 import { createOverlay, overlayKey, useCanvasFit } from './useOverlay';
 import { sceneLabels } from './model';
@@ -7,6 +7,7 @@ import ReviewControls from './components/ReviewControls.vue';
 import BroadcastHeader from './components/BroadcastHeader.vue';
 import BroadcastAmbient from './components/BroadcastAmbient.vue';
 import SpectrumGrid from './components/SpectrumGrid.vue';
+import ChatPanel from './components/ChatPanel.vue';
 import WaitingScene from './components/WaitingScene.vue';
 import MappoolScene from './components/MappoolScene.vue';
 import ArenaScene from './components/ArenaScene.vue';
@@ -19,6 +20,10 @@ const controller = createOverlay(shared);
 provide(overlayKey, controller);
 const { state, view, motionReady, motionScope } = controller;
 const { stage, scale } = useCanvasFit();
+// Chat mounts once outside the scene stack. Scene changes only toggle its
+// visibility, so neither chat surface is re-created or reloaded.
+const chatScene = new Set(['waiting', 'roll', 'mappool', 'playing', 'victory']);
+const chatVisible = computed(() => chatScene.has(state.scene));
 </script>
 
 <template>
@@ -42,6 +47,10 @@ const { stage, scale } = useCanvasFit();
             <VictoryScene />
             <PauseScene />
             <RollScene />
+          </div>
+          <div class="broadcast-chat" data-broadcast-chat :data-visible="chatVisible ? 'true' : 'false'"
+            :aria-hidden="!chatVisible">
+            <ChatPanel />
           </div>
         </div>
       </div>
