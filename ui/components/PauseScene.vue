@@ -20,9 +20,9 @@ const { state, view } = useOverlay();
           <div class="pause-stripes" aria-hidden="true"></div>
           <div class="pause-mark" aria-hidden="true"><span></span><span></span></div>
           <h3 data-pause-headline>{{ view.pauseTitle }}</h3>
-          <div v-if="view.resumeAt || view.pauseClock" class="pause-countdown" :class="{ 'is-ended': view.pauseTimerEnded && !view.resumeAt }" data-pause-countdown>
+          <div v-if="view.pauseClock" class="pause-countdown" :class="{ 'is-ended': view.pauseTimerEnded }" data-pause-countdown>
             <span>暂停剩余</span>
-            <strong :class="{ 'is-soon': view.pauseTimerEnded && !view.resumeAt }">{{ view.resumeAt ? view.resumeClock : view.pauseTimerEnded ? '即将开始...' : view.pauseClock }}</strong>
+            <strong :class="{ 'is-soon': view.pauseTimerEnded }">{{ view.pauseTimerEnded ? '即将开始...' : view.pauseClock }}</strong>
           </div>
         </section>
 

@@ -465,7 +465,7 @@ const bpAuto = computed(() => {
   return {
     ...action,
     current: !!s.value?.action,
-    label: `${names.value[action.team]} ${action.kind === 'ban' ? `Ban ${action.slot + 1}` : 'Pick'}`,
+    label: `${names.value[action.team]} ${action.kind === 'ban' ? `Ban${action.slot == null ? '' : ` ${action.slot + 1}`}` : 'Pick'}`,
   };
 });
 const gameStatus = computed(() => live.value?.sources?.tosu === 'simulated' && live.value?.tosu.status === 'live' ? '游戏模拟信号已连接' : ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据暂不可用', error: '游戏未连接 · 请检查连接设置', disconnected: '游戏连接中断 · 正在重连', connecting: '正在连接游戏', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));

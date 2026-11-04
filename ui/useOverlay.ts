@@ -88,10 +88,6 @@ export function createOverlay(shared = false) {
     const pauseRemainingMs = pauseTimer ? Math.max(0, Math.min(pauseTimer.durationSeconds * 1000, pauseTimer.endsAt - clock.value)) : 0;
     const pauseSecondsLeft = Math.ceil(pauseRemainingMs / 1000);
     const pauseClock = pauseTimer ? `${String(Math.floor(pauseSecondsLeft / 60)).padStart(2, '0')}:${String(pauseSecondsLeft % 60).padStart(2, '0')}` : '';
-    const resumeAt = shared ? s?.resumeAt || null : null;
-    const resumeRemainingMs = resumeAt ? Math.max(0, Math.min(10000, resumeAt - clock.value)) : 0;
-    const resumeSecondsLeft = Math.ceil(resumeRemainingMs / 1000);
-    const resumeClock = resumeAt ? `00:${String(resumeSecondsLeft).padStart(2, '0')}` : '';
     const pool = shared ? (s?.pool || []).map(entry => {
       const { status, team } = poolDisplay(s!, entry.id);
       const winnerTeam = status === 'picked' || status === 'used' ? poolWinner(s!, entry.id) : null;
@@ -127,7 +123,6 @@ export function createOverlay(shared = false) {
       },
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
       pauseTimer, pauseClock, pauseTimerEnded: !!pauseTimer && pauseSecondsLeft === 0,
-      resumeAt, resumeClock,
       pickTeam: playingPickTeam(s, currentMap),
       showPlayingScores: !shared || !!scores,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
