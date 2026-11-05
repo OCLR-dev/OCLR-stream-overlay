@@ -34,7 +34,12 @@ const starFor = (entry: PoolEntry) => mapStarDisplay(metadataFor(entry), testMod
 type PoolCardState = Pick<PoolEntry, 'mod'> & { status: string; actionTeam: 'a' | 'b' | null; winnerTeam: 'a' | 'b' | null };
 const chosen = (entry: PoolCardState) => entry.mod !== 'TB' && !entry.winnerTeam && (entry.status === 'picked' || entry.status === 'used');
 const stateText = (entry: PoolCardState) => {
-  if (entry.winnerTeam) return entry.winnerTeam === 'a' ? '红队胜利' : '蓝队胜利';
+  if (entry.winnerTeam) {
+    const win = entry.winnerTeam === 'a' ? '红队胜' : '蓝队胜';
+    const by = entry.actionTeam && entry.actionTeam !== entry.winnerTeam
+      ? (entry.actionTeam === 'a' ? ' · 红选' : ' · 蓝选') : '';
+    return win + by;
+  }
   if (entry.mod === 'TB') return '决胜图';
   const team = entry.actionTeam === 'a' ? '红队' : entry.actionTeam === 'b' ? '蓝队' : '';
   return entry.status === 'banned' ? `${team}禁用` : team ? `${team}选择` : '已选择';
@@ -94,16 +99,15 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
       <ol class="map-list">
         <li v-for="(entry, index) in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used', 'has-winner': !!entry.winnerTeam }"
-          :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
+          :data-has-state="entry.status === 'banned' || !!entry.winnerTeam || chosen(entry) ? 'true' : undefined" :data-winner="entry.winnerTeam || undefined" :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
           <span class="map-confirmation" aria-hidden="true" :data-from="entry.actionTeam === 'b' ? 'right' : 'left'" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm', from: entry.actionTeam === 'b' ? 'right' : 'left' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <span v-if="entry.status === 'banned'" class="map-state-veil" aria-hidden="true"></span>
-          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--center': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
+          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--corner': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
             <span class="map-status" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ stateText(entry) }}</span>
           </span>
           <svg v-if="chosen(entry)" class="map-turn-marquee" aria-hidden="true" focusable="false">
             <rect x="0" y="0" width="100%" height="100%" rx="4" pathLength="100" />
           </svg>
-          <svg v-if="entry.status === 'banned'" class="map-ban-slash" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" vector-effect="non-scaling-stroke" /></svg>
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />
           <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" variant="list" /></span>
           <span v-if="entry.beatmapId > 0" class="map-stat map-star" :style="{ '--stat-color': starFor(entry).color || undefined, '--stat-ink': starFor(entry).ink }" :title="`星数 ${starFor(entry).value}`" :aria-label="`星数 ${starFor(entry).value}`"><span class="map-stat-label">★</span><span class="map-stat-value">{{ starFor(entry).value }}</span></span>
