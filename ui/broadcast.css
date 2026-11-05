@@ -170,7 +170,7 @@
 .roll-sides h3 { font-size: 32px; line-height: 48px; min-height: 48px; margin: 0; overflow-wrap: anywhere; }.roll-sides strong { display: block; font: 800 110px/132px var(--display); }
 .roll-sides [data-team='a'] { color: var(--team-a); }.roll-sides [data-team='b'] { color: var(--team-b); }
 .pool-empty { align-self: center; justify-self: center; color: var(--muted); }
-.match-chat-line { margin: 2px 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-chat-line { margin: 2px 0; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; white-space: normal; }
 .match-chat-line b { color: var(--purple-light); }
 
 /* Slanted team banners with the supplied logo and the reference's stage strip. */
@@ -650,7 +650,10 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .chat-box-content .match-chat-line { flex: 0 0 auto; margin: 0; line-height: 20px; }
 .chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
 .chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
-.chat-box--compact .chat-box-content { height: 100%; justify-content: flex-start; padding-top: 4px; }
+.chat-box--compact .chat-box-content { height: 100%; justify-content: flex-end; padding-top: 4px; }
+/* End-anchored messages keep the newest line visible; the waiting status
+   stays at the top until the first message arrives. */
+.chat-box--compact .chat-empty { margin-bottom: auto; }
 .chat-empty { margin: 0; color: var(--muted); font-size: 13px; line-height: 22px; }
 
 /* Waiting room uses the same team colour fields as the reference winner cards. */
