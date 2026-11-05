@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -84,6 +85,41 @@ test('stage target changes invalidate an early Winner and reject scores beyond t
   s = command(s, 'set-series', { a: 7, b: 0, reason: 'test final score' });
   assert.throws(() => command(s, 'set-stage', { stage: 'group' }), /超出该阶段目标/);
   assert.equal(s.match.stage, 'final'); assert.equal(seriesOf(s).a, 7);
+});
+
+test('winner-soon displays Winner immediately, waits for confirmation, and can be cancelled', () => {
+  let s = command(ready(), 'set-series', { a: 6, b: 0, reason: 'test score' });
+  const before = Date.now();
+  s = command(s, 'winner-soon', { team: 'a' });
+  assert.equal(s.scene, 'victory'); assert.equal(s.phase, 'winner'); assert.equal(s.winner, null);
+  assert.equal(s.winnerPending.team, 'a');
+  assert.ok(s.winnerPending.endsAt >= before + 5000);
+  assert.equal(command(s, 'winner', { team: 'a' }).winnerPending, null);
+  s = command(s, 'winner-soon', { team: 'a' });
+  s = command(s, 'cancel-winner');
+  assert.equal(s.winnerPending, null); assert.equal(s.winner, null);
+  assert.throws(() => command(s, 'cancel-winner'), /没有等待自动确认/);
+  assert.throws(() => command(command(ready(), 'winner-soon', { team: 'a' }), 'winner-soon', { team: 'a' }), /尚未达到/);
+});
+
+test('5-second Winner countdown confirms once and cancellation stops it', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const store = new SessionStore();
+  const cmd = (type, payload = {}) => store.command({ id: randomUUID(), version: store.state.version, type, payload });
+  const tick = async ms => { t.mock.timers.tick(ms); await store.tail; };
+  await cmd('setup', { title: 'Winner 倒计时 · 合成测试', stage: 'group', mode: '3v3', source: '4x3',
+    teams: { a: { name: 'L', roster: [] }, b: { name: 'R', roster: [] } },
+    pool: [1, 2, 3].map(i => ({ id: `m${i}`, label: `NM${i}`, mod: 'NM', beatmapId: i })) });
+  await cmd('set-series', { a: 6, b: 0, reason: '终局比分' });
+  await cmd('winner-soon', { team: 'a' });
+  assert.equal(store.state.scene, 'victory'); assert.equal(store.state.winner, null);
+  await tick(4999); assert.equal(store.state.winner, null);
+  await tick(1); assert.equal(store.state.winner, 'a'); assert.equal(store.state.winnerPending, null);
+  const version = store.state.version; await tick(10000); assert.equal(store.state.version, version);
+  await cmd('undo'); assert.equal(store.state.winner, null); assert.equal(store.state.winnerPending, null);
+  await cmd('winner-soon', { team: 'a' });
+  await cmd('cancel-winner');
+  await tick(5000); assert.equal(store.state.winner, null);
 });
 
 test('stage update between final Ranking frames preserves automatic result continuity', async () => {
