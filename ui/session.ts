@@ -24,6 +24,7 @@ export interface Session {
   bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
   auto: { bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
+  winnerPending?: { team: Team; endsAt: number } | null;
   incident?: { kind: 'prestart-abort' | 'abort' | 'player-disconnect' | 'spectator' | 'unverified'; roundId: string; reason: string; source: string; at: string } | null;
   series: Record<Team, number>; seriesAdjustment: Record<Team, number>;
   ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'normal' | 'technical' | 'tactical';

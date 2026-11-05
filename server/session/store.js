@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { automaticTransition, bpProgress, currentRound, entryOf, newSession, requireValue, restoreAutomation, seriesOf, transition } from './model.js';
+import { automaticTransition, bpProgress, currentRound, entryOf, newSession, requireValue, restoreAutomation, seriesOf, targetOf, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
 import { rankingMapParameters } from './map-parameters.js';
 import { PickSceneDelay } from './pick-scene-delay.js';
@@ -16,6 +16,9 @@ export class SessionStore {
     if (this.state.resumeAt === undefined) this.state.resumeAt = null;
     if (!['normal', 'technical', 'tactical'].includes(this.state.pauseType)) this.state.pauseType = 'normal';
     this.resumeTimer = null;
+    this.winnerTimer = null;
+    if (this.state.winnerPending && (!['a', 'b'].includes(this.state.winnerPending.team) || !Number.isSafeInteger(this.state.winnerPending.endsAt))) this.state.winnerPending = null;
+    if (this.state.winnerPending === undefined) this.state.winnerPending = null;
     this.parameterHold = null;
     // Remember when the room itself changed map, so "use the current room map"
     // cannot silently consume a selection that has been sitting there for long.
@@ -35,6 +38,7 @@ export class SessionStore {
       this.emit();
     }).catch(() => { this.live.note = '自动切换画面未保存，请检查本机存储'; this.emit(); }));
     this.scheduleResume();
+    this.scheduleWinnerConfirm();
   }
 
   static async open(file) {
@@ -55,7 +59,7 @@ export class SessionStore {
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }
   enqueue(fn) { const task = this.tail.then(fn); this.tail = task.catch(() => {}); return task; }
-  close() { this.pickScene.cancel(); clearTimeout(this.resumeTimer); this.resumeTimer = null; }
+  close() { this.pickScene.cancel(); clearTimeout(this.resumeTimer); this.resumeTimer = null; clearTimeout(this.winnerTimer); this.winnerTimer = null; }
 
   // "即将开始" gives a 10 second grace period. The deadline lives in the
   // session, so a reload keeps counting and the output does not depend on the
@@ -86,6 +90,47 @@ export class SessionStore {
     }).catch(() => { this.live.note = '“即将开始”自动返回未保存，请检查本机存储'; this.emit(); });
   }
 
+  // A pending Winner confirmation is an absolute deadline saved with the
+  // session, so closing/reloading the console cannot stop the countdown.
+  scheduleWinnerConfirm() {
+    clearTimeout(this.winnerTimer);
+    this.winnerTimer = null;
+    const pending = this.state.winnerPending;
+    if (!pending || !Number.isSafeInteger(pending.endsAt)) return;
+    const delay = Math.max(0, pending.endsAt - Date.now());
+    this.winnerTimer = setTimeout(() => {
+      this.winnerTimer = null;
+      this.confirmWinnerNow();
+    }, delay);
+    this.winnerTimer.unref?.();
+  }
+
+  confirmWinnerNow() {
+    this.enqueue(async () => {
+      const pending = this.state.winnerPending;
+      if (!pending) return;
+      if (pending.endsAt > Date.now()) { this.scheduleWinnerConfirm(); return; }
+      if (this.state.incident || this.state.paused || seriesOf(this.state)[pending.team] < targetOf(this.state)) {
+        const cancelled = automaticTransition(this.state, draft => { draft.winnerPending = null; },
+          '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方', randomUUID(), { undo: false });
+        await this.save(cancelled);
+        this.live.note = '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方';
+        this.emit();
+        return;
+      }
+      const next = automaticTransition(this.state, draft => {
+        draft.winner = pending.team; draft.phase = 'winner'; draft.scene = 'victory';
+        draft.sceneOverride = null; draft.winnerPending = null;
+      }, `5 秒倒计时结束：自动确认 ${this.state.match.teams[pending.team].name} 为胜方`, randomUUID());
+      // Undo returns to the reviewed Winner screen without re-arming a stale
+      // expired deadline. The operator can then confirm or cancel manually.
+      next.undo.at(-1).state.winnerPending = null;
+      await this.save(next);
+      this.live.note = `5 秒倒计时结束：已自动确认 ${this.state.match.teams[pending.team].name} 为胜方`;
+      this.emit();
+    }).catch(() => { this.live.note = 'Winner 自动确认未保存，请检查本机存储后手动确认'; this.emit(); });
+  }
+
   async save(next, { allowPickScene = true } = {}) {
     if (this.file) {
       try {
@@ -101,6 +146,7 @@ export class SessionStore {
     this.state = next;
     this.pickScene.update(before, next, allowPickScene);
     this.scheduleResume();
+    this.scheduleWinnerConfirm();
   }
 
   command(command) {
