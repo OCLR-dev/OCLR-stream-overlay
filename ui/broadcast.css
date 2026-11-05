@@ -170,7 +170,7 @@
 .roll-sides h3 { font-size: 32px; line-height: 48px; min-height: 48px; margin: 0; overflow-wrap: anywhere; }.roll-sides strong { display: block; font: 800 110px/132px var(--display); }
 .roll-sides [data-team='a'] { color: var(--team-a); }.roll-sides [data-team='b'] { color: var(--team-b); }
 .pool-empty { align-self: center; justify-self: center; color: var(--muted); }
-.match-chat-line { margin: 2px 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-chat-line { margin: 2px 0; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; white-space: normal; }
 .match-chat-line b { color: var(--purple-light); }
 
 /* Slanted team banners with the supplied logo and the reference's stage strip. */
@@ -349,9 +349,9 @@
 .scene-stack { position: relative; flex: 0 0 900px; height: 900px; z-index: 1; }
 .scene { position: relative; width: 100%; height: 900px; }
 .scene-body { position: relative; height: 720px; overflow: hidden; padding: 16px 40px 24px; }
-.scene-head, .waiting-head { display: flex; flex: 0 0 68px; align-items: center; justify-content: center; height: 68px; }
+.scene-head { display: flex; flex: 0 0 68px; align-items: center; justify-content: center; height: 68px; }
 .title-line { display: flex; align-items: center; gap: 18px; }
-.scene-head h2, .waiting-head h2 { margin: 0; color: var(--ink); font-family: var(--display); font-size: 38px; font-weight: 800; letter-spacing: .15em; }
+.scene-head h2 { margin: 0; color: var(--ink); font-family: var(--display); font-size: 38px; font-weight: 800; letter-spacing: .15em; }
 .scene-eyebrow { color: var(--purple-light); font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .16em; }
 .state-badge { display: inline-flex; justify-content: center; border: 1px solid #8865bb; padding: 5px 12px; background: #47227180; color: #dac6f8; font-size: 13px; font-weight: 700; }
 .scene-footer { display: grid; grid-template-columns: 1fr 1.14fr 1fr; gap: 28px; height: 180px; overflow: hidden; border-top: 1px solid #7c3aed66; background: #1c1034d9; padding: 28px 60px; }
@@ -506,11 +506,21 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 
 /* Mappool keeps the S11 mod-grouped rows, cover tiles, mod colours, stronger
    picks and subdued bans; team Ban/EX status is rendered in the shared header. */
-.mappool-body { display: flex; flex-direction: column; padding: 4px 60px 20px; }
-.mappool-head { flex-basis: 52px; height: 52px; }
-.mappool-head .title-line { position: relative; }
-.mappool-head h2 { margin-right: -.3em; font-size: 40px; letter-spacing: .3em; }
-.mappool-head .scene-eyebrow { position: absolute; right: calc(100% + 18px); white-space: nowrap; }
+.mappool-body { display: flex; flex-direction: column; padding: 0 60px 20px; }
+/* The heading rides in the shared header's lower empty band (team banners end
+   at 130px), so the whole former heading row is returned to the scene body. */
+.mappool-head, .waiting-head {
+  position: absolute;
+  top: -36px;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  flex: none;
+  height: 28px;
+}
+.mappool-head .title-line, .waiting-head .title-line { position: relative; gap: 12px; }
+.mappool-head h2, .waiting-head h2 { margin-right: -.24em; font-size: 24px; letter-spacing: .24em; }
+.mappool-head .scene-eyebrow, .waiting-head .scene-eyebrow { right: calc(100% + 12px); font-size: 12px; letter-spacing: .12em; }
 /* Mappool-only ban badges sit under each team title, bottom-aligned with the
    flag. The blue side mirrors the row; Ban 1 stays nearest its flag. */
 .header-bans { position: absolute; bottom: 29px; display: flex; align-items: center; gap: 12px; max-width: 560px; white-space: nowrap; }
@@ -528,7 +538,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .header-bans--b .mappool-first-action { color: #dfeeff; }
 .map-ex-mark { border: 1px solid currentColor; padding: 1px 5px; color: #ffe1e7; font-size: 13px; font-weight: 700; }
 .header-bans--b .map-ex-mark { color: #dfeeff; }
-.mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 20px; }
+.mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 0; }
 /* Mod colours arrive per element from ui/modColors.ts (--mod-bg / --mod-ink). */
 .mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
 .map-group-head { display: grid; place-items: center; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); }
@@ -544,7 +554,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry-media .map-artwork[data-loaded='true'] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .map-entry > .map-base-artwork, .map-entry-media .map-artwork { transition: none; } }
 .map-entry > .map-copy { position: relative; z-index: 3; flex: 1 1 auto; align-self: stretch; justify-content: flex-start; padding-top: 0; padding-right: 0; }
-.map-index { position: absolute; right: 8px; bottom: 6px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-index { position: absolute; right: 8px; bottom: 8px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
@@ -555,12 +565,12 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Tint the Ban veil with the team that owns it so a blue Ban still reads blue. */
 .map-state-veil::after { position: absolute; inset: 0; content: ''; background: var(--map-team-color); opacity: .1; }
 .map-state-label { position: absolute; z-index: 7; pointer-events: none; }
-.map-state-label--corner { inset: 6px 6px auto auto; display: block; animation: map-status-reveal 352ms linear 1248ms both; }
+.map-state-label--corner { inset: 8px 8px auto auto; display: block; animation: map-status-reveal 352ms linear 1248ms both; }
 /* Results appear immediately; Ban/Pick badges follow the confirmation wipe. */
 .map-state-label--corner.map-state-label--winner { animation-delay: 0ms; }
 @keyframes map-status-reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .map-state-label--corner { animation: none; } }
-.map-state-label:not(.map-state-label--corner) { top: 6px; right: 6px; }
+.map-state-label:not(.map-state-label--corner) { top: 8px; right: 8px; }
 .map-state-label--corner .map-status { width: auto; min-width: 0; height: 24px; padding: 0 10px; border: 0; border-radius: var(--radius-card); background: var(--status-color); color: #fff; box-shadow: none; font-size: 15px; line-height: 24px; letter-spacing: .02em; }
 /* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner.
    62px keeps the two text lines (25px + 22px) plus the 7px bottom inset and the
@@ -574,9 +584,9 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .mappool-columns--large .map-entry[data-compact='true'][data-star='true'] > .map-copy { grid-template-rows: 1fr auto 1fr 22px; }
 .mappool-columns--large .map-entry[data-compact='true'] .map-title { grid-row: 2; }
 .mappool-columns--large .map-entry[data-compact='true'] .map-meta { grid-row: 4; transform: translateY(-2px); }
-.mappool-columns--large .map-entry[data-compact='true'] .map-star { top: auto; bottom: 10px; left: 8px; padding: 2px 4px 3px; font-size: 14px; line-height: 15px; }
-.mappool-columns--large .map-entry[data-compact='true'] .map-index { right: 10px; bottom: 8px; }
-.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] .map-meta { padding-left: 58px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-star { top: auto; bottom: 10px; left: 8px; padding: 2px 8px 3px 4px; font-size: 14px; line-height: 15px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-index { right: 8px; bottom: 8px; }
+.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] .map-meta { padding-left: calc(var(--star-chip-width, 47px) + 7px); }
 .mappool-columns--large .map-entry-media { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-right: 0; border-radius: 0; }
 .mappool-columns--large .map-entry::before { z-index: 3; background: linear-gradient(0deg, #100a22f7 0%, #100a22e6 32%, #100a2299 58%, #100a2200 100%); }
 .mappool-columns--large .map-entry > .map-copy { position: absolute; left: 9px; right: 9px; bottom: 7px; z-index: 4; justify-content: flex-end; padding: 0; }
@@ -584,11 +594,20 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .mappool-columns--large .map-meta { padding-right: var(--map-number-reserve); font-size: 19px; line-height: 22px; }
 .mappool-columns--large .map-meta-artist, .mappool-columns--large .map-meta-sep { display: none; }
 .mappool-columns--large .map-index { z-index: 5; }
+/* Very short cards stack the state chip and #N on the right edge. Shrink both
+   so the gap between them never drops below the 8px card inset. */
+.mappool-columns--large .map-entry[data-tight='true'] .map-state-label .map-status {
+  height: 20px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.mappool-columns--large .map-entry[data-tight='true'] .map-index { padding: 1px 6px 2px; font-size: 15px; }
 /* Content-sized chips mirror the #N badge without competing with the
    bottom-right card number. The value's range colour is the background. */
 .map-stat { display: flex; align-items: baseline; gap: 4px; padding: 3px 4px 4px; border-radius: 3px; background: var(--stat-color, #5f596b); box-shadow: inset 0 0 0 1px #ffffff38; color: var(--stat-ink, #fff); font-family: var(--display); font-size: 15px; font-weight: 700; line-height: 16px; white-space: nowrap; text-shadow: 0 1px 2px #0009; }
 .map-stat-label { color: inherit; font-size: 14px; letter-spacing: .04em; }
-.mappool-columns--large .map-star { position: absolute; top: 6px; left: 6px; z-index: 5; pointer-events: none; }
+.mappool-columns--large .map-star { position: absolute; top: 8px; left: 8px; z-index: 5; pointer-events: none; }
 .map-stat-value { color: inherit; font-weight: 800; font-variant-numeric: tabular-nums; }
 /* Team ownership, rather than Ban/Pick kind, determines the frame color.
    Inset strokes keep every card's outer dimensions unchanged. */
@@ -640,7 +659,10 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .chat-box-content .match-chat-line { flex: 0 0 auto; margin: 0; line-height: 20px; }
 .chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
 .chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
-.chat-box--compact .chat-box-content { height: 100%; justify-content: flex-start; padding-top: 4px; }
+.chat-box--compact .chat-box-content { height: 100%; justify-content: flex-end; padding-top: 4px; }
+/* End-anchored messages keep the newest line visible; the waiting status
+   stays at the top until the first message arrives. */
+.chat-box--compact .chat-empty { margin-bottom: auto; }
 .chat-empty { margin: 0; color: var(--muted); font-size: 13px; line-height: 22px; }
 
 /* Waiting room uses the same team colour fields as the reference winner cards. */
