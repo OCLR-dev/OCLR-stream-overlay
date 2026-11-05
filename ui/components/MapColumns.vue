@@ -34,12 +34,7 @@ const starFor = (entry: PoolEntry) => mapStarDisplay(metadataFor(entry), testMod
 type PoolCardState = Pick<PoolEntry, 'mod'> & { status: string; actionTeam: 'a' | 'b' | null; winnerTeam: 'a' | 'b' | null };
 const chosen = (entry: PoolCardState) => entry.mod !== 'TB' && !entry.winnerTeam && (entry.status === 'picked' || entry.status === 'used');
 const stateText = (entry: PoolCardState) => {
-  if (entry.winnerTeam) {
-    const win = entry.winnerTeam === 'a' ? '红队胜' : '蓝队胜';
-    const by = entry.actionTeam && entry.actionTeam !== entry.winnerTeam
-      ? (entry.actionTeam === 'a' ? ' · 红选' : ' · 蓝选') : '';
-    return win + by;
-  }
+  if (entry.winnerTeam) return entry.winnerTeam === 'a' ? '红队胜利' : '蓝队胜利';
   if (entry.mod === 'TB') return '决胜图';
   const team = entry.actionTeam === 'a' ? '红队' : entry.actionTeam === 'b' ? '蓝队' : '';
   return entry.status === 'banned' ? `${team}禁用` : team ? `${team}选择` : '已选择';
@@ -63,14 +58,34 @@ watch(groups, next => {
 // the star and the title to clear each other, drop the star beside the
 // difficulty line and reserve the matching left gutter for it.
 const compactHeight = 96;
+// Below this height the top-right state chip and the #N badge would crowd or
+// overlap, so both shrink while keeping the same 8px edge inset between them.
+const tightHeight = 80;
+// Tall cards have room for the higher-resolution official artwork; short cards
+// (compact or not) use the lighter cover image so dense pools stay cheap.
+const fullsizeHeight = 120;
 const columnsRoot = ref<HTMLElement | null>(null);
 const compactCards = reactive(new Set<string>());
+const tightCards = reactive(new Set<string>());
+const fullsizeCards = reactive(new Set<string>());
 let cardObserver: ResizeObserver | undefined;
 const measureCard = (element: HTMLElement) => {
   const id = element.dataset.mapIndex;
   if (!id) return;
   if (element.offsetHeight < compactHeight) compactCards.add(id);
   else compactCards.delete(id);
+  if (element.offsetHeight < tightHeight) tightCards.add(id);
+  else tightCards.delete(id);
+  if (element.offsetHeight > fullsizeHeight) fullsizeCards.add(id);
+  else fullsizeCards.delete(id);
+};
+// The compact card puts the star beside the difficulty line, so the text has to
+// clear the chip's real rendered width (which changes with the star value and
+// font size) rather than a fixed gutter.
+const measureStar = (element: HTMLElement) => {
+  const card = element.closest<HTMLElement>('[data-map-index]');
+  if (!card) return;
+  card.style.setProperty('--star-chip-width', `${element.offsetWidth}px`);
 };
 const observeCards = () => {
   cardObserver?.disconnect();
@@ -79,16 +94,25 @@ const observeCards = () => {
   for (const element of root.querySelectorAll<HTMLElement>('[data-map-index]')) {
     measureCard(element);
     cardObserver?.observe(element);
+    const star = element.querySelector<HTMLElement>('.map-star');
+    if (star) {
+      measureStar(star);
+      cardObserver?.observe(star);
+    }
   }
 };
 onMounted(() => {
   cardObserver = new ResizeObserver(entries => {
-    for (const entry of entries) measureCard(entry.target as HTMLElement);
+    for (const entry of entries) {
+      const target = entry.target as HTMLElement;
+      if (target.classList.contains('map-star')) measureStar(target);
+      else measureCard(target);
+    }
   });
   void nextTick(observeCards);
 });
 watch(groups, () => { void nextTick(observeCards); });
-onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
+onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); tightCards.clear(); });
 </script>
 
 <template>
@@ -99,7 +123,7 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
       <ol class="map-list">
         <li v-for="(entry, index) in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used', 'has-winner': !!entry.winnerTeam }"
-          :data-has-state="entry.status === 'banned' || !!entry.winnerTeam || chosen(entry) ? 'true' : undefined" :data-winner="entry.winnerTeam || undefined" :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
+          :data-has-state="entry.status === 'banned' || !!entry.winnerTeam || chosen(entry) ? 'true' : undefined" :data-winner="entry.winnerTeam || undefined" :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-tight="tightCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
           <span class="map-confirmation" aria-hidden="true" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <span v-if="entry.status === 'banned'" class="map-state-veil" aria-hidden="true"></span>
           <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--corner': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
@@ -109,7 +133,7 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
             <rect x="0" y="0" width="100%" height="100%" rx="4" pathLength="100" />
           </svg>
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />
-          <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" variant="list" /></span>
+          <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :variant="fullsizeCards.has(entry.id) ? 'fullsize' : 'cover'" /></span>
           <span v-if="entry.beatmapId > 0" class="map-stat map-star" :style="{ '--stat-color': starFor(entry).color || undefined, '--stat-ink': starFor(entry).ink }" :title="`星数 ${starFor(entry).value}`" :aria-label="`星数 ${starFor(entry).value}`"><span class="map-stat-label">★</span><span class="map-stat-value">{{ starFor(entry).value }}</span></span>
           <span class="map-copy"><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="artistFor(entry) || difficultyFor(entry)" class="map-meta"><template v-if="artistFor(entry)"><span class="map-meta-artist">{{ artistFor(entry) }}</span><span class="map-meta-sep"> / </span></template><span class="map-meta-difficulty">{{ difficultyFor(entry) || '—' }}</span></span></span>
           <span class="map-index" :title="entry.label">#{{ cardNumber(entry, index) }}</span>

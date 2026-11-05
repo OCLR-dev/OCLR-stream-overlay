@@ -40,7 +40,7 @@ export function createArtworkHandler(config, fetchImpl, store) {
   } catch { /* A service without tosu can still use official covers. */ }
   return async (req, res, url) => {
     if (!url.pathname.startsWith('/api/beatmaps/')) return false;
-    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|list|background|metadata)(?:\/(NM|HD|HR|DT))?$/);
+    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|list|fullsize|background|metadata)(?:\/(NM|HD|HR|DT))?$/);
     const id = Number(match?.[1]);
     const current = snapshot();
     const entry = current?.session.pool.find(item => item.beatmapId === id);
@@ -90,7 +90,7 @@ export function createArtworkHandler(config, fetchImpl, store) {
     const setId = positiveId(entry?.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : (await resolveMetadata(id))?.setId;
     const latest = snapshot();
     if (!setId || !(latest.session.pool.some(item => item.beatmapId === id) || match[2] === 'background' && matchingLive(latest, id))) return fail(404);
-    const cover = match[2] === 'list' ? 'list' : 'cover';
+    const cover = match[2] === 'list' || match[2] === 'fullsize' ? match[2] : 'cover';
     res.writeHead(302, { Location: `https://assets.ppy.sh/beatmaps/${setId}/covers/${cover}.jpg`,
       'Cache-Control': 'public, max-age=3600', 'X-Artwork-Source': 'osu-cover' });
     res.end(); return true;
