@@ -19,8 +19,8 @@
   100% { opacity: 0; transform: translate3d(760px, -404px, 0) rotate(-28deg); }
 }
 .broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-edge { --ribbon-pace: 1; --ribbon-strength: .75; }
-.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--top .lazer-ribbon:nth-of-type(n+5),
-.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--bottom .lazer-ribbon:nth-of-type(n+9) { display: none; }
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--top .lazer-ribbon:nth-of-type(n+7),
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--bottom .lazer-ribbon:nth-of-type(n+13) { display: none; }
 .broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-foot { opacity: .7; }
 .broadcast-canvas[data-current-scene='mappool'] .roster-footer { background: #1c1034b8; }
 @media (prefers-reduced-motion: reduce) {
