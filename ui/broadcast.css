@@ -400,16 +400,6 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
 .map-star-caption, .map-star-slot b,
 .map-slot > span:not(.map-pick-banner), .map-slot > b { text-shadow: var(--slot-shadow, none); }
-/* White diamonds rise toward the upper right inside both edge slots, below their copy. */
-.slot-particles { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-.slot-particle { position: absolute; width: var(--size); height: var(--size); background: #fff; box-shadow: 0 0 6px #ffffff73; opacity: 0; transform: rotate(45deg); animation: slot-diamond-rise var(--duration) linear var(--delay) infinite; }
-@keyframes slot-diamond-rise {
-  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(45deg) scale(.7); }
-  16% { opacity: var(--opacity); }
-  72% { opacity: var(--opacity); }
-  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(45deg) scale(1.1); }
-}
-@media (prefers-reduced-motion: reduce) { .slot-particle { animation: none; opacity: .22; } }
 .current-map { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 8px 18px 3px; text-align: center; text-shadow: 0 1px 4px #0008; }
 .map-chip { border: 1px solid #7c3aed99; padding: 2px 7px; background: #7c3aed26; color: #e0cdfa; font-size: 12px; font-weight: 700; }
 .map-chip[data-format='ex'] { color: var(--ex-ink); border-color: var(--ex-color); background: color-mix(in srgb, var(--ex-color) 12%, transparent); }
