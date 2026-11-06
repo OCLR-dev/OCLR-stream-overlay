@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { SIM_POOL, SIM_TEAMS, WARMUP } from './fixture.js';
 import { initialRoom, IPC_LABELS, makeV2Frame, MAP_PARAM_PRESETS } from './frames.js';
+import { advancePlayingScores } from './scores.js';
 import { acceptSocket } from './websocket.js';
 
 const FIELDS = ['mapId', 'ipcState', 'left', 'right', 'leftName', 'rightName', 'growing', 'silent', 'invalid', 'wrongRoom', 'missingClient', 'clientsHidden', 'mapParams'];
@@ -149,9 +150,7 @@ export class TosuSimulator {
     this.chat('模拟 WebSocket 已启动；不会连接 osu! 或发送房间指令');
     this.timer = setInterval(() => {
       if (!this.room.silent && this.room.ipcState === 3 && this.room.growing) {
-        this.room.time += this.tickMs;
-        if (this.room.left !== null) this.room.left += 7000;
-        if (this.room.right !== null) this.room.right += 6500;
+        Object.assign(this.room, advancePlayingScores(this.room, this.tickMs));
         if (this.room.time % 3000 < this.tickMs) this.chat(`Playing 模拟帧 · ${Math.round(this.room.time / 1000)}s`);
       }
       this.broadcast();
