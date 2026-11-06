@@ -1,0 +1,29 @@
+/* Lazer reference, integrated into the existing OCLR frame. Only decorations
+   are animated; content and capture ancestors keep their original geometry. */
+.broadcast-canvas:is([data-current-scene='playing'], [data-current-scene='mappool']) :is(.spectrum-grid, .broadcast-ambient) { display: none; }
+.lazer-ribbon-edge { position: absolute; inset: 0; z-index: 0; overflow: hidden; contain: paint; pointer-events: none; --ribbon-pace: .83; --ribbon-strength: 1; }
+.lazer-ribbon-band { position: absolute; left: 0; right: 0; height: 178px; overflow: hidden; }
+/* The middle shares the same direction and colours as the edges, with a
+   soft vertical envelope instead of a separate panel or hard boundary. */
+.lazer-ribbon-band--field { top: 0; height: 1080px; mask-image: linear-gradient(to bottom, transparent 100px, #0009 220px, #000 440px, #000 800px, #0009 940px, transparent); }
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--field { opacity: .7; }
+.lazer-ribbon-band--top { top: 0; mask-image: linear-gradient(to bottom, transparent 118px, #000 134px, #000 164px, transparent 178px); }
+.lazer-ribbon-band--bottom { bottom: 0; mask-image: linear-gradient(to bottom, transparent, #000 30px); }
+.lazer-ribbon-foot { position: absolute; inset: 0; background: linear-gradient(90deg, #ff4d6d0f, transparent 35% 65%, #3d8bff12), repeating-linear-gradient(108deg, #d8b4fe0c 0 1px, transparent 1px 20px); mask-image: linear-gradient(to bottom, transparent, #000 52px); }
+.lazer-ribbon { position: absolute; z-index: 1; border-radius: 999px; transform-origin: left center; color: var(--purple-light); background: linear-gradient(to bottom, color-mix(in srgb, currentColor 78%, white), currentColor); opacity: calc(var(--ribbon-alpha) * var(--ribbon-strength)); transform: rotate(-28deg); animation: lazer-ribbon-drift calc(var(--ribbon-duration) * var(--ribbon-pace)) linear var(--ribbon-delay) infinite; }
+.lazer-ribbon[data-tone='pink'] { color: color-mix(in srgb, var(--team-a) 24%, #c084fc); }
+.lazer-ribbon[data-tone='ice'] { color: color-mix(in srgb, var(--team-b) 26%, #b7dfff); }
+@keyframes lazer-ribbon-drift {
+  0% { opacity: 0; transform: translate3d(-760px, 404px, 0) rotate(-28deg); }
+  14%, 86% { opacity: calc(var(--ribbon-alpha) * var(--ribbon-strength)); }
+  100% { opacity: 0; transform: translate3d(760px, -404px, 0) rotate(-28deg); }
+}
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-edge { --ribbon-pace: 1; --ribbon-strength: .75; }
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--top .lazer-ribbon:nth-of-type(n+5),
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--bottom .lazer-ribbon:nth-of-type(n+9) { display: none; }
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-foot { opacity: .7; }
+.broadcast-canvas[data-current-scene='mappool'] .roster-footer { background: #1c1034b8; }
+@media (prefers-reduced-motion: reduce) {
+  .lazer-ribbon { animation: none !important; will-change: auto; transform: rotate(-28deg); }
+  .lazer-ribbon-edge { opacity: .75; }
+}
