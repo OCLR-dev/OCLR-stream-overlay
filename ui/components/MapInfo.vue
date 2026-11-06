@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue';
 import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
 import ScrollingText from './ScrollingText.vue';
-import SlotParticles from './SlotParticles.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
 import { starRatingDisplay } from '../mapStats';
 import { mapFileMetadata } from '../mapMetadata';
@@ -66,7 +65,6 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
   <div class="map-row" :data-mod="mapMod" :data-pick="view.pickTeam || 'none'" :style="modColorStyle(mapMod)">
     <MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" />
     <div class="map-star-slot" :style="{ '--star-bg': star.color || undefined, '--star-ink': star.ink, '--slot-shadow': starShadow }" :title="`星数 ${star.value}`" :aria-label="`星数 ${star.value}`">
-      <SlotParticles :seed="0" />
       <span class="map-star-caption" aria-hidden="true">星数 ★</span>
       <b>{{ star.value }}</b>
     </div>
@@ -85,7 +83,6 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
       </div>
     </div>
     <div class="map-slot" :style="{ '--slot-shadow': slotShadow }">
-      <SlotParticles :seed="1" />
       <span>所属图池位置</span>
       <b :title="mapLabel">{{ mapLabel }}</b>
     </div>
