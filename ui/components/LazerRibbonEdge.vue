@@ -1,53 +1,41 @@
 <script setup lang="ts">
+import { reactive } from 'vue';
 import { useOverlay } from '../useOverlay';
 const { state } = useOverlay();
-// Fixed seeds: no timers, randomness, score coupling or scene remounts.
-const ribbonSeeds = [
-  // A sparse shared field blends the edge motif into the existing purple grid.
-  // Production canvas clipping removes this layer from every capture hole.
-  { name: 'field', ribbons: [
-    { x: 0, y: 330, length: 330, thickness: 26, tone: 'pink', alpha: .10, duration: 54, delay: -24 },
-    { x: 24, y: 510, length: 420, thickness: 42, tone: 'violet', alpha: .11, duration: 54, delay: -38 },
-    { x: 65, y: 410, length: 240, thickness: 20, tone: 'ice', alpha: .12, duration: 42, delay: -16 },
-    { x: 6, y: 800, length: 260, thickness: 36, tone: 'violet', alpha: .12, duration: 54, delay: -31 },
-    { x: 42, y: 790, length: 420, thickness: 56, tone: 'ice', alpha: .11, duration: 54, delay: -22 },
-    { x: 82, y: 870, length: 180, thickness: 28, tone: 'ice', alpha: .13, duration: 42, delay: -29 },
-  ] },
-  { name: 'top', ribbons: [
-    { x: 6, y: 164, length: 220, thickness: 7, tone: 'pink', alpha: .09, duration: 54, delay: -19 },
-    { x: 25, y: 174, length: 330, thickness: 10, tone: 'violet', alpha: .11, duration: 42, delay: -31 },
-    { x: 56, y: 154, length: 190, thickness: 6, tone: 'ice', alpha: .10, duration: 54, delay: -12 },
-    { x: 81, y: 168, length: 270, thickness: 8, tone: 'ice', alpha: .12, duration: 42, delay: -23 },
-    { x: 40, y: 178, length: 130, thickness: 12, tone: 'pink', alpha: .10, duration: 30, delay: -9 },
-  ] },
-  { name: 'bottom', ribbons: [
-    { x: 2, y: 130, length: 190, thickness: 32, tone: 'pink', alpha: .22, duration: 42, delay: -13 },
-    { x: 17, y: 78, length: 300, thickness: 18, tone: 'violet', alpha: .18, duration: 54, delay: -38 },
-    { x: 30, y: 156, length: 150, thickness: 10, tone: 'violet', alpha: .16, duration: 30, delay: -17 },
-    { x: 44, y: 102, length: 420, thickness: 36, tone: 'ice', alpha: .20, duration: 54, delay: -22 },
-    { x: 61, y: 164, length: 180, thickness: 14, tone: 'ice', alpha: .22, duration: 42, delay: -33 },
-    { x: 76, y: 58, length: 280, thickness: 24, tone: 'ice', alpha: .24, duration: 30, delay: -8 },
-    { x: 92, y: 148, length: 130, thickness: 7, tone: 'violet', alpha: .20, duration: 54, delay: -41 },
-    { x: 49, y: 182, length: 420, thickness: 28, tone: 'violet', alpha: .16, duration: 42, delay: -27 },
-    { x: 9, y: 170, length: 240, thickness: 52, tone: 'pink', alpha: .21, duration: 54, delay: -36 },
-    { x: 28, y: 118, length: 130, thickness: 20, tone: 'pink', alpha: .24, duration: 30, delay: -21 },
-    { x: 67, y: 144, length: 210, thickness: 48, tone: 'violet', alpha: .18, duration: 42, delay: -16 },
-  ] },
-];
-// More short capsules expose rounded ends throughout the field. Extra paths
-// are deterministic and share the existing drift cadence, without timers.
-const bands = ribbonSeeds.map(band => ({
-  ...band,
-  ribbons: [
-    ...band.ribbons,
-    ...band.ribbons.slice(0, band.name === 'field' ? 6 : band.name === 'top' ? 3 : 7).map((ribbon, index) => ({
-      ...ribbon,
-      x: (ribbon.x + 29 + index * 7) % 100,
-      y: band.name === 'field' ? 220 + (ribbon.y + 180) % 650 : 28 + (ribbon.y + 55) % 145,
-      delay: ribbon.delay - ribbon.duration * .37,
-    })),
-  ],
-}));
+// Randomize once on mount and again at each ribbon's invisible loop boundary.
+// Reactive match updates never regenerate this independent decorative state.
+type BandName = 'field' | 'top' | 'bottom';
+type Ribbon = { x: number; y: number; length: number; thickness: number; tone: string; alpha: number; duration: number; delay: number };
+const between = (min: number, max: number) => min + Math.random() * (max - min);
+function appearance(name: BandName, x = between(0, 100)) {
+  return {
+    x,
+    y: name === 'field' ? between(220, 940) : name === 'top' ? between(145, 198) : between(36, 210),
+    length: Math.round(120 + Math.random() ** 1.4 * 300),
+    thickness: name === 'top' ? between(6, 12) : name === 'field' ? between(20, 56) : between(7, 52),
+    tone: Math.random() < .45 ? 'violet' : x < 40 ? 'pink' : 'ice',
+    alpha: name === 'top' ? between(.09, .12) : name === 'field' ? between(.10, .13) : between(.16, .24),
+  };
+}
+const bands = reactive(([
+  { name: 'field', count: 12 }, { name: 'top', count: 8 }, { name: 'bottom', count: 18 },
+] as const).map(band => ({
+  name: band.name,
+  ribbons: Array.from({ length: band.count }, (_, index): Ribbon => {
+    const duration = band.name === 'field' ? between(42, 54) : between(30, 54);
+    return {
+      ...appearance(band.name, (index + Math.random()) / band.count * 100),
+      duration,
+      delay: -Math.random() * duration,
+    };
+  }),
+})));
+function renew(event: AnimationEvent, name: BandName, ribbon: Ribbon) {
+  if (event.animationName !== 'lazer-ribbon-drift') return;
+  // Keep duration and delay stable: changing them would jump the animation
+  // timeline. New geometry appears only after the next fade-in has started.
+  Object.assign(ribbon, appearance(name));
+}
 </script>
 
 <template>
@@ -55,6 +43,7 @@ const bands = ribbonSeeds.map(band => ({
     <div v-for="band in bands" :key="band.name" class="lazer-ribbon-band" :class="`lazer-ribbon-band--${band.name}`">
       <div v-if="band.name === 'bottom'" class="lazer-ribbon-foot"></div>
       <span v-for="(ribbon, index) in band.ribbons" :key="index" class="lazer-ribbon" :data-tone="ribbon.tone"
+        @animationiteration.self="renew($event, band.name, ribbon)"
         :style="{ left: `${ribbon.x}%`, top: `${ribbon.y}px`, width: `${ribbon.length}px`, height: `${ribbon.thickness}px`,
           '--ribbon-alpha': ribbon.alpha, '--ribbon-duration': `${ribbon.duration}s`, '--ribbon-delay': `${ribbon.delay}s` }"></span>
     </div>

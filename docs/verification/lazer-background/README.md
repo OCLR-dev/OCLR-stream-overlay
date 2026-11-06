@@ -16,3 +16,7 @@ Only the component, its CSS, App mount and main stylesheet import were transferr
 ## Short capsules and consistent confirmation direction
 
 Follow-up: all Ban/Pick confirmations reveal left-to-right, retaining team colour and timing. Removed unused reverse-direction styling and option. Capsules now measure about 120–420px instead of up to 1400px; Mappool has 38 and Playing 30 visible ribbons. Angle and drift cadence unchanged. Both builds/type checks and 7 motion tests pass, including blue Ban and Pick reveal frames. Production Playing DOM/style checks confirm 38 mounted / 30 visible ribbons and unobstructed transparent capture centers. Custom CA grouping and mod-parameter guards are preserved. No service restart or match edits were performed.
+
+## Randomized ribbon lifecycle
+
+Replace fixed seeds with per-mount random position, 120–420px length, thickness, opacity, duration and phase. Each native animationiteration randomizes geometry only at the invisible loop boundary; duration/delay stay unchanged to avoid timeline jumps. Match/SSE updates do not regenerate the decorative state. Counts, 28° direction and existing pace multipliers remain. Both type checks/builds pass. Browser checks: distributions differ after reload, all 38 lengths remain in range, multiple loops renew geometry with identical duration/delay, and Playing capture centers remain clear. No per-frame JS or new timer.
