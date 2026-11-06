@@ -7,6 +7,7 @@ import ReviewControls from './components/ReviewControls.vue';
 import BroadcastHeader from './components/BroadcastHeader.vue';
 import BroadcastAmbient from './components/BroadcastAmbient.vue';
 import SpectrumGrid from './components/SpectrumGrid.vue';
+import LazerRibbonEdge from './components/LazerRibbonEdge.vue';
 import ChatPanel from './components/ChatPanel.vue';
 import WaitingScene from './components/WaitingScene.vue';
 import MappoolScene from './components/MappoolScene.vue';
@@ -38,6 +39,7 @@ const chatVisible = computed(() => chatScene.has(state.scene));
           :style="{ transform: `scale(${scale})` }">
           <SpectrumGrid />
           <BroadcastAmbient />
+          <LazerRibbonEdge />
           <BroadcastHeader />
           <!-- One Playing capture grid remains mounted through gameplay and Ranking. -->
           <div class="scene-stack" v-scene-reveal="{ value: state.scene, scope: motionScope, enabled: motionReady }">
