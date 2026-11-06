@@ -26,7 +26,7 @@ const { state, view, motionScope } = useOverlay();
             <span class="status-team status-team--b">{{ view.names.b }}</span>
           </p>
         </div>
-        <div class="victory-result">
+        <div v-if="!view.warmup" class="victory-result">
           <span>最终比分</span>
           <strong><span>{{ state.seriesA ?? '—' }}</span><i>:</i><span>{{ state.seriesB ?? '—' }}</span></strong>
         </div>

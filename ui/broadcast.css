@@ -763,3 +763,6 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry.is-banned > .map-copy { z-index: 6; }
 .mappool-column[data-mod='TB'] .map-group-head { background: #000; box-shadow: inset 0 0 0 2px #ffcc22, 0 0 16px #ffcc2233; color: #ffcc22; }
 .map-entry[data-mod='TB'] .map-index { background: #000; color: #ffcc22; box-shadow: inset 0 0 0 1px #ffcc2299; }
+
+/* Warm-up keeps only live totals; no hidden series placeholder is needed. */
+.broadcast-header[data-warmup='true'] .header-score--room { position: relative; }

@@ -105,7 +105,7 @@ const target = computed(() => s.value?.match.stage === 'final' ? 7 : 6);
 const recordingPrevious = computed(() => !!resultRound.value && resultRound.value !== s.value?.currentRoundId);
 const panel = computed(() => normalizeScene(s.value?.scene));
 const scorePanel = computed(() => panel.value === 'playing');
-const panelHeading = computed(() => ({ waiting: '到场与就绪', roll: 'Roll 点数与先手', mappool: '图池 Ban / Pick', playing: '比分与赛果', victory: '全场胜方', pause: '暂停管理' }[panel.value]));
+const panelHeading = computed(() => s.value?.warmup ? 'Warm-up · 热身' : ({ waiting: '到场与就绪', roll: 'Roll 点数与先手', mappool: '图池 Ban / Pick', playing: '比分与赛果', victory: '全场胜方', pause: '暂停管理' }[panel.value]));
 const scenes = [['waiting', '等待'], ['roll', 'Roll / 先手'], ['mappool', '图池 / BP'], ['playing', 'Playing'], ['victory', 'Winner']] as const;
 const form = reactive({ title: 'OCLR S11', a: '', b: '', rosterA: '', rosterB: '', pool: '', mode: '4v4', source: '4x3' });
 const rollForm = reactive({ a: '', b: '', winner: '', pickFirst: '', banFirst: '' });
@@ -256,7 +256,7 @@ const run = async (type: string, payload: unknown = {}) => {
       'clear-records': '已撤销全部比赛记录；队伍、名单、图池与自动跟随设置保留。',
       undo: `已撤销上一项。当前系列比分 ${series.value.a} : ${series.value.b}，请核对当前图后继续。`,
     };
-    const recorded = s.value?.history.at(-1)?.message || '';
+    const recorded = s.value?.warmup && type === 'display' ? '已手动切换热身播出画面，正式自动流程保持关闭。' : s.value?.history.at(-1)?.message || '';
     const hintText = type === 'undo'
       ? `当前系列比分 ${series.value.a} : ${series.value.b}。下一步：${nextStep.value}`
       : nextStep.value ? `下一步：${nextStep.value}` : '';
@@ -472,7 +472,7 @@ function poolState(id: string) {
   if (entry(id)?.mod === 'TB' && mark.status !== 'open') return mark.status === 'used' ? '决胜图 · 已结束' : '决胜图 · 已准备';
   return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已结束' : 'Pick'}` : '';
 }
-const nextStep = computed(() => operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
+const nextStep = computed(() => s.value?.warmup ? '热身不会推进 BP、计胜或自动切画面。结束后返回游戏房间，再关闭 Warm-up。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
 const bpAuto = computed(() => {
   const action = s.value?.action || s.value?.bp?.next || null;
   if (!action) return null;
@@ -503,7 +503,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
   <main class="operator" :class="{ 'motion-ready': motionReady }">
     <header class="operator-header">
       <div class="operator-brand"><span class="operator-kicker">OCLR {{ s?.match.edition?.toUpperCase() || 'S11' }} / BROADCAST</span><h1>直播控制台</h1></div>
-      <div class="operator-match"><span>{{ names.a }}</span><strong>{{ series.a }} : {{ series.b }}</strong><span>{{ names.b }}</span></div>
+      <div class="operator-match"><span>{{ names.a }}</span><strong>{{ s?.warmup ? 'Warm-up' : `${series.a} : ${series.b}` }}</strong><span>{{ names.b }}</span></div>
       <div class="operator-edition">{{ s?.match.title }}<br>{{ s?.match.stage === 'final' ? '决赛 · BO13' : s?.match.stage === 'elimination' ? '淘汰赛 · BO11' : '小组赛 · BO11' }} · 先赢 {{ target }} 图</div>
     </header>
     <nav class="operator-tabs" aria-label="控制台页面">
@@ -518,16 +518,20 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <span>播出画面</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
       </nav>
       <section class="operator-toolbar" aria-label="随时可用的比赛操作">
-        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
+        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.warmup ? 'Warm-up · 热身中，不计赢图' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'normal' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
         <button :disabled="disabled || !hasMatchRecords" :data-unavailable="connection !== 'synced' || !hasMatchRecords" @click="openClearRecords">全部撤销</button>
-        <button v-if="round" @click="showIncidents()">处理异常</button><button @click="showAdjustments">手动调整 / 改比分</button>
+        <button v-if="round && !s.warmup" @click="showIncidents()">处理异常</button><button v-if="!s.warmup" @click="showAdjustments">手动调整 / 改比分</button>
         <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
       </section>
+      <section class="operator-warm-time" aria-label="Warm-up 热身模式">
+        <button type="button" :aria-pressed="!!s.warmup" :disabled="disabled" @click="run('warmup', { enabled: !s.warmup })">Warm-up · {{ s.warmup ? '已开启' : '已关闭' }}</button>
+        <span>{{ s.warmup ? '热身中：不推进 BP、不计胜、不自动切画面；播出仅显示实时队分。返回游戏房间后关闭。' : '开启后进入热身模式，不切换当前播出画面。' }}</span>
+      </section>
       <div class="operator-quick-row">
-        <section class="operator-ex-quick" aria-label="EX 常用操作">
+        <section v-if="!s.warmup" class="operator-ex-quick" aria-label="EX 常用操作">
           <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
             <span>本图 EX</span>
             <button :aria-pressed="!s.ex.team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="setExTeam(null)">关闭 EX</button>
@@ -593,8 +597,13 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
 
         <div class="operator-workspace">
           <section class="operator-actions" aria-label="当前画面管理">
-            <section class="operator-situation" aria-label="当前画面管理说明"><div><span class="operator-kicker">{{ sceneLabels[s.scene as Scene] }} · 管理</span><h2>{{ panelHeading }}</h2><p role="status" aria-live="polite">{{ nextStep }}</p><p v-if="round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
-            <div v-if="panel === 'waiting'" class="operator-action-stack">
+            <section class="operator-situation" aria-label="当前画面管理说明"><div><span class="operator-kicker">{{ sceneLabels[s.scene as Scene] }} · 管理</span><h2>{{ panelHeading }}</h2><p role="status" aria-live="polite">{{ nextStep }}</p><p v-if="!s.warmup && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
+            <div v-if="s.warmup" class="operator-action-stack">
+              <h3>热身实时队分</h3>
+              <div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div>
+              <p>正式比分和比赛记录已保留，热身不计入胜点。画面可在上方手动选择。</p>
+            </div>
+            <div v-else-if="panel === 'waiting'" class="operator-action-stack">
               <div class="operator-two"><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-team-status" :data-team="team"><h3>{{ names[team] }}</h3><label class="operator-check"><input type="checkbox" :checked="s.arrived[team]" :disabled="disabled" :data-unavailable="connection !== 'synced'" @change="run('arrival', { team, arrived: !s.arrived[team], ready: false })">已到场</label><label class="operator-check"><input type="checkbox" :checked="s.ready[team]" :disabled="disabled || !s.arrived[team]" :data-unavailable="connection !== 'synced' || !s.arrived[team]" @change="run('arrival', { team, arrived: true, ready: !s.ready[team] })">已就绪</label></div></div>
               <button class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="display('roll')">开始 Roll →</button>
             </div>

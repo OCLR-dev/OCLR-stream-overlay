@@ -125,3 +125,9 @@
 .operator-initialize-dialog form { display: grid; gap: 16px; }
 .operator-initialize-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
 .operator .operator-initialize-error { min-height: 1.6em; color: #ffd0dc; }
+
+.operator-warm-time { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 10px 0; padding: 10px 14px; border: 1px solid #7653aa66; border-radius: 6px; background: #1c122f; }
+.operator-warm-time button { padding: 8px 14px; border: 1px solid #7951b5; border-radius: 4px; background: #29163f; color: #fff; font: inherit; cursor: pointer; }
+.operator-warm-time button[aria-pressed='true'] { background: #7346b1; border-color: #c7a3ff; }
+.operator-warm-time button:disabled { opacity: .5; cursor: default; }
+.operator-warm-time span { color: #c5b6d7; font-size: 13px; }

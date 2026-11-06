@@ -14,12 +14,12 @@ export function retainRankingScores(envelope: Envelope | null | undefined, conne
   if (!session || !['playing', 'map-result'].includes(scene) || session.incident) return null;
   const source = envelope.live.tosu;
   const room = source.data?.tourney;
-  const round = session.rounds.find(value => value.id === session.currentRoundId);
+  const round = session.warmup ? undefined : session.rounds.find(value => value.id === session.currentRoundId);
   const entry = session.pool.find(value => value.id === round?.entryId);
   if (room?.ipcState === 3 || round && !['ranking', 'recorded'].includes(round.status) && room?.ipcState !== 4) return null;
   const mapId = entry?.beatmapId || source.data?.beatmap.id || previous?.mapId;
   if (!mapId) return null;
-  const key = JSON.stringify([session.id, round?.id || null, mapId, session.auto.left, session.auto.right]);
+  const key = JSON.stringify([session.id, !!session.warmup, round?.id || null, mapId, session.auto.left, session.auto.right]);
   let scores: RankingScoreHold['scores'] | null = null;
   if (round?.finalScore) {
     const saved = { left: round.finalScore.a, right: round.finalScore.b };

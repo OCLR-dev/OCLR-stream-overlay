@@ -14,7 +14,7 @@ export function newSession() {
     match: { title: 'OCLR S11', edition: null, fixtureId: null, poolId: null, provenance: 'manual',
       stage: 'group', mode: '4v4', source: '4x3',
       teams: { a: { id: null, name: '左队待设置', roster: [] }, b: { id: null, name: '右队待设置', roster: [] } } },
-    pool: [], poolMarks: [], poolChoice: null, arrived: { a: false, b: false }, ready: { a: false, b: false },
+    pool: [], warmup: false, poolMarks: [], poolChoice: null, arrived: { a: false, b: false }, ready: { a: false, b: false },
     roll: { a: null, b: null, winner: null, pickFirst: null, banFirst: null },
     phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null, automationVersion: 3,
     auto: { bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', mapDebounceMs: 400, rankingDebounceMs: 250 },
@@ -62,7 +62,7 @@ export const seriesOf = s => Object.fromEntries(SIDES.map(team => [team,
   s.rounds.filter(r => r.status === 'recorded' && r.winner === team).length + (s.seriesAdjustment?.[team] || 0)]));
 export const seriesComplete = s => SIDES.some(team => seriesOf(s)[team] >= targetOf(s));
 export const entryOf = (s, id) => s.pool.find(e => e.id === id);
-const domain = s => ({ poolMarks: [], poolChoice: null, ...Object.fromEntries(Object.entries(s).filter(([key]) => !['version', 'history', 'undo', 'commandIds'].includes(key))) });
+const domain = s => ({ warmup: false, poolMarks: [], poolChoice: null, ...Object.fromEntries(Object.entries(s).filter(([key]) => !['version', 'history', 'undo', 'commandIds'].includes(key))) });
 
 export function holdRound(s, kind, reason, source = 'manual') {
   const round = currentRound(s);
@@ -280,6 +280,7 @@ function recordBp(s, action, entryId, source, eventId, kind = action.kind) {
 }
 
 export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, eventId = null) {
+  requireValue(!s.warmup, 'Warm-up 已开启，热身不推进正式 BP');
   requireResolved(s);
   requireValue(!s.paused && !bpStopReason(s), bpStopReason(s) || '明确暂停中，请先返回原画面');
   requireValue(s.scene !== 'pause' && (source === 'manual' || s.phase === 'bp' || s.scene === 'mappool'), '请先进入 BP');
@@ -327,6 +328,7 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
 }
 
 export function startRound(s, source = 'manual') {
+  requireValue(!s.warmup, 'Warm-up 已开启，热身不创建正式比赛或计胜');
   requireResolved(s);
   const round = currentRound(s);
   requireValue(round?.status === 'prepared', '尚未准备本轮谱面');
@@ -342,6 +344,7 @@ export function startRound(s, source = 'manual') {
 // Ranking changes the display; this separately awards the round from validated
 // totals. Calling it twice cannot award again. Winner display remains an operator action.
 export function awardTosuResult(s, roundId, scores) {
+  requireValue(!s.warmup, 'Warm-up 已开启，热身不创建正式比赛或计胜');
   requireResolved(s, roundId);
   const round = s.rounds.find(r => r.id === roundId);
   requireValue(round?.status === 'ranking', '该局已计胜或尚未结算');
@@ -362,7 +365,18 @@ function leaveInvalidWinner(s) {
 
 function applyCommand(s, command) {
   const p = command.payload || {};
+  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'adjust-round', 'void-round'].includes(command.type))
+    requireValue(false, 'Warm-up 已开启，请结束热身后再操作正式比赛');
   switch (command.type) {
+    case 'warmup': {
+      requireValue(typeof p.enabled === 'boolean', 'Warm-up 开关无效');
+      if (p.enabled) requireValue(!s.paused && !s.incident && !['playing', 'ranking'].includes(currentRound(s)?.status), '正式本局进行中或待核对，请先处理本局再开始热身');
+      // A later warmup may reuse the most recently played map. Its Ranking
+      // frames must never reopen or retract that already-confirmed result.
+      if (p.enabled && currentRound(s)?.status === 'recorded') currentRound(s).autoProtected = true;
+      s.warmup = p.enabled;
+      return p.enabled ? 'Warm-up 已开启：热身不推进 BP、不计赢图，不切换播出画面' : 'Warm-up 已结束，恢复正式比赛自动化';
+    }
     case 'map-mark': {
       const entry = entryOf(s, p.entryId);
       requireValue(entry?.mod !== 'TB' || p.status === 'open', 'TB 不可 Ban，也不归属普通 Pick；请单独准备 TB');
@@ -774,7 +788,7 @@ function applyCommand(s, command) {
       // remains the safety net.
       const kept = { schema: s.schema, id: s.id, match: s.match, pool: s.pool, auto: s.auto, automationVersion: s.automationVersion };
       Object.assign(s, {
-        poolMarks: [], poolChoice: null, arrived: { a: false, b: false }, ready: { a: false, b: false },
+        warmup: false, poolMarks: [], poolChoice: null, arrived: { a: false, b: false }, ready: { a: false, b: false },
         roll: { a: null, b: null, winner: null, pickFirst: null, banFirst: null },
         phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null,
         action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] },
