@@ -57,13 +57,19 @@ export class RoomAutomation {
   hold(state, reason) {
     this.reset();
     const round = currentRound(state);
-    if (!state.incident && ['playing', 'ranking'].includes(round?.status)) {
+    if (!state.warmup && !state.incident && ['playing', 'ranking'].includes(round?.status)) {
       state = automaticTransition(state, draft => holdRound(draft, 'unverified', reason, 'tosu'), `本图异常待核对：${reason}`, randomUUID());
     }
     return { state, note: reason };
   }
 
   ingest(state, frame, now = Date.now()) {
+    if (state.warmup) {
+      // Warm-up consumes no formal events, including scene following and
+      // room discovery writes. Source telemetry still reaches subscribers.
+      this.reset();
+      return { state, note: 'Warm-up：热身不推进正式 BP、不计赢图、不自动切换画面' };
+    }
     const teams = tosuRoomTeams(frame);
     const bindingChanged = teams && (state.auto.profile !== 'stable-tourney' || state.auto.left !== teams.left || state.auto.right !== teams.right);
     const namesChanged = teams && (state.match.teams.a.name !== teams.left || state.match.teams.b.name !== teams.right);

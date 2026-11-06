@@ -14,7 +14,7 @@ const { state, view, motionScope, motionReady } = useOverlay();
 // arrived; the series value stays beside the win pips as a small gilded number.
 // Every other scene keeps only the series score.
 const received = (value: string) => /^\d[\d,]*$/.test(value);
-const roomTotals = computed(() => state.scene === 'playing' &&
+const roomTotals = computed(() => (state.scene === 'playing' || view.value.warmup) &&
   received(view.value.scoreA) && received(view.value.scoreB));
 const seriesScore = (team: 'a' | 'b') => (team === 'a' ? state.seriesA : state.seriesB) ?? '—';
 // Ban/EX status sits under each team title in every scene so the header keeps
@@ -32,7 +32,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
 </script>
 
 <template>
-  <header class="broadcast-header broadcast-header--flag-preview">
+  <header class="broadcast-header broadcast-header--flag-preview" :data-warmup="view.warmup ? 'true' : undefined">
     <HeaderAmbient />
     <section class="team-block team-block--a" :aria-label="`左队（RED）：${view.names.a}`">
       <TeamBlockParticles />
@@ -53,11 +53,11 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       </div>
       <div class="header-score-line">
       <span class="header-score-stack">
-        <strong class="header-score header-score--series" :class="{ 'is-visible': !roomTotals }" :id="roomTotals ? undefined : 'scoreValueA'" data-score-source="series" :aria-hidden="roomTotals" :aria-label="`系列赢图 ${seriesScore('a')}`"><span v-emphasize="{ value: seriesScore('a'), scope: `${motionScope}:series`, enabled: motionReady && !roomTotals }">{{ seriesScore('a') }}</span></strong>
+        <strong v-if="!view.warmup" class="header-score header-score--series" :class="{ 'is-visible': !roomTotals }" :id="roomTotals ? undefined : 'scoreValueA'" data-score-source="series" :aria-hidden="roomTotals" :aria-label="`系列赢图 ${seriesScore('a')}`"><span v-emphasize="{ value: seriesScore('a'), scope: `${motionScope}:series`, enabled: motionReady && !roomTotals }">{{ seriesScore('a') }}</span></strong>
         <strong class="header-score header-score--room" :class="{ 'is-visible': roomTotals }" :id="roomTotals ? 'scoreValueA' : undefined" data-score-source="room" :aria-hidden="!roomTotals" :aria-label="`本图实时队分 ${view.scoreA}`">{{ view.scoreA }}</strong>
       </span>
       </div>
-      <div class="series-row">
+      <div v-if="!view.warmup" class="series-row">
         <span class="series-mini" :class="{ 'is-visible': roomTotals }" data-series-mini="a" :aria-hidden="!roomTotals" :aria-label="`系列赢图 ${seriesScore('a')}`">{{ seriesScore('a') }}</span>
         <span class="win-stars" data-series-stars="a" :aria-label="state.seriesA === null ? '赢图未知' : `已赢 ${state.seriesA} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesA ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesA !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesA ?? 0) }" aria-hidden="true"></i></span>
       </div>
@@ -66,7 +66,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
     <section class="event-block">
       <div class="event-logo"><strong v-if="view.brand" class="event-title--custom" :title="view.brand">{{ view.brand }}</strong><img v-else :src="oclrLogo" alt="OCLR" width="160" height="42" /></div>
       <div class="event-meta">
-        <strong data-stage-label>{{ view.meta.label }}</strong>
+        <strong data-stage-label>{{ view.warmup ? 'Warm-up' : view.meta.label }}</strong>
       </div>
     </section>
 
@@ -89,11 +89,11 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       </div>
       <div class="header-score-line">
       <span class="header-score-stack">
-        <strong class="header-score header-score--series" :class="{ 'is-visible': !roomTotals }" :id="roomTotals ? undefined : 'scoreValueB'" data-score-source="series" :aria-hidden="roomTotals" :aria-label="`系列赢图 ${seriesScore('b')}`"><span v-emphasize="{ value: seriesScore('b'), scope: `${motionScope}:series`, enabled: motionReady && !roomTotals }">{{ seriesScore('b') }}</span></strong>
+        <strong v-if="!view.warmup" class="header-score header-score--series" :class="{ 'is-visible': !roomTotals }" :id="roomTotals ? undefined : 'scoreValueB'" data-score-source="series" :aria-hidden="roomTotals" :aria-label="`系列赢图 ${seriesScore('b')}`"><span v-emphasize="{ value: seriesScore('b'), scope: `${motionScope}:series`, enabled: motionReady && !roomTotals }">{{ seriesScore('b') }}</span></strong>
         <strong class="header-score header-score--room" :class="{ 'is-visible': roomTotals }" :id="roomTotals ? 'scoreValueB' : undefined" data-score-source="room" :aria-hidden="!roomTotals" :aria-label="`本图实时队分 ${view.scoreB}`">{{ view.scoreB }}</strong>
       </span>
       </div>
-      <div class="series-row">
+      <div v-if="!view.warmup" class="series-row">
         <span class="series-mini" :class="{ 'is-visible': roomTotals }" data-series-mini="b" :aria-hidden="!roomTotals" :aria-label="`系列赢图 ${seriesScore('b')}`">{{ seriesScore('b') }}</span>
         <span class="win-stars" data-series-stars="b" :aria-label="state.seriesB === null ? '赢图未知' : `已赢 ${state.seriesB} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesB ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesB !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesB ?? 0) }" aria-hidden="true"></i></span>
       </div>

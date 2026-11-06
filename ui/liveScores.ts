@@ -2,7 +2,7 @@ import type { Envelope, PoolEntry, Session } from './session';
 
 export function playingPickTeam(session: Session | null | undefined, map: PoolEntry | null) {
   const round = session?.rounds.find(r => r.id === session.currentRoundId);
-  if (!map || map.mod === 'TB' || !round || round.status === 'void' || round.entryId !== map.id) return null;
+  if (session?.warmup || !map || map.mod === 'TB' || !round || round.status === 'void' || round.entryId !== map.id) return null;
   return round.pickedBy;
 }
 
@@ -29,7 +29,7 @@ export function liveTeamScores(envelope: Envelope | null | undefined, connection
 
 export function resultTeamScores(envelope: Envelope | null | undefined, connection: string | undefined) {
   const session = envelope?.session;
-  const round = session?.rounds.find(r => r.id === session.currentRoundId);
+  const round = session?.warmup ? undefined : session?.rounds.find(r => r.id === session.currentRoundId);
   if (session?.incident && session.incident.roundId === round?.id) return null;
   // A recorded score stays available independently of telemetry. Never fill a
   // missing side in that saved snapshot with a different live sample.

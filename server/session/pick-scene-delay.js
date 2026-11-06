@@ -8,7 +8,7 @@ function pickKey(state) {
     ['pick', 'replace-pick'].includes(item.kind));
   return JSON.stringify([state.id, round.id, entry.id, entry.beatmapId, entry.mod, round.pickedBy, event?.id || null]);
 }
-const eligible = state => state.scene === 'mappool' && state.phase === 'bp' && state.auto.scenes &&
+const eligible = state => !state.warmup && state.scene === 'mappool' && state.phase === 'bp' && state.auto.scenes &&
   !state.action && !state.paused && !state.incident && !seriesComplete(state);
 
 // One volatile server timer per fresh Pick. Loading/subscribing to an existing

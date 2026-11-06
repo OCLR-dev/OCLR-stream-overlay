@@ -35,7 +35,7 @@ export function createOverlay(shared = false) {
     const envelope = sessionClient?.snapshot.value;
     const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
     const round = s?.rounds.find(r => r.id === s.currentRoundId);
-    const recordedMap = s?.pool.find(e => e.id === round?.entryId) || null;
+    const recordedMap = !s?.warmup && s?.pool.find(e => e.id === round?.entryId) || null;
     const roster = (team: Team) => shared ? Array.from({ length: base.count }, (_, i) => ({
       team, id: `${team}-${i + 1}`, slot: i + 1, role: '', syntheticEx: false,
       name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null,
@@ -70,7 +70,7 @@ export function createOverlay(shared = false) {
       return pool.find(e => e.id === ids[index]) || null;
     };
     const meta = s ? matchFormat(s.match) : base.meta;
-    return { ...base, meta, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', brand: s?.match.custom ? s.match.title : null, shared, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
+    return { ...base, meta, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', brand: s?.match.custom ? s.match.title : null, shared, warmup: !!s?.warmup, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {

@@ -12,6 +12,7 @@ import { ReadyReturnRecovery } from './ready-return-recovery.js';
 export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
     this.file = file; this.state = restoreAutomation(state); this.listeners = new Set(); this.automation = new RoomAutomation();
+    this.state.warmup ??= false;
     this.parameterHold = null;
     this.seriesCorrection = new SeriesCorrectionTracker();
     this.spectatorRecovery = new SpectatorRecovery();
@@ -80,7 +81,7 @@ export class SessionStore {
       // counters, future actions and unrelated corrections do not lose a finish.
       const continuity = state => {
         const round = currentRound(state);
-        return JSON.stringify([state.id, state.auto.wsUrl, state.auto.profile, state.auto.left, state.auto.right, state.paused, state.incident,
+        return JSON.stringify([state.id, state.auto.wsUrl, state.auto.profile, state.auto.left, state.auto.right, state.paused, state.incident, state.warmup,
           round?.id, round?.entryId, entryOf(state, round?.entryId)?.beatmapId, round?.status, round?.runId]);
       };
       let effective = command;
@@ -91,6 +92,11 @@ export class SessionStore {
             ? { finishRoundId: this.state.currentRoundId } : {}) } };
       }
       const next = transition(this.state, effective);
+      if (this.state.warmup && !next.warmup && next.id === this.state.id && command.type !== 'clear-records') {
+        const room = this.live.tosu.data?.tourney;
+        requireValue(this.live.tosu.status === 'live' && Date.now() - this.receivedAt < 5000 && [1, 2].includes(room?.ipcState),
+          '请先等待热身结束并返回房间，再关闭 Warm-up，避免把热身结算当作正式赛果');
+      }
       if (next !== this.state) {
         // Archive before replacing the match, without exposing local files over HTTP.
         if (command.type === 'next-match' && this.file) {
@@ -149,14 +155,14 @@ export class SessionStore {
       if (!Number.isFinite(previousAt) || now - previousAt > 5000 || now < previousAt) this.parameterHold = null;
       this.receivedAt = Date.now();
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
-      const returned = this.readyReturn.recover(this.state, frame, now);
+      const returned = this.state.warmup ? this.state : this.readyReturn.recover(this.state, frame, now);
       const restoredReady = returned !== this.state;
       if (restoredReady) {
         this.pickScene.cancel(); this.spectatorRecovery.reset(); this.seriesCorrection.reset(); this.parameterHold = null;
         await this.save(returned, { allowPickScene: false });
         this.automation.rebase(this.state, frame, now);
       }
-      const recovered = this.spectatorRecovery.recover(this.state, frame, now);
+      const recovered = this.state.warmup ? this.state : this.spectatorRecovery.recover(this.state, frame, now);
       if (recovered !== this.state) {
         await this.save(recovered);
         this.automation.rebase(this.state, frame, now);
@@ -167,7 +173,7 @@ export class SessionStore {
       this.spectatorRecovery.observe(this.state, frame, now);
       this.readyReturn.observe(this.state, frame, now, this.automation.observedRun);
       this.seriesCorrection.observe(this.state, frame, now);
-      const display = rankingMapParameters(this.state, frame, this.parameterHold);
+      const display = this.state.warmup ? { frame, hold: null } : rankingMapParameters(this.state, frame, this.parameterHold);
       this.parameterHold = display.hold;
       this.live.tosu.data = display.frame;
       this.emit();

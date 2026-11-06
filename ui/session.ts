@@ -12,7 +12,7 @@ export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: 
 export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; exTeam: Team | null }
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
-  schema: number; id: string; version: number;
+  schema: number; id: string; version: number; warmup?: boolean;
   match: { title: string; edition: string | null; fixtureId: string | null; poolId: string | null; provenance: string;
     custom?: boolean; stageName?: string; bestOf?: number | null; bpRule?: string; bpPreset?: 'single-ban-alternate' | null; stage: 'group' | 'elimination' | 'final'; mode: '3v3' | '4v4'; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam> };
   pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; paused: boolean; sceneOverride: { scene: string; until: 'next-match-event' } | null;

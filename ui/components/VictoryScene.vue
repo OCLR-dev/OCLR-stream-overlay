@@ -22,7 +22,7 @@ const { state, view, motionScope } = useOverlay();
           <h3>{{ view.winner || '全场胜者待确认' }}</h3>
           <p class="victory-status">{{ view.names.a }} <span>VS</span> {{ view.names.b }}</p>
         </div>
-        <div class="victory-result">
+        <div v-if="!view.warmup" class="victory-result">
           <span>最终赢图</span>
           <strong><span>{{ state.seriesA ?? '—' }}</span><i>:</i><span>{{ state.seriesB ?? '—' }}</span></strong>
         </div>
