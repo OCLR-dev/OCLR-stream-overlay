@@ -757,9 +757,8 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .scene-stack > .scene { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
 .scene-stack > .scene.is-active { visibility: visible; pointer-events: auto; z-index: 1; }
 /* Ban/Pick confirmation stays above the veil, title and corner badge.
-   The 1600ms wipe enters from the acting team's side. */
+   The 1600ms wipe enters from the left for both teams. */
 .map-confirmation { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; gap: 14px; overflow: hidden; padding: 0 16px; border-left: 3px solid var(--map-team-color); border-radius: var(--radius-card); pointer-events: none; opacity: 0; background: linear-gradient(100deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); color: var(--map-team-ink); }
-.map-confirmation[data-from='right'] { border-left: 0; border-right: 3px solid var(--map-team-color); background: linear-gradient(260deg, color-mix(in srgb, var(--map-team-color) 35%, #120a26), #120a26 90%); }
 .map-confirmation b { flex-shrink: 0; font: 800 28px/1 var(--display); letter-spacing: .12em; }
 .map-confirmation > span { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 /* Totals update directly; the independent lead fill follows smoothly. */

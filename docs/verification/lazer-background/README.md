@@ -12,3 +12,7 @@ Only the component, its CSS, App mount and main stylesheet import were transferr
 - main full regression: 389/390 passed. The portable lifecycle test needs exclusive fixed port 3001; the existing simulator owns this port, so its readiness check timed out. The running service was left intact.
 - test/custom-match full regression: 382/384 passed initially. Same fixed-port failure; timing recorder also missed an initial frame during concurrent suites. Isolated timing-recorder rerun passed (1/1), leaving only the fixed-port portable check unverified in this environment.
 - Real Windows osu!tourney/tosu/OBS CEF transparency and performance were not tested.
+
+## Short capsules and consistent confirmation direction
+
+Follow-up: all Ban/Pick confirmations reveal left-to-right, retaining team colour and timing. Removed unused reverse-direction styling and option. Capsules now measure about 120–420px instead of up to 1400px; Mappool has 38 and Playing 30 visible ribbons. Angle and drift cadence unchanged. Both builds/type checks and 7 motion tests pass, including blue Ban and Pick reveal frames. Production Playing DOM/style checks confirm 38 mounted / 30 visible ribbons and unobstructed transparent capture centers. Custom CA grouping and mod-parameter guards are preserved. No service restart or match edits were performed.
