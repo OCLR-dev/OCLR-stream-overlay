@@ -1,4 +1,5 @@
 import type { TestMapMetadata } from './mapParameters';
+import type { BeatmapRange } from './session';
 
 export type MapStatLabel = 'CS' | 'AR' | 'OD';
 
@@ -134,6 +135,14 @@ export function starRatingDisplay(stars: number | null | undefined): MapStar {
     return { value: '—', color: null, ink: '#ffffff' };
   }
   return { value: fixed(stars, 2), color: starRatingColor(stars), ink: starInk(stars) };
+}
+
+// FM/CA have no single shared star rating. Match the parameter row's whole
+// client range, using its upper endpoint for the existing colour scale.
+export function starRatingRangeDisplay(range: BeatmapRange | undefined): MapStar {
+  if (!range || !Number.isFinite(range.min) || !Number.isFinite(range.max) || range.min < 0 || range.max < range.min) return starRatingDisplay(null);
+  const min = starRatingDisplay(range.min); const max = starRatingDisplay(range.max);
+  return { ...max, value: min.value === max.value ? min.value : `${min.value}–${max.value}` };
 }
 
 export function mapStarDisplay(metadata: TestMapMetadata | null | undefined, mod: string | null): MapStar {
