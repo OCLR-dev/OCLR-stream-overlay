@@ -137,6 +137,7 @@ export function createOverlay(shared = false) {
       readinessCopy: shared ? '状态由直播员人工核对。' : base.readinessCopy,
       commentary: shared ? '本机播出记录 · 实际名单由直播员核对' : base.commentary,
       exLabel: shared && s?.ex.team ? `EX · ${names[s.ex.team]}开启` : base.exLabel,
+      roomIpc: bound?.ipcState ?? null,
       connection: sessionClient?.connection.value || 'demo'
     };
   });
