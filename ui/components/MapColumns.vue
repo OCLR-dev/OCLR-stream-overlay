@@ -48,7 +48,7 @@ const loadMetadata = (entry: PoolEntry) => {
   const key = metadataKey(entry);
   // Every card shows the mod-specific star rating, so load metadata even when
   // the streaming session already supplied the difficulty name.
-  if (entry.beatmapId <= 0 || !testModForCategory(entry.mod) || requested.has(key)) return;
+  if (entry.beatmapId <= 0 || requested.has(key)) return;
   requested.add(key);
   void mapFileMetadata(entry.beatmapId, testModForCategory(entry.mod) || '').then(metadata => {
     if (metadata) resolvedMetadata[key] = metadata;
@@ -110,7 +110,7 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
           </svg>
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />
           <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :live="view.mapParameters?.id === entry.beatmapId" variant="list" /></span>
-          <span v-if="entry.beatmapId > 0" class="map-stat map-star" :style="{ '--stat-color': starFor(entry).color || undefined, '--stat-ink': starFor(entry).ink }" :title="`星数 ${starFor(entry).value}`" :aria-label="`星数 ${starFor(entry).value}`"><span class="map-stat-label">★</span><span class="map-stat-value">{{ starFor(entry).value }}</span></span>
+          <span v-if="entry.beatmapId > 0" class="map-stat map-star" :style="{ '--stat-color': starFor(entry).color || undefined, '--stat-ink': starFor(entry).ink }" :title="`${['FM', 'CA', 'TB'].includes(entry.mod) ? 'NM 基准星数' : '星数'} ${starFor(entry).value}`" :aria-label="`${['FM', 'CA', 'TB'].includes(entry.mod) ? 'NM 基准星数' : '星数'} ${starFor(entry).value}`"><span class="map-stat-label">★</span><span class="map-stat-value">{{ starFor(entry).value }}</span></span>
           <span class="map-copy"><span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span><span v-if="artistFor(entry) || difficultyFor(entry)" class="map-meta"><template v-if="artistFor(entry)"><span class="map-meta-artist">{{ artistFor(entry) }}</span><span class="map-meta-sep"> / </span></template><span class="map-meta-difficulty">{{ difficultyFor(entry) || '—' }}</span></span></span>
           <span class="map-index" :title="entry.label">#{{ cardNumber(entry, index) }}</span>
         </li>

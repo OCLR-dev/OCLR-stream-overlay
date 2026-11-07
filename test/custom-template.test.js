@@ -16,7 +16,7 @@ test('provided MP5 configuration preserves all 17 maps, two exact broadcast name
   assert.equal(s.auto.wsUrl, ''); assert.equal(s.auto.left, ''); assert.equal(s.auto.right, '');
   assert.equal(s.action, null); assert.match(bpProgress(s).waiting, /选择先 Ban 方/);
   assert.equal(s.rounds.length, 0); assert.equal(s.version, 0); assert.deepEqual(s.undo, []);
-  assert.equal(testModForCategory('CA'), null);
+  assert.equal(testModForCategory('CA'), 'NM');
 });
 
 test('template validation rejects malformed rules, pool IDs and BO instead of silently coercing input', () => {

@@ -58,7 +58,7 @@ alternate pick-first
 [验证记录](verification/custom-match/README.md) 包含配置、非 OCLR BP、重赛、纠错、旧帧和八组窗口量测。合成信号通过真实本机 WebSocket 传输，**不是实际 osu!tourney／tosu 联调**。既有完整旧快照提前进入 Ranking 的两个时序风险仍存在；有异常时沿用现有核对／人工赛果入口。未操作真实房间或 OBS。
 
 
-Windows 完整测试包、首次预装资料和搬迁步骤见 [Windows 测试包说明](custom-match-windows.md)。CA 只保留独立分类，不推断实际模组要求或生成 NM 测试参数。
+Windows 完整测试包、首次预装资料和搬迁步骤见 [Windows 测试包说明](custom-match-windows.md)。2026-11-07 用户确认 CA 与 FM 相同处理：图池及模拟读取明确标示的 NM 基准，Playing 使用有效选手实际参数范围；分类仍为 CA。旧会话无规则时可在控制台选择明确流程并无损接续，见 [MP5 修复验证](verification/mp5-live-fixes/README.md)。
 
 
 Mappool Ban／Pick 按钮可不选谱面直接设置服务器待执行动作，随后等新的有效换图；普通播出标记仍独立。当前自定义版222项回归、OCLR主线204项回归及发布范围见验证记录。
