@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import ScoreCounter from './ScoreCounter.vue';
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
@@ -10,13 +11,20 @@ import TeamBlockParticles from './TeamBlockParticles.vue';
 import MapWinBanner from './MapWinBanner.vue';
 import oclrLogo from '../assets/oclr-logo-light.svg';
 
-const { state, view, motionScope, motionReady } = useOverlay();
+const { state, view, motionScope, motionReady, session } = useOverlay();
 // Playing crossfades the room total over the series score once both sides have
 // arrived; the series value stays beside the win pips as a small gilded number.
 // Every other scene keeps only the series score.
 const received = (value: string) => /^\d[\d,]*$/.test(value);
 const roomTotals = computed(() => (state.scene === 'playing' || view.value.warmup) &&
   received(view.value.scoreA) && received(view.value.scoreB));
+// Interpolate only fresh Playing updates. Joining, reconnecting,
+// Ranking, corrections and a new run establish a silent exact-score baseline.
+const scoreMotion = computed(() => roomTotals.value && motionReady.value &&
+  (!view.value.shared || view.value.connection === 'synced' && view.value.roomIpc === 3));
+const scoreScope = computed(() => JSON.stringify([motionScope.value, session.value?.currentRoundId,
+  session.value?.rounds.find(r => r.id === session.value?.currentRoundId)?.runId,
+  view.value.currentMap?.beatmapId, view.value.warmup]));
 const seriesScore = (team: 'a' | 'b') => (team === 'a' ? state.seriesA : state.seriesB) ?? '—';
 // Ban/EX status sits under each team title in every scene so the header keeps
 // the same two-line structure instead of changing between scenes.
@@ -55,7 +63,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       <div class="header-score-line">
       <span class="header-score-stack">
         <strong v-if="!view.warmup" class="header-score header-score--series" :class="{ 'is-visible': !roomTotals }" :id="roomTotals ? undefined : 'scoreValueA'" data-score-source="series" :aria-hidden="roomTotals" :aria-label="`系列赢图 ${seriesScore('a')}`"><span v-emphasize="{ value: seriesScore('a'), scope: `${motionScope}:series`, enabled: motionReady && !roomTotals }">{{ seriesScore('a') }}</span></strong>
-        <strong class="header-score header-score--room" :class="{ 'is-visible': roomTotals }" :id="roomTotals ? 'scoreValueA' : undefined" data-score-source="room" :aria-hidden="!roomTotals" :aria-label="`本图实时队分 ${view.scoreA}`">{{ view.scoreA }}</strong>
+        <strong class="header-score header-score--room" :class="{ 'is-visible': roomTotals }" :id="roomTotals ? 'scoreValueA' : undefined" data-score-source="room" :aria-hidden="!roomTotals" :aria-label="`本图实时队分 ${view.scoreA}`"><ScoreCounter :value="view.scoreA" :scope="scoreScope" :enabled="scoreMotion" /></strong>
       </span>
       </div>
       <div v-if="!view.warmup" class="series-row">
@@ -91,7 +99,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       <div class="header-score-line">
       <span class="header-score-stack">
         <strong v-if="!view.warmup" class="header-score header-score--series" :class="{ 'is-visible': !roomTotals }" :id="roomTotals ? undefined : 'scoreValueB'" data-score-source="series" :aria-hidden="roomTotals" :aria-label="`系列赢图 ${seriesScore('b')}`"><span v-emphasize="{ value: seriesScore('b'), scope: `${motionScope}:series`, enabled: motionReady && !roomTotals }">{{ seriesScore('b') }}</span></strong>
-        <strong class="header-score header-score--room" :class="{ 'is-visible': roomTotals }" :id="roomTotals ? 'scoreValueB' : undefined" data-score-source="room" :aria-hidden="!roomTotals" :aria-label="`本图实时队分 ${view.scoreB}`">{{ view.scoreB }}</strong>
+        <strong class="header-score header-score--room" :class="{ 'is-visible': roomTotals }" :id="roomTotals ? 'scoreValueB' : undefined" data-score-source="room" :aria-hidden="!roomTotals" :aria-label="`本图实时队分 ${view.scoreB}`"><ScoreCounter :value="view.scoreB" :scope="scoreScope" :enabled="scoreMotion" /></strong>
       </span>
       </div>
       <div v-if="!view.warmup" class="series-row">
