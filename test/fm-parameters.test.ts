@@ -48,3 +48,7 @@ test('FM ranges survive Ranking cleanup and output reload snapshots; new map and
   await store.frame(next, 1200);
   assert.ok(display(store.snapshot().live.tosu.data).rows.every(row => row.value === '—'));
 });
+
+test('CA uses the same actual client ranges as FM in Playing and Ranking', () => {
+  for (const ipc of [3, 4]) assert.deepEqual(values(display(normalizeTosuV2(frame(undefined, ipc)), 'CA')), expected);
+});

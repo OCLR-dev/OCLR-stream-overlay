@@ -139,8 +139,8 @@ const banDone = (s, team) => !!s.bans[team][0] || !!s.emptyBans?.[team]?.[0];
 const opposite = team => team === 'a' ? 'b' : 'a';
 function nextSimpleAction(s, exclude = null) {
   const order = s.bpFlow.banFirst ? [s.bpFlow.banFirst, opposite(s.bpFlow.banFirst)] : SIDES;
-  if (!s.bpFlow.banFirst && !exclude && SIDES.every(t => !banDone(s, t))) return null;
-  const missing = order.find(team => !banDone(s, team) && !(exclude?.kind === 'ban' && exclude.team === team));
+  if (!s.bpFlow.openingUnknown && !s.bpFlow.banFirst && !exclude && SIDES.every(t => !banDone(s, t))) return null;
+  const missing = !s.bpFlow.openingUnknown && order.find(team => !banDone(s, team) && !(exclude?.kind === 'ban' && exclude.team === team));
   if (missing) return normalizeAction({ kind: 'ban', team: missing, slot: 0 });
   if (!side(s.bpFlow.repeatTeam)) return null;
   const team = s.bpFlow.repeatTeam;
@@ -150,8 +150,15 @@ function nextSimpleAction(s, exclude = null) {
 function syncSimpleFlow(s) {
   const lastPick = [...s.rounds].reverse().find(r => r.status !== 'void');
   s.bpFlow = { mode: 'rule', preset: 'single-ban-alternate', banFirst: s.roll.banFirst || (s.bpHistory || []).find(h => ['ban', 'empty-ban'].includes(h.kind))?.team || null,
-    pickFirst: s.roll.pickFirst, repeatTeam: lastPick ? opposite(lastPick.bpAction?.team || lastPick.pickedBy) : s.roll.pickFirst };
-  s.queue = []; s.action = takeBpAction(s);
+    pickFirst: s.roll.pickFirst, openingUnknown: !!lastPick && !SIDES.every(t => banDone(s, t)),
+    repeatTeam: lastPick ? opposite(lastPick.pickedBy) : s.roll.pickFirst };
+  s.queue = []; s.action = null;
+  const round = currentRound(s);
+  // Enrolling an existing selection prepares only its successor. It must not
+  // consume a second Pick, revisit unknown opening Bans, or restart the run.
+  if (round && ['prepared', 'playing', 'ranking'].includes(round.status) && !round.bpReleased) {
+    const next = nextSimpleAction(s); if (next) s.queue.push(next);
+  } else s.action = takeBpAction(s);
   if (s.action && ['arrival', 'roll'].includes(s.phase)) s.phase = 'bp';
   return !!s.action;
 }
@@ -522,7 +529,8 @@ function applyCommand(s, command) {
     }
     case 'set-bp-preset': {
       requireValue(s.match.custom && [null, 'single-ban-alternate'].includes(p.value), '请选择有效 BP 流程');
-      requireValue(!s.paused && !s.incident && !['prepared', 'playing'].includes(currentRound(s)?.status), '请先完成或撤销当前准备图，再调整 BP 流程');
+      requireValue(!s.paused && !s.incident, '请先结束暂停或处理本图异常，再接续 BP 流程');
+      if (p.value && simplePreset(s) && s.bpFlow?.preset === p.value) return '当前已采用双方各一次 Ban，随后自动交替 Pick；保留当前动作与进度';
       if (p.value) {
         requireValue(!SIDES.some(t => s.bans[t][1] || s.emptyBans?.[t]?.[1]) && !(s.bpHistory || []).some(h => ['ban', 'empty-ban'].includes(h.kind) && h.slot === 1), '已有第二轮 Ban，请先核对或撤销后再采用单轮 Ban 流程');
         s.match.bpPreset = p.value; s.match.bpRule = '';
@@ -531,7 +539,7 @@ function applyCommand(s, command) {
         requireValue(!bpStarted(s), 'BP 已开始；请用下一动作纠错，保留已发生记录');
         s.match.bpPreset = null; s.bpFlow = null; s.action = null; s.queue = [];
       }
-      return p.value ? '采用双方各一次 Ban，随后自动交替 Pick；先 Ban 与先 Pick 独立确认' : '等待明确 BP 规则或下一动作';
+      return p.value ? '已接续双方各一次 Ban，随后自动交替 Pick；保留已有 Ban、选图、赛果与当前局，未观察到的开场不补造' : '等待明确 BP 规则或下一动作';
     }
     case 'select-bp-action': {
       requireValue(side(p.team) && ['ban', 'pick'].includes(p.kind), '请选择下一动作及行动队伍');
@@ -781,7 +789,7 @@ function applyCommand(s, command) {
       requireValue(round.bpReleaseHistory == null || (s.bpHistory || []).length <= round.bpReleaseHistory, '本图结束后已有新的 BP 记录；请先撤销后续 BP，再确认原图重赛');
       const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null, runId: null, finalScore: null };
       delete next.bpReleased; delete next.bpReleaseHistory;
-      delete next.resultSource; delete next.startedBy;
+      delete next.resultSource; delete next.startedBy; delete next.autoProtected;
       round.status = 'void';
       // Ranking may already have exposed the next Pick. Put it back until this
       // selection actually finishes, rather than consuming a second BP action.

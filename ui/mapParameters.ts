@@ -1,6 +1,8 @@
 import type { BeatmapRange, BeatmapRanges } from './session';
 
-export const testModForCategory = (mod: string | null) => mod === 'CA' ? null : ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
+// CA follows the same free-mod contract as FM: NM for the labelled test/pool
+// baseline, actual client ranges for live play.
+export const testModForCategory = (mod: string | null) => ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
 export interface TestMapMetadata {
   beatmapId: number;
   source: 'osu-file';
@@ -50,7 +52,7 @@ export function mapParameterDisplay(id: number | null, mode: 'tosu' | 'official-
   const selected = Number.isSafeInteger(id) && id! > 0;
   const map = selected && mode === 'tosu' && live?.id === id ? live : null;
   const timing = selected && live?.id === id ? live.time?.lastObject : null;
-  const clientRanges = category === 'FM' ? map?.stats?.ranges : null;
+  const clientRanges = ['FM', 'CA'].includes(category || '') ? map?.stats?.ranges : null;
   const actual = (key: keyof BeatmapRanges, value: number | null | undefined) => clientRanges ? numericRange(clientRanges[key]) : numeric(value);
   const calculated = selected && mode === 'official-test' && metadata?.beatmapId === id && metadata.source === 'osu-file' && metadata.calculation?.mod === testModForCategory(category) ? metadata.calculation : null;
   const range = calculated?.bpm;

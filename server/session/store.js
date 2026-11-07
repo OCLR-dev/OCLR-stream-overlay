@@ -24,7 +24,7 @@ export class SessionStore {
       this.pickScene.cancel();
       const next = automaticTransition(this.state, draft => {
         draft.scene = 'playing'; draft.sceneOverride = null;
-      }, '本次 Pick 展示满 2.5 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
+      }, '本次 Pick 展示满 7 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
       await this.save(next);
       this.emit();
     }).catch(() => { this.live.note = '自动切换画面未保存，请检查本机存储'; this.emit(); }));

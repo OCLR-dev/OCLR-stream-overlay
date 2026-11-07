@@ -397,6 +397,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-artwork[data-loaded='false'] { opacity: 0; }
 .map-star-slot { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; background: var(--star-bg, #5f596b); color: var(--star-ink, #ffffff); }
 .map-star-slot b { max-width: 100%; position: relative; z-index: 1; overflow: hidden; padding-inline: 6px; font-family: var(--display); font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-star-slot[data-range] b { font-size: 22px; }
 .map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
 .map-star-caption, .map-star-slot b,
 .map-slot > span:not(.map-pick-banner), .map-slot > b { text-shadow: var(--slot-shadow, none); }

@@ -1,5 +1,7 @@
 import { currentRound, entryOf, seriesComplete } from './model.js';
 
+const DISPLAY_MS = 7000;
+
 function pickKey(state) {
   const round = currentRound(state);
   const entry = entryOf(state, round?.entryId);
@@ -26,7 +28,7 @@ export class PickSceneDelay {
     if (!allowNew || !key || !eligible(after) || key === pickKey(before)) return;
     this.cancel();
     const token = { key, timer: null };
-    token.timer = setTimeout(() => { void this.onDue(token); }, 2500);
+    token.timer = setTimeout(() => { void this.onDue(token); }, DISPLAY_MS);
     token.timer.unref?.();
     this.pending = token;
   }

@@ -431,6 +431,10 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <button type="button" :aria-pressed="!!s.warmup" :disabled="disabled" @click="run('warmup', { enabled: !s.warmup })">Warm-up · {{ s.warmup ? '已开启' : '已关闭' }}</button>
         <span>{{ s.warmup ? '热身中：不推进 BP、不计胜、不自动切画面；播出仅显示实时队分。返回游戏房间后关闭。' : '开启后进入热身模式，不切换当前播出画面。' }}</span>
       </section>
+      <section v-if="s.match.custom && !s.warmup && !s.match.bpPreset && !s.match.bpRule" class="operator-warm-time" aria-label="接续自动 BP 流程">
+        <label>自动 BP 流程<ControlSelect :value="''" :disabled="disabled || s.paused || !!s.incident" aria-label="接续自动 BP 流程" @change="value => value && run('set-bp-preset', { value })"><option value="">尚未选择；目前只跟随明确的下一动作</option><option value="single-ban-alternate">双方各一次 Ban → 自动交替 Pick（无二轮 Ban）</option></ControlSelect></label>
+        <span>选择本场规则后接续后续动作，已有 Ban、Pick、比分和正在进行的比赛保留。未观察到的开场不补造；其他规则在本场设置中填写。</span>
+      </section>
       <div class="operator-quick-row">
         <section v-if="!s.warmup" class="operator-ex-quick" aria-label="EX 常用操作">
           <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
@@ -531,7 +535,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             </div>
             <div v-else-if="scorePanel" class="operator-action-stack">
               <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? '来自游戏房间，显示队分不代表已计胜。' : '等待房间队分，未知分数显示 —。' }}</p></section>
-              <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效；已结束的本图无需再单独记胜，进行中的本局继续比赛。</p></section>
+              <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效，作为系列比分校正保留；裁判要求重赛也不会自动撤回。若裁判判本图胜方，请使用下方“记本图胜”，重赛会撤回该图贡献。</p></section>
               <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
               <button v-if="round?.status === 'playing'" :disabled="disabled || !!s.incident || s.paused" @click="run('ranking')">本图已结束，继续 BP（暂不计胜）</button>
               <section v-if="resultRound" id="manual-result" class="operator-result">
