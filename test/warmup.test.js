@@ -40,6 +40,21 @@ test('Warm-up suppresses every formal automatic path, for pool and non-pool maps
   await h.feed(1001, 4); assert.equal(formal(h.s), before);
   await assert.rejects(h.cmd('apply-bp', { entryId: 'm1' }), /Warm-up/);
   await assert.rejects(h.cmd('record-result', { winner: 'a' }), /Warm-up/);
+  await assert.rejects(h.cmd('winner-soon', { team: 'a' }), /Warm-up/);
+  assert.equal(h.s.winnerPending, null);
+});
+
+test('entering Warm-up during the 5-second Winner countdown cancels the formal confirmation', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const h = harness(); t.after(() => h.store.close());
+  await h.cmd('set-series', { a: 6, b: 0, reason: '终局比分' });
+  await h.cmd('winner-soon', { team: 'a' });
+  assert.equal(h.s.winnerPending?.team, 'a');
+  await h.cmd('warmup', { enabled: true });
+  t.mock.timers.tick(5000); await h.store.tail;
+  assert.equal(h.s.winner, null);
+  assert.equal(h.s.winnerPending, null);
+  assert.equal(h.s.warmup, true);
 });
 
 test('ending Warm-up requires a fresh room return; old heat map never consumes formal BP', async t => {

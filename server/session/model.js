@@ -19,7 +19,7 @@ export function newSession() {
     phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null, automationVersion: 3,
     auto: { bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', mapDebounceMs: 400, rankingDebounceMs: 250 },
     action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] }, planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
-    rounds: [], currentRoundId: null, incident: null, winner: null, seriesAdjustment: { a: 0, b: 0 },
+    rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
     ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
     history: [], undo: [], commandIds: [],
   };
@@ -357,7 +357,7 @@ export function awardTosuResult(s, roundId, scores) {
 }
 
 function leaveInvalidWinner(s) {
-  s.winner = null;
+  s.winner = null; s.winnerPending = null;
   if (s.phase === 'winner') {
     s.phase = 'bp'; s.scene = currentRound(s) ? 'playing' : 'mappool';
   }
@@ -365,7 +365,7 @@ function leaveInvalidWinner(s) {
 
 function applyCommand(s, command) {
   const p = command.payload || {};
-  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'adjust-round', 'void-round'].includes(command.type))
+  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'winner-soon', 'adjust-round', 'void-round'].includes(command.type))
     requireValue(false, 'Warm-up 已开启，请结束热身后再操作正式比赛');
   switch (command.type) {
     case 'warmup': {
@@ -735,12 +735,14 @@ function applyCommand(s, command) {
     case 'display': {
       const scene = p.scene === 'map-result' ? 'playing' : p.scene;
       requireValue(SCENES.includes(scene) && scene !== 'pause', '显示画面无效');
+      if (scene !== 'victory') s.winnerPending = null;
       s.scene = scene; s.sceneOverride = { scene, until: 'next-match-event' };
       return '手动覆盖播出画面，下一有效比赛事件自动接回；数据跟随继续';
     }
     case 'pause': {
       const kind = p.kind === undefined ? 'normal' : p.kind;
       requireValue(['normal', 'technical', 'tactical'].includes(kind), '暂停类型无效');
+      s.winnerPending = null;
       if (!s.paused) { s.returnScene = s.scene; s.pauseTimer = null; s.resumeAt = null; }
       s.paused = true; s.scene = 'pause'; s.pauseType = kind;
       return '暂停（保留原阶段和返回位置）';
@@ -780,7 +782,20 @@ function applyCommand(s, command) {
     case 'winner': {
       requireResolved(s);
       requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
-      s.winner = p.team; s.phase = 'winner'; s.scene = 'victory'; return '展示人工核对的 Winner';
+      s.winner = p.team; s.phase = 'winner'; s.scene = 'victory'; s.winnerPending = null; return '展示人工核对的 Winner';
+    }
+    case 'winner-soon': {
+      requireResolved(s);
+      requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
+      requireValue(!s.paused, '暂停中不能开始自动确认胜方');
+      s.winner = null; s.winnerPending = { team: p.team, endsAt: Date.now() + 5000 };
+      s.phase = 'winner'; s.scene = 'victory'; s.sceneOverride = null;
+      return `已展示 Winner：5 秒后自动确认 ${s.match.teams[p.team].name} 为胜方`;
+    }
+    case 'cancel-winner': {
+      requireValue(s.winnerPending, '当前没有等待自动确认的胜方');
+      s.winnerPending = null;
+      return '已取消自动确认；请手动选择胜方';
     }
     case 'clear-records': {
       // Keep the setup the operator typed in (teams, rosters, pool, stage,
@@ -793,7 +808,7 @@ function applyCommand(s, command) {
         phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null,
         action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] },
         planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
-        rounds: [], currentRoundId: null, incident: null, winner: null, seriesAdjustment: { a: 0, b: 0 },
+        rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
         ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
         history: [], undo: [], commandIds: [],
       });

@@ -8,14 +8,14 @@ const { state, view } = useOverlay();
 
 <template>
   <section class="scene" :class="{ 'is-active': state.scene === 'mappool' }" :inert="state.scene !== 'mappool'" :aria-hidden="state.scene !== 'mappool'" data-scene-panel="mappool" aria-labelledby="mappool-title">
-    <div class="scene-body mappool-body">
-      <div class="scene-head mappool-head">
-        <div class="title-line">
-          <span class="scene-eyebrow">{{ view.pool.length }} 张谱面</span>
-          <h2 id="mappool-title">图池</h2>
-        </div>
+    <div class="scene-head mappool-head">
+      <div class="title-line">
+        <span class="scene-eyebrow">{{ view.pool.length }} 张谱面</span>
+        <h2 id="mappool-title">图池</h2>
       </div>
+    </div>
 
+    <div class="scene-body mappool-body">
       <MapColumns />
     </div>
     <RosterFooter />

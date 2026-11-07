@@ -102,6 +102,17 @@ const prepareTiebreaker = async () => {
   }
 };
 const target = computed(() => s.value?.match.stage === 'final' ? 7 : 6);
+const winnerPending = computed(() => s.value?.winnerPending || null);
+const winnerRemainingSeconds = computed(() => winnerPending.value
+  ? Math.ceil(Math.max(0, Math.min(5000, winnerPending.value.endsAt - pauseClockNow.value)) / 1000)
+  : 0);
+watch(() => winnerPending.value?.endsAt, () => { pauseClockNow.value = Date.now(); });
+const winnerTeam = computed<Team | null>(() => {
+  const state = s.value;
+  if (!state || state.winner || state.winnerPending) return null;
+  const reached = (['a', 'b'] as const).filter(team => state.series[team] >= target.value);
+  return reached.length === 1 ? reached[0] ?? null : null;
+});
 const recordingPrevious = computed(() => !!resultRound.value && resultRound.value !== s.value?.currentRoundId);
 const panel = computed(() => normalizeScene(s.value?.scene));
 const scorePanel = computed(() => panel.value === 'playing');
@@ -109,6 +120,105 @@ const panelHeading = computed(() => s.value?.warmup ? 'Warm-up · 热身' : ({ w
 const scenes = [['waiting', '等待'], ['roll', 'Roll / 先手'], ['mappool', '图池 / BP'], ['playing', 'Playing'], ['victory', 'Winner']] as const;
 const form = reactive({ title: 'OCLR S11', a: '', b: '', rosterA: '', rosterB: '', pool: '', mode: '4v4', source: '4x3' });
 const rollForm = reactive({ a: '', b: '', winner: '', pickFirst: '', banFirst: '' });
+type RollAutoPatch = { winner?: Team; pickFirst?: Team; banFirst?: Team };
+const otherTeam = (team: Team): Team => team === 'a' ? 'b' : 'a';
+// Recompute the derived fields from the latest operator edit. The side the
+// operator touched last wins when Pick/Ban were manually made inconsistent.
+const rollEditSource = ref<'pickFirst' | 'banFirst' | ''>('');
+const rollWinnerTarget = (): Team | '' => {
+  const aRaw = rollForm.a.trim(); const bRaw = rollForm.b.trim();
+  const a = Number(aRaw); const b = Number(bRaw);
+  if (rollForm.winner || !aRaw || !bRaw) return '';
+  if (!Number.isInteger(a) || a < 0 || !Number.isInteger(b) || b < 0 || a === b) return '';
+  return a > b ? 'a' : 'b';
+};
+const rollLinkPatch = (): RollAutoPatch => {
+  const patch: RollAutoPatch = {};
+  const pick = rollForm.pickFirst as Team | '';
+  const ban = rollForm.banFirst as Team | '';
+  const source = rollEditSource.value;
+  if (source === 'banFirst') {
+    if (ban && pick !== otherTeam(ban)) patch.pickFirst = otherTeam(ban);
+    return patch;
+  }
+  if (source === 'pickFirst') {
+    if (pick && ban !== otherTeam(pick)) patch.banFirst = otherTeam(pick);
+    return patch;
+  }
+  if (pick) {
+    if (ban !== otherTeam(pick)) patch.banFirst = otherTeam(pick);
+  } else if (ban) {
+    patch.pickFirst = otherTeam(ban);
+  }
+  return patch;
+};
+const rollWinnerKey = computed(() => {
+  if (connection.value !== 'synced' || !s.value) return '';
+  return rollWinnerTarget();
+});
+const rollLinkKey = computed(() => {
+  if (connection.value !== 'synced' || !s.value) return '';
+  const patch = rollLinkPatch();
+  return Object.keys(patch).length ? JSON.stringify(patch) : '';
+});
+const rollWinnerAt = ref(0);
+const rollWinnerPlan = ref<Team | ''>('');
+const rollLinkAt = ref(0);
+const rollLinkPlan = ref<RollAutoPatch>({});
+const remainingSeconds = (at: number) => at
+  ? Math.ceil(Math.max(0, Math.min(5000, at - pauseClockNow.value)) / 1000)
+  : 0;
+const rollWinnerRemaining = computed(() => remainingSeconds(rollWinnerAt.value));
+const rollWinnerLabel = computed(() => {
+  const team = rollWinnerPlan.value;
+  return team ? `${names.value[team]} 为 Roll 胜方` : '';
+});
+const rollLinkRemaining = computed(() => remainingSeconds(rollLinkAt.value));
+const rollLinkLabel = computed(() => {
+  const patch = rollLinkPlan.value;
+  return [patch.pickFirst && `${names.value[patch.pickFirst]} 先 Pick`,
+    patch.banFirst && `${names.value[patch.banFirst]} 先 Ban`].filter(Boolean).join('、');
+});
+let rollWinnerTimer: ReturnType<typeof setTimeout> | undefined;
+let rollLinkTimer: ReturnType<typeof setTimeout> | undefined;
+const changeRoll = (field: 'winner' | 'pickFirst' | 'banFirst') => {
+  if (field === 'pickFirst' || field === 'banFirst') rollEditSource.value = field;
+  scheduleSetting('roll', true);
+};
+const commitRollWinner = (key: string) => {
+  if (rollWinnerKey.value !== key) return;
+  rollForm.winner = key;
+  rollWinnerAt.value = 0; rollWinnerPlan.value = '';
+  scheduleSetting('roll', true);
+};
+const commitRollLink = (key: string) => {
+  if (rollLinkKey.value !== key) return;
+  const patch = JSON.parse(key) as RollAutoPatch;
+  if (!Object.keys(patch).length) return;
+  Object.assign(rollForm, patch);
+  rollLinkAt.value = 0; rollLinkPlan.value = {};
+  scheduleSetting('roll', true);
+};
+watch(rollWinnerKey, key => {
+  clearTimeout(rollWinnerTimer);
+  rollWinnerTimer = undefined;
+  rollWinnerAt.value = 0; rollWinnerPlan.value = '';
+  if (!key) return;
+  pauseClockNow.value = Date.now();
+  rollWinnerPlan.value = key;
+  rollWinnerAt.value = pauseClockNow.value + 5000;
+  rollWinnerTimer = setTimeout(() => commitRollWinner(key), 5000);
+});
+watch(rollLinkKey, key => {
+  clearTimeout(rollLinkTimer);
+  rollLinkTimer = undefined;
+  rollLinkAt.value = 0; rollLinkPlan.value = {};
+  if (!key) return;
+  pauseClockNow.value = Date.now();
+  rollLinkPlan.value = JSON.parse(key) as RollAutoPatch;
+  rollLinkAt.value = pauseClockNow.value + 5000;
+  rollLinkTimer = setTimeout(() => commitRollLink(key), 5000);
+});
 const autoForm = reactive({ bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '' });
 const actionForm = reactive({ kind: '', team: '', slot: -1 });
 const mapForm = reactive({ entryId: '', pickedBy: '' });
@@ -494,8 +604,8 @@ const onKey = (event: KeyboardEvent) => {
   const key = event.code.startsWith('Digit') ? event.code.slice(5) : event.key;
   if (shortcuts[key]) { event.preventDefault(); void display(shortcuts[key]!); }
 };
-onMounted(() => { window.addEventListener('message', previewReady); previewHeartbeat = setInterval(sharePreview, 5000); pauseClockTimer = setInterval(() => { if (pauseTimer.value || resumeAt.value) pauseClockNow.value = Date.now(); }, 250); document.body.classList.add('is-control'); document.title = 'OCLR · 直播员控制台'; window.addEventListener('keydown', onKey); });
-onUnmounted(() => { window.removeEventListener('message', previewReady); clearInterval(previewHeartbeat); clearInterval(pauseClockTimer); for (const timer of settingTimers.values()) clearTimeout(timer); settingQueue.clear(); document.body.classList.remove('is-control'); window.removeEventListener('keydown', onKey); });
+onMounted(() => { window.addEventListener('message', previewReady); previewHeartbeat = setInterval(sharePreview, 5000); pauseClockTimer = setInterval(() => { if (pauseTimer.value || resumeAt.value || winnerPending.value || rollWinnerAt.value || rollLinkAt.value) pauseClockNow.value = Date.now(); }, 250); document.body.classList.add('is-control'); document.title = 'OCLR · 直播员控制台'; window.addEventListener('keydown', onKey); });
+onUnmounted(() => { window.removeEventListener('message', previewReady); clearInterval(previewHeartbeat); clearInterval(pauseClockTimer); clearTimeout(rollWinnerTimer); clearTimeout(rollLinkTimer); for (const timer of settingTimers.values()) clearTimeout(timer); settingQueue.clear(); document.body.classList.remove('is-control'); window.removeEventListener('keydown', onKey); });
 const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-CN', { hour12: false });
 </script>
 
@@ -609,7 +719,10 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             </div>
             <div v-else-if="panel === 'roll'" class="operator-action-stack">
               <div class="operator-two"><label>{{ names.a }} Roll<input v-model="rollForm.a" type="number" min="0" step="1" @input="scheduleSetting('roll')" @blur="dirtySettings.has('roll') && scheduleSetting('roll', true)"></label><label>{{ names.b }} Roll<input v-model="rollForm.b" type="number" min="0" step="1" @input="scheduleSetting('roll')" @blur="dirtySettings.has('roll') && scheduleSetting('roll', true)"></label></div>
-              <label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="scheduleSetting('roll', true)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p role="status">{{ settingMessages.roll || '修改后立即生效。' }}</p>
+              <label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="changeRoll(field)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label>
+              <p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
+              <p v-if="rollLinkRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollLinkRemaining }} 秒后自动确认：{{ rollLinkLabel }}。5 秒内仍可手动修改。</p>
+              <p role="status">{{ settingMessages.roll || '修改后立即生效。' }}</p>
             </div>
             <div v-else-if="panel === 'mappool'" class="operator-action-stack">
               <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : round ? `当前图 ${entry(round.entryId)?.label || '—'} · ${roundStatusLabel(round)}` : s.poolChoice ? `${names[s.poolChoice.team]} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'} · 等待选图` : '选择 Ban／Pick 或谱面' }}</p>
@@ -633,9 +746,14 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
                 <div class="operator-two"><button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled || !resultRound" :data-unavailable="connection !== 'synced' || !resultRound" @click="recordResult(team)">记{{ recordingPrevious ? '上一局' : '本图' }} {{ names[team] }} 胜</button></div><p>按实际赛果直接记胜；计错可撤回或修正。</p>
               </section>
               <details v-if="latestResult" class="operator-latest-result"><summary>{{ entry(latestResult.entryId)?.label }} 已记 {{ latestResult.winner ? names[latestResult.winner] : '—' }} 胜 · 修正（备用）</summary><p>系列比分可在上方直接修改；这里只在需要修正单图记录时使用。{{ latestResult.resultSource === 'tosu' ? '自动记录；若成绩仍有变化会转为等待核对。发现胜方错误可立即修正。' : '人工记录优先，旧数据不会覆盖。' }}</p><div class="operator-inline"><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('correct-result', { roundId: latestResult.id, winner: latestResult.winner === 'a' ? 'b' : 'a', reason: '直播员核对后修正本图胜方' })">改为 {{ names[latestResult.winner === 'a' ? 'b' : 'a'] }} 胜</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('retract-result', { roundId: latestResult.id, reason: '直播员撤回本图计胜，等待核对' })">撤回本图计胜</button></div></details>
+              <button v-if="winnerTeam" class="operator-primary" :disabled="disabled || !!s.incident" :data-unavailable="connection !== 'synced' || !!s.incident" @click="run('winner-soon', { team: winnerTeam })">自动确定胜者（5 秒）</button>
+              <p v-if="winnerTeam" class="operator-hint">立即展示 Winner，5 秒后自动确认 {{ names[winnerTeam] }}；期间可在 Winner 面板取消。</p>
               <template v-for="team in (['a', 'b'] as const)" :key="team"><button v-if="target && series[team] >= target" :disabled="disabled || !!s.incident" :data-unavailable="connection !== 'synced' || !!s.incident" @click="run('winner', { team })">展示 {{ names[team] }} Winner</button></template>
             </div>
-            <div v-else-if="panel === 'victory'" class="operator-action-stack"><h3>{{ s.winner ? names[s.winner] : '胜方待确认' }} · {{ series.a }} : {{ series.b }}</h3><button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled || !!s.incident || series[team] < target" :data-unavailable="connection !== 'synced' || !!s.incident || series[team] < target" @click="run('winner', { team })">确认 {{ names[team] }} 为胜方</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">存档并准备下一场</button></div>
+            <div v-else-if="panel === 'victory'" class="operator-action-stack"><h3>{{ s.winner ? names[s.winner] : '胜方待确认' }} · {{ series.a }} : {{ series.b }}</h3>
+              <p v-if="s.winnerPending" role="status" aria-live="polite" class="operator-hint">{{ winnerRemainingSeconds > 0 ? `已进入 Winner，将在 ${winnerRemainingSeconds} 秒后自动确认 ${names[s.winnerPending.team]} 为胜方。` : '倒计时结束，正在确认胜方…' }}</p>
+              <button v-if="s.winnerPending" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('cancel-winner')">取消自动确认</button>
+              <button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled || !!s.incident || series[team] < target" :data-unavailable="connection !== 'synced' || !!s.incident || series[team] < target" @click="run('winner', { team })">确认 {{ names[team] }} 为胜方</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">存档并准备下一场</button></div>
             <div v-else-if="panel === 'pause'" class="operator-action-stack">
               <button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'normal' })">普通暂停</button>
               <button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'technical' })">技术暂停</button>
@@ -703,7 +821,8 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               </div>
               <p>已选用／已打的谱面、其他 Ban 槽位的谱面及 TB 不可选。同队 HD／HR／DT 不能重复 Ban，NM／FM 可重复。</p>
             </section>
-            <section><h3>Roll 与先手修正</h3><label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="scheduleSetting('roll', true)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p role="status">{{ settingMessages.roll || '修改后立即生效，保留当前进度。' }}</p></section>
+            <section><h3>Roll 与先手修正</h3><label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="changeRoll(field)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
+              <p v-if="rollLinkRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollLinkRemaining }} 秒后自动确认：{{ rollLinkLabel }}。5 秒内仍可手动修改。</p><p role="status">{{ settingMessages.roll || '修改后立即生效，保留当前进度。' }}</p></section>
             <section><h3>EX 剩余次数修正</h3><p>本图开启／关闭请使用顶部 EX 常用操作。</p><div class="operator-two"><label>{{ names.a }} 剩余<input v-model.number="exForm.a" type="number" min="0" max="2" @input="scheduleSetting('ex-a')" @blur="dirtySettings.has('ex-a') && scheduleSetting('ex-a', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-a'] }}</span></label><label>{{ names.b }} 剩余<input v-model.number="exForm.b" type="number" min="0" max="2" @input="scheduleSetting('ex-b')" @blur="dirtySettings.has('ex-b') && scheduleSetting('ex-b', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-b'] }}</span></label></div><p>修改后自动同步，无需保存；不推定实际上场名单。</p></section>
 
           </div>
