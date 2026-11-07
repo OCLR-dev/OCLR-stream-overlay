@@ -111,11 +111,13 @@ export class SessionStore {
       const pending = this.state.winnerPending;
       if (!pending) return;
       if (pending.endsAt > Date.now()) { this.scheduleWinnerConfirm(); return; }
-      if (this.state.incident || this.state.paused || seriesOf(this.state)[pending.team] < targetOf(this.state)) {
-        const cancelled = automaticTransition(this.state, draft => { draft.winnerPending = null; },
-          '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方', randomUUID(), { undo: false });
+      if (this.state.warmup || this.state.incident || this.state.paused || seriesOf(this.state)[pending.team] < targetOf(this.state)) {
+        const note = this.state.warmup
+          ? '5 秒自动确认已取消：已进入 Warm-up，本场不计正式结果'
+          : '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方';
+        const cancelled = automaticTransition(this.state, draft => { draft.winnerPending = null; }, note, randomUUID(), { undo: false });
         await this.save(cancelled);
-        this.live.note = '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方';
+        this.live.note = note;
         this.emit();
         return;
       }

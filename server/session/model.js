@@ -365,7 +365,7 @@ function leaveInvalidWinner(s) {
 
 function applyCommand(s, command) {
   const p = command.payload || {};
-  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'adjust-round', 'void-round'].includes(command.type))
+  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'winner-soon', 'adjust-round', 'void-round'].includes(command.type))
     requireValue(false, 'Warm-up 已开启，请结束热身后再操作正式比赛');
   switch (command.type) {
     case 'warmup': {
