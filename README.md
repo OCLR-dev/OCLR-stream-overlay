@@ -6,6 +6,8 @@ Vue 3 / Vite / TypeScript 的 Neon Broadcast 直播界面，配套独立直播�
 
 OCLR 直播任务的登录与断开共用一个按钮，随连接状态切换操作并显示处理进度；详见 [OCLR 登录与直播任务](docs/streaming-api.md)。
 
+已指派且公开的表演赛可从直播任务导入红蓝双方、已关联图池、人数和赛制。控制台与播出画面均标示表演赛，并按网站规则处理先胜、固定图数及平局。见 [表演赛操作](docs/streaming-api.md#表演赛)。
+
 当前 main 的操作口径见 [自由操作与中途加入](docs/main-operator-contract.md)。Windows 便携版构建与使用见 [直播员使用说明](docs/windows-portable.md)。
 
 ## Windows 便携版

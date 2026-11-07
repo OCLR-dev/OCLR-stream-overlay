@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted, ref, shallowRef } from 'vue';
-import type { Team } from './model';
+import type { MatchMode, MatchStage, Team } from './model';
 
 export function commandErrorMessage(message: unknown) {
   if (message === '未知会话命令') return '本机服务尚未更新，请重启服务后刷新页面。比赛记录会保留。';
@@ -8,13 +8,21 @@ export function commandErrorMessage(message: unknown) {
 
 export interface PoolEntry { id: string; beatmapId: number; setId?: number; mod: string; label: string; title: string; artist: string; difficulty: string }
 export interface MatchTeam { id: string | null; name: string; roster: { name: string; osuId: number | null }[] }
+export type SeriesRule = { type: 'first_to'; wins: number } | { type: 'fixed_maps'; count: number; allowDraw?: boolean };
+export interface ExhibitionRules {
+  roundName: string; series: SeriesRule | null; tiedMapPolicy: 'require_replay' | 'count_as_draw' | null; autoResults: boolean;
+}
+interface StreamingFixture {
+  id: string; label: string; roundName?: string; scheduledAt: string; exhibition?: boolean; home: MatchTeam | null; away: MatchTeam | null;
+}
 export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: number | null; ordinal?: number }
 export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; exTeam: Team | null }
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
   schema: number; id: string; version: number; warmup?: boolean;
   match: { title: string; edition: string | null; fixtureId: string | null; poolId: string | null; provenance: string;
-    stage: 'group' | 'elimination' | 'final'; mode: '3v3' | '4v4'; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam> };
+    stage: MatchStage; mode: MatchMode; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam>; exhibition?: ExhibitionRules };
+  exhibition?: { limit: number; played: number; complete: boolean; winner: Team | null; draw: boolean };
   poolChoice?: { team: Team; kind: 'ban' | 'pick' } | null;
   pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; paused: boolean; sceneOverride: { scene: string; until: 'next-match-event' } | null;
   arrived: Record<Team, boolean>; ready: Record<Team, boolean>;
@@ -45,9 +53,9 @@ export interface Envelope {
   session: Session; persistence: string;
   live: {
     streaming?: { status: string; edition: string | null; updatedAt: string | null; error: string | null; afterFixtureId?: string | null; hasMore?: boolean;
-      tasks?: { nextFixture: { id: string; label: string; scheduledAt: string; home: MatchTeam | null; away: MatchTeam | null } }[];
-      data: null | { nextFixture: null | { id: string; label: string; scheduledAt: string; home: MatchTeam | null; away: MatchTeam | null };
-        stage: null | { roundName: string; scoringRules?: { type: string; wins?: number } | null }; mappools: { id: string; name: string }[] } };
+      tasks?: { nextFixture: StreamingFixture }[];
+      data: null | { nextFixture: StreamingFixture | null;
+        stage: null | { roundName: string; playersPerTeam?: number | null; mode?: string; scoringRules?: SeriesRule | null }; mappools: { id: string; name: string }[] } };
     sources?: { tosu: 'simulated'; oclr: 'remote-read-only' | 'offline-fixture' };
     note: string;
     oclr: { status: string; updatedAt: string | null; error: string | null };
@@ -60,7 +68,7 @@ export interface Envelope {
     } };
   };
   catalog: null | { edition: string | null; kind?: string; warnings?: string[]; capturedOn?: string | null; teams: MatchTeam[]; pools: { id: string; name: string; entries: PoolEntry[] }[];
-    fixtures: { id: string; label: string; roundName: string; home: { team?: { id: string } | null }; away: { team?: { id: string } | null }; pool: { id: string } | null }[] };
+    fixtures: { id: string; label: string; roundName: string; exhibition?: boolean; home: { team?: { id: string } | null }; away: { team?: { id: string } | null }; pool: { id: string } | null }[] };
 }
 
 export function useSession() {

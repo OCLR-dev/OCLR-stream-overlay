@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { Envelope } from '../session';
+import { exhibitionFormat } from '../model';
 import ControlSelect from './ControlSelect.vue';
 const props = defineProps<{ snapshot: Envelope; disabled: boolean }>();
 const edition = ref('s11');
@@ -97,11 +98,12 @@ async function act(action: string, extra: Record<string, unknown> = {}) {
     <p role="status">{{ source?.edition?.toUpperCase() || 'OCLR' }} · {{ status }} · {{ source?.updatedAt || '尚无成功读取' }}</p>
     <template v-if="source?.status === 'ready' && source.tasks?.length">
       <label>选择直播任务<ControlSelect :value="source.data?.nextFixture?.id || ''" :disabled="disabled || pending" @change="act('select', { fixtureId: $event })">
-        <option v-for="task in source.tasks" :key="task.nextFixture.id" :value="task.nextFixture.id">{{ task.nextFixture.label }} · {{ task.nextFixture.home?.name || '待定' }} vs {{ task.nextFixture.away?.name || '待定' }}</option>
+        <option v-for="task in source.tasks" :key="task.nextFixture.id" :value="task.nextFixture.id">{{ task.nextFixture.exhibition ? '表演赛 · ' : '' }}{{ task.nextFixture.label }} · {{ task.nextFixture.home?.name || '待定' }} vs {{ task.nextFixture.away?.name || '待定' }}</option>
       </ControlSelect></label>
-      <p><strong>{{ source.data?.nextFixture?.label }}</strong> · {{ source.data?.stage?.roundName || '阶段待核对' }}</p>
+      <p><strong>{{ source.data?.nextFixture?.label }}</strong> · {{ source.data?.stage?.roundName || source.data?.nextFixture?.roundName || '阶段待核对' }}</p>
+      <p v-if="source.data?.nextFixture?.exhibition">表演赛 · {{ exhibitionFormat(source.data?.stage?.scoringRules) }}<template v-if="source.data?.stage?.playersPerTeam"> · 每队 {{ source.data.stage.playersPerTeam }} 人</template></p>
       <p>{{ source.data?.nextFixture?.scheduledAt }} · {{ source.data?.mappools[0]?.name || '尚无公开图池，可稍后人工设置' }}</p>
-      <p v-if="!source.data?.stage?.scoringRules">网站未提供完整赛制；使用任务后保留现有阶段与人数，请核对后调整。</p>
+      <p v-if="!source.data?.stage?.scoringRules">{{ source.data?.nextFixture?.exhibition ? '网站未提供表演赛赛制。可播出并人工记分，系列胜方待核对。' : '网站未提供完整赛制；使用任务后保留现有阶段与人数，请核对后调整。' }}</p>
       <p>先初始化并存档已有比赛，再使用任务。网站未提供上场名单，请核对后录入。</p>
       <button :disabled="disabled || pending" @click="act('import')">使用所选直播任务</button>
     </template>

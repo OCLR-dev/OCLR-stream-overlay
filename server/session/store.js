@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { automaticTransition, bpProgress, currentRound, entryOf, newSession, requireValue, restoreAutomation, seriesOf, targetOf, transition } from './model.js';
+import { automaticTransition, bpProgress, canShowWinner, currentRound, entryOf, exhibitionProgress, newSession, requireValue, restoreAutomation, seriesOf, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
 import { rankingMapParameters } from './map-parameters.js';
 import { PickSceneDelay } from './pick-scene-delay.js';
@@ -55,7 +55,9 @@ export class SessionStore {
 
   snapshot() {
     const { undo, commandIds, ...session } = this.state;
-    return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state), canUndo: undo.length > 0 }, live: this.live, persistence: this.persistence, catalog: this.catalog || null });
+    const exhibition = exhibitionProgress(this.state);
+    return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state),
+      ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: this.live, persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }
@@ -111,7 +113,7 @@ export class SessionStore {
       const pending = this.state.winnerPending;
       if (!pending) return;
       if (pending.endsAt > Date.now()) { this.scheduleWinnerConfirm(); return; }
-      if (this.state.warmup || this.state.incident || this.state.paused || seriesOf(this.state)[pending.team] < targetOf(this.state)) {
+      if (this.state.warmup || this.state.incident || this.state.paused || !canShowWinner(this.state, pending.team)) {
         const note = this.state.warmup
           ? '5 秒自动确认已取消：已进入 Warm-up，本场不计正式结果'
           : '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方';

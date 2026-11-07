@@ -49,7 +49,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
         </span>
         <span v-if="state.pickFirst === 'a'" class="mappool-first-action" data-first-action="pick">先选择</span>
         <span v-if="state.banFirst === 'a'" class="mappool-first-action" data-first-action="ban">先禁用</span>
-        <span class="ex-counter">EX 剩余 <b data-ex-remaining="a">{{ state.exA }}</b></span>
+        <span v-if="!view.exhibition" class="ex-counter">EX 剩余 <b data-ex-remaining="a">{{ state.exA }}</b></span>
         <span v-if="view.ex && state.exTeam === 'a'" class="map-ex-mark" data-mappool-ex data-ex-team="a">EX 开启</span>
       </div>
       <div class="header-score-line">
@@ -68,6 +68,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="42" /></div>
       <div class="event-meta">
         <strong data-stage-label>{{ view.warmup ? 'Warm-up' : view.meta.label }}</strong>
+        <span v-if="view.exhibition && !view.warmup">{{ view.meta.format }}</span>
       </div>
     </section>
 
@@ -85,7 +86,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
         </span>
         <span v-if="state.pickFirst === 'b'" class="mappool-first-action" data-first-action="pick">先选择</span>
         <span v-if="state.banFirst === 'b'" class="mappool-first-action" data-first-action="ban">先禁用</span>
-        <span class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
+        <span v-if="!view.exhibition" class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
         <span v-if="view.ex && state.exTeam === 'b'" class="map-ex-mark" data-mappool-ex data-ex-team="b">EX 开启</span>
       </div>
       <div class="header-score-line">

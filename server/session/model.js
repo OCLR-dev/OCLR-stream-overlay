@@ -56,11 +56,46 @@ export function restoreAutomation(state) {
   return next;
 }
 
-export const targetOf = s => s.match.stage === 'final' ? 7 : 6;
+const exhibitionOf = s => s.match.stage === 'exhibition' ? s.match.exhibition : null;
+const fixedSeries = s => {
+  const series = exhibitionOf(s)?.series;
+  return series?.type === 'fixed_maps' ? series : null;
+};
+export const targetOf = s => {
+  const exhibition = exhibitionOf(s);
+  if (!exhibition) return s.match.stage === 'final' ? 7 : 6;
+  return exhibition.series?.wins ?? exhibition.series?.count ?? 99;
+};
 export const currentRound = s => s.rounds.find(r => r.id === s.currentRoundId) || null;
 export const seriesOf = s => Object.fromEntries(SIDES.map(team => [team,
   s.rounds.filter(r => r.status === 'recorded' && r.winner === team).length + (s.seriesAdjustment?.[team] || 0)]));
-export const seriesComplete = s => SIDES.some(team => seriesOf(s)[team] >= targetOf(s));
+const drawnMaps = s => s.rounds.filter(r => r.status === 'recorded' && r.winner === null).length;
+const mapsPlayed = (s, score) => score.a + score.b + drawnMaps(s);
+function validSeries(s, score = seriesOf(s)) {
+  const fixed = fixedSeries(s);
+  const firstTo = exhibitionOf(s)?.series?.type === 'first_to';
+  return SIDES.every(team => Number.isSafeInteger(score[team]) && score[team] >= 0 && score[team] <= targetOf(s)) &&
+    (!fixed || mapsPlayed(s, score) <= fixed.count) &&
+    (!firstTo || !SIDES.every(team => score[team] === targetOf(s)));
+}
+export function seriesComplete(s) {
+  const score = seriesOf(s);
+  const fixed = fixedSeries(s);
+  if (fixed) return mapsPlayed(s, score) >= fixed.count;
+  if (exhibitionOf(s) && !exhibitionOf(s).series) return false;
+  return SIDES.some(team => score[team] >= targetOf(s));
+}
+export function canShowWinner(s, team) {
+  if (!side(team) || !seriesComplete(s)) return false;
+  const score = seriesOf(s);
+  return fixedSeries(s) ? score[team] > score[team === 'a' ? 'b' : 'a'] : score[team] >= targetOf(s);
+}
+const canShowDraw = s => fixedSeries(s)?.allowDraw && seriesComplete(s) && seriesOf(s).a === seriesOf(s).b;
+export function exhibitionProgress(s) {
+  if (!exhibitionOf(s)) return null;
+  return { limit: targetOf(s), played: mapsPlayed(s, seriesOf(s)), complete: seriesComplete(s),
+    winner: SIDES.find(team => canShowWinner(s, team)) ?? null, draw: !!canShowDraw(s) };
+}
 export const entryOf = (s, id) => s.pool.find(e => e.id === id);
 const domain = s => ({ warmup: false, poolMarks: [], poolChoice: null, ...Object.fromEntries(Object.entries(s).filter(([key]) => !['version', 'history', 'undo', 'commandIds'].includes(key))) });
 
@@ -117,6 +152,19 @@ function normalizeTeams(teams) {
   return result;
 }
 
+function normalizeExhibition(value) {
+  requireValue(value && text(value.roundName, 500) && value.roundName.trim() && typeof value.autoResults === 'boolean', '表演赛轮次无效');
+  const { series, tiedMapPolicy } = value;
+  const bounded = n => Number.isSafeInteger(n) && n >= 1 && n <= 99;
+  requireValue(series === null ? tiedMapPolicy === null && !value.autoResults :
+    ['require_replay', 'count_as_draw'].includes(tiedMapPolicy) &&
+    (series?.type === 'first_to' ? bounded(series.wins) :
+      series?.type === 'fixed_maps' && bounded(series.count) && typeof series.allowDraw === 'boolean'), '表演赛赛制无效');
+  return { roundName: value.roundName.trim(), tiedMapPolicy, autoResults: value.autoResults,
+    series: series === null ? null : series.type === 'first_to' ? { type: series.type, wins: series.wins } :
+      { type: series.type, count: series.count, allowDraw: series.allowDraw } };
+}
+
 function normalizeAction(action) {
   requireValue(action && ['ban', 'pick'].includes(action.kind) && side(action.team), '请明确 BP 动作与行动队伍');
   requireValue(action.kind !== 'ban' || [0, 1].includes(action.slot), 'Ban 槽位无效');
@@ -142,6 +190,7 @@ function promoteBpAction(s, choice) {
 // existing/manual sessions and their undo domains keep their original order.
 const bpStarted = s => s.rounds.length > 0 || (s.bpHistory || []).length > 0 || SIDES.some(t => s.bans[t].some(Boolean));
 function syncRollFlow(s) {
+  if (exhibitionOf(s)) return false;
   if (bpStarted(s) || s.bpFlow?.mode === 'manual' || (!s.bpFlow &&
     (s.action || s.queue.length || s.planVerification || (s.bpFlow === undefined && s.history.some(h => /设置明确 BP|更新明确配置的后续 BP/.test(h.message)))))) return false;
   if (!side(s.roll.banFirst) || !side(s.roll.pickFirst)) {
@@ -201,10 +250,11 @@ export function releaseRoundBp(s, round) {
 }
 
 export function bpStopReason(s) {
-  if (seriesComplete(s) || s.phase === 'winner') return '比赛已结束，停止 BP；请核对比分并展示 Winner';
+  if (seriesComplete(s) || s.phase === 'winner') return exhibitionOf(s) ? '表演赛已达到结束条件，请核对最终比分'
+    : '比赛已结束，停止 BP；请核对比分并展示 Winner';
   const round = currentRound(s);
-  if (round && entryOf(s, round.entryId)?.mod === 'TB') return ['ranking', 'recorded'].includes(round.status) ? 'TB 已结束，等待核对赛果；不推进普通 Pick' : null;
-  if (tiebreakerProgress(s).eligible) return '已到决胜比分，请核对赛果并单独准备 TB';
+  if (!exhibitionOf(s) && round && entryOf(s, round.entryId)?.mod === 'TB') return ['ranking', 'recorded'].includes(round.status) ? 'TB 已结束，等待核对赛果；不推进普通 Pick' : null;
+  if (!exhibitionOf(s) && tiebreakerProgress(s).eligible) return '已到决胜比分，请核对赛果并单独准备 TB';
   if (s.bpFlow?.mode === 'roll') {
     const finished = s.rounds.filter(r => ['ranking', 'recorded'].includes(r.status) && entryOf(s, r.entryId)?.mod !== 'TB').length;
     if (finished >= 2 * (targetOf(s) - 1) || SIDES.every(t => seriesOf(s)[t] === targetOf(s) - 1)) return '常规选图已结束，等待裁判核对赛果与 TB；TB 单独准备';
@@ -215,18 +265,20 @@ export function bpStopReason(s) {
 export function tiebreakerProgress(s) {
   const target = targetOf(s);
   const score = seriesOf(s);
-  const eligible = target > 1 && SIDES.every(team => score[team] === target - 1);
+  const exhibition = exhibitionOf(s);
+  const eligible = exhibition ? !seriesComplete(s) && s.pool.some(e => e.mod === 'TB')
+    : target > 1 && SIDES.every(team => score[team] === target - 1);
   const round = currentRound(s);
   const active = !!round && round.status !== 'void' && entryOf(s, round.entryId)?.mod === 'TB';
   const unresolved = s.rounds.some(r => ['playing', 'ranking'].includes(r.status) && r.resultSource !== 'series-correction' && !(active && r.id === round.id));
-  const reason = !eligible ? '先核对系列比分与赛制，双方均达到先胜目标减一才准备 TB'
+  const reason = !eligible ? exhibition ? '本场无可用的表演赛 TB' : '先核对系列比分与赛制，双方均达到先胜目标减一才准备 TB'
     : s.paused ? '暂停中，返回原画面后再准备 TB'
     : s.incident || unresolved ? '先核对待处理的本图赛果，再准备 TB'
     : round?.status === 'prepared' && !active ? '先作废误准备的普通选图，再单独准备 TB'
     : active && round.status !== 'prepared' ? 'TB 已开始；核对赛果或按裁判决定重赛'
     : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待比赛开始；禁 Ban／EX'
     : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在开播前设置补齐本场 TB 谱面'
-    : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
+    : exhibition ? '如裁判确认本场使用 TB，点击 TieBreaker 手动准备' : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
   return { eligible, active, canPrepare: eligible && !s.paused && !s.incident && !unresolved &&
     (!round || round.status !== 'prepared' || active) && (!active || round.status === 'prepared') && s.pool.some(e => e.mod === 'TB'), reason };
 }
@@ -351,9 +403,10 @@ export function awardTosuResult(s, roundId, scores) {
   const { left, right } = scores;
   requireValue([left, right].every(n => Number.isSafeInteger(n) && n >= 0) && left !== right, '最终队分缺失或平分，等待人工处理');
   const winner = left > right ? 'a' : 'b';
-  requireValue(seriesOf(s)[winner] < targetOf(s), '系列已达到目标，等待直播员核对');
+  requireValue(!seriesComplete(s), '系列已达到目标，等待直播员核对');
   round.finalScore = { a: left, b: right };
   round.status = 'recorded'; round.winner = winner; round.resultSource = 'tosu';
+  requireValue(validSeries(s), '系列比分超出赛制范围，请核对');
 }
 
 function leaveInvalidWinner(s) {
@@ -473,6 +526,7 @@ function applyCommand(s, command) {
       return `确认继续原局（保留选图与本局记录）：${p.reason.trim()}`;
     }
     case 'set-stage': {
+      requireValue(!exhibitionOf(s), '请先初始化表演赛，再设置正式比赛阶段');
       requireValue(['group', 'elimination', 'final'].includes(p.stage), '比赛阶段无效');
       s.match.stage = p.stage;
       requireValue(SIDES.every(t => seriesOf(s)[t] <= targetOf(s)), '现有系列比分超出该阶段目标，请先校正比分');
@@ -482,7 +536,12 @@ function applyCommand(s, command) {
     case 'setting': {
       const { field, value } = p;
       if (field === 'title') { requireValue(text(value), '比赛标题最多 160 字'); s.match.title = value; }
-      else if (field === 'mode') { requireValue(['3v3', '4v4'].includes(value), '常规人数无效'); s.match.mode = value; }
+      else if (field === 'mode') {
+        const exhibition = exhibitionOf(s);
+        requireValue((exhibition ? ['1v1', '2v2', '3v3', '4v4'] : ['3v3', '4v4']).includes(value), '常规人数无效');
+        if (exhibition && s.match.mode !== value) exhibition.autoResults = false;
+        s.match.mode = value;
+      }
       else if (field === 'source') { requireValue(['4x3', '16x9'].includes(value), '游戏源比例无效'); s.match.source = value; }
       else if (field === 'team-name' || field === 'roster') {
         requireValue(side(p.team), '请选择对应队伍');
@@ -528,10 +587,19 @@ function applyCommand(s, command) {
     case 'update-setup':
     case 'setup': {
       if (command.type === 'setup') requireValue(s.rounds.length === 0 && !SIDES.some(t => s.bans[t].some(Boolean)), '已有 BP/赛果，请先准备下一场，避免覆盖比赛记录');
-      requireValue(text(p.title) && ['group', 'elimination', 'final'].includes(p.stage) && ['3v3', '4v4'].includes(p.mode) && ['4x3', '16x9'].includes(p.source), '本场设置无效');
+      requireValue(!exhibitionOf(s), '请先初始化表演赛，再更换赛事来源');
+      const exhibition = command.type === 'import-streaming' && p.stage === 'exhibition' ? normalizeExhibition(p.exhibition) : null;
+      const validStage = exhibition || ['group', 'elimination', 'final'].includes(p.stage);
+      const modes = exhibition ? ['1v1', '2v2', '3v3', '4v4'] : ['3v3', '4v4'];
+      requireValue(text(p.title) && validStage && modes.includes(p.mode) && ['4x3', '16x9'].includes(p.source), '本场设置无效');
       updatePool(s, p.pool);
       s.match = { title: p.title, edition: p.edition || null, fixtureId: p.fixtureId || null, poolId: p.poolId || null,
-        provenance: ['oclr', 'oclr-archive', 'oclr-streaming'].includes(p.provenance) ? p.provenance : 'manual', stage: p.stage, mode: p.mode, source: p.source, teams: normalizeTeams(p.teams) };
+        provenance: ['oclr', 'oclr-archive', 'oclr-streaming'].includes(p.provenance) ? p.provenance : 'manual', stage: p.stage, mode: p.mode, source: p.source, teams: normalizeTeams(p.teams),
+        ...(exhibition ? { exhibition } : {}) };
+      if (exhibition) {
+        s.bpFlow = null;
+        s.ex = { team: null, remaining: { a: 0, b: 0 } };
+      }
       requireValue(SIDES.every(t => seriesOf(s)[t] <= targetOf(s)), '现有比分超出该阶段目标，请先校正比分');
       if (s.winner && seriesOf(s)[s.winner] < targetOf(s)) leaveInvalidWinner(s);
       if (command.type === 'setup' && s.bpFlow?.mode !== 'roll') { s.action = null; s.queue = []; }
@@ -637,21 +705,25 @@ function applyCommand(s, command) {
         s.incident = null;
       }
       requireValue(round && ['playing', 'ranking'].includes(round.status), '该局尚未开始、已记录或已作废');
-      requireValue(side(p.winner), '请指定本图胜方');
+      const draw = p.winner === null && exhibitionOf(s)?.tiedMapPolicy === 'count_as_draw';
+      requireValue(side(p.winner) || (draw && round.status === 'ranking'), '请指定本图胜方；仅允许已结束且赛制允许的本图记为平局');
       const coveredBySeries = round.resultSource === 'series-correction';
-      requireValue(coveredBySeries || seriesOf(s)[p.winner] < targetOf(s), '该队已达到系列目标，请核对比赛记录');
+      requireValue(coveredBySeries || (fixedSeries(s) ? !seriesComplete(s) : draw || seriesOf(s)[p.winner] < targetOf(s)), '已达到系列目标，请核对比赛记录');
       round.status = 'recorded'; round.winner = p.winner; round.resultSource = 'manual';
-      if (coveredBySeries) s.seriesAdjustment[p.winner]--;
+      if (coveredBySeries && !draw) s.seriesAdjustment[p.winner]--;
+      requireValue(validSeries(s), '系列比分或已完成图数超出范围，请先核对人工系列分校正');
       releaseRoundBp(s, round);
       requireValue(p.keepDisplay === undefined || typeof p.keepDisplay === 'boolean', '赛果显示选项无效');
       if (p.keepDisplay) {
         if (round.id === s.currentRoundId) {
           s.phase = 'bp';
         }
-        return `已记录 ${entryOf(s, round.entryId).label}：${s.match.teams[p.winner].name} 胜，系列比分 ${seriesOf(s).a}:${seriesOf(s).b}；保留当前画面`;
+        const outcome = draw ? '平局' : `${s.match.teams[p.winner].name} 胜`;
+        return `已记录 ${entryOf(s, round.entryId).label}：${outcome}，系列比分 ${seriesOf(s).a}:${seriesOf(s).b}；保留当前画面`;
       }
-      if (seriesOf(s)[p.winner] >= targetOf(s)) {
-        s.winner = p.winner; s.phase = 'winner'; s.scene = 'victory';
+      const winner = fixedSeries(s) ? SIDES.find(team => canShowWinner(s, team)) : canShowWinner(s, p.winner) ? p.winner : null;
+      if (winner) {
+        s.winner = winner; s.phase = 'winner'; s.scene = 'victory';
       } else if (round.id === s.currentRoundId) {
         s.phase = 'bp'; s.scene = 'mappool';
       }
@@ -659,10 +731,11 @@ function applyCommand(s, command) {
     }
     case 'correct-result': {
       const round = s.rounds.find(r => r.id === p.roundId);
-      requireValue(round?.status === 'recorded' && side(p.winner) && text(p.reason) && p.reason.trim(), '请指定已记录局、修正胜方及原因');
+      const draw = p.winner === null && exhibitionOf(s)?.tiedMapPolicy === 'count_as_draw';
+      requireValue(round?.status === 'recorded' && (side(p.winner) || draw) && text(p.reason) && p.reason.trim(), '请指定已记录局、修正结果及原因');
       round.winner = p.winner;
       round.resultSource = 'manual';
-      requireValue(SIDES.every(t => seriesOf(s)[t] >= 0 && seriesOf(s)[t] <= targetOf(s)), '修正后系列分超出范围，请先核对人工系列分校正');
+      requireValue(validSeries(s), '修正后系列分超出范围，请先核对人工系列分校正');
       leaveInvalidWinner(s);
       return `修正本图结果：${p.reason}`;
     }
@@ -675,7 +748,7 @@ function applyCommand(s, command) {
       return `撤回本图计胜，等待重新记录：${p.reason}`;
     }
     case 'set-series': {
-      requireValue(SIDES.every(t => Number.isInteger(p[t]) && p[t] >= 0 && p[t] <= targetOf(s)), '系列比分须在 0 与赛制目标之间');
+      requireValue(validSeries(s, p), exhibitionOf(s) ? '系列比分须在赛制范围内，固定图数包含已记录平局' : '系列比分须在 0 与赛制目标之间');
       requireValue(text(p.reason) && p.reason.trim(), '请填写系列比分校正原因');
       const old = seriesOf(s);
       const current = currentRound(s);
@@ -723,6 +796,7 @@ function applyCommand(s, command) {
       return `作废本轮：${p.reason}`;
     }
     case 'ex': {
+      requireValue(!exhibitionOf(s), '表演赛不使用 S11 EX 规则');
       requireValue(p.team === null || side(p.team), 'EX 开启方无效');
       requireValue(SIDES.every(t => [0, 1, 2].includes(p.remaining?.[t])), 'EX 剩余次数无效');
       const round = currentRound(s);
@@ -781,12 +855,14 @@ function applyCommand(s, command) {
       return '更新自动跟随设置；房间左右队名直接读取 tosu';
     case 'winner': {
       requireResolved(s);
-      requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
-      s.winner = p.team; s.phase = 'winner'; s.scene = 'victory'; s.winnerPending = null; return '展示人工核对的 Winner';
+      const draw = p.team === null && canShowDraw(s);
+      requireValue(draw || canShowWinner(s, p.team), exhibitionOf(s) ? '赛制结束条件或胜方尚未确认' : '该队尚未达到系列目标');
+      s.winner = p.team; s.phase = 'winner'; s.scene = 'victory'; s.winnerPending = null;
+      return draw ? '展示人工核对的表演赛平局' : '展示人工核对的 Winner';
     }
     case 'winner-soon': {
       requireResolved(s);
-      requireValue(side(p.team) && seriesOf(s)[p.team] >= targetOf(s), '该队尚未达到系列目标');
+      requireValue(canShowWinner(s, p.team), '该队尚未达到系列目标');
       requireValue(!s.paused, '暂停中不能开始自动确认胜方');
       s.winner = null; s.winnerPending = { team: p.team, endsAt: Date.now() + 5000 };
       s.phase = 'winner'; s.scene = 'victory'; s.sceneOverride = null;
@@ -809,7 +885,7 @@ function applyCommand(s, command) {
         action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] },
         planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
         rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
-        ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
+        ex: { team: null, remaining: exhibitionOf(s) ? { a: 0, b: 0 } : { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
         history: [], undo: [], commandIds: [],
       });
       Object.assign(s, kept);

@@ -11,15 +11,15 @@ const { state, view, motionScope } = useOverlay();
       <div class="scene-head result-head">
         <div class="title-line">
           <span class="scene-eyebrow">结算页</span>
-          <h2 id="victory-title">全场胜利</h2>
+          <h2 id="victory-title">{{ view.drawnExhibition ? '全场平局' : '全场胜利' }}</h2>
         </div>
       </div>
 
       <div class="victory-hero">
-        <div class="victory-mark" aria-hidden="true">WINNER</div>
+        <div class="victory-mark" aria-hidden="true">{{ view.drawnExhibition ? 'DRAW' : 'WINNER' }}</div>
         <div class="victory-copy" v-emphasize="{ value: view.winner, scope: motionScope, enabled: state.scene === 'victory', kind: 'winner' }">
           <span class="victory-kicker">OCLR {{ view.season }} · <span data-victory-stage>{{ view.meta.label }}</span></span>
-          <h3>{{ view.winner || '全场胜者待确认' }}</h3>
+          <h3>{{ view.drawnExhibition ? '表演赛平局' : view.winner || '全场胜者待确认' }}</h3>
           <p class="victory-status">
             <span class="status-team status-team--a">{{ view.names.a }}</span>
             <span class="status-vs">VS</span>

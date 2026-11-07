@@ -1,5 +1,7 @@
 // Local demonstration state. No API records, player identity or official result
 // is inferred here; live data remains a separate subscription boundary.
+import type { SeriesRule } from './session';
+
 export const scenes = ['waiting', 'mappool', 'playing', 'victory', 'pause', 'roll'] as const;
 export type Scene = typeof scenes[number];
 export type Team = 'a' | 'b';
@@ -17,6 +19,12 @@ export const stages = {
   elimination: { label: '淘汰赛', format: 'BO11', target: 6 },
   final: { label: '决赛', format: 'BO13', target: 7 }
 } as const;
+export type MatchStage = keyof typeof stages | 'exhibition';
+export type MatchMode = '1v1' | '2v2' | '3v3' | '4v4';
+export function exhibitionFormat(rule: SeriesRule | null | undefined) {
+  if (!rule) return '赛制待核对';
+  return rule.type === 'first_to' ? `先赢 ${rule.wins} 图` : `固定 ${rule.count} 图`;
+}
 export const leadDemos = {
   'left-small': ['105,0000', '100,0000'], 'left-large': ['140,0000', '100,0000'],
   equal: ['100,0000', '100,0000'], 'right-small': ['100,0000', '105,0000'],
@@ -27,13 +35,13 @@ export const mapIcons = { open: '○', banned: '×', picked: '✓' };
 export const mapMods = ['NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'DT', 'DT', 'TB'];
 export interface OverlayState {
   scene: Scene;
-  mode: '3v3' | '4v4';
+  mode: MatchMode;
   source: '4x3' | '16x9';
   lead: keyof typeof leadDemos;
   clean: boolean;
   arrival: 'none' | 'a' | 'both';
   map: keyof typeof mapLabels;
-  stage: keyof typeof stages;
+  stage: MatchStage;
   mapType: 'normal' | 'tb';
   mapMod: typeof regularMods[number];
   exTeam: 'none' | Team;
@@ -138,11 +146,14 @@ export function changeBan(state: OverlayState, team: Team, index: 0 | 1, value: 
   next.banSlots[team][index] = value as Ban;
   return { state: next, feedback: `${teamNames[team]} Ban ${index + 1}：${banLabel(value as Ban)}${value === 'unknown' ? '。' : '（本地演示）。'}` };
 }
-export function derive(state: OverlayState) {
-  const meta = stages[state.stage];
+export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) {
+  const stage = state.stage;
+  const exhibition = stage === 'exhibition';
+  const target = exhibitionRule?.type === 'first_to' ? exhibitionRule.wins : 0;
+  const meta = exhibition ? { label: '表演赛', format: exhibitionFormat(exhibitionRule), target: target <= 7 ? target : 0 } : stages[stage];
   const format = state.mapType === 'tb' ? 'tb' : state.exTeam === 'none' ? 'normal' : 'ex';
   const ex = format === 'ex';
-  const count = (state.mode === '4v4' ? 4 : 3) - (ex ? 1 : 0);
+  const count = Number.parseInt(state.mode, 10) - (ex ? 1 : 0);
   const roster = (team: Team) => Array.from({ length: count }, (_, i) => ({
     team, id: `${team.toUpperCase()}${i + (ex ? 3 : 1)}`, slot: i + 1,
     role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null,
@@ -153,7 +164,7 @@ export function derive(state: OverlayState) {
   const rematchLabel = (value: OverlayState['rematchA']) => value === 'used' ? '已用' : value === 'available' ? '可确认' : '未确认';
   const resultTotal = (values: number[]) => values.slice(0, count).reduce((sum, n) => sum + n, 0).toLocaleString('en-US');
   return {
-    meta, seriesTarget: `${meta.format} · 先 ${meta.target}`, count, ex, format,
+    meta, exhibition, seriesTarget: exhibition ? meta.format : `${meta.format} · 先 ${meta.target}`, count, ex, format,
     formatLabel: { normal: '普通', ex: 'EX', tb: 'TB' }[format],
     modeLabel: ex ? `EX ${count}v${count}` : `${count}v${count}`,
     mod: state.mapType === 'tb' ? 'TB' : state.mapMod,

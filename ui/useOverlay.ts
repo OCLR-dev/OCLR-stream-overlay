@@ -58,8 +58,8 @@ export function createOverlay(shared = false) {
       s.incident.roundId === s.currentRoundId && sessionClient?.connection.value === 'synced';
   });
   const view = computed(() => {
-    const base = derive(state);
     const s = session.value;
+    const base = derive(state, s?.match.exhibition?.series);
     const envelope = sessionClient?.snapshot.value;
     const remembered = automaticPanicGap.value && lastScores.value?.key === (s ? `${s.id}:${s.currentRoundId || ''}` : '')
       ? lastScores.value : null;
@@ -127,6 +127,7 @@ export function createOverlay(shared = false) {
       showPlayingScores: !shared || !!scores,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
       winner: s?.winner ? names[s.winner] : null,
+      drawnExhibition: !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
       chat: shared ? liveRoomChat(envelope, sessionClient?.connection.value).slice(-4) : [],

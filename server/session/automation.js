@@ -293,12 +293,14 @@ export class RoomAutomation {
     // Keep observing a known continuous finish if totals arrive after Ranking.
     // A fresh connection at Ranking has no endRun and can never backfill a win.
     const finished = currentRound(next);
-    if (config.results && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted', 'series-correction'].includes(finished.resultSource)) {
+    const exhibition = next.match.exhibition;
+    if (config.results && (!exhibition || exhibition.autoResults) && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted', 'series-correction'].includes(finished.resultSource)) {
       const score = this.scoreCandidate;
       // Agreement is a necessary consistency check, not proof that every player finished.
       const consistent = ['left', 'right'].every(side => {
         const players = room.players.filter(p => p.side === side && p.osuId > 0);
-        return players.length > 0 && players.every(p => Number.isSafeInteger(p.score) && p.score >= 0) &&
+        return (exhibition ? players.length === Number.parseInt(next.match.mode, 10) : players.length > 0) &&
+          players.every(p => Number.isSafeInteger(p.score) && p.score >= 0) &&
           players.reduce((sum, p) => sum + p.score, 0) === room.totalScore[side];
       });
       const ready = score && score.frames >= 2 && now - score.at >= config.rankingDebounceMs &&
