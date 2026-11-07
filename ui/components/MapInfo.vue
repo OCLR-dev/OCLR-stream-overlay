@@ -4,7 +4,7 @@ import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
 import ScrollingText from './ScrollingText.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
-import { starRatingDisplay } from '../mapStats';
+import { starRatingDisplay, starRatingRangeDisplay } from '../mapStats';
 import { mapFileMetadata } from '../mapMetadata';
 import { modColor, modColorStyle } from '../modColors';
 const { state, view } = useOverlay();
@@ -43,7 +43,8 @@ const starValue = computed(() => {
   const live = view.value.mapParameters;
   return live?.id === id ? live.stats?.stars?.total ?? null : null;
 });
-const star = computed(() => starRatingDisplay(starValue.value));
+const star = computed(() => parameters.value.rangeMode
+  ? starRatingRangeDisplay(view.value.mapParameters?.stats?.ranges?.stars) : starRatingDisplay(starValue.value));
 // Black ink needs no shadow: it would only muddy the text. The star and the
 // pool-position block both inherit their ink from the middleware colours.
 const isBlackInk = (color: string | null | undefined) => {
@@ -64,7 +65,7 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
 <template>
   <div class="map-row" :data-mod="mapMod" :data-pick="view.pickTeam || 'none'" :style="modColorStyle(mapMod)">
     <MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" />
-    <div class="map-star-slot" :style="{ '--star-bg': star.color || undefined, '--star-ink': star.ink, '--slot-shadow': starShadow }" :title="`星数 ${star.value}`" :aria-label="`星数 ${star.value}`">
+    <div class="map-star-slot" :data-range="star.value.includes('–') || undefined" :style="{ '--star-bg': star.color || undefined, '--star-ink': star.ink, '--slot-shadow': starShadow }" :title="`星数 ${star.value}`" :aria-label="`星数 ${star.value}`">
       <span class="map-star-caption" aria-hidden="true">星数 ★</span>
       <b>{{ star.value }}</b>
     </div>
