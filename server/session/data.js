@@ -31,7 +31,7 @@ export function catalogue(source) {
       title: e.metadata?.title || '', artist: e.metadata?.artist || '', difficulty: e.metadata?.difficulty || '',
     }))) })) || [],
     fixtures: data?.competition?.fixtures?.map(f => ({ id: f.id, label: f.label, roundName: f.roundName,
-      home: f.home, away: f.away, pool: f.pool })) || [],
+      home: f.home, away: f.away, pool: f.pool, ...(f.stage === 'exhibition' ? { exhibition: true } : {}) })) || [],
   };
 }
 
@@ -53,6 +53,7 @@ export function attachBroadcast(store, data) {
     const b = catalog.teams.find(t => t.id === p.rightTeamId);
     const pool = catalog.pools.find(t => t.id === p.poolId);
     const fixture = p.fixtureId ? catalog.fixtures.find(f => f.id === p.fixtureId) : null;
+    requireValue(!fixture?.exhibition, '表演赛请从 OCLR 直播任务导入，以使用本轮实际赛制');
     requireValue(a && b && a.id !== b.id && pool && (!p.fixtureId || fixture), '请明确选择本场队伍、场次和图池');
     return store.command({ ...command, type: 'update-setup', payload: {
       title: p.title, edition: p.edition, fixtureId: fixture?.id || null, poolId: pool.id, provenance: catalog.kind === 'historical_archive' ? 'oclr-archive' : 'oclr',

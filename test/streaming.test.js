@@ -13,6 +13,23 @@ const fixture = () => ({ ...empty(), data: {
   stage: { id: id(3), kind: 'knockout', round: { id: id(2), name: 'Literal round', scoringRules: {
     mode: 'osu', teamType: 'team-vs', playersPerTeam: 4, series: { type: 'first_to', wins: 7 } } } }, mappools: [],
 } });
+function exhibitionFixture(series, scoring = {}) {
+  const body = fixture();
+  const { nextFixture, stage } = body.data;
+  Object.assign(nextFixture, { stage: 'exhibition', label: 'Showmatch', roundName: 'Open exhibition', pool: { id: id(6), name: 'Show pool' } });
+  for (const [side, name] of [['home', 'Crimson'], ['away', 'Azure']]) {
+    nextFixture[side].team = { ...nextFixture[side].team, name, exhibition: true, avatarKey: null };
+    nextFixture[side].label = name;
+  }
+  stage.kind = 'exhibition';
+  stage.round.name = nextFixture.roundName;
+  stage.round.scoringRules = series ? { ...stage.round.scoringRules, playersPerTeam: 2, series,
+    aggregation: 'sum', failedScorePolicy: 'include', tiedMapPolicy: 'count_as_draw', ...scoring } : null;
+  body.data.mappools = [{ ...nextFixture.pool, entries: [1, 2, 3].map(position => ({
+    id: id(10 + position), beatmapId: 100 + position, category: 'NM', position, metadata: null,
+  })) }];
+  return body;
+}
 const response = (body = empty(), status = 200, headers = {}) => new Response(JSON.stringify(body), { status,
   headers: { 'X-OCLR-Read-Contract': '1.4.0', ...headers } });
 function source(fetchImpl) {
@@ -85,6 +102,99 @@ test('unknown scoring preserves manual setup while fixed-map scoring cannot impo
     assert.equal(s.state.status, 'ready');
     if (rules) assert.throws(() => s.importCommand({ fixtureId: id(1) }), /赛制/);
     else assert.equal(s.importCommand({ fixtureId: id(1) }).payload.stage, null);
+  }
+});
+
+test('an open exhibition imports from a mixed task page and counts fixed-map draws without inventing a winner', async () => {
+  const body = exhibitionFixture({ type: 'fixed_maps', count: 3, allowDraw: true });
+  body.data.nextFixture.id = id(7);
+  const { s } = source(async url => {
+    const anchor = new URL(url).searchParams.get('afterFixtureId');
+    return response(anchor === id(1) ? body : anchor ? empty() : fixture(), 200, { 'X-OCLR-Read-Contract': '1.29.0' });
+  });
+  const store = new SessionStore();
+  let commandId = 0;
+  const command = (type, payload = {}) => store.command({ id: `exhibition-${++commandId}`, version: store.state.version, type, payload });
+  await s.connect({ edition: 's11', token });
+  assert.deepEqual(s.snapshot().tasks.map(task => task.nextFixture.id), [id(1), id(7)]);
+  assert.equal(s.snapshot().tasks[1].nextFixture.exhibition, true);
+  s.select(id(7));
+  await store.command(s.importCommand({ id: 'exhibition-import', version: 0, fixtureId: id(7) }));
+  const { match } = store.state;
+  assert.equal(match.stage, 'exhibition');
+  assert.equal(match.mode, '2v2');
+  assert.equal(match.exhibition.roundName, 'Open exhibition');
+  assert.deepEqual(match.teams, { a: { id: id(4), name: 'Crimson', roster: [] }, b: { id: id(5), name: 'Azure', roster: [] } });
+  assert.deepEqual(store.state.pool.map(e => e.beatmapId), [101, 102, 103]);
+  await command('set-roll', { winner: 'a', pickFirst: 'a', banFirst: 'a' });
+  assert.equal(store.state.action, null, 'the website feed does not contain the referee BP policy');
+  await assert.rejects(command('set-stage', { stage: 'group' }), /初始化表演赛/);
+  await assert.rejects(command('set-series', { a: 2, b: 2, reason: 'test' }), /赛制范围/);
+  await assert.rejects(command('winner', { team: 'a' }), /尚未确认/);
+  for (const [index, winner] of ['a', 'b', null].entries()) {
+    await command('prepare-round', { entryId: id(11 + index), pickedBy: 'a' });
+    await command('start');
+    await command('ranking');
+    await command('record-result', { roundId: store.state.currentRoundId, winner, keepDisplay: true });
+  }
+  assert.deepEqual(store.snapshot().session.exhibition, { limit: 3, played: 3, complete: true, winner: null, draw: true });
+  assert.deepEqual(store.snapshot().session.series, { a: 1, b: 1 });
+  await command('winner', { team: null });
+  assert.equal(store.state.scene, 'victory');
+  assert.equal(store.state.winner, null);
+  await command('correct-result', { roundId: store.state.currentRoundId, winner: 'b', reason: 'test correction' });
+  assert.equal(store.snapshot().session.exhibition.winner, 'b');
+  assert.equal(store.state.phase, 'bp');
+  await command('winner', { team: 'b' });
+  assert.equal(store.state.winner, 'b');
+  await command('next-match');
+  assert.equal(store.state.match.stage, 'group');
+  assert.equal(store.state.match.exhibition, undefined);
+  assert.equal(store.snapshot().session.exhibition, undefined);
+});
+
+test('first-to and missing exhibition rules remain distinct from the official target', async () => {
+  for (const series of [{ type: 'first_to', wins: 3 }, null]) {
+    const body = exhibitionFixture(series, { playersPerTeam: 1, teamType: 'head-to-head' });
+    if (!series) body.data.stage = null;
+    const { s } = source(async url => response(new URL(url).search ? empty() : body));
+    await s.connect({ edition: 's11', token });
+    const store = new SessionStore();
+    await store.command(s.importCommand({ id: 'import', version: 0, fixtureId: id(1) }));
+    assert.equal(store.state.match.stage, 'exhibition');
+    assert.equal(store.state.match.mode, series ? '1v1' : '4v4');
+    assert.equal(store.state.match.exhibition.autoResults, false);
+    assert.deepEqual(store.state.match.exhibition.series, series);
+    if (series) await assert.rejects(store.command({ id: 'bad-score', version: 1, type: 'set-series',
+      payload: { a: 3, b: 3, reason: 'invalid first-to tie' } }), /赛制范围/);
+    await store.command({ id: 'score', version: 1, type: 'set-series', payload: { a: 3, b: 1, reason: 'test' } });
+    assert.equal(store.snapshot().session.exhibition.winner, series ? 'a' : null);
+    assert.equal(store.snapshot().session.exhibition.complete, !!series);
+  }
+  const mismatched = exhibitionFixture({ type: 'first_to', wins: 3 });
+  mismatched.data.stage.kind = 'knockout';
+  assert.throws(() => validateStreaming(mismatched), /INVALID_RESPONSE/);
+});
+
+test('automatic exhibition wins require a supported total and the configured number of players on each side', async () => {
+  for (const [aggregation, teamSize, expected] of [['sum', 2, 1], ['sum', 1, 0], ['average', 2, 0]]) {
+    const body = exhibitionFixture({ type: 'first_to', wins: 1 }, { aggregation });
+    const { s } = source(async url => response(new URL(url).search ? empty() : body));
+    await s.connect({ edition: 's11', token });
+    const store = new SessionStore();
+    await store.command(s.importCommand({ id: 'import', version: 0, fixtureId: id(1) }));
+    await store.command({ id: 'pick', version: 1, type: 'prepare-round', payload: { entryId: id(11), pickedBy: 'a' } });
+    const players = ['left', 'right'].flatMap((side, team) => Array.from({ length: teamSize }, (_, index) => ({
+      side, osuId: team * 10 + index + 1, score: (team === 0 ? 900 : 800) / teamSize,
+    })));
+    for (const [index, ipcState] of [1, 3, 4, 4, 4].entries()) {
+      await store.frame({ beatmap: { id: 101 }, tourney: { ipcState, teams: { left: 'Crimson', right: 'Azure' },
+        totalScore: { left: 900, right: 800 }, players } }, 1000 + 500 * index);
+    }
+    const { session } = store.snapshot();
+    assert.equal(session.rounds[0].status, expected ? 'recorded' : 'ranking');
+    assert.deepEqual(session.series, { a: expected, b: 0 });
+    assert.equal(session.exhibition.complete, !!expected);
   }
 });
 

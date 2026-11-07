@@ -5,6 +5,7 @@ const slug = value => typeof value === 'string' && value.length <= 80 && /^[a-z0
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
 const text = value => typeof value === 'string' && value.length <= 500;
 const check = value => { if (!value) throw new Error('INVALID_RESPONSE'); };
+const stages = ['group', 'knockout', 'exhibition'];
 
 export function validateStreaming(body) {
   check(body?.meta?.apiVersion === '1');
@@ -15,19 +16,29 @@ export function validateStreaming(body) {
     return { nextFixture: null, stage: null, mappools: [] };
   }
   const f = d.nextFixture, s = d.stage;
-  check(uuid(f?.id) && text(f.label) && text(f.roundName) && uuid(f.roundId) && uuid(f.stageId));
+  check(uuid(f?.id) && text(f.label) && text(f.roundName) && uuid(f.roundId) && uuid(f.stageId) && stages.includes(f.stage));
   check(['scheduled', 'in_progress'].includes(f.status) && f.result === null && Number.isFinite(Date.parse(f.scheduledAt)));
   for (const side of ['home', 'away']) {
     check(f[side] && text(f[side].label));
     const t = f[side].team;
     check(t === null || (uuid(t?.id) && text(t.name)));
   }
-  check(s === null || (s && s.id === f.stageId && ['group', 'knockout'].includes(s.kind) && s.kind === f.stage &&
+  check(s === null || (s && s.id === f.stageId && s.kind === f.stage &&
     s.round?.id === f.roundId && text(s.round.name)));
-  const rules = s?.round.scoringRules?.series;
-  check(s === null || s.round.scoringRules === null || (s.round.scoringRules?.mode === 'osu' && ['team-vs', 'head-to-head'].includes(s.round.scoringRules.teamType) && Number.isSafeInteger(s.round.scoringRules.playersPerTeam)));
+  const scoring = s?.round.scoringRules;
+  const rules = scoring?.series;
+  const exhibition = f.stage === 'exhibition';
+  check(s === null || scoring === null || (scoring &&
+    (exhibition ? ['osu', 'taiko', 'fruits', 'mania'].includes(scoring.mode) : scoring.mode === 'osu') &&
+    ['team-vs', 'head-to-head'].includes(scoring.teamType) && Number.isSafeInteger(scoring.playersPerTeam)));
   check(rules == null || (rules?.type === 'first_to' && Number.isSafeInteger(rules.wins) && rules.wins > 0) ||
     (rules?.type === 'fixed_maps' && Number.isSafeInteger(rules.count) && rules.count > 0));
+  if (exhibition && scoring) {
+    check(scoring.playersPerTeam >= 1 && scoring.playersPerTeam <= 16 &&
+      ['sum', 'average'].includes(scoring.aggregation) && ['include', 'zero'].includes(scoring.failedScorePolicy) &&
+      ['require_replay', 'count_as_draw'].includes(scoring.tiedMapPolicy) &&
+      (rules?.type === 'first_to' ? rules.wins <= 99 : rules?.type === 'fixed_maps' && rules.count <= 99 && typeof rules.allowDraw === 'boolean'));
+  }
   check(f.pool === null || (uuid(f.pool?.id) && text(f.pool.name)));
   check(d.mappools.length <= 1 && (!d.mappools.length || d.mappools[0].id === f.pool?.id));
   const pools = d.mappools.map(p => {
@@ -45,10 +56,14 @@ export function validateStreaming(body) {
   });
   // Project explicit fields rather than copying arbitrary upstream properties.
   return { nextFixture: { id: f.id, label: f.label, roundName: f.roundName, scheduledAt: f.scheduledAt,
+    ...(exhibition ? { exhibition: true } : {}),
     home: f.home.team ? { id: f.home.team.id, name: f.home.team.name, roster: [] } : null,
     away: f.away.team ? { id: f.away.team.id, name: f.away.team.name, roster: [] } : null },
     stage: s === null ? null : { kind: s.kind, roundName: s.round.name, playersPerTeam: s.round.scoringRules?.playersPerTeam ?? null, scoringRules: rules == null ? null :
-      rules.type === 'first_to' ? { type: rules.type, wins: rules.wins } : { type: rules.type, count: rules.count } }, mappools: pools };
+      rules.type === 'first_to' ? { type: rules.type, wins: rules.wins } :
+        { type: rules.type, count: rules.count, ...(exhibition ? { allowDraw: rules.allowDraw } : {}) },
+      ...(exhibition && scoring ? { mode: scoring.mode, tiedMapPolicy: scoring.tiedMapPolicy,
+        autoResults: scoring.mode === 'osu' && scoring.teamType === 'team-vs' && scoring.aggregation === 'sum' && scoring.failedScorePolicy === 'include' } : {}) }, mappools: pools };
 }
 
 export class StreamingSource {
@@ -163,13 +178,19 @@ export class StreamingSource {
     if (!f.home || !f.away || f.home.id === f.away.id) throw new Error('对阵队伍尚未确认，请等待网站发布');
     // Missing scoring does not prevent selecting a task. Preserve the current
     // manual stage/mode; known unsupported rules still require explicit correction.
-    if (rules && (rules.type !== 'first_to' || ![6,7].includes(rules.wins))) throw new Error('此场赛制尚不支持自动导入，请人工核对设置');
+    if (!f.exhibition && rules && (rules.type !== 'first_to' || ![6,7].includes(rules.wins))) throw new Error('此场赛制尚不支持自动导入，请人工核对设置');
     const players = data.stage?.playersPerTeam;
-    if (players != null && ![3,4].includes(players)) throw new Error('此场人数尚不支持，请人工核对设置');
+    if (players != null && !(f.exhibition ? [1,2,3,4] : [3,4]).includes(players)) throw new Error('此场人数尚不支持，请人工核对设置');
+    if (f.exhibition && data.stage?.mode && data.stage.mode !== 'osu') throw new Error('本机仅支持 osu! 标准模式的表演赛');
+    const exhibition = f.exhibition ? {
+      roundName: data.stage?.roundName ?? f.roundName, series: rules ?? null,
+      tiedMapPolicy: data.stage?.tiedMapPolicy ?? null, autoResults: data.stage?.autoResults ?? false,
+    } : null;
     return { id: input.id, version: input.version, type: 'import-streaming', payload: {
       title: `${edition.toUpperCase()} · ${f.label}`.slice(0,160), edition, fixtureId: f.id,
       mode: players ? `${players}v${players}` : null, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming', teams: { a: f.home, b: f.away },
-      pool: data.mappools[0]?.entries || [], stage: rules ? rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination' : null,
+      pool: data.mappools[0]?.entries || [], stage: exhibition ? 'exhibition' : rules ? rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination' : null,
+      ...(exhibition ? { exhibition } : {}),
     } };
   }
 }

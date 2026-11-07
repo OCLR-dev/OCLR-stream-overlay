@@ -15,10 +15,16 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (panel === 'roll') return s.roll.pickFirst && s.roll.banFirst ? '先手已记录，可切到图池进行 Ban／Pick。' : '记录 Roll 点数与先 Ban、先 Pick 队伍，已有比赛可直接切到现场画面。';
   if (panel === 'victory') return '核对最终比分与胜方，确认后展示 Winner 或初始化下一场。';
   if (round?.status === 'playing') return panel === 'mappool' ? '本图仍在比赛，可切到 Playing 查看队分，结束后再继续 Ban／Pick。' : '本图正在比赛，等待结束；需要等待或重赛时使用「处理异常」。';
-  if (round?.status === 'ranking' && round.resultSource !== 'series-correction') return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。' : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';
-  if (matchPanel && target > 0 && Object.values(s.series).some(score => score >= target)) return '系列比分已到先胜目标，请核对后在 Playing 展示 Winner。';
+  if (round?.status === 'ranking' && round.resultSource !== 'series-correction') {
+    if (s.match.exhibition && !s.match.exhibition.autoResults) return '本图已结束，请在 Playing 核对后记录赛果或校正系列比分。';
+    return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。'
+      : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';
+  }
+  if (matchPanel && s.exhibition?.complete) return s.exhibition.draw || s.exhibition.winner
+    ? '表演赛已达到结束条件，请核对后展示最终结果。' : '已完成指定图数，赛制未允许全场平局。请按裁判结果核对比分。';
+  if (matchPanel && !s.exhibition && target > 0 && Object.values(s.series).some(score => score >= target)) return '系列比分已到先胜目标，请核对后在 Playing 展示 Winner。';
   if (tb?.active && round?.status === 'prepared') return tb.eligible ? 'TB 决胜图已准备，等待比赛开始，双方使用常规人数。' : '系列比分已改变，请先核对决胜比分再开始 TB。';
-  if (tb?.eligible) {
+  if (tb?.eligible && !s.exhibition) {
     if (!tb.canPrepare) return tb.reason;
     const count = s.pool.filter(e => e.mod === 'TB').length;
     if (count !== 1) return '本场有多张 TB，请在开播前设置确定唯一决胜图。';
