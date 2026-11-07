@@ -102,6 +102,7 @@ export function createOverlay(shared = false) {
       readinessCopy: shared ? '状态由直播员人工核对。' : base.readinessCopy,
       commentary: shared ? '本机播出记录 · 实际名单由直播员核对' : base.commentary,
       exLabel: shared && s?.ex.team ? `EX · ${names[s.ex.team]}开启` : base.exLabel,
+      roomIpc: bound?.ipcState ?? null,
       connection: sessionClient?.connection.value || 'demo'
     };
   });
@@ -161,7 +162,7 @@ export function createOverlay(shared = false) {
     document.body.classList.remove('is-clean', 'is-shared-output');
     for (const key of ['scene', 'clean', 'mode', 'activeMode', 'lead']) delete document.body.dataset[key];
   });
-  return { state, view, motionScope, motionReady, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
+  return { state, view, motionScope, motionReady, session, feedback, update, select, ban, toggleClean, cycleMap, mapLabels };
 }
 export type OverlayController = ReturnType<typeof createOverlay>;
 export const overlayKey: InjectionKey<OverlayController> = Symbol('overlay');
