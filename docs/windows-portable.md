@@ -2,11 +2,11 @@
 
 适用：Windows 10 / 11，Intel 或 AMD 64 位（x64）。无需安装 Node.js、Git，不用输入命令。tosu、osu!tourney、OBS 由你自行安装运行，不包含在本包中。
 
-> 旧便携包已清理；当前 main 源码尚未重新打包。未来生成的包仍须完成 Windows 原生启动及真实 tosu／OBS 联调验收。请先用于测试，开播前由维护者完成现场验证。
+> Pre-release 是通过 CI 打包与 Windows 原生启动检查的预览版本。开播前请核对该版本的实际 tosu／OBS 接线与播出效果。
 
 ## 1. 获取压缩包、解压、双击启动
 
-1. 从赛事组织者或维护者处取得 `OCLR-Windows-x64.zip`，右键“全部解压”。GitHub 的“Download ZIP”是源码包，不能代替便携包；不要在压缩包里面运行。
+1. 在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 选择所需提交的 Pre-release，从 Assets 下载 `OCLR-Windows-x64.zip`，右键“全部解压”。可用旁边的 `.zip.sha256` 核对下载内容。
 2. 双击解压后的 **OCLR.exe**。等待“本机服务已就绪”，默认浏览器会打开直播控制台。
 3. 保留“OCLR 直播服务”小窗口，可最小化。重复双击会打开同一个控制台，不会开第二场比赛。网页关了也没关系，点小窗口里的“打开控制台”即可。
 

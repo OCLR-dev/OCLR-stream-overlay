@@ -133,20 +133,23 @@ class FakeSocket {
   close() { this.onclose?.(); }
 }
 
-test('WebSocket silence marks stale, reconnects, and stop cancels reconnect', async () => {
+test('WebSocket silence marks stale, reconnects, and stop cancels reconnect', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const statuses = [];
   const client = new TosuClient({ url: 'ws://example', WebSocketImpl: FakeSocket,
     staleMs: 15, reconnectMs: 5, onStatus: status => statuses.push(status), onFrame() {} });
   client.start();
   FakeSocket.sockets.at(-1).onmessage({ data: JSON.stringify(frame) });
-  await new Promise(resolve => setTimeout(resolve, 30));
+  t.mock.timers.tick(15);
   assert.ok(statuses.includes('live'));
   assert.ok(statuses.includes('stale'));
-  assert.ok(FakeSocket.sockets.length >= 2);
+  t.mock.timers.tick(5);
+  assert.equal(FakeSocket.sockets.length, 2);
+  // Let the second silent socket schedule another retry, then stop it.
+  t.mock.timers.tick(15);
   client.stop();
-  const count = FakeSocket.sockets.length;
-  await new Promise(resolve => setTimeout(resolve, 25));
-  assert.equal(FakeSocket.sockets.length, count);
+  t.mock.timers.tick(5);
+  assert.equal(FakeSocket.sockets.length, 2);
   assert.equal(statuses.at(-1), 'stopped');
 });
 
