@@ -57,7 +57,13 @@ python3 tools/packaging/build_windows.py
 
 脚本在 Windows TEMP 下建立隔离的中文/空格程序目录与数据目录，执行原生 exe 首启、重复启动、SSE、退出、目录更新保留、端口占用、旧服务拒绝、损坏记录和 smoke-test，报告含每项结果。测试通过仍需人工补测正常 GUI 模式的浏览器自动打开、重复双击、复制地址、关闭网页后输出、关闭确认、键盘导航及高 DPI。
 
-已添加手动触发的 `.github/workflows/windows-portable.yml`：在 Windows runner 构建、回归并执行实际 EXE 验收，只上传构建与验收工件，不发布 Release。该工作流仅手动触发；**目前未执行，不能算 CI 通过**。
+### GitHub Actions 与 Pre-release
+
+`windows-release.yml` 在推送到 `main` 后触发。一次推送包含多个主线提交时，按 `main` 的第一父提交链为每个新增提交分别打包。合并提交以其最终内容打包，分支内的开发历史沿用各自的 PR 检查。单次推送的 GitHub Actions 矩阵上限为 256 个主线提交。
+
+`windows-portable.yml` 安装锁定依赖、构建 ZIP、运行回归测试，并在 Windows runner 校验和解压该 ZIP，用包内 Node 执行 EXE 启动、同步、退出和资料恢复检查。PR 与手动触发会提供验证工件。主线推送的每个提交独立验证和发布，成功后由单独的发布任务在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 上传 ZIP 与 SHA-256 校验值。发布标签为 `windows-<完整提交 SHA>`，不占用稳定版的 Latest 标记。重跑会复用同一提交已有的完整 Pre-release。
+
+每个预览版本的发布说明链接到对应的 Actions 运行。CI 验证报告由该运行提供，真实 tosu／OBS 与原生交互验收仍需在直播机确认。
 
 ## 后续服务器部署边界
 

@@ -1,0 +1,49 @@
+name: Windows prerelease
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      shas: ${{ steps.list.outputs.shas }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: List new main commits
+        id: list
+        shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "$BEFORE" == 0000000000000000000000000000000000000000 ]]; then
+            commits="$GITHUB_SHA"
+          else
+            commits=$(git rev-list --first-parent --reverse "$BEFORE..$GITHUB_SHA")
+          fi
+          shas=$(printf '%s\n' "$commits" | jq -Rnc '[inputs | select(length > 0)]')
+          if [[ $(jq length <<< "$shas") -gt 256 ]]; then
+            echo "::error::A push may contain at most 256 new main commits for Windows releases."
+            exit 1
+          fi
+          printf 'shas=%s\n' "$shas" >> "$GITHUB_OUTPUT"
+
+  prerelease:
+    needs: commits
+    if: needs.commits.outputs.shas != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        commit: ${{ fromJSON(needs.commits.outputs.shas) }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/windows-portable.yml
+    with:
+      commit: ${{ matrix.commit }}
