@@ -265,3 +265,131 @@ test('recording an older legacy pending result never activates or consumes the n
   s = cmd(s, 'record-result', { roundId: old, winner: 'a', keepDisplay: true });
   assert.deepEqual(s.queue, queue); assert.equal(s.action, null); assert.deepEqual(currentRound(s), current);
 });
+
+test('BP phase jump seeks forward without deleting records or inventing skipped bans', async () => {
+  const h = harness();
+  assert.equal(bpProgress(h.s).phase, 'ban1');
+  await h.apply(0);
+  await h.cmd('jump-bp-phase', { phase: 'pick2' });
+  assert.equal(h.s.bans.a[0], 'm0');
+  assert.equal(h.s.bans.b[0], null);
+  assert.equal(h.s.bpHistory.length, 1);
+  assert.deepEqual(signature(h.s.action), ['pick', 'b', 2]);
+  assert.deepEqual(h.s.queue.map(signature), [['pick', 'a', 2]]);
+  assert.equal(bpProgress(h.s).phase, 'pick2');
+});
+
+test('BP phase jump is forward-only and cannot restart a phase that already has records', async () => {
+  const h = harness();
+  await h.cmd('jump-bp-phase', { phase: 'pick2' });
+  await assert.rejects(h.cmd('jump-bp-phase', { phase: 'pick1' }), /只能跳到当前或之后的阶段/);
+  const action = structuredClone(h.s.action);
+  await h.cmd('jump-bp-phase', { phase: 'pick2' });
+  assert.deepEqual(h.s.action, action);
+  await h.apply(3);
+  assert.equal(currentRound(h.s).status, 'prepared');
+  await assert.rejects(h.cmd('jump-bp-phase', { phase: 'pick2' }), /选图|进行中|等待/);
+  await h.cmd('start');
+  await assert.rejects(h.cmd('jump-bp-phase', { phase: 'pick2' }), /进行中|等待/);
+  await h.cmd('ranking');
+  assert.deepEqual(signature(h.s.action), ['pick', 'a', 2]);
+  await h.apply(5); await h.cmd('start'); await h.cmd('ranking');
+  assert.deepEqual(signature(h.s.action), ['pick', 'b', 3]);
+  await assert.rejects(h.cmd('jump-bp-phase', { phase: 'pick2' }), /已有记录/);
+});
+
+test('the phase label stays on Pick 1 while its map is prepared or playing', async () => {
+  const h = harness();
+  await h.firstPick();
+  assert.equal(bpProgress(h.s).phase, 'pick1');
+  await h.cmd('start');
+  assert.equal(bpProgress(h.s).phase, 'pick1');
+});
+
+test('choosing the other team after the second-Pick jump alternates the next actions from it', async () => {
+  const h = harness();
+  await h.cmd('jump-bp-phase', { phase: 'pick2' });
+  await h.cmd('select-bp-action', { team: 'a', kind: 'pick' });
+  assert.deepEqual(signature(h.s.action), ['pick', 'a', 2]);
+  assert.deepEqual(h.s.queue.map(signature), [['pick', 'b', 2]]);
+  await h.apply(3); await h.cmd('start'); await h.cmd('ranking');
+  assert.deepEqual(signature(h.s.action), ['pick', 'b', 2]);
+  await h.apply(4); await h.cmd('start'); await h.cmd('ranking');
+  assert.deepEqual(signature(h.s.action), ['pick', 'a', 3]);
+  await h.apply(5); await h.cmd('start'); await h.cmd('ranking');
+  assert.deepEqual(signature(h.s.action), ['pick', 'b', 3]);
+});
+
+test('BP phase jump can start the first Pick or the second Ban with the right queue', async () => {
+  const first = harness();
+  await first.cmd('jump-bp-phase', { phase: 'pick1' });
+  assert.deepEqual(signature(first.s.action), ['pick', 'b', 1]);
+  assert.deepEqual(first.s.queue.map(signature), [['pick', 'a', 1], ['ban', 'a', 1], ['ban', 'b', 1]]);
+  const second = harness();
+  await second.cmd('jump-bp-phase', { phase: 'ban2' });
+  assert.deepEqual(signature(second.s.action), ['ban', 'a', 1]);
+  assert.deepEqual(second.s.queue.map(signature), [['ban', 'b', 1]]);
+});
+
+test('BP phase jump from a manual order establishes the automatic alternation', async () => {
+  const h = harness();
+  await h.cmd('set-plan', { queue: [{ kind: 'pick', team: 'a' }] });
+  await h.cmd('jump-bp-phase', { phase: 'pick2' });
+  assert.equal(h.s.bpFlow.mode, 'roll');
+  assert.deepEqual(signature(h.s.action), ['pick', 'b', 2]);
+  assert.deepEqual(h.s.queue.map(signature), [['pick', 'a', 2]]);
+});
+
+test('BP phase buttons start a pristine match with the default left Ban / right Pick order', () => {
+  const s = cmd(setup(), 'jump-bp-phase', { phase: 'pick2' });
+  assert.equal(s.bpFlow.mode, 'roll');
+  assert.equal(s.bpFlow.banFirst, 'a');
+  assert.equal(s.bpFlow.pickFirst, 'b');
+  assert.deepEqual(signature(s.action), ['pick', 'b', 2]);
+  assert.deepEqual(s.queue.map(signature), [['pick', 'a', 2]]);
+  assert.equal(s.scene, 'mappool');
+  assert.equal(bpProgress(s).canStart, false);
+  const first = cmd(setup(), 'jump-bp-phase', { phase: 'ban1' });
+  assert.deepEqual(signature(first.action), ['ban', 'a', 0]);
+  assert.deepEqual(first.queue.map(signature), [['ban', 'b', 0], ['pick', 'b', 1], ['pick', 'a', 1], ['ban', 'a', 1], ['ban', 'b', 1]]);
+});
+
+test('a first team choice on a pristine match establishes the start order and pick alternation', async () => {
+  const picked = cmd(setup(), 'select-bp-action', { team: 'b', kind: 'pick' });
+  assert.equal(picked.bpFlow.mode, 'roll');
+  assert.equal(picked.bpFlow.banFirst, 'a');
+  assert.equal(picked.bpFlow.pickFirst, 'b');
+  assert.deepEqual(signature(picked.action), ['pick', 'b', 1]);
+  assert.deepEqual(picked.queue.map(signature), [['pick', 'a', 1]]);
+  const banned = cmd(setup(), 'select-bp-action', { team: 'b', kind: 'ban' });
+  assert.equal(banned.bpFlow.mode, 'roll');
+  assert.equal(banned.bpFlow.banFirst, 'b');
+  assert.equal(banned.bpFlow.pickFirst, 'a');
+  assert.deepEqual(signature(banned.action), ['ban', 'b', 0]);
+  assert.deepEqual(banned.queue.map(signature), [['ban', 'a', 0], ['pick', 'a', 1], ['pick', 'b', 1], ['ban', 'b', 1], ['ban', 'a', 1]]);
+});
+
+test('an out-of-turn pick replaces the current selection and keeps old labels', async () => {
+  const h = harness();
+  await h.firstPick();
+  assert.equal(h.s.action, null);
+  assert.equal(currentRound(h.s).status, 'prepared');
+  assert.equal(currentRound(h.s).winner, null);
+  assert.deepEqual(h.s.poolChoice, { team: 'a', kind: 'pick' }, 'the next team is preselected immediately');
+
+  await h.cmd('choose-pool-map', { entryId: 'm3' });
+  assert.equal(currentRound(h.s).entryId, 'm3');
+  assert.equal(currentRound(h.s).pickedBy, 'a');
+  assert.equal(currentRound(h.s).status, 'prepared');
+  assert.equal(currentRound(h.s).winner, null, 'an unsettled pick is not a win');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm2' && mark.team === 'b' && mark.status === 'picked'), true, 'the previous map keeps its team label');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm3' && mark.team === 'a' && mark.status === 'picked'), true);
+  assert.deepEqual(h.s.poolChoice, { team: 'a', kind: 'ban' }, 'the next queued action becomes the preselection');
+
+  await h.cmd('select-bp-action', { team: 'b', kind: 'pick' });
+  await h.cmd('choose-pool-map', { entryId: 'm4' });
+  assert.equal(currentRound(h.s).entryId, 'm4');
+  assert.equal(currentRound(h.s).pickedBy, 'b');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm3' && mark.team === 'a' && mark.status === 'picked'), true, 'the replaced selection keeps its label');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm4' && mark.team === 'b' && mark.status === 'picked'), true);
+});

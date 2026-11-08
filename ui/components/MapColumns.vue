@@ -31,8 +31,11 @@ const difficultyFor = (entry: PoolEntry) => trimmed(entry.difficulty) || metadat
 const starFor = (entry: PoolEntry) => mapStarDisplay(metadataFor(entry), testModForCategory(entry.mod));
 // Picked maps keep a persistent label until a winner is recorded. Once the
 // round has a red/blue winner, the winner label takes over instead.
-type PoolCardState = Pick<PoolEntry, 'mod'> & { status: string; actionTeam: 'a' | 'b' | null; winnerTeam: 'a' | 'b' | null };
-const chosen = (entry: PoolCardState) => entry.mod !== 'TB' && !entry.winnerTeam && (entry.status === 'picked' || entry.status === 'used');
+type PoolCardState = Pick<PoolEntry, 'mod'> & { status: string; actionTeam: 'a' | 'b' | null; winnerTeam: 'a' | 'b' | null; current: boolean };
+const picked = (entry: PoolCardState) => entry.mod !== 'TB' && !entry.winnerTeam && (entry.status === 'picked' || entry.status === 'used');
+// Only the current round keeps the animated selection marquee. Older prepared
+// picks remain labelled "蓝队选择/红队选择" without looking like the active pick.
+const chosen = (entry: PoolCardState) => picked(entry) && entry.current;
 const stateText = (entry: PoolCardState) => {
   if (entry.winnerTeam) return entry.winnerTeam === 'a' ? '红队胜利' : '蓝队胜利';
   if (entry.mod === 'TB') return '决胜图';
@@ -123,10 +126,10 @@ onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); tightC
       <ol class="map-list">
         <li v-for="(entry, index) in group.entries" :key="entry.id" class="map-entry"
           :class="{ 'is-banned': entry.status === 'banned', 'is-picked': entry.status === 'picked' || entry.status === 'used', 'has-winner': !!entry.winnerTeam }"
-          :data-has-state="entry.status === 'banned' || !!entry.winnerTeam || chosen(entry) ? 'true' : undefined" :data-winner="entry.winnerTeam || undefined" :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-tight="tightCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
+          :data-has-state="entry.status === 'banned' || !!entry.winnerTeam || picked(entry) ? 'true' : undefined" :data-winner="entry.winnerTeam || undefined" :data-map-index="entry.id" :data-compact="compactCards.has(entry.id) ? 'true' : undefined" :data-tight="tightCards.has(entry.id) ? 'true' : undefined" :data-star="entry.beatmapId > 0 ? 'true' : undefined" :data-map-state="entry.status" :data-team="entry.actionTeam" :data-mod="group.mod" :style="{ '--map-number-length': String(cardNumber(entry, index).length) }">
           <span class="map-confirmation" aria-hidden="true" v-emphasize="{ value: [entry.status, entry.actionTeam], scope: motionScope, enabled: motionReady, visible: state.scene === 'mappool', when: entry.status === 'banned' || entry.status === 'picked', kind: 'confirm' }"><b>{{ entry.status === 'banned' ? 'BAN' : group.mod === 'TB' ? 'TB' : 'PICK' }}</b><span>{{ entry.actionTeam ? view.names[entry.actionTeam] : '已确认' }}</span></span>
           <span v-if="entry.status === 'banned'" class="map-state-veil" aria-hidden="true"></span>
-          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || chosen(entry)" class="map-state-label" :class="{ 'map-state-label--corner': entry.status === 'banned' || !!entry.winnerTeam || chosen(entry), 'map-state-label--winner': !!entry.winnerTeam }">
+          <span v-if="entry.status === 'banned' || entry.winnerTeam || (group.mod === 'TB' && entry.status !== 'open') || picked(entry)" class="map-state-label" :class="{ 'map-state-label--corner': entry.status === 'banned' || !!entry.winnerTeam || picked(entry), 'map-state-label--winner': !!entry.winnerTeam }">
             <span class="map-status" :data-winner="entry.winnerTeam" :title="entry.statusLabel" :aria-label="entry.statusLabel">{{ stateText(entry) }}</span>
           </span>
           <svg v-if="chosen(entry)" class="map-turn-marquee" aria-hidden="true" focusable="false">

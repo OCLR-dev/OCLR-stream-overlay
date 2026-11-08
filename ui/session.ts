@@ -16,6 +16,7 @@ interface StreamingFixture {
   id: string; label: string; roundName?: string; scheduledAt: string; exhibition?: boolean; home: MatchTeam | null; away: MatchTeam | null;
 }
 export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: number | null; ordinal?: number }
+export type BpPhase = 'ban1' | 'pick1' | 'ban2' | 'pick2';
 export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; exTeam: Team | null }
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
@@ -29,7 +30,7 @@ export interface Session {
   roll: { a: number | null; b: number | null; winner: Team | null; pickFirst: Team | null; banFirst: Team | null };
   action: BpAction | null; queue: BpAction[]; planVerification?: string | null; bans: Record<Team, [string | null, string | null]>;
   emptyBans?: Record<Team, [boolean, boolean]>;
-  bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
+  bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; phase?: BpPhase | null; canStart?: boolean; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
   auto: { bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
   winnerPending?: { team: Team; endsAt: number } | null;

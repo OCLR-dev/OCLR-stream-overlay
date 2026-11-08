@@ -34,7 +34,9 @@ test('promoting the other first Pick retains the displaced Pick, both second Ban
   s = choose(s, 'a', 'pick'); s = finish(apply(s, 2));
   assert.equal(s.action.team, 'b'); assert.equal(s.action.kind, 'pick');
   s = finish(apply(s, 3)); s = apply(apply(s, 4), 5);
-  assert.deepEqual(order(s).slice(0, 2), [['pick', 'b', null, 2], ['pick', 'a', null, 2]]);
+  // A was promoted to play first, then B. Alternation continues from the last
+  // played Pick, so the next pair starts with A, not the scheduled pickFirst.
+  assert.deepEqual(order(s).slice(0, 2), [['pick', 'a', null, 2], ['pick', 'b', null, 2]]);
 });
 
 test('promoting a Pick before a pending Ban returns that exact Ban to the queue head', () => {

@@ -221,20 +221,97 @@ function syncRollFlow(s) {
   return true;
 }
 
+function lastFinishedPickRound(s) {
+  const rounds = s.rounds.filter(r => ['playing', 'ranking', 'recorded'].includes(r.status) && r.bpAction?.kind === 'pick');
+  return rounds.length ? rounds[rounds.length - 1] : null;
+}
+
+// Continue from the last Pick that actually entered play. bpAction is the
+// recorded Pick identity, so a later "调整本图 Pick 方" on the round does not
+// change the rotation. When no Pick has started yet, use the Roll winner.
+function nextPickTeam(s) {
+  const last = lastFinishedPickRound(s);
+  if (last) return last.bpAction.team === 'a' ? 'b' : 'a';
+  return s.bpFlow?.pickFirst || s.roll.pickFirst || null;
+}
+
+function resolveBpStartOrder(s) {
+  const other = team => team === 'a' ? 'b' : 'a';
+  if (s.bpFlow?.banFirst && s.bpFlow?.pickFirst) return { banFirst: s.bpFlow.banFirst, pickFirst: s.bpFlow.pickFirst };
+  if (s.roll.banFirst && s.roll.pickFirst) return { banFirst: s.roll.banFirst, pickFirst: s.roll.pickFirst };
+  const choice = s.poolChoice;
+  if (choice?.kind === 'ban') return { banFirst: choice.team, pickFirst: other(choice.team) };
+  if (choice?.kind === 'pick') return { banFirst: other(choice.team), pickFirst: choice.team };
+  return { banFirst: 'a', pickFirst: 'b' };
+}
+
+// Start a BP from a pristine match. The operator's first team choice decides
+// which team leads that action; the other team leads the other action.
+function startBpFromChoice(s, team, kind) {
+  const other = team === 'a' ? 'b' : 'a';
+  const ban = (side, slot) => normalizeAction({ kind: 'ban', team: side, slot });
+  const pick = (side, ordinal) => ({ ...normalizeAction({ kind: 'pick', team: side }), ordinal });
+  const banFirst = kind === 'ban' ? team : other;
+  const pickFirst = kind === 'pick' ? team : other;
+  s.bpFlow = { version: 1, mode: 'roll', banFirst, pickFirst, nextPair: 2 };
+  if (kind === 'ban') {
+    s.action = ban(team, 0);
+    const otherPick = pickFirst === 'a' ? 'b' : 'a';
+    s.queue = [ban(other, 0), pick(pickFirst, 1), pick(otherPick, 1), ban(team, 1), ban(other, 1)];
+  } else {
+    s.action = pick(team, 1);
+    // A pick-first start skips the opening bans and goes straight into the
+    // alternating pick pair the operator asked for.
+    s.queue = [pick(other, 1)];
+  }
+  s.poolChoice = { team, kind };
+  s.planVerification = null;
+  s.phase = 'bp';
+  s.scene = 'mappool';
+}
+
+function bpPhaseOfAction(action) {
+  if (!action) return null;
+  if (action.kind === 'ban') return action.slot === 0 ? 'ban1' : 'ban2';
+  return (action.ordinal ?? 1) >= 2 ? 'pick2' : 'pick1';
+}
+
+function currentBpPhase(s) {
+  const round = currentRound(s);
+  if (!s.action && round && ['prepared', 'playing'].includes(round.status) && round.bpAction?.kind === 'pick') {
+    return bpPhaseOfAction(round.bpAction);
+  }
+  return bpPhaseOfAction(s.action || s.queue[0] || round?.bpAction || null);
+}
+
+function phaseHasRecords(s, phase) {
+  if (phase === 'ban1' || phase === 'ban2') {
+    const slot = phase === 'ban1' ? 0 : 1;
+    return SIDES.some(team => !!(s.bans[team][slot] || s.emptyBans?.[team]?.[slot]));
+  }
+  const picks = s.rounds.filter(r => r.status !== 'void' && r.bpAction?.kind === 'pick');
+  return phase === 'pick1'
+    ? picks.some(r => (r.bpAction.ordinal ?? 1) <= 1)
+    : picks.some(r => (r.bpAction.ordinal ?? 0) >= 2);
+}
+
+const bpActionKey = action => action
+  ? `${action.kind}:${action.team}:${action.kind === 'ban' ? action.slot : action.ordinal ?? 1}`
+  : '';
+
 function takeBpAction(s) {
   const replenish = () => {
     if (s.bpFlow?.mode !== 'roll' || s.queue.length) return;
-    const { pickFirst, nextPair } = s.bpFlow;
-    s.queue.push(...[pickFirst, pickFirst === 'a' ? 'b' : 'a'].map(team => ({
-      ...normalizeAction({ kind: 'pick', team }), ordinal: nextPair,
-    })));
+    const { nextPair } = s.bpFlow;
+    const first = nextPickTeam(s) || s.bpFlow.pickFirst;
+    const pick = (team, ordinal) => ({ ...normalizeAction({ kind: 'pick', team }), ordinal });
+    s.queue.push(pick(first, nextPair), pick(first === 'a' ? 'b' : 'a', nextPair));
     s.bpFlow.nextPair++;
   };
   for (;;) {
     replenish();
     const action = s.queue.shift() || null;
     if (action?.kind === 'ban' && (s.bans[action.team][action.slot] || s.emptyBans?.[action.team]?.[action.slot])) continue;
-    replenish();
     return action;
   }
 }
@@ -290,8 +367,9 @@ export function bpProgress(s) {
     : round?.status === 'prepared' ? entryOf(s, round.entryId)?.mod === 'TB' ? 'TB 决胜图已准备，等待比赛开始' : `${s.match.teams[round.pickedBy].name}已选图，等待本局开始`
     : round?.status === 'playing' ? '本图进行中，结束后继续 BP' : null);
   return { current: waiting ? null : s.action, next: stop ? null : waiting ? s.action || s.queue[0] || null : s.queue[0] || null,
-    waiting, stopped: !!stop, mode: s.bpFlow?.mode || 'legacy',
+    waiting, stopped: !!stop, mode: s.bpFlow?.mode || 'legacy', phase: currentBpPhase(s),
     canApply: !waiting && !!s.action, canReplace: !stop && !s.incident && !s.paused && round?.status === 'prepared',
+    canStart: !bpStarted(s) && !s.action && !s.queue.length && !s.warmup && !s.paused && !s.incident && !seriesComplete(s),
     tiebreaker: tiebreakerProgress(s),
     rollChanged: s.bpFlow?.mode === 'roll' && (s.roll.banFirst !== s.bpFlow.banFirst || s.roll.pickFirst !== s.bpFlow.pickFirst) };
 }
@@ -343,16 +421,31 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
   if (replace) {
     available(s, entryId, round.id);
     requireValue(entryOf(s, entryId).mod !== 'TB' && entryOf(s, round.entryId)?.mod !== 'TB', 'TB 单独准备，不作为普通 Pick 或改图');
+    const previousEntryId = round.entryId;
+    const previousTeam = round.bpAction?.team || round.pickedBy;
+    const pickTeam = s.action?.team || previousTeam;
+    // The previous selection is not a result. Keep its team label so the
+    // operator can still see what was selected, but only the current round
+    // will carry the moving selection marquee.
+    if (previousEntryId && previousTeam) {
+      s.poolMarks ||= [];
+      if (!s.poolMarks.some(mark => mark.entryId === previousEntryId && mark.status === 'picked' && mark.team === previousTeam)) {
+        s.poolMarks.push({ entryId: previousEntryId, status: 'picked', team: previousTeam });
+      }
+    }
     round.entryId = entryId;
     round.source = source;
     round.eventId = eventId;
     if (s.action) {
       round.pickedBy = s.action.team;
       round.actionId = s.action.id;
+      round.bpAction = clone(s.action);
       s.action = null;
     }
     recordBp(s, { id: round.actionId, team: round.pickedBy, kind: 'pick' }, entryId, source, eventId, 'replace-pick');
     if (entryOf(s, entryId).mod === 'TB') s.ex.team = null;
+    const next = s.queue[0] || null;
+    s.poolChoice = next ? { team: next.team, kind: next.kind } : null;
     return '替换本轮准备图';
   }
   const action = s.action;
@@ -375,7 +468,13 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
   recordBp(s, action, entryId, source, eventId);
   s.action = action.kind === 'ban' && round?.status !== 'prepared' ? takeBpAction(s) : null;
   if (s.action) s.poolChoice = { team: s.action.team, kind: s.action.kind };
-  else if (action.kind === 'ban') s.poolChoice = null;
+  else if (action.kind === 'pick') {
+    // Once a Pick is prepared, the next queued action becomes the preselection
+    // so the team buttons move to the other team immediately. Clicking a map is
+    // still guarded below until this round starts/is settled.
+    const next = s.queue[0] || null;
+    s.poolChoice = next ? { team: next.team, kind: next.kind } : null;
+  } else s.poolChoice = null;
   return `${s.match.teams[action.team].name} ${action.kind === 'ban' ? `Ban ${action.slot + 1}` : 'Pick'} ${entry.label}`;
 }
 
@@ -418,7 +517,7 @@ function leaveInvalidWinner(s) {
 
 function applyCommand(s, command) {
   const p = command.payload || {};
-  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'winner-soon', 'adjust-round', 'void-round'].includes(command.type))
+  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'jump-bp-phase', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'winner-soon', 'adjust-round', 'void-round'].includes(command.type))
     requireValue(false, 'Warm-up 已开启，请结束热身后再操作正式比赛');
   switch (command.type) {
     case 'warmup': {
@@ -454,15 +553,27 @@ function applyCommand(s, command) {
     case 'choose-pool-map': {
       const choice = s.poolChoice;
       requireValue(choice && side(choice.team) && ['ban', 'pick'].includes(choice.kind), '先选择队伍的 Ban／Pick，或直接选择谱面后再点击动作');
-      const message = applyCommand(s, { type: 'map-mark', payload: { entryId: p.entryId, status: choice.kind === 'ban' ? 'banned' : 'picked', team: choice.team } });
       const round = currentRound(s);
+      const entry = entryOf(s, p.entryId);
+      const mark = () => applyCommand(s, { type: 'map-mark', payload: { entryId: p.entryId, status: choice.kind === 'ban' ? 'banned' : 'picked', team: choice.team } });
       const occupied = SIDES.some(t => s.bans[t].includes(p.entryId)) || s.rounds.some(r => r.entryId === p.entryId && r.status !== 'void' && !(r.id === round?.id && r.status === 'prepared'));
+      // A prepared Pick is still the active round. Do not let the next team
+      // mark or replace any map until that game settles; only its own Pick can
+      // still be re-pointed before the game starts.
       // Marks stay editable without rewriting an active run or its result.
-      if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || round?.status === 'playing' || occupied) return `${message}（比赛记录保留）`;
-      if (!targetOf(s) || entryOf(s, p.entryId)?.mod === 'TB') return message;
-      if (choice.kind === 'pick') return applyCommand(s, { type: 'prepare-round', payload: { entryId: p.entryId, pickedBy: choice.team } });
-      if (round?.status !== 'prepared' && s.action?.kind === 'ban' && s.action.team === choice.team && !bpStopReason(s)) return applyBp(s, p.entryId);
-      return message;
+      if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || round?.status === 'playing' || occupied) return `${mark()}（比赛记录保留）`;
+      if (!targetOf(s) || entry?.mod === 'TB') return mark();
+      if (choice.kind === 'pick') {
+        const message = applyCommand(s, { type: 'prepare-round', payload: { entryId: p.entryId, pickedBy: choice.team } });
+        mark();
+        return message;
+      }
+      if (round?.status !== 'prepared' && s.action?.kind === 'ban' && s.action.team === choice.team && !bpStopReason(s)) {
+        const message = applyBp(s, p.entryId);
+        mark();
+        return message;
+      }
+      return mark();
     }
     case 'prepare-round': {
       requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');
@@ -488,6 +599,20 @@ function applyCommand(s, command) {
         return '人工确认当前 TB，单独准备（禁 EX，不补录此前 BP）';
       }
       if (round?.status === 'prepared') {
+        const owner = round.bpAction?.kind === 'pick' ? round.bpAction.team : round.pickedBy;
+        if (p.pickedBy !== owner) {
+          // The previous selection is not settled. Prefer the queued Pick for
+          // this team; if the operator picks out of turn, fall back to a fresh
+          // Pick with the same ordinal instead of rejecting the selection.
+          const index = s.queue.findIndex(action => action.kind === 'pick' && action.team === p.pickedBy);
+          const nextAction = index >= 0
+            ? s.queue.splice(index, 1)[0]
+            : { ...normalizeAction({ kind: 'pick', team: p.pickedBy }), ordinal: round.bpAction?.ordinal ?? 1 };
+          s.action = nextAction;
+          applyBp(s, p.entryId);
+          round.pickedBy = p.pickedBy;
+          return `已改由${s.match.teams[p.pickedBy].name}选图 ${entryOf(s, p.entryId).label}；原选图保留标记，等待本局开始`;
+        }
         if (s.action) s.queue.unshift(s.action);
         s.action = null;
         applyBp(s, p.entryId);
@@ -625,11 +750,49 @@ function applyCommand(s, command) {
       requireValue(side(p.team) && ['ban', 'pick'].includes(p.kind), '请选择下一动作及行动队伍');
       s.poolChoice = { team: p.team, kind: p.kind };
       if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || ['prepared', 'playing'].includes(currentRound(s)?.status)) return '已选择图池标记动作；当前局与比赛记录保留';
+      if (!bpStarted(s) && !s.action && !s.queue.length && !s.planVerification && (!s.bpFlow || s.bpFlow.mode === 'legacy')) {
+        startBpFromChoice(s, p.team, p.kind);
+        return `已从${s.match.teams[p.team].name} ${p.kind === 'ban' ? 'Ban' : 'Pick'} 开始 BP；后续动作自动排列`;
+      }
       const slot = p.kind === 'ban' ? [0, 1].find(slot => !s.bans[p.team][slot] && !s.emptyBans?.[p.team]?.[slot]) : null;
       if (slot === undefined) return '已选择 Ban 标记；该队 Ban 记录已满，仅修改播出标记';
       promoteBpAction(s, { ...p, slot });
       s.phase = 'bp';
       return `下一动作：${s.match.teams[p.team].name} ${p.kind === 'ban' ? 'Ban' : 'Pick'}；等待新的房间换图，尚未操作谱面`;
+    }
+    case 'jump-bp-phase': {
+      const phases = ['ban1', 'pick1', 'ban2', 'pick2'];
+      const labels = { ban1: '第一轮 Ban', pick1: '第一轮 Pick', ban2: '第二轮 Ban', pick2: '第二轮 Pick' };
+      requireValue(phases.includes(p.phase), 'BP 阶段无效');
+      const progress = bpProgress(s);
+      requireValue(!progress.stopped, progress.waiting || '比赛已结束，无法跳转 BP 阶段');
+      requireValue(!progress.waiting, progress.waiting || '当前等待本局结束，无法跳转 BP 阶段');
+      const currentIndex = phases.indexOf(progress.phase);
+      const targetIndex = phases.indexOf(p.phase);
+      requireValue(currentIndex < 0 || targetIndex >= currentIndex, '只能跳到当前或之后的阶段；退回已发生的阶段请使用“撤销上一项”');
+      const { banFirst, pickFirst } = resolveBpStartOrder(s);
+      const other = team => team === 'a' ? 'b' : 'a';
+      const ban = (team, slot) => normalizeAction({ kind: 'ban', team, slot });
+      const pick = (team, ordinal) => ({ ...normalizeAction({ kind: 'pick', team }), ordinal });
+      const pairFirst = p.phase === 'pick2' ? nextPickTeam(s) || pickFirst : pickFirst;
+      const start = p.phase === 'ban1' ? ban(banFirst, 0)
+        : p.phase === 'pick1' ? pick(pickFirst, 1)
+          : p.phase === 'ban2' ? ban(banFirst, 1)
+            : pick(pairFirst, 2);
+      if (s.action && bpActionKey(s.action) === bpActionKey(start)) return `当前已在${labels[p.phase]}起点；未改动比赛记录`;
+      requireValue(!phaseHasRecords(s, p.phase), '该阶段已有记录，不能回到起点；如需退回请使用“撤销上一项”');
+      s.action = start;
+      s.queue = p.phase === 'ban1'
+        ? [ban(other(banFirst), 0), pick(pickFirst, 1), pick(other(pickFirst), 1), ban(banFirst, 1), ban(other(banFirst), 1)]
+        : p.phase === 'pick1' ? [pick(other(pickFirst), 1), ban(banFirst, 1), ban(other(banFirst), 1)]
+          : p.phase === 'ban2' ? [ban(other(banFirst), 1)]
+            : [pick(other(pairFirst), 2)];
+      s.bpFlow = { ...(s.bpFlow || {}), version: 1, mode: 'roll', banFirst, pickFirst, nextPair: p.phase === 'pick2' ? 3 : 2 };
+      s.poolChoice = { team: start.team, kind: start.kind };
+      s.planVerification = null;
+      s.phase = 'bp';
+      s.scene = 'mappool';
+      return `已定位到${labels[p.phase]}起点：${s.match.teams[start.team].name} ${start.kind === 'ban' ? `Ban ${start.slot + 1}` : 'Pick'}；未写入跳过的阶段，可撤销`;
     }
     case 'set-action':
       s.bpFlow = { ...s.bpFlow, mode: 'manual' };
