@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createOverlayServer, isAllowedResource, readBoundedJson } from '../server/app.js';
+import { SessionStore } from '../server/session/store.js';
+
+test('an unexpected artwork failure returns a sanitized error and keeps the service running', async t => {
+  const config = { port: 0 };
+  const server = createOverlayServer(config);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  config.port = server.address().port;
+  t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
+  config.session = new SessionStore();
+  const state = config.session.state;
+  Object.defineProperty(config.session, 'state', { configurable: true, get() { throw new Error('PRIVATE_DETAIL_MUST_NOT_LEAK'); } });
+  const base = `http://127.0.0.1:${config.port}`;
+  const response = await fetch(`${base}/api/beatmaps/101/cover`);
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: { code: 'REQUEST_FAILED' } });
+  assert.equal((await fetch(`${base}/api/health`)).status, 200);
+  Object.defineProperty(config.session, 'state', { value: state, writable: true });
+  assert.equal((await fetch(`${base}/api/session`)).status, 200);
+});
 
 test('proxy allowlist rejects private routes, arbitrary URLs, mutations and unknown queries', () => {
   assert.equal(isAllowedResource('tournaments/s11/mappools', new URLSearchParams()), true);

@@ -27,7 +27,11 @@ export function createArtworkHandler(config, fetchImpl, store) {
   const resolveMetadata = createBeatmapMetadataResolver(fetchImpl);
   // Thumbnails need this match and telemetry, not a copy of the potentially
   // large historical catalogue for every image request.
-  const snapshot = () => store ? { session: store.state, live: store.live } : null;
+  const snapshot = () => {
+    // Portable startup binds the server before it restores the session.
+    const current = config.session || store;
+    return current ? { session: current.state, live: current.live } : null;
+  };
   const backgrounds = new Map(); const pending = new Map();
   let tosuUrl = null;
   try {
@@ -47,6 +51,7 @@ export function createArtworkHandler(config, fetchImpl, store) {
     const fail = status => { res.writeHead(status, { 'Cache-Control': 'no-store' }); res.end(); return true; };
     if (req.method !== 'GET') return fail(405);
     if (!match || url.search || !positiveId(id)) return fail(404);
+    if (!current) return fail(404);
     const liveMap = matchingLive(current, id);
     // The selected live map can be displayed before it belongs to a pool.
     // Keep metadata/calculation and arbitrary map requests restricted to the pool.

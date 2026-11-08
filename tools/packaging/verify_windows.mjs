@@ -75,6 +75,26 @@ try {
     assert.equal((await fetch(base+'/overlay')).status, 200);
     aborts[1].abort();
   });
+  await check('portable artwork survives pool setup, initialization and undo without stopping the native service', async () => {
+    const command = async (type, payload) => {
+      const { session } = await fetch(base+'/api/session').then(r => r.json());
+      const response = await fetch(base+'/api/session/command', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: crypto.randomUUID(), version: session.version, type, payload }) });
+      assert.equal(response.status, 200);
+      return response.json();
+    };
+    await command('setting', { field: 'pool', value: [{ id: 'nm1', beatmapId: 101, setId: 42, mod: 'NM', label: 'NM1' }] });
+    for (const kind of ['cover', 'list', 'fullsize', 'background']) {
+      const image = await fetch(`${base}/api/beatmaps/101/${kind}`, { redirect: 'manual' });
+      assert.equal(image.status, 302);
+      assert.match(image.headers.get('location'), /^https:\/\/assets\.ppy\.sh\/beatmaps\/42\/covers\//);
+    }
+    await command('next-match', {});
+    assert.equal((await fetch(base+'/api/beatmaps/101/cover', { redirect: 'manual' })).status, 404);
+    assert.equal((await fetch(base+'/api/health').then(r => r.json())).ready, true);
+    await command('undo', {});
+    assert.equal((await fetch(base+'/api/beatmaps/101/cover', { redirect: 'manual' })).status, 302);
+  });
   const saved = await readFile(data, 'utf8');
   await check('normal native exit releases service and fixed port', async () => {
     await running.stop(); running = null;
@@ -84,6 +104,7 @@ try {
     running = launch(second); await ready();
     assert.equal(await readFile(data, 'utf8'), saved);
     assert.equal((await fetch(base+'/api/session').then(r => r.json())).session.canUndo, true);
+    assert.equal((await fetch(base+'/api/beatmaps/101/cover', { redirect: 'manual' })).status, 302);
     await running.stop(); running = null;
   });
   await check('occupied port refuses start; other program remains alive', async () => {
