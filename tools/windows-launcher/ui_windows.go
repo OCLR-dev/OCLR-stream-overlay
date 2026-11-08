@@ -186,8 +186,14 @@ func runWindow() {
 		call(user, "ReleaseDC", 0, dc)
 	}
 	instance := call(kernel, "GetModuleHandleW", 0)
+	const appIcon = 1 // ID in assets/winres.json.
+	largeIcon := call(user, "LoadIconW", instance, appIcon)
+	smallIcon := call(user, "LoadImageW", instance, appIcon, 1, px(16), px(16), 0) // IMAGE_ICON
+	if smallIcon != 0 {
+		defer call(user, "DestroyIcon", smallIcon)
+	}
 	class := wc{Proc: syscall.NewCallback(wndProc), Instance: instance, Cursor: call(user, "LoadCursorW", 0, 32512),
-		Name: syscall.StringToUTF16Ptr("OCLRPortableWindow")}
+		Icon: largeIcon, Small: smallIcon, Name: syscall.StringToUTF16Ptr("OCLRPortableWindow")}
 	class.Size = uint32(unsafe.Sizeof(class))
 	if call(user, "RegisterClassExW", uintptr(unsafe.Pointer(&class))) == 0 {
 		message("无法创建启动窗口。")
