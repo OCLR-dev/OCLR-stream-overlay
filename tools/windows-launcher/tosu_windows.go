@@ -147,6 +147,16 @@ func processImage(pid uint32) (string, error) {
 	return syscall.UTF16ToString(image[:size]), nil
 }
 
+func sameExecutable(selected, image string) bool {
+	if strings.EqualFold(filepath.Clean(selected), filepath.Clean(image)) {
+		return true
+	}
+	// The process image can use a different DOS path to the same file.
+	want, wantErr := os.Stat(selected)
+	got, gotErr := os.Stat(image)
+	return wantErr == nil && gotErr == nil && os.SameFile(want, got)
+}
+
 func findTosu(path string) tosuProcess {
 	if !isExecutable(path) {
 		return tosuMissing
@@ -162,17 +172,23 @@ func findTosu(path string) tosuProcess {
 	defer syscall.CloseHandle(snapshot)
 	entry := syscall.ProcessEntry32{Size: uint32(unsafe.Sizeof(syscall.ProcessEntry32{}))}
 	status := tosuStopped
+	name := filepath.Base(resolved)
 	err = syscall.Process32First(snapshot, &entry)
 	for ; err == nil; err = syscall.Process32Next(snapshot, &entry) {
-		if !strings.EqualFold(syscall.UTF16ToString(entry.ExeFile[:]), filepath.Base(resolved)) {
+		imageName := syscall.UTF16ToString(entry.ExeFile[:])
+		// An 8.3 image name can differ from the selected file's long name.
+		matchingName := strings.EqualFold(imageName, name)
+		if !matchingName && !strings.Contains(imageName, "~") {
 			continue
 		}
 		image, queryErr := processImage(entry.ProcessID)
 		if queryErr != nil {
-			status = tosuUnknown
+			if matchingName {
+				status = tosuUnknown
+			}
 			continue
 		}
-		if strings.EqualFold(filepath.Clean(image), filepath.Clean(resolved)) {
+		if sameExecutable(resolved, image) {
 			return tosuRunning
 		}
 	}

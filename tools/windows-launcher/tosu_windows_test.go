@@ -13,7 +13,11 @@ func TestTosuProcessMatchesFullPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := findTosu(current); got != tosuRunning {
-		t.Fatalf("running executable was not detected: %d", got)
+		image, imageErr := processImage(uint32(os.Getpid()))
+		t.Fatalf("running executable %q was not detected: %d (process image %q, %v)", current, got, image, imageErr)
+	}
+	if !sameExecutable(current, `\\?\`+current) {
+		t.Fatal("the extended-length spelling of the same path was not detected")
 	}
 	other := filepath.Join(t.TempDir(), filepath.Base(current))
 	if err := os.WriteFile(other, []byte("fixture"), 0600); err != nil {
