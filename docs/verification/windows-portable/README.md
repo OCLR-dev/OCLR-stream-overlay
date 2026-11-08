@@ -61,7 +61,7 @@ python3 tools/packaging/build_windows.py
 
 `windows-release.yml` 在推送到 `main` 后触发。一次推送包含多个主线提交时，按 `main` 的第一父提交链为每个新增提交分别打包。合并提交以其最终内容打包，分支内的开发历史沿用各自的 PR 检查。单次推送的 GitHub Actions 矩阵上限为 256 个主线提交。
 
-`windows-portable.yml` 安装锁定依赖、构建 ZIP、运行回归测试，并在 Windows runner 校验和解压该 ZIP，用包内 Node 执行 EXE 启动、同步、退出和资料恢复检查。PR 与手动触发会提供验证工件。主线推送的每个提交独立验证和发布，成功后由单独的发布任务在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 上传 ZIP 与 SHA-256 校验值。发布标签为 `windows-<完整提交 SHA>`，不占用稳定版的 Latest 标记。重跑会复用同一提交已有的完整 Pre-release。
+`windows-portable.yml` 安装锁定依赖、构建 ZIP、运行回归测试，并在 Windows runner 校验和解压该 ZIP，用包内 Node 执行 EXE 启动、同步、退出和资料恢复检查。PR 与手动触发会提供验证工件。主线推送的每个提交独立验证和发布，成功后由单独的发布任务在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 上传 ZIP 与 SHA-256 校验值。发布标签从 `v0.0.1` 连续递增，标题为 `v0.0.N · Windows x64`，保留 Pre-release 标识。编号按首次 Windows 发布提交 `e52dd726` 开始的 main 第一父提交链计数，构建完成顺序不影响版本号，重跑复用同一版本。既有三个版本已按提交顺序编号为 v0.0.1～v0.0.3，旧 windows-SHA Git 标签继续保留以追溯源码。
 
 每个预览版本的发布说明链接到对应的 Actions 运行。CI 验证报告由该运行提供，真实 tosu／OBS 与原生交互验收仍需在直播机确认。
 

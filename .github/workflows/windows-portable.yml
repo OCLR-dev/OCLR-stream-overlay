@@ -9,6 +9,10 @@ on:
         description: Exact main commit to package
         type: string
         required: true
+      release-version:
+        description: Sequential Windows version for this main commit
+        type: string
+        required: true
 permissions:
   contents: read
 jobs:
@@ -84,9 +88,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.release-version }}
         run: |
           [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-          tag="windows-$RELEASE_COMMIT"
+          [[ "$RELEASE_VERSION" =~ ^0\.0\.[1-9][0-9]*$ ]]
+          tag="v$RELEASE_VERSION"
           zip=OCLR-Windows-x64.zip
           checksum="$zip.sha256"
           sha256sum --check "$checksum"
@@ -122,7 +128,7 @@ jobs:
               "$RELEASE_COMMIT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release-notes.md
             gh release create "$tag" "$zip" "$checksum" \
               --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
-              --title "Windows x64 preview (${RELEASE_COMMIT:0:12})" \
+              --title "$tag · Windows x64" \
               --notes-file release-notes.md --prerelease --latest=false
           else
             cat release-error >&2
