@@ -106,7 +106,15 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     const store = config.session || session;
     if (store) { store.live.streaming = value; store.emit(); }
   } });
-  const server = createServer(async (req, res) => {
+  const server = createServer((req, res) => {
+    void handleRequest(req, res).catch(() => {
+      // A failed image/API request must not terminate the broadcast service.
+      if (res.destroyed || res.writableEnded) return;
+      if (res.headersSent) res.destroy();
+      else fail(res, 500, 'REQUEST_FAILED');
+    });
+  });
+  const handleRequest = async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
     const origins = hosts.map(host => `http://${host}`);
@@ -170,7 +178,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     } finally {
       clearTimeout(timeout);
     }
-  });
+  };
   server.on('close', () => { streaming.disconnect(); (config.session || session)?.close?.(); });
   return server;
 }

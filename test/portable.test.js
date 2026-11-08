@@ -75,6 +75,14 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     const duplicate = launch(app, data);
     assert.equal((await duplicate.done)[0], 1);
     assert.match(duplicate.error(), /已在运行/);
+    const poolResponse = await fetch(`${base}/api/session/command`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({
+      id: crypto.randomUUID(), version: snapshot.session.version, type: 'setting',
+      payload: { field: 'pool', value: [{ id: 'nm1', beatmapId: 101, setId: 42, mod: 'NM', label: 'NM1' }] },
+    }) });
+    assert.equal(poolResponse.status, 200);
+    const cover = await fetch(`${base}/api/beatmaps/101/cover`, { redirect: 'manual' });
+    assert.equal(cover.status, 302, 'portable artwork sees the restored session');
+    assert.equal(cover.headers.get('location'), 'https://assets.ppy.sh/beatmaps/42/covers/cover.jpg');
     const saved = await readFile(join(data, 'session.json'), 'utf8');
     outputAbort.abort();
     assert.equal((await running.stop())[0], 0); running = null;
@@ -89,6 +97,17 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     assert.equal(recovered.session.id, initial.id);
     assert.equal(recovered.session.canUndo, true);
     assert.equal(recovered.session.match.title, '保留比赛与撤销');
+    assert.equal((await fetch(`${base}/api/beatmaps/101/background`, { redirect: 'manual' })).status, 302);
+    const initialize = await fetch(`${base}/api/session/command`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: crypto.randomUUID(), version: recovered.session.version, type: 'next-match' }) });
+    assert.equal(initialize.status, 200);
+    assert.equal((await fetch(`${base}/api/beatmaps/101/cover`, { redirect: 'manual' })).status, 404);
+    assert.equal((await fetch(`${base}/api/health`).then(r => r.json())).ready, true);
+    const initialized = await initialize.json();
+    const undo = await fetch(`${base}/api/session/command`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: crypto.randomUUID(), version: initialized.session.version, type: 'undo' }) });
+    assert.equal(undo.status, 200);
+    assert.equal((await fetch(`${base}/api/beatmaps/101/cover`, { redirect: 'manual' })).status, 302);
     await running.stop(); running = null;
     // Occupied output port must fail without creating data or moving to another port.
     const occupied = createServer((req, res) => res.end('unrelated service'));
