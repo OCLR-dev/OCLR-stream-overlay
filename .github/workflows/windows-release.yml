@@ -28,7 +28,18 @@ jobs:
           else
             commits=$(git rev-list --first-parent --reverse "$BEFORE..$GITHUB_SHA")
           fi
-          shas=$(printf '%s\n' "$commits" | jq -Rnc '[inputs | select(length > 0)]')
+          # Count first-parent main commits from the first Windows release.
+          # This is stable across retries and independent of build finish order.
+          first=e52dd726e70404f9160702e7f35b1bf5a90a89ef
+          shas='[]'
+          while IFS= read -r commit; do
+            [[ -n "$commit" ]] || continue
+            git rev-list --first-parent "$commit" > main-history
+            grep -qx "$first" main-history
+            number=$(git rev-list --first-parent --count "$first^..$commit")
+            shas=$(jq -c --arg commit "$commit" --arg version "0.0.$number" \
+              '. + [{commit: $commit, version: $version}]' <<< "$shas")
+          done <<< "$commits"
           if [[ $(jq length <<< "$shas") -gt 256 ]]; then
             echo "::error::A push may contain at most 256 new main commits for Windows releases."
             exit 1
@@ -41,9 +52,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        commit: ${{ fromJSON(needs.commits.outputs.shas) }}
+        release: ${{ fromJSON(needs.commits.outputs.shas) }}
     permissions:
       contents: write
     uses: ./.github/workflows/windows-portable.yml
     with:
-      commit: ${{ matrix.commit }}
+      commit: ${{ matrix.release.commit }}
+      release-version: ${{ matrix.release.version }}
