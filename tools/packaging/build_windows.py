@@ -44,6 +44,7 @@ def main():
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
     inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.go'))
+    inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.syso'))
     for path in inputs:
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
