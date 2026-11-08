@@ -131,3 +131,11 @@
 .operator-warm-time button[aria-pressed='true'] { background: #7346b1; border-color: #c7a3ff; }
 .operator-warm-time button:disabled { opacity: .5; cursor: default; }
 .operator-warm-time span { color: #c5b6d7; font-size: 13px; }
+.operator-bp-phases { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 10px; border-left: 1px solid #7653aa66; }
+.operator-bp-phases button { padding: 6px 10px; font-size: 13px; background: #241633; border-color: #5e4187; }
+.operator-bp-phases button[aria-pressed='true'] { background: #7346b1; border-color: #c7a3ff; }
+.operator-bp-phases button[aria-pressed='true']:disabled { opacity: .8; }
+.operator-bp-phases button[aria-pressed='true']::after { content: ' · 当前'; font-size: 11px; opacity: .85; }
+@media (max-width: 760px) {
+  .operator-bp-phases { width: 100%; padding-left: 0; border-left: 0; }
+}

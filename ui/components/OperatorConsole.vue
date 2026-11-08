@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { useSession, type PoolEntry, type Round } from '../session';
+import { useSession, type BpPhase, type PoolEntry, type Round } from '../session';
 import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type Team } from '../model';
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
@@ -603,6 +603,21 @@ const bpAuto = computed(() => {
     label: `${names.value[action.team]} ${action.kind === 'ban' ? `Ban${action.slot == null ? '' : ` ${action.slot + 1}`}` : 'Pick'}`,
   };
 });
+const bpPhases: { id: BpPhase; label: string }[] = [
+  { id: 'ban1', label: '第一轮 Ban' },
+  { id: 'pick1', label: '第一轮 Pick' },
+  { id: 'ban2', label: '第二轮 Ban' },
+  { id: 'pick2', label: '第二轮 Pick' },
+];
+const bpPhase = computed(() => s.value?.bp?.phase || null);
+const bpPhaseDisabled = computed(() => disabled.value || !s.value || !!s.value.warmup || s.value.paused || !!s.value.incident ||
+  !s.value.bp || s.value.bp.stopped || !!s.value.bp.waiting || (!['roll', 'manual'].includes(s.value.bp.mode) && !s.value.bp.canStart));
+async function jumpBpPhase(phase: BpPhase) {
+  if (await run('jump-bp-phase', { phase })) {
+    poolEntryId.value = '';
+    poolNeedsAction.value = false;
+  }
+}
 const gameStatus = computed(() => live.value?.sources?.tosu === 'simulated' && live.value?.tosu.status === 'live' ? '游戏模拟信号已连接' : ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据暂不可用', error: '游戏未连接 · 请检查连接设置', disconnected: '游戏连接中断 · 正在重连', connecting: '正在连接游戏', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));
 const latestResult = computed(() => [...(s.value?.rounds || [])].reverse().find(r => r.status === 'recorded'));
 const seriesPayload = (team: Team, value: number) => ({ ...s.value!.series, [team]: value, reason: note('直播员核对后直接校正系列比分') });
@@ -649,7 +664,9 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       </section>
       <section class="operator-warm-time" aria-label="Warm-up 热身模式">
         <button type="button" :aria-pressed="!!s.warmup" :disabled="disabled" @click="run('warmup', { enabled: !s.warmup })">Warm-up · {{ s.warmup ? '已开启' : '已关闭' }}</button>
-        <span>{{ s.warmup ? '热身中：不推进 BP、不计胜、不自动切画面；播出仅显示实时队分。返回游戏房间后关闭。' : '开启后进入热身模式，不切换当前播出画面。' }}</span>
+        <div v-if="s.bp" class="operator-bp-phases" role="group" aria-label="BP 阶段">
+          <button v-for="phase in bpPhases" :key="phase.id" type="button" :aria-pressed="bpPhase === phase.id" :disabled="bpPhaseDisabled" :title="bpPhaseDisabled ? (s.bp?.waiting || (s.bp?.mode === 'manual' ? '当前为手动 BP；阶段跳转会重建剩余动作' : '当前无法跳转 BP 阶段')) : bpPhase === phase.id ? '当前阶段；点击不会改动比赛记录' : s.bp?.canStart ? `从${phase.label}开始 BP（默认左队先 Ban）` : `跳到${phase.label}起点（只向前，不删除记录）`" @click="jumpBpPhase(phase.id)">{{ phase.label }}</button>
+        </div>
       </section>
       <div class="operator-quick-row">
         <section v-if="!s.warmup && !exhibition" class="operator-ex-quick" aria-label="EX 常用操作">
