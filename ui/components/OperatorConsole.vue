@@ -565,7 +565,13 @@ const choosePoolMap = async (entryId: string) => {
   poolEntryId.value = entryId;
   if (entry(entryId)?.mod === 'TB') { poolNeedsAction.value = false; return; }
   poolNeedsAction.value = true;
-  if (s.value?.poolChoice && await run('choose-pool-map', { entryId })) poolNeedsAction.value = false;
+  if (s.value?.poolChoice) {
+    await run('choose-pool-map', { entryId });
+    poolNeedsAction.value = false;
+    // The action now owns the map. Do not leave the old map looking selected
+    // after the next team's preselection takes over.
+    poolEntryId.value = '';
+  }
 };
 const note = (fallback: string) => reason.value.trim() || fallback;
 const incidentNote = (fallback: string) => incidentReason.value.trim() || fallback;
@@ -594,6 +600,10 @@ function poolState(id: string) {
   return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已结束' : 'Pick'}` : '';
 }
 const nextStep = computed(() => s.value?.warmup ? '热身不会推进 BP、计胜或自动切画面。结束后返回游戏房间，再关闭 Warm-up。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
+const poolAction = computed(() => {
+  const bp = s.value?.bp;
+  return bp?.waiting && bp.next ? bp.next : s.value?.poolChoice || null;
+});
 const bpAuto = computed(() => {
   const action = s.value?.action || s.value?.bp?.next || null;
   if (!action) return null;
@@ -752,13 +762,18 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
               <p v-if="rollLinkRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollLinkRemaining }} 秒后自动确认：{{ rollLinkLabel }}。5 秒内仍可手动修改。</p>
               <p role="status">{{ settingMessages.roll || '修改后立即生效。' }}</p>
+              <button v-if="s.roll.pickFirst && s.roll.banFirst" class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('bp')">进入图池 / BP →</button>
+              <p v-else class="operator-hint">选择先 Pick 和先 Ban 后，可直接进入图池 / BP。</p>
             </div>
             <div v-else-if="panel === 'mappool'" class="operator-action-stack">
               <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : round ? `当前图 ${entry(round.entryId)?.label || '—'} · ${roundStatusLabel(round)}` : s.poolChoice ? `${names[s.poolChoice.team]} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'} · 等待选图` : '选择 Ban／Pick 或谱面' }}</p>
               <p v-if="bpAuto" class="operator-bp-auto" aria-live="polite">{{ bpAuto.current ? `自动待处理：${bpAuto.label} · 房间换图后自动记录` : `自动下一步：${bpAuto.label}` }}</p>
+              <p v-else-if="s.bp?.waiting && s.bp.mode === 'roll' && !s.bp.stopped" class="operator-bp-auto" aria-live="polite">{{ s.bp.waiting }}；本局结算后自动继续 BP。</p>
+              <p v-else-if="s.bp?.waiting" class="operator-bp-auto" aria-live="polite">{{ s.bp.waiting }}</p>
               <p v-else-if="s.bp?.mode === 'manual'" class="operator-bp-auto" aria-live="polite">当前为手动 BP 顺序；自动轮换只在开赛前确认 Roll 时建立。</p>
+              <p v-else-if="s.bp?.canStart" class="operator-bp-auto" aria-live="polite">自动 BP 尚未开始；点击阶段按钮或选择队伍即可开始。</p>
               <p v-else class="operator-bp-auto" aria-live="polite">{{ exhibition ? '按裁判确认的顺序手动选择 Ban／Pick。' : '自动 BP 顺序已走完；后续按现场手动选择。' }}</p>
-              <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :aria-pressed="s.poolChoice?.team === team && s.poolChoice.kind === (kind === 'banned' ? 'ban' : 'pick')" :disabled="disabled || poolSelection?.mod === 'TB'" :data-unavailable="connection !== 'synced' || poolSelection?.mod === 'TB'" @click="choosePoolAction(team, kind === 'banned' ? 'ban' : 'pick')">{{ names[team] }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}</button></template></div>
+              <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :aria-pressed="poolAction?.team === team && poolAction.kind === (kind === 'banned' ? 'ban' : 'pick')" :disabled="disabled || poolSelection?.mod === 'TB'" :data-unavailable="connection !== 'synced' || poolSelection?.mod === 'TB'" @click="choosePoolAction(team, kind === 'banned' ? 'ban' : 'pick')">{{ names[team] }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}</button></template></div>
               <button class="operator-tiebreaker" :aria-pressed="!!tb?.active" :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || !!tb?.active" :title="tbButtonHint" @click="prepareTiebreaker">TieBreaker</button>
               <button :disabled="disabled || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button :disabled="disabled || !hasPoolMarks" :data-unavailable="connection !== 'synced' || !hasPoolMarks" @click="clearAllPoolMarks">清除所有标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
               <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>

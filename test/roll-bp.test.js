@@ -368,3 +368,28 @@ test('a first team choice on a pristine match establishes the start order and pi
   assert.deepEqual(signature(banned.action), ['ban', 'b', 0]);
   assert.deepEqual(banned.queue.map(signature), [['ban', 'a', 0], ['pick', 'a', 1], ['pick', 'b', 1], ['ban', 'b', 1], ['ban', 'a', 1]]);
 });
+
+test('an out-of-turn pick replaces the current selection and keeps old labels', async () => {
+  const h = harness();
+  await h.firstPick();
+  assert.equal(h.s.action, null);
+  assert.equal(currentRound(h.s).status, 'prepared');
+  assert.equal(currentRound(h.s).winner, null);
+  assert.deepEqual(h.s.poolChoice, { team: 'a', kind: 'pick' }, 'the next team is preselected immediately');
+
+  await h.cmd('choose-pool-map', { entryId: 'm3' });
+  assert.equal(currentRound(h.s).entryId, 'm3');
+  assert.equal(currentRound(h.s).pickedBy, 'a');
+  assert.equal(currentRound(h.s).status, 'prepared');
+  assert.equal(currentRound(h.s).winner, null, 'an unsettled pick is not a win');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm2' && mark.team === 'b' && mark.status === 'picked'), true, 'the previous map keeps its team label');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm3' && mark.team === 'a' && mark.status === 'picked'), true);
+  assert.deepEqual(h.s.poolChoice, { team: 'a', kind: 'ban' }, 'the next queued action becomes the preselection');
+
+  await h.cmd('select-bp-action', { team: 'b', kind: 'pick' });
+  await h.cmd('choose-pool-map', { entryId: 'm4' });
+  assert.equal(currentRound(h.s).entryId, 'm4');
+  assert.equal(currentRound(h.s).pickedBy, 'b');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm3' && mark.team === 'a' && mark.status === 'picked'), true, 'the replaced selection keeps its label');
+  assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm4' && mark.team === 'b' && mark.status === 'picked'), true);
+});

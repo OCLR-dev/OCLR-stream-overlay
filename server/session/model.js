@@ -421,16 +421,31 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
   if (replace) {
     available(s, entryId, round.id);
     requireValue(entryOf(s, entryId).mod !== 'TB' && entryOf(s, round.entryId)?.mod !== 'TB', 'TB 单独准备，不作为普通 Pick 或改图');
+    const previousEntryId = round.entryId;
+    const previousTeam = round.bpAction?.team || round.pickedBy;
+    const pickTeam = s.action?.team || previousTeam;
+    // The previous selection is not a result. Keep its team label so the
+    // operator can still see what was selected, but only the current round
+    // will carry the moving selection marquee.
+    if (previousEntryId && previousTeam) {
+      s.poolMarks ||= [];
+      if (!s.poolMarks.some(mark => mark.entryId === previousEntryId && mark.status === 'picked' && mark.team === previousTeam)) {
+        s.poolMarks.push({ entryId: previousEntryId, status: 'picked', team: previousTeam });
+      }
+    }
     round.entryId = entryId;
     round.source = source;
     round.eventId = eventId;
     if (s.action) {
       round.pickedBy = s.action.team;
       round.actionId = s.action.id;
+      round.bpAction = clone(s.action);
       s.action = null;
     }
     recordBp(s, { id: round.actionId, team: round.pickedBy, kind: 'pick' }, entryId, source, eventId, 'replace-pick');
     if (entryOf(s, entryId).mod === 'TB') s.ex.team = null;
+    const next = s.queue[0] || null;
+    s.poolChoice = next ? { team: next.team, kind: next.kind } : null;
     return '替换本轮准备图';
   }
   const action = s.action;
@@ -453,7 +468,13 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
   recordBp(s, action, entryId, source, eventId);
   s.action = action.kind === 'ban' && round?.status !== 'prepared' ? takeBpAction(s) : null;
   if (s.action) s.poolChoice = { team: s.action.team, kind: s.action.kind };
-  else if (action.kind === 'ban') s.poolChoice = null;
+  else if (action.kind === 'pick') {
+    // Once a Pick is prepared, the next queued action becomes the preselection
+    // so the team buttons move to the other team immediately. Clicking a map is
+    // still guarded below until this round starts/is settled.
+    const next = s.queue[0] || null;
+    s.poolChoice = next ? { team: next.team, kind: next.kind } : null;
+  } else s.poolChoice = null;
   return `${s.match.teams[action.team].name} ${action.kind === 'ban' ? `Ban ${action.slot + 1}` : 'Pick'} ${entry.label}`;
 }
 
@@ -532,15 +553,27 @@ function applyCommand(s, command) {
     case 'choose-pool-map': {
       const choice = s.poolChoice;
       requireValue(choice && side(choice.team) && ['ban', 'pick'].includes(choice.kind), '先选择队伍的 Ban／Pick，或直接选择谱面后再点击动作');
-      const message = applyCommand(s, { type: 'map-mark', payload: { entryId: p.entryId, status: choice.kind === 'ban' ? 'banned' : 'picked', team: choice.team } });
       const round = currentRound(s);
+      const entry = entryOf(s, p.entryId);
+      const mark = () => applyCommand(s, { type: 'map-mark', payload: { entryId: p.entryId, status: choice.kind === 'ban' ? 'banned' : 'picked', team: choice.team } });
       const occupied = SIDES.some(t => s.bans[t].includes(p.entryId)) || s.rounds.some(r => r.entryId === p.entryId && r.status !== 'void' && !(r.id === round?.id && r.status === 'prepared'));
+      // A prepared Pick is still the active round. Do not let the next team
+      // mark or replace any map until that game settles; only its own Pick can
+      // still be re-pointed before the game starts.
       // Marks stay editable without rewriting an active run or its result.
-      if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || round?.status === 'playing' || occupied) return `${message}（比赛记录保留）`;
-      if (!targetOf(s) || entryOf(s, p.entryId)?.mod === 'TB') return message;
-      if (choice.kind === 'pick') return applyCommand(s, { type: 'prepare-round', payload: { entryId: p.entryId, pickedBy: choice.team } });
-      if (round?.status !== 'prepared' && s.action?.kind === 'ban' && s.action.team === choice.team && !bpStopReason(s)) return applyBp(s, p.entryId);
-      return message;
+      if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || round?.status === 'playing' || occupied) return `${mark()}（比赛记录保留）`;
+      if (!targetOf(s) || entry?.mod === 'TB') return mark();
+      if (choice.kind === 'pick') {
+        const message = applyCommand(s, { type: 'prepare-round', payload: { entryId: p.entryId, pickedBy: choice.team } });
+        mark();
+        return message;
+      }
+      if (round?.status !== 'prepared' && s.action?.kind === 'ban' && s.action.team === choice.team && !bpStopReason(s)) {
+        const message = applyBp(s, p.entryId);
+        mark();
+        return message;
+      }
+      return mark();
     }
     case 'prepare-round': {
       requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');
@@ -566,6 +599,20 @@ function applyCommand(s, command) {
         return '人工确认当前 TB，单独准备（禁 EX，不补录此前 BP）';
       }
       if (round?.status === 'prepared') {
+        const owner = round.bpAction?.kind === 'pick' ? round.bpAction.team : round.pickedBy;
+        if (p.pickedBy !== owner) {
+          // The previous selection is not settled. Prefer the queued Pick for
+          // this team; if the operator picks out of turn, fall back to a fresh
+          // Pick with the same ordinal instead of rejecting the selection.
+          const index = s.queue.findIndex(action => action.kind === 'pick' && action.team === p.pickedBy);
+          const nextAction = index >= 0
+            ? s.queue.splice(index, 1)[0]
+            : { ...normalizeAction({ kind: 'pick', team: p.pickedBy }), ordinal: round.bpAction?.ordinal ?? 1 };
+          s.action = nextAction;
+          applyBp(s, p.entryId);
+          round.pickedBy = p.pickedBy;
+          return `已改由${s.match.teams[p.pickedBy].name}选图 ${entryOf(s, p.entryId).label}；原选图保留标记，等待本局开始`;
+        }
         if (s.action) s.queue.unshift(s.action);
         s.action = null;
         applyBp(s, p.entryId);
