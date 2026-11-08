@@ -76,7 +76,6 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="42" /></div>
       <div class="event-meta">
         <strong data-stage-label>{{ view.warmup ? 'Warm-up' : view.meta.label }}</strong>
-        <span v-if="view.exhibition && !view.warmup">{{ view.meta.format }}</span>
       </div>
     </section>
 
