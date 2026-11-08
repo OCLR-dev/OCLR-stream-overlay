@@ -201,7 +201,7 @@ type started struct {
 var result = make(chan started, 1)
 var exiting atomic.Bool
 
-func text(s string) { call(user, "SetWindowTextW", label, ptr(s)) }
+func text(s string) { setText(label, s) }
 func copyOBS() {
 	value := syscall.StringToUTF16(base + "/overlay")
 	if call(user, "OpenClipboard", window) == 0 {
@@ -230,33 +230,68 @@ func copyOBS() {
 }
 func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	switch m {
-	case 0x8001:
+	case 0x0014: // WM_ERASEBKGND
+		paintLauncher(w)
+		return 1
+	case 0x002B: // WM_DRAWITEM
+		if l != 0 && paintButton((*drawItem)(unsafe.Pointer(l))) {
+			return 1
+		}
+	case 0x0138: // WM_CTLCOLORSTATIC, including the read-only path field
+		if background := paintStatic(w, l); background != 0 {
+			return background
+		}
+	case msgServiceStarted:
 		r := <-result
 		service = r.b
 		if r.err != nil {
 			message(r.err.Error())
 			call(user, "DestroyWindow", h)
 		} else {
-			text("本机服务已就绪。关闭控制台网页不会中断 OBS 输出。")
-			for _, id := range []uintptr{101, 102} {
+			setStatus(serviceStatus, "● 服务已就绪", readyColor)
+			text("比赛保存在本机。关闭控制台网页后，OBS 输出仍会继续。")
+			for _, id := range []uintptr{buttonControl, buttonCopyOBS} {
 				call(user, "EnableWindow", call(user, "GetDlgItem", h, id), 1)
 			}
 			open(base + "/control")
 			go watchService()
 		}
 		return 0
-	case 0x8002:
+	case msgServiceStopped:
 		message("本机服务已停止，OBS 输出暂时不可用。请退出此窗口后重新启动；已保存的比赛会恢复。")
 		call(user, "DestroyWindow", h)
 		return 0
+	case msgTosuExited:
+		if l == tosuSelection {
+			tosuSelection++
+			if w != 0 {
+				showTosu("tosu 异常退出，请检查后重试。")
+			} else {
+				showTosu("tosu 已关闭。")
+			}
+			checkTosu(h)
+		}
+		return 0
+	case msgTosuChecked:
+		applyTosuCheck(h)
+		return 0
+	case 0x0113: // WM_TIMER
+		if w == tosuTimer {
+			checkTosu(h)
+		}
+		return 0
 	case 0x111:
 		switch w & 0xffff {
-		case 101:
+		case buttonControl:
 			open(base + "/control")
-		case 102:
+		case buttonCopyOBS:
 			copyOBS()
-		case 103:
+		case buttonExit:
 			call(user, "SendMessageW", h, 0x10, 0, 0)
+		case buttonChoose:
+			chooseTosu(h)
+		case buttonTosu:
+			openTosu(h)
 		}
 		return 0
 	case 0x10:
@@ -311,47 +346,7 @@ func main() {
 		b.stop()
 		return
 	}
-	instance := call(kernel, "GetModuleHandleW", 0)
-	name := syscall.StringToUTF16Ptr("OCLRPortableWindow")
-	class := wc{Proc: syscall.NewCallback(wndProc), Instance: instance, Cursor: call(user, "LoadCursorW", 0, 32512), Brush: 6, Name: name}
-	class.Size = uint32(unsafe.Sizeof(class))
-	if call(user, "RegisterClassExW", uintptr(unsafe.Pointer(&class))) == 0 {
-		message("无法创建启动窗口。")
-		return
-	}
-	window = call(user, "CreateWindowExW", 0, uintptr(unsafe.Pointer(name)), ptr("OCLR 直播服务"), 0x00CA0000, 200, 200, 640, 290, 0, 0, instance, 0)
-	if window == 0 {
-		message("无法创建启动窗口。")
-		return
-	}
-	font := call(gdi, "GetStockObject", 17)
-	add := func(kind, title string, x, y, width, height int, id, style uintptr) uintptr {
-		h := call(user, "CreateWindowExW", 0, ptr(kind), ptr(title), 0x50000000|style, uintptr(x), uintptr(y), uintptr(width), uintptr(height), window, id, instance, 0)
-		call(user, "SendMessageW", h, 0x30, font, 1)
-		return h
-	}
-	label = add("STATIC", "正在启动本机服务，请稍候…", 24, 24, 580, 48, 0, 0)
-	add("STATIC", "OBS 固定地址：http://127.0.0.1:3001/overlay\r\n比赛自动保存在本机。游戏数据状态请查看控制台顶部。", 24, 82, 580, 52, 0, 0)
-	for i, b := range []struct {
-		title string
-		id    uintptr
-	}{{"打开控制台", 101}, {"复制 OBS 地址", 102}, {"退出直播服务", 103}} {
-		h := add("BUTTON", b.title, 24+i*198, 158, 184, 44, b.id, 0x10000)
-		if b.id != 103 {
-			call(user, "EnableWindow", h, 0)
-		}
-	}
-	call(user, "ShowWindow", window, 1)
-	call(user, "UpdateWindow", window)
-	go func() { b, e := start(); result <- started{b, e}; call(user, "PostMessageW", window, 0x8001, 0, 0) }()
-	var m msg
-	for int32(call(user, "GetMessageW", uintptr(unsafe.Pointer(&m)), 0, 0, 0)) > 0 {
-		if call(user, "IsDialogMessageW", window, uintptr(unsafe.Pointer(&m))) == 0 {
-			call(user, "TranslateMessage", uintptr(unsafe.Pointer(&m)))
-			call(user, "DispatchMessageW", uintptr(unsafe.Pointer(&m)))
-		}
-	}
-	// On launcher crash/exit the child's stdin closes; the backend drains and stops.
+	runWindow()
 }
 
 func watchService() {
@@ -365,7 +360,7 @@ func watchService() {
 			time.Sleep(time.Second)
 			if h, e = getHealth(); e != nil || !compatible(h) {
 				if !exiting.Load() {
-					call(user, "PostMessageW", window, 0x8002, 0, 0)
+					call(user, "PostMessageW", window, msgServiceStopped, 0, 0)
 				}
 				return
 			}
