@@ -9,7 +9,7 @@ export function commandErrorMessage(message: unknown) {
 export interface PoolEntry { id: string; beatmapId: number; setId?: number; mod: string; label: string; title: string; artist: string; difficulty: string }
 export interface MatchTeam { id: string | null; name: string; roster: { name: string; osuId: number | null }[] }
 export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: number | null; ordinal?: number }
-export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; exTeam: Team | null }
+export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; scoreCalculation?: CompetitionScore; exTeam: Team | null }
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
   schema: number; id: string; version: number; warmup?: boolean;
@@ -38,6 +38,14 @@ export interface BeatmapStats {
   stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
   ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null };
 }
+export interface CompetitionScore {
+  rule: 'client' | 'unknown' | 'fm-ez-v1';
+  entryId?: string;
+  players?: { osuId: number; side: 'left' | 'right' | null; mods: string | null; rawScore: number | null; score: number | null }[];
+  totalScore: { left: number | null; right: number | null };
+  rawTotalScore: { left: number | null; right: number | null };
+  reason: string | null;
+}
 export interface Envelope {
   session: Session; persistence: string;
   live: {
@@ -49,7 +57,7 @@ export interface Envelope {
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
         stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null; rankingStats?: BeatmapStats | null };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
-        totalScore: { left: number | null; right: number | null }; chat: { team?: string; name?: string; message?: string; timestamp?: string }[] }
+        totalScore: { left: number | null; right: number | null }; competitionScore?: CompetitionScore; chat: { team?: string; name?: string; message?: string; timestamp?: string }[] }
     } };
   };
   catalog: null | { edition: string | null; kind?: string; warnings?: string[]; capturedOn?: string | null; teams: MatchTeam[]; pools: { id: string; name: string; entries: PoolEntry[] }[];

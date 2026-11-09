@@ -8,6 +8,7 @@ import { PickSceneDelay } from './pick-scene-delay.js';
 import { SeriesCorrectionTracker } from './series-correction.js';
 import { SpectatorRecovery } from './spectator-recovery.js';
 import { ReadyReturnRecovery } from './ready-return-recovery.js';
+import { scoringLive } from './scoring.js';
 
 export class SessionStore {
   constructor({ file = null, state = newSession() } = {}) {
@@ -44,7 +45,7 @@ export class SessionStore {
 
   snapshot() {
     const { undo, commandIds, ...session } = this.state;
-    return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state), canUndo: undo.length > 0 }, live: this.live, persistence: this.persistence, catalog: this.catalog || null });
+    return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state), canUndo: undo.length > 0 }, live: scoringLive(this.state, this.live), persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }

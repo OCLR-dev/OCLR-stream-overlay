@@ -24,7 +24,7 @@ export function liveTeamScores(envelope: Envelope | null | undefined, connection
   const room = liveRoom(envelope, connection);
   // A result hold never hides fresh room totals. Source validity still applies.
   if (!room || (room.ipcState !== 3 && room.ipcState !== 4)) return null;
-  return room.totalScore;
+  return room.competitionScore?.totalScore ?? room.totalScore;
 }
 
 export function resultTeamScores(envelope: Envelope | null | undefined, connection: string | undefined) {
@@ -39,7 +39,7 @@ export function resultTeamScores(envelope: Envelope | null | undefined, connecti
   if (room?.ipcState !== 4 || !map || session?.incident) return null;
   const entry = session?.pool.find(e => e.id === round?.entryId);
   if (round && entry?.beatmapId !== map.id) return null;
-  return room.totalScore;
+  return room.competitionScore?.totalScore ?? room.totalScore;
 }
 
 export function livePlayingMap(envelope: Envelope | null | undefined, connection: string | undefined, recordedMap: PoolEntry | null = null): PoolEntry | null {

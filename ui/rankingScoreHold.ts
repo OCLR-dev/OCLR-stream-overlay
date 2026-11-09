@@ -3,6 +3,7 @@ import type { Envelope } from './session';
 export interface RankingScoreHold {
   key: string;
   mapId: number;
+  scoreRule?: string;
   scores: { left: number; right: number };
 }
 const complete = (score: { left: number | null | undefined; right: number | null | undefined }): score is { left: number; right: number } =>
@@ -19,17 +20,19 @@ export function retainRankingScores(envelope: Envelope | null | undefined, conne
   if (room?.ipcState === 3 || round && !['ranking', 'recorded'].includes(round.status) && room?.ipcState !== 4) return null;
   const mapId = entry?.beatmapId || source.data?.beatmap.id || previous?.mapId;
   if (!mapId) return null;
-  const key = JSON.stringify([session.id, !!session.warmup, round?.id || null, mapId, session.auto.left, session.auto.right]);
+  const scoreRule = room?.competitionScore?.rule ?? previous?.scoreRule;
+  const key = JSON.stringify([session.id, !!session.warmup, round?.id || null, mapId, session.auto.left, session.auto.right, scoreRule]);
   let scores: RankingScoreHold['scores'] | null = null;
   if (round?.finalScore) {
     const saved = { left: round.finalScore.a, right: round.finalScore.b };
     if (complete(saved)) scores = saved;
   }
+  const totals = room?.competitionScore?.totalScore ?? room?.totalScore;
   if (!scores && connection === 'synced' && source.status === 'live' && room?.ipcState === 4 &&
-    room.scoreVisible !== false && source.data?.beatmap.id === mapId && complete(room.totalScore)) scores = room.totalScore;
+    room.scoreVisible !== false && source.data?.beatmap.id === mapId && totals && complete(totals)) scores = totals;
   if (scores) {
     if (previous?.key === key && previous.scores.left === scores.left && previous.scores.right === scores.right) return previous;
-    return { key, mapId, scores: { ...scores } };
+    return { key, mapId, scoreRule, scores: { ...scores } };
   }
   return previous?.key === key ? previous : null;
 }

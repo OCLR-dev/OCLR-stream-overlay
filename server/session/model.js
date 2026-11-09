@@ -86,7 +86,7 @@ export function prepareAbortedRound(s) {
   requireValue(round?.status === 'playing' && round.runId && !round.bpReleased && !s.action, '本局不能自动恢复准备');
   const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null,
     runId: null, finalScore: null, exTeam: s.ex.team };
-  for (const key of ['bpReleased', 'bpReleaseHistory', 'resultSource', 'startedBy', 'autoProtected']) delete next[key];
+  for (const key of ['bpReleased', 'bpReleaseHistory', 'resultSource', 'startedBy', 'autoProtected', 'scoreCalculation']) delete next[key];
   round.status = 'void';
   s.rounds.push(next); s.currentRoundId = next.id; s.phase = 'bp'; s.incident = null;
 }
@@ -799,7 +799,7 @@ function applyCommand(s, command) {
       requireValue(round.bpReleaseHistory == null || (s.bpHistory || []).length <= round.bpReleaseHistory, '本图结束后已有新的 BP 记录；请先撤销后续 BP，再确认原图重赛');
       const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null, runId: null, finalScore: null };
       delete next.bpReleased; delete next.bpReleaseHistory;
-      delete next.resultSource; delete next.startedBy; delete next.autoProtected;
+      delete next.resultSource; delete next.startedBy; delete next.autoProtected; delete next.scoreCalculation;
       round.status = 'void';
       // Ranking may already have exposed the next Pick. Put it back until this
       // selection actually finishes, rather than consuming a second BP action.
