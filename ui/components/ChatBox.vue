@@ -17,7 +17,7 @@ const labels = {
     </header>
     <div class="chat-box-content">
       <template v-if="view.shared && source === 'match' && view.chat.length">
-        <p v-for="(line, index) in view.chat" :key="index" class="match-chat-line"><b>{{ line.name || '—' }}</b> {{ line.message }}</p>
+        <p v-for="(line, index) in view.chat" :key="index" class="match-chat-line"><b :data-team="line.team">{{ line.name || '—' }}</b> {{ line.message }}</p>
       </template>
       <p v-else-if="source !== 'stream'" class="chat-empty">{{ view.shared ? `等待比赛聊天 · tosu ${view.sourceStatus}` : labels[source].placeholder }}</p>
     </div>

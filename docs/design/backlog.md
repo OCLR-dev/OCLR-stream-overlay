@@ -83,6 +83,26 @@
 - 发现新失败或涉及更大范围的公共逻辑时，再说明原因并扩大检查；不承诺未经测量的固定 token 花费。
 - 合成浏览器检查与真实 tosu／osu!tourney／OBS 验收分开报告。
 
+## 6. Match Chat 的选手 ID 按房间位置着色
+
+记录日期：2026-11-08。状态：已在本地实现，真实 Windows／tosu 联调待完成。
+
+- 需求：聊天框中，处于红队位置的选手 ID 显示红色，处于蓝队位置的选手 ID 显示蓝色；选手调整位置后，颜色是否能跟随位置变化。
+- 用户描述的位置范围为「0–2/3，3/4–6/7」。需要核对 tosu 的槽位编号、3v3／4v4 的实际红蓝分界及空位处理，不能直接将该范围视为已确认映射。
+- 发言者与当前队伍的关联使用 tosu 提供的消息 `team`；未匹配发言者、裁判或系统消息使用原有中性色。
+- 实现行为：跟随最新快照更新颜色，包含仍在聊天列表中的历史消息。
+
+### tosu 数据核对结论（2026-11-08）
+
+- 官方 v2 的 `tourney.chat[]` 提供 `team`、`name`、`message`、`timestamp`；`tourney.clients[]` 提供 `ipcId`、`team`（`left`／`right`）、`user.id` 与 `user.name`。
+- osu!tourney 路径按 `ipcId` 排序观战客户端，前半为 `left`、后半为 `right`，再按消息发言者名称匹配客户端，生成聊天消息的队伍字段。匹配不到时为 `unknown`，BanchoBot 为 `bot`。可直接使用消息的 `team`，无需自行猜位置分界或把姓名当作数字账号 ID。
+- 每次构造 v2 数据都会重新处理当前保留的聊天列表。因此按当前上游实现，选手换位后，仍在列表中的历史消息的 `team` 也可能随下一快照变化；这是源码行为，尚未完成实机验收。
+- 六个观战客户端时前后各三位，八个时前后各四位；不能只根据本机选择的 3v3／4v4 固定猜测 IPC 分界。上述队伍字段优先于手写位置范围。
+- 本项目 `src/tosu.js` 已原样保留聊天数组，`ChatBox.vue` 已将 `team` 用于姓名颜色。本次已补充前端类型与红蓝姓名样式，跟随最新消息的 team 字段更新。
+- 此结论针对 osu!tourney；同一上游文件中的 lazer 多人观战路径将聊天 `team` 固定为 `none`，不能直接套用。
+
+来源：[tosu v2 类型定义](https://github.com/tosuapp/tosu/blob/master/packages/tosu/src/api/types/v2.ts)、[实际队伍与聊天映射](https://github.com/tosuapp/tosu/blob/master/packages/tosu/src/api/utils/buildResultV2.ts)。本地公开采样未包含真实聊天，不能作为此功能的实机验收证据。
+
 ## 当前实施顺序
 
 先补齐 TB 的简单操作闭环；Mappool 继续围绕现有 MP5 的具体反馈调整。其余提示只在有明确收益时融入现有界面，不扩展成新的功能面板。

@@ -65,7 +65,7 @@ export interface Envelope {
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
         stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null; rankingStats?: BeatmapStats | null };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
-        totalScore: { left: number | null; right: number | null }; chat: { name?: string; message?: string; timestamp?: string }[] }
+        totalScore: { left: number | null; right: number | null }; chat: { team?: string; name?: string; message?: string; timestamp?: string }[] }
     } };
   };
   catalog: null | { edition: string | null; kind?: string; warnings?: string[]; capturedOn?: string | null; teams: MatchTeam[]; pools: { id: string; name: string; entries: PoolEntry[] }[];
