@@ -172,6 +172,8 @@
 .pool-empty { align-self: center; justify-self: center; color: var(--muted); }
 .match-chat-line { margin: 2px 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .match-chat-line b { color: var(--purple-light); }
+.match-chat-line b[data-team="left"] { color: var(--team-a); }
+.match-chat-line b[data-team="right"] { color: var(--team-b); }
 
 /* Slanted team banners with the supplied logo and the reference's stage strip. */
 .broadcast-header { position: relative; flex: 0 0 180px; height: 180px; z-index: 2; }
