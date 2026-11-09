@@ -27,11 +27,15 @@ export function createArtworkHandler(config, fetchImpl, store) {
   const resolveMetadata = createBeatmapMetadataResolver(fetchImpl);
   // Thumbnails need this match and telemetry, not a copy of the potentially
   // large historical catalogue for every image request.
-  const snapshot = () => store ? { session: store.state, live: store.live } : null;
+  const snapshot = () => {
+    // Portable startup binds the server before it restores the session.
+    const current = config.session || store;
+    return current ? { session: current.state, live: current.live } : null;
+  };
   const backgrounds = new Map(); const pending = new Map();
   return async (req, res, url) => {
     if (!url.pathname.startsWith('/api/beatmaps/')) return false;
-    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|list|background|metadata)(?:\/(NM|HD|HR|DT))?$/);
+    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|list|fullsize|background|metadata)(?:\/(NM|HD|HR|DT))?$/);
     const id = Number(match?.[1]);
     const current = snapshot();
     const entry = current?.session.pool.find(item => item.beatmapId === id);
@@ -48,6 +52,7 @@ export function createArtworkHandler(config, fetchImpl, store) {
     const fail = status => { res.writeHead(status, { 'Cache-Control': 'no-store' }); res.end(); return true; };
     if (req.method !== 'GET') return fail(405);
     if (!match || url.search || !positiveId(id)) return fail(404);
+    if (!current) return fail(404);
     const liveMap = matchingLive(current, id);
     // The selected live map can be displayed before it belongs to a pool.
     // Keep metadata/calculation and arbitrary map requests restricted to the pool.
@@ -91,7 +96,7 @@ export function createArtworkHandler(config, fetchImpl, store) {
     const setId = positiveId(entry?.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : (await resolveMetadata(id))?.setId;
     const latest = snapshot();
     if (!setId || !(latest.session.pool.some(item => item.beatmapId === id) || match[2] === 'background' && matchingLive(latest, id))) return fail(404);
-    const cover = match[2] === 'list' ? 'list' : 'cover';
+    const cover = match[2] === 'list' || match[2] === 'fullsize' ? match[2] : 'cover';
     res.writeHead(302, { Location: `https://assets.ppy.sh/beatmaps/${setId}/covers/${cover}.jpg`,
       'Cache-Control': 'public, max-age=3600', 'X-Artwork-Source': 'osu-cover' });
     res.end(); return true;

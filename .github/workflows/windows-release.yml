@@ -1,0 +1,41 @@
+name: Windows prerelease
+on:
+  push:
+    branches: [release/windows]
+
+permissions:
+  contents: read
+
+# Keep version allocation and publication in one queue. A later promotion
+# neither cancels an in-flight build nor takes the same version number.
+concurrency:
+  group: windows-release-branch
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.23.4'
+      - name: Select the next Windows version or reuse this commit's tag
+        id: version
+        run: node .github/scripts/windows-release-version.mjs
+
+  prerelease:
+    needs: version
+    permissions:
+      contents: write
+    uses: ./.github/workflows/windows-portable.yml
+    with:
+      commit: ${{ github.sha }}
+      release-version: ${{ needs.version.outputs.version }}

@@ -1,5 +1,7 @@
 // Local demonstration state. No API records, player identity or official result
 // is inferred here; live data remains a separate subscription boundary.
+import type { SeriesRule } from './session';
+
 export const scenes = ['waiting', 'mappool', 'playing', 'victory', 'pause', 'roll'] as const;
 export type Scene = typeof scenes[number];
 export type Team = 'a' | 'b';
@@ -17,23 +19,29 @@ export const stages = {
   elimination: { label: '淘汰赛', format: 'BO11', target: 6 },
   final: { label: '决赛', format: 'BO13', target: 7 }
 } as const;
+export type MatchStage = keyof typeof stages | 'exhibition';
+export type MatchMode = '1v1' | '2v2' | '3v3' | '4v4';
+export function exhibitionFormat(rule: SeriesRule | null | undefined) {
+  if (!rule) return '赛制待核对';
+  return rule.type === 'first_to' ? `先赢 ${rule.wins} 图` : `固定 ${rule.count} 图`;
+}
 export const leadDemos = {
-  'left-small': ['1,050,000', '1,000,000'], 'left-large': ['1,400,000', '1,000,000'],
-  equal: ['1,000,000', '1,000,000'], 'right-small': ['1,000,000', '1,050,000'],
-  'right-large': ['1,000,000', '1,400,000']
+  'left-small': ['105,0000', '100,0000'], 'left-large': ['140,0000', '100,0000'],
+  equal: ['100,0000', '100,0000'], 'right-small': ['100,0000', '105,0000'],
+  'right-large': ['100,0000', '140,0000']
 } as const;
 export const mapLabels = { open: '未选', banned: '禁用 · 示例A队', picked: '选用 · 示例B队' };
 export const mapIcons = { open: '○', banned: '×', picked: '✓' };
 export const mapMods = ['NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'HD', 'HR', 'FM', 'NM', 'DT', 'DT', 'TB'];
 export interface OverlayState {
   scene: Scene;
-  mode: '3v3' | '4v4';
+  mode: MatchMode;
   source: '4x3' | '16x9';
   lead: keyof typeof leadDemos;
   clean: boolean;
   arrival: 'none' | 'a' | 'both';
   map: keyof typeof mapLabels;
-  stage: keyof typeof stages;
+  stage: MatchStage;
   mapType: 'normal' | 'tb';
   mapMod: typeof regularMods[number] | 'CA';
   exTeam: 'none' | Team;
@@ -44,7 +52,7 @@ export interface OverlayState {
   pickFirst: 'unknown' | Team;
   banFirst: 'unknown' | Team;
   banSlots: Record<Team, [Ban, Ban]>;
-  pauseType: 'tactical' | 'technical';
+  pauseType: 'normal' | 'technical' | 'tactical';
   tacticalA: 'available' | 'used';
   tacticalB: 'available' | 'used';
   rematchA: 'unknown' | 'available' | 'used';
@@ -106,7 +114,7 @@ export function parseLocation(search = '', hash = ''): OverlayState {
     pickFirst: known(get('pickFirst'), ['unknown', 'a', 'b'], 'unknown'),
     banFirst: known(get('banFirst'), ['unknown', 'a', 'b'], 'unknown'),
     banSlots: { a: readBans('A'), b: readBans('B') },
-    pauseType: known(get('pauseType'), ['tactical', 'technical'], 'tactical'),
+    pauseType: known(get('pauseType'), ['normal', 'tactical', 'technical'], 'normal'),
     tacticalA: known(get('tacticalA'), ['available', 'used'], 'available'),
     tacticalB: known(get('tacticalB'), ['available', 'used'], 'available'),
     rematchA: known(get('rematchA'), ['unknown', 'available', 'used'], 'unknown'),
@@ -138,11 +146,14 @@ export function changeBan(state: OverlayState, team: Team, index: 0 | 1, value: 
   next.banSlots[team][index] = value as Ban;
   return { state: next, feedback: `${teamNames[team]} Ban ${index + 1}：${banLabel(value as Ban)}${value === 'unknown' ? '。' : '（本地演示）。'}` };
 }
-export function derive(state: OverlayState) {
-  const meta = stages[state.stage];
+export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) {
+  const stage = state.stage;
+  const exhibition = stage === 'exhibition';
+  const target = exhibitionRule?.type === 'first_to' ? exhibitionRule.wins : 0;
+  const meta = exhibition ? { label: '表演赛', format: exhibitionFormat(exhibitionRule), target: target <= 7 ? target : 0 } : stages[stage];
   const format = state.mapType === 'tb' ? 'tb' : state.exTeam === 'none' ? 'normal' : 'ex';
   const ex = format === 'ex';
-  const count = (state.mode === '4v4' ? 4 : 3) - (ex ? 1 : 0);
+  const count = Number.parseInt(state.mode, 10) - (ex ? 1 : 0);
   const roster = (team: Team) => Array.from({ length: count }, (_, i) => ({
     team, id: `${team.toUpperCase()}${i + (ex ? 3 : 1)}`, slot: i + 1,
     role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null,
@@ -153,7 +164,7 @@ export function derive(state: OverlayState) {
   const rematchLabel = (value: OverlayState['rematchA']) => value === 'used' ? '已用' : value === 'available' ? '可确认' : '未确认';
   const resultTotal = (values: number[]) => values.slice(0, count).reduce((sum, n) => sum + n, 0).toLocaleString('en-US');
   return {
-    meta, seriesTarget: `${meta.format} · 先 ${meta.target}`, count, ex, format,
+    meta, exhibition, seriesTarget: exhibition ? meta.format : `${meta.format} · 先 ${meta.target}`, count, ex, format,
     formatLabel: { normal: '普通', ex: 'EX', tb: 'TB' }[format],
     modeLabel: ex ? `EX ${count}v${count}` : `${count}v${count}`,
     mod: state.mapType === 'tb' ? 'TB' : state.mapMod,
@@ -166,8 +177,8 @@ export function derive(state: OverlayState) {
     commentary: state.arrival === 'both' ? '双方选手已到场，等待就绪。' : state.arrival === 'a' ? '示例A队已到场，示例B队等待中。' : '等待双方选手入场。',
     scoreA: leadDemos[state.lead][0], scoreB: leadDemos[state.lead][1],
     resultA: resultTotal([350000, 320000, 300000, 280000]), resultB: resultTotal([330000, 310000, 290000, 260000]),
-    pauseTitle: state.pauseType === 'tactical' ? '战术暂停' : '技术处理中',
-    pauseTypeLabel: state.pauseType === 'tactical' ? '战术暂停' : '技术处理',
+    pauseTitle: state.pauseType === 'normal' ? '请稍候' : state.pauseType === 'tactical' ? '战术暂停' : '技术处理中',
+    pauseTypeLabel: state.pauseType === 'normal' ? '普通暂停' : state.pauseType === 'tactical' ? '战术暂停' : '技术处理',
     pauseA: state.tacticalA === 'used' ? '已用' : '可用', pauseB: state.tacticalB === 'used' ? '已用' : '可用',
     rematch: `A ${rematchLabel(state.rematchA)} · B ${rematchLabel(state.rematchB)}`
   };

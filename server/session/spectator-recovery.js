@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { automaticTransition, currentRound, entryOf, seriesComplete } from './model.js';
+import { observedTransition, observation, currentRound, entryOf, seriesComplete } from './model.js';
 
 const keyOf = state => {
   const round = currentRound(state);
@@ -42,6 +42,8 @@ const progresses = (previous, next) => previous.size === next.size && [...previo
 // finish a map. Ready/Ranking, identity changes and human decisions invalidate it.
 export class SpectatorRecovery {
   constructor() { this.reset(); }
+  checkpoint() { return structuredClone({ ...this }); }
+  restoreEvidence(checkpoint) { Object.assign(this, checkpoint); }
   reset() { this.anchor = null; this.pending = null; }
   recover(state, frame, now) {
     const pending = this.pending;
@@ -59,7 +61,7 @@ export class SpectatorRecovery {
     pending.ready.scores = scores;
     if (now - pending.ready.at < 250) return state;
     this.reset();
-    return automaticTransition(state, draft => { draft.incident = null; },
+    return observedTransition(state, observation(state, 'recover-spectator', {}, currentRound(state)),
       '观战重载后同图同组选手 Playing 与分数恢复：自动继续原局（保留原 run）', randomUUID(), { undo: false });
   }
   observe(state, frame, now) {

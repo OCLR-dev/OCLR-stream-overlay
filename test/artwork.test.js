@@ -1,11 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSetIdResolver } from '../server/artwork.js';
+import { createArtworkHandler, createSetIdResolver } from '../server/artwork.js';
 import { createOverlayServer } from '../server/app.js';
 import { SessionStore } from '../server/session/store.js';
 import { calculationFixture } from './calculation-fixture.js';
 
 const osuFile = (id = 101, setId = 42) => `osu file format v14\r\n\r\n[Metadata]\r\nTitle:Artwork test\r\nBeatmapID:${id}\r\nBeatmapSetID:${setId}\r\n\r\n[Difficulty]\r\nApproachRate:9\r\n`;
+
+test('portable artwork uses the session attached after startup and follows initialization and undo', async () => {
+  const config = {};
+  const handler = createArtworkHandler(config, async () => { throw new Error('NO_UPSTREAM_NEEDED'); }, null);
+  const request = async () => {
+    let status, headers;
+    await handler({ method: 'GET' }, { writeHead(code, values) { status = code; headers = values; }, end() {} },
+      new URL('http://localhost/api/beatmaps/101/cover'));
+    return { status, headers };
+  };
+  assert.equal((await request()).status, 404, 'no session is a missing image, not an exception');
+  const store = new SessionStore();
+  store.state.pool = [{ id: 'nm1', beatmapId: 101, setId: 42, mod: 'NM', label: 'NM1' }];
+  config.session = store;
+  const cover = await request();
+  assert.equal(cover.status, 302);
+  assert.equal(cover.headers.Location, 'https://assets.ppy.sh/beatmaps/42/covers/cover.jpg');
+  await store.command({ id: 'initialize', version: 0, type: 'next-match' });
+  assert.equal((await request()).status, 404, 'initialization removes the old pool from artwork access');
+  await store.command({ id: 'undo-initialize', version: 1, type: 'undo' });
+  assert.equal((await request()).status, 302);
+  store.close();
+});
 
 test('official artwork resolves verified set IDs, deduplicates requests and caches success and failure with bounded lifetimes', async () => {
   let time = Date.now(); const calls = [];
@@ -130,20 +153,6 @@ test('mod-specific test parameter routes validate pool mods and return calculate
   assert.deepEqual(store.state, before);
 });
 
-test('custom artwork follows edited WebSocket origin and never reuses the previous server background', async t => {
-  const calls = [];
-  const { store, request } = await start(t, async url => {
-    calls.push(url);
-    return new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } });
-  });
-  store.state.match.custom = true;
-  store.state.auto.wsUrl = 'ws://127.0.0.1:24500/websocket/v2';
-  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
-  store.state.auto.wsUrl = 'ws://127.0.0.1:24501/websocket/v2';
-  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
-  assert.deepEqual(calls, ['http://127.0.0.1:24500/files/beatmap/background', 'http://127.0.0.1:24501/files/beatmap/background']);
-});
-
 test('the current live map outside the pool can show its background without changing match data', async t => {
   const { store, request } = await start(t, async () => new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } }));
   store.live.tosu.data.beatmap = { id: 999, setId: 88, checksum: 'outside-pool' };
@@ -175,4 +184,18 @@ test('outside-pool backgrounds reject stale, simulated and changed maps, includi
   store.live.tosu.status = 'live'; store.live.sources = { tosu: 'simulated' }; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
   store.live.sources = { tosu: 'live' }; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
   assert.equal(calls, 1);
+});
+
+test('custom artwork follows edited WebSocket origin and never reuses the previous server background', async t => {
+  const calls = [];
+  const { store, request } = await start(t, async url => {
+    calls.push(url);
+    return new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } });
+  });
+  store.state.match.custom = true;
+  store.state.auto.wsUrl = 'ws://127.0.0.1:24500/websocket/v2';
+  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
+  store.state.auto.wsUrl = 'ws://127.0.0.1:24501/websocket/v2';
+  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
+  assert.deepEqual(calls, ['http://127.0.0.1:24500/files/beatmap/background', 'http://127.0.0.1:24501/files/beatmap/background']);
 });

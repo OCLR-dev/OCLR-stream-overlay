@@ -1,0 +1,528 @@
+{
+  "synthetic": true,
+  "realWindowsTosuObsTested": false,
+  "checks": [
+    {
+      "name": "6 slots, timestamps, all four colors, stable chat box",
+      "measurement": {
+        "box": {
+          "x": 30,
+          "y": 928,
+          "width": 420,
+          "height": 138,
+          "bottom": 1066,
+          "right": 450
+        },
+        "content": {
+          "x": 31,
+          "y": 948,
+          "width": 418,
+          "height": 117,
+          "bottom": 1065,
+          "right": 449
+        },
+        "lines": [
+          {
+            "x": 41,
+            "y": 961,
+            "width": 398,
+            "height": 20,
+            "bottom": 981,
+            "right": 439,
+            "text": "09:08:07Player 0 红队槽位内消息",
+            "time": "09:08:07",
+            "clock": {
+              "x": 41,
+              "y": 961,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 981,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 961,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 981,
+              "right": 439
+            },
+            "name": "Player 0",
+            "team": "left",
+            "color": "rgb(255, 77, 109)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 981,
+            "width": 398,
+            "height": 20,
+            "bottom": 1001,
+            "right": 439,
+            "text": "09:08:08Player 3 蓝队槽位内消息",
+            "time": "09:08:08",
+            "clock": {
+              "x": 41,
+              "y": 981,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1001,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 981,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1001,
+              "right": 439
+            },
+            "name": "Player 3",
+            "team": "right",
+            "color": "rgb(61, 139, 255)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 1001,
+            "width": 398,
+            "height": 20,
+            "bottom": 1021,
+            "right": 439,
+            "text": "09:08:09Outside 直播槽位外用户",
+            "time": "09:08:09",
+            "clock": {
+              "x": 41,
+              "y": 1001,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1021,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 1001,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1021,
+              "right": 439
+            },
+            "name": "Outside",
+            "team": "unknown",
+            "color": "rgb(184, 184, 197)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 1021,
+            "width": 398,
+            "height": 20,
+            "bottom": 1041,
+            "right": 439,
+            "text": "09:08:10Referee 裁判消息",
+            "time": "09:08:10",
+            "clock": {
+              "x": 41,
+              "y": 1021,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1041,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 1021,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1041,
+              "right": 439
+            },
+            "name": "Referee",
+            "team": "unknown",
+            "color": "rgb(184, 184, 197)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 1041,
+            "width": 398,
+            "height": 20,
+            "bottom": 1061,
+            "right": 439,
+            "text": "09:08:11Banchobot Bot 优先使用黄色",
+            "time": "09:08:11",
+            "clock": {
+              "x": 41,
+              "y": 1041,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1061,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 1041,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1061,
+              "right": 439
+            },
+            "name": "Banchobot",
+            "team": "bot",
+            "color": "rgb(255, 218, 106)",
+            "overflow": false
+          }
+        ],
+        "stream": "",
+        "captures": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 480
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 960
+          },
+          {
+            "x": 240,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "bottom": 900,
+            "right": 720
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 1440
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 1920
+          },
+          {
+            "x": 1200,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "bottom": 900,
+            "right": 1680
+          }
+        ]
+      }
+    },
+    {
+      "name": "6 slots recolor existing messages after swap"
+    },
+    {
+      "name": "6 slots missing client becomes neutral without shifting slots"
+    },
+    {
+      "name": "8 slots, timestamps, all four colors, stable chat box",
+      "measurement": {
+        "box": {
+          "x": 30,
+          "y": 928,
+          "width": 420,
+          "height": 138,
+          "bottom": 1066,
+          "right": 450
+        },
+        "content": {
+          "x": 31,
+          "y": 948,
+          "width": 418,
+          "height": 117,
+          "bottom": 1065,
+          "right": 449
+        },
+        "lines": [
+          {
+            "x": 41,
+            "y": 961,
+            "width": 398,
+            "height": 20,
+            "bottom": 981,
+            "right": 439,
+            "text": "09:08:07Player 0 红队槽位内消息",
+            "time": "09:08:07",
+            "clock": {
+              "x": 41,
+              "y": 961,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 981,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 961,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 981,
+              "right": 439
+            },
+            "name": "Player 0",
+            "team": "left",
+            "color": "rgb(255, 77, 109)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 981,
+            "width": 398,
+            "height": 20,
+            "bottom": 1001,
+            "right": 439,
+            "text": "09:08:08Player 4 蓝队槽位内消息",
+            "time": "09:08:08",
+            "clock": {
+              "x": 41,
+              "y": 981,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1001,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 981,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1001,
+              "right": 439
+            },
+            "name": "Player 4",
+            "team": "right",
+            "color": "rgb(61, 139, 255)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 1001,
+            "width": 398,
+            "height": 20,
+            "bottom": 1021,
+            "right": 439,
+            "text": "09:08:09Outside 直播槽位外用户",
+            "time": "09:08:09",
+            "clock": {
+              "x": 41,
+              "y": 1001,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1021,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 1001,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1021,
+              "right": 439
+            },
+            "name": "Outside",
+            "team": "unknown",
+            "color": "rgb(184, 184, 197)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 1021,
+            "width": 398,
+            "height": 20,
+            "bottom": 1041,
+            "right": 439,
+            "text": "09:08:10Referee 裁判消息",
+            "time": "09:08:10",
+            "clock": {
+              "x": 41,
+              "y": 1021,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1041,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 1021,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1041,
+              "right": 439
+            },
+            "name": "Referee",
+            "team": "unknown",
+            "color": "rgb(184, 184, 197)",
+            "overflow": false
+          },
+          {
+            "x": 41,
+            "y": 1041,
+            "width": 398,
+            "height": 20,
+            "bottom": 1061,
+            "right": 439,
+            "text": "09:08:11Banchobot Bot 优先使用黄色",
+            "time": "09:08:11",
+            "clock": {
+              "x": 41,
+              "y": 1041,
+              "width": 57.609375,
+              "height": 20,
+              "bottom": 1061,
+              "right": 98.609375
+            },
+            "textBox": {
+              "x": 104.609375,
+              "y": 1041,
+              "width": 334.390625,
+              "height": 20,
+              "bottom": 1061,
+              "right": 439
+            },
+            "name": "Banchobot",
+            "team": "bot",
+            "color": "rgb(255, 218, 106)",
+            "overflow": false
+          }
+        ],
+        "stream": "",
+        "captures": [
+          {
+            "x": 0,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 480
+          },
+          {
+            "x": 480,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 960
+          },
+          {
+            "x": 0,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "bottom": 900,
+            "right": 480
+          },
+          {
+            "x": 480,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "bottom": 900,
+            "right": 960
+          },
+          {
+            "x": 960,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 1440
+          },
+          {
+            "x": 1440,
+            "y": 180,
+            "width": 480,
+            "height": 360,
+            "bottom": 540,
+            "right": 1920
+          },
+          {
+            "x": 960,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "bottom": 900,
+            "right": 1440
+          },
+          {
+            "x": 1440,
+            "y": 540,
+            "width": 480,
+            "height": 360,
+            "bottom": 900,
+            "right": 1920
+          }
+        ]
+      }
+    },
+    {
+      "name": "8 slots recolor existing messages after swap"
+    },
+    {
+      "name": "8 slots missing client becomes neutral without shifting slots"
+    },
+    {
+      "name": "waiting keeps chat position and component"
+    },
+    {
+      "name": "roll keeps chat position and component"
+    },
+    {
+      "name": "mappool keeps chat position and component"
+    },
+    {
+      "name": "playing keeps chat position and component"
+    },
+    {
+      "name": "pause keeps chat position and component"
+    },
+    {
+      "name": "victory keeps chat position and component"
+    },
+    {
+      "name": "6 slots/4x3/EX=false long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "6 slots/4x3/EX=true long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "8 slots/4x3/EX=false long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "8 slots/4x3/EX=true long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "6 slots/16x9/EX=false long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "6 slots/16x9/EX=true long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "8 slots/16x9/EX=false long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "8 slots/16x9/EX=true long text, partial time, unchanged capture geometry"
+    },
+    {
+      "name": "reload preserves source time and session, stale source clears chat"
+    }
+  ],
+  "errors": []
+}

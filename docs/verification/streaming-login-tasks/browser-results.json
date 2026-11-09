@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "width": 1440,
+      "manualFallback": true,
+      "automaticHandoff": true,
+      "tasks": 2,
+      "selectedTask": 2,
+      "missingRulesImported": true,
+      "disconnectPreservesMatch": true,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "manualFallback": true,
+      "automaticHandoff": true,
+      "tasks": 2,
+      "selectedTask": 2,
+      "missingRulesImported": true,
+      "disconnectPreservesMatch": true,
+      "overflow": false
+    }
+  ],
+  "errors": []
+}

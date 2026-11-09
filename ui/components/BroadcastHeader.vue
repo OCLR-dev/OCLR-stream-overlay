@@ -8,6 +8,7 @@ import TeamFlagPreview from './TeamFlagPreview.vue';
 import TeamNameMarquee from './TeamNameMarquee.vue';
 import HeaderAmbient from './HeaderAmbient.vue';
 import TeamBlockParticles from './TeamBlockParticles.vue';
+import MapWinBanner from './MapWinBanner.vue';
 import oclrLogo from '../assets/oclr-logo-light.svg';
 
 const { state, view, motionScope, motionReady, session } = useOverlay();
@@ -56,7 +57,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
         </span>
         <span v-if="state.pickFirst === 'a'" class="mappool-first-action" data-first-action="pick">先选择</span>
         <span v-if="state.banFirst === 'a'" class="mappool-first-action" data-first-action="ban">先禁用</span>
-        <span class="ex-counter">EX 剩余 <b data-ex-remaining="a">{{ state.exA }}</b></span>
+        <span v-if="!view.exhibition" class="ex-counter">EX 剩余 <b data-ex-remaining="a">{{ state.exA }}</b></span>
         <span v-if="view.ex && state.exTeam === 'a'" class="map-ex-mark" data-mappool-ex data-ex-team="a">EX 开启</span>
       </div>
       <div class="header-score-line">
@@ -92,7 +93,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
         </span>
         <span v-if="state.pickFirst === 'b'" class="mappool-first-action" data-first-action="pick">先选择</span>
         <span v-if="state.banFirst === 'b'" class="mappool-first-action" data-first-action="ban">先禁用</span>
-        <span class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
+        <span v-if="!view.exhibition" class="ex-counter">EX 剩余 <b data-ex-remaining="b">{{ state.exB }}</b></span>
         <span v-if="view.ex && state.exTeam === 'b'" class="map-ex-mark" data-mappool-ex data-ex-team="b">EX 开启</span>
       </div>
       <div class="header-score-line">
@@ -106,5 +107,6 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
         <span class="win-stars" data-series-stars="b" :aria-label="state.seriesB === null ? '赢图未知' : `已赢 ${state.seriesB} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesB ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesB !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesB ?? 0) }" aria-hidden="true"></i></span>
       </div>
     </section>
+    <MapWinBanner v-if="!view.warmup" />
   </header>
 </template>

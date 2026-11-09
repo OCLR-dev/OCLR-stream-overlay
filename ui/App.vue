@@ -22,8 +22,9 @@ provide(overlayKey, controller);
 const { state, view, motionReady, motionScope } = controller;
 const { stage, scale } = useCanvasFit();
 // Chat mounts once outside the scene stack. Scene changes only toggle its
-// visibility, so neither chat surface is re-created or reloaded.
-const chatScene = new Set(['waiting', 'roll', 'mappool', 'playing', 'victory']);
+// visibility, so neither chat surface is re-created or reloaded. Pause keeps
+// the same bottom chat and map layout as Playing.
+const chatScene = new Set(['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause']);
 const chatVisible = computed(() => chatScene.has(state.scene));
 </script>
 
@@ -35,7 +36,7 @@ const chatVisible = computed(() => chatScene.has(state.scene));
         <div class="broadcast-canvas" id="broadcastCanvas"
           :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared, 'motion-ready': motionReady }]"
           :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-current-scene="state.scene"
-          :aria-label="`1920×1080 ${view.brand || `OCLR ${view.season}`} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
+          :aria-label="`1920×1080 ${view.brand || `OCLR ${view.season}`}  ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})` }">
           <SpectrumGrid />
           <BroadcastAmbient />

@@ -4,6 +4,7 @@ import PovGrid from './PovGrid.vue';
 import MapInfo from './MapInfo.vue';
 import { computed } from 'vue';
 import { scoreDifference } from '../scoreDifference';
+import { formatTeamScore } from '../scoreFormat';
 const { state, view } = useOverlay();
 const scoreBar = computed(() => scoreDifference(
   view.value.scoreA,
@@ -12,7 +13,7 @@ const scoreBar = computed(() => scoreDifference(
 const difference = computed(() => {
   const delta = scoreBar.value.delta;
   if (delta === null) return '分数未知';
-  return delta === 0 ? 'TIED / 平分' : `${delta > 0 ? '◀ ' : ''}+${Math.abs(delta).toLocaleString('en-US')}${delta < 0 ? ' ▶' : ''}`;
+  return delta === 0 ? 'TIED / 平分' : `${delta > 0 ? '◀ ' : ''}+${formatTeamScore(Math.abs(delta))}${delta < 0 ? ' ▶' : ''}`;
 });
 const actualLead = computed(() => {
   const delta = scoreBar.value.delta;

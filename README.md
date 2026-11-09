@@ -1,6 +1,6 @@
 # 自定义赛事本地测试分支
 
-本分支 UI 已同步主线 `3d20f5a`（PR #6 / #10）：通栏顶栏、Ban/EX 徽章、Playing 本图队分与鎏金系列小比分、图池星数和状态层、队名滚动及共享聊天。保留自定义赛事标题、独立阶段/BO/BP 和 CA 分类；不接入 OCLR 登录任务。正式 `/overlay` 的 Playing 游戏区域改为透明，OBS 旧色值键/色度键应停用；捕获坐标与尺寸不变。根路径演示仍以绿色标记捕获区域。已有 Windows R4 包未重新打包，不能代表此源码版本。验证见 [UI 同步记录](docs/verification/pr10-ui-sync/README.md)。
+本分支已合入主线 `ecaeb16` 的通用实现：比赛记录与自动化恢复、BP 修正、暂停倒计时、EX 次数结算、实时队分、聊天和谱面图像，以及 Windows 启动器。保留自定义赛事标题、阶段/BO/BP、CA 分类、七秒 Pick 与独立会话，不接入 OCLR 登录任务。同步范围、行为调整和本次验证见 [main → custom-match 同步记录](docs/verification/main-custom-sync/README.md)。已有 Windows ZIP 未重新打包，不能代表此源码版本。
 
 本分支 `test/custom-match` 的独立工作区为 `overlay-custom-match`。使用 `npm run build` 后运行 **`npm run custom`**；需隔离 tosu 测试信号时运行 `npm run custom -- --simulate`。控制台为 `http://127.0.0.1:3011/control`，只读输出为同端口 `/overlay`。请勿用下方保留的 OCLR 启动／模拟命令操作这场测试。
 

@@ -2,15 +2,26 @@ import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, shal
 import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, normalizeScene, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
 import { useSession } from './session';
 import { useMotionReady } from './motion';
-import { matchFormat } from './matchFormat';
 import { poolDisplay, poolWinner } from './poolDisplay';
 import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, liveTeamScores, playingPickTeam, resultTeamScores } from './liveScores';
 import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
+import { matchFormat } from './matchFormat';
+import { formatTeamScore } from './scoreFormat';
+import { presentMatchChat } from './matchChat';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
   const sessionClient = shared ? useSession() : null;
   const session = computed(() => sessionClient?.snapshot.value?.session || null);
+  // The pause countdown is an absolute deadline from the local session service;
+  // tick locally only while it exists, so the shared output stays cheap.
+  const clock = ref(Date.now());
+  let pauseClockTimer: ReturnType<typeof setInterval> | undefined;
+  if (shared) pauseClockTimer = setInterval(() => {
+    if (session.value?.scene === 'pause' && (session.value?.pauseTimer || session.value?.resumeAt)) clock.value = Date.now();
+  }, 250);
+  watch(() => [session.value?.pauseTimer, session.value?.resumeAt], () => { clock.value = Date.now(); });
+  onUnmounted(() => clearInterval(pauseClockTimer));
   const motionScope = computed(() => shared ? `${session.value?.id}:${sessionClient?.presentationEpoch.value}:${sessionClient?.connection.value}` : 'demo');
   const motionReady = useMotionReady(motionScope);
   if (shared) watch(session, s => {
@@ -25,14 +36,37 @@ export function createOverlay(shared = false) {
     state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM', 'CA'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
   }, { immediate: true });
   const rankingScores = shallowRef<RankingScoreHold | null>(null);
+  // Display memory for the brief Panic reload gap. It never supplies a result,
+  // and it is dropped as soon as the connection or scene changes.
+  const lastScores = shallowRef<{ key: string; left: number; right: number } | null>(null);
+  const scoreKey = (envelope: { session: { id: string; currentRoundId: string | null } } | null | undefined) =>
+    envelope?.session ? `${envelope.session.id}:${envelope.session.currentRoundId || ''}` : '';
   if (shared) watch([() => sessionClient?.snapshot.value, () => sessionClient?.connection.value, () => state.scene],
     ([envelope, connection, scene]) => {
       rankingScores.value = retainRankingScores(envelope, connection, scene, rankingScores.value);
+      const scores = rankingScores.value?.scores || liveTeamScores(envelope, connection);
+      if (connection === 'synced' && scene === 'playing' && scores &&
+        Number.isSafeInteger(scores.left) && scores.left! >= 0 && Number.isSafeInteger(scores.right) && scores.right! >= 0) {
+        lastScores.value = { key: scoreKey(envelope), left: scores.left!, right: scores.right! };
+      } else if (connection !== 'synced' || scene !== 'playing') {
+        lastScores.value = null;
+      }
     }, { immediate: true, flush: 'sync' });
-  const view = computed(() => {
-    const base = derive(state);
+  // Panic reloads briefly report an invalid room. Keep the last complete totals
+  // on screen until Playing comes back or the scene switches.
+  const automaticPanicGap = computed(() => {
     const s = session.value;
+    return !!s?.incident && s.incident.source === 'tosu' && s.incident.kind === 'unverified' &&
+      s.incident.roundId === s.currentRoundId && sessionClient?.connection.value === 'synced';
+  });
+  const view = computed(() => {
+    const s = session.value;
+    const base = derive(state, s?.match.exhibition?.series);
     const envelope = sessionClient?.snapshot.value;
+    const remembered = automaticPanicGap.value && lastScores.value?.key === (s ? `${s.id}:${s.currentRoundId || ''}` : '')
+      ? lastScores.value : null;
+    const scores = rankingScores.value?.scores || liveTeamScores(envelope, sessionClient?.connection.value) ||
+      (remembered ? { left: remembered.left, right: remembered.right } : null);
     const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
     const round = s?.rounds.find(r => r.id === s.currentRoundId);
     const recordedMap = !s?.warmup && s?.pool.find(e => e.id === round?.entryId) || null;
@@ -43,24 +77,28 @@ export function createOverlay(shared = false) {
     })) : base.roster(team);
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = liveRoom(envelope, sessionClient?.connection.value);
-    const scores = rankingScores.value?.scores || liveTeamScores(envelope, sessionClient?.connection.value);
     const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
     const currentMap = state.scene === 'playing' ? livePlayingMap(envelope, sessionClient?.connection.value, recordedMap) || recordedMap : recordedMap;
     const mapParameters = currentMap && liveMap?.id === currentMap.beatmapId ? liveMap : null;
-    const formatted = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('en-US');
+    const formatted = (n: number | null | undefined) => formatTeamScore(n);
     const scoreA = shared ? formatted(scores?.left) : base.scoreA;
     const scoreB = shared ? formatted(scores?.right) : base.scoreB;
     const resultScores = rankingScores.value?.scores || resultTeamScores(envelope, sessionClient?.connection.value);
     const resultA = shared ? formatted(resultScores?.left) : base.resultA;
     const resultB = shared ? formatted(resultScores?.right) : base.resultB;
+    const pauseTimer = shared ? s?.pauseTimer || null : null;
+    const pauseRemainingMs = pauseTimer ? Math.max(0, Math.min(pauseTimer.durationSeconds * 1000, pauseTimer.endsAt - clock.value)) : 0;
+    const pauseSecondsLeft = Math.ceil(pauseRemainingMs / 1000);
+    const pauseClock = pauseTimer ? `${String(Math.floor(pauseSecondsLeft / 60)).padStart(2, '0')}:${String(pauseSecondsLeft % 60).padStart(2, '0')}` : '';
     const pool = shared ? (s?.pool || []).map(entry => {
       const { status, team } = poolDisplay(s!, entry.id);
       const winnerTeam = status === 'picked' || status === 'used' ? poolWinner(s!, entry.id) : null;
-      return { ...entry, status, actionTeam: team, winnerTeam,
+      const current = !!round && round.entryId === entry.id && ['prepared', 'playing'].includes(round.status);
+      return { ...entry, status, actionTeam: team, winnerTeam, current,
         statusLabel: entry.mod === 'TB' && !winnerTeam && status !== 'open' ? 'TB 决胜图' : winnerTeam ? `${names[winnerTeam]} 胜利` : team && status !== 'open' ? `${names[team]} ${status === 'banned' ? '禁用' : 'Pick'}` : '', icon: status === 'banned' ? '×' : status !== 'open' ? '✓' : '' };
     }) : mapMods.map((mod, index) => {
       const status = index === 0 ? state.map : 'open';
-      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null, winnerTeam: null,
+      return { id: String(index), beatmapId: 0, mod, label: `${mod}${mapMods.slice(0, index + 1).filter(m => m === mod).length}`, title: '谱面标题占位', artist: '艺术家', difficulty: '难度', status, actionTeam: null, winnerTeam: null, current: false,
         statusLabel: status === 'open' ? '' : mapLabels[status], icon: status === 'open' ? '' : mapIcons[status] };
     });
     const banEntry = (team: Team, index: 0 | 1) => {
@@ -69,8 +107,8 @@ export function createOverlay(shared = false) {
         .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
       return pool.find(e => e.id === ids[index]) || null;
     };
-    const meta = s ? matchFormat(s.match) : base.meta;
-    return { ...base, meta, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', brand: s?.match.custom ? s.match.title : null, shared, warmup: !!s?.warmup, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
+    const meta = s?.match.custom ? matchFormat(s.match) : base.meta;
+    return { ...base, meta, brand: s?.match.custom ? s.match.title : null, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', shared, warmup: !!s?.warmup, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {
@@ -89,13 +127,16 @@ export function createOverlay(shared = false) {
       },
       mapRule: s?.match.custom ? '' : base.mapRule,
       scoreA, scoreB, resultA, resultB, pool, currentMap, mapParameters,
+      pauseTimer, pauseClock, pauseTimerEnded: !!pauseTimer && pauseSecondsLeft === 0,
       pickTeam: playingPickTeam(s, currentMap),
       showPlayingScores: !shared || !!scores,
       parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
       winner: s?.winner ? names[s.winner] : null,
+      drawnExhibition: !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
-      chat: shared ? liveRoomChat(envelope, sessionClient?.connection.value).slice(-100) : [],
+      chat: shared ? presentMatchChat(liveRoomChat(envelope, sessionClient?.connection.value).slice(-100),
+        envelope?.live.tosu.data?.tourney?.players || [], base.count * 2) : [],
       sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',
       arrivalCount: shared ? (['a', 'b'] as const).filter(arrived).length * base.count : base.arrivalCount,
       readiness: shared ? (s?.ready.a && s?.ready.b ? '双方已就绪' : '等待到场 / 就绪确认') : base.readiness,

@@ -1,0 +1,922 @@
+[
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "ex": false,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 3v3",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "chat": [
+        "07:56:38\nPreview0 合成浏览器验收消息",
+        "07:56:38\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 3v3",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "chat": [
+        "07:57:05\nPreview0 合成浏览器验收消息",
+        "07:57:05\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "3v3",
+    "source": "4x3",
+    "ex": true,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 EX 2v2",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 360
+        }
+      ],
+      "chat": [
+        "07:57:19\nPreview0 合成浏览器验收消息",
+        "07:57:19\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 EX 2v2",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 360
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 360
+        }
+      ],
+      "chat": [
+        "07:57:34\nPreview0 合成浏览器验收消息",
+        "07:57:34\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "ex": false,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 3v3",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "chat": [
+        "07:57:47\nPreview0 合成浏览器验收消息",
+        "07:57:47\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 3v3",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "chat": [
+        "07:58:06\nPreview0 合成浏览器验收消息",
+        "07:58:06\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "3v3",
+    "source": "16x9",
+    "ex": true,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 EX 2v2",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 405
+        }
+      ],
+      "chat": [
+        "07:58:22\nPreview0 合成浏览器验收消息",
+        "07:58:22\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 3v3，当前 EX 2v2",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 405
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 405
+        }
+      ],
+      "chat": [
+        "07:58:49\nPreview0 合成浏览器验收消息",
+        "07:58:49\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "ex": false,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 4v4",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 0,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "4",
+          "width": 480,
+          "x": 480,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 960,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "4",
+          "width": 480,
+          "x": 1440,
+          "y": 540
+        }
+      ],
+      "chat": [
+        "07:59:17\nPreview0 合成浏览器验收消息",
+        "07:59:17\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 4v4",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 0,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "4",
+          "width": 480,
+          "x": 480,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 960,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "4",
+          "width": 480,
+          "x": 1440,
+          "y": 540
+        }
+      ],
+      "chat": [
+        "07:59:45\nPreview0 合成浏览器验收消息",
+        "07:59:45\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "4x3",
+    "ex": true,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 EX 3v3",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "chat": [
+        "08:00:10\nPreview0 合成浏览器验收消息",
+        "08:00:10\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 EX 3v3",
+      "cells": [
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 540
+        },
+        {
+          "height": 360,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 180
+        },
+        {
+          "height": 360,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 540
+        }
+      ],
+      "chat": [
+        "08:00:32\nPreview0 合成浏览器验收消息",
+        "08:00:32\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "ex": false,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 4v4",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 0,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "4",
+          "width": 480,
+          "x": 480,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 960,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "4",
+          "width": 480,
+          "x": 1440,
+          "y": 585
+        }
+      ],
+      "chat": [
+        "08:01:02\nPreview0 合成浏览器验收消息",
+        "08:01:02\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 4v4",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 0,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "4",
+          "width": 480,
+          "x": 480,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 960,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "4",
+          "width": 480,
+          "x": 1440,
+          "y": 585
+        }
+      ],
+      "chat": [
+        "08:01:21\nPreview0 合成浏览器验收消息",
+        "08:01:21\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  },
+  {
+    "mode": "4v4",
+    "source": "16x9",
+    "ex": true,
+    "playing": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 EX 3v3",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "chat": [
+        "08:01:37\nPreview0 合成浏览器验收消息",
+        "08:01:37\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    },
+    "ranking": {
+      "canvas": "1920×1080 MP5 Xronicle  共享直播输出，当前场景：Playing，常规 4v4，当前 EX 3v3",
+      "cells": [
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 0,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 480,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 240,
+          "y": 585
+        },
+        {
+          "height": 270,
+          "slot": "1",
+          "width": 480,
+          "x": 960,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "2",
+          "width": 480,
+          "x": 1440,
+          "y": 225
+        },
+        {
+          "height": 270,
+          "slot": "3",
+          "width": 480,
+          "x": 1200,
+          "y": 585
+        }
+      ],
+      "chat": [
+        "08:01:56\nPreview0 合成浏览器验收消息",
+        "08:01:56\nBanchoBot synthetic preview"
+      ],
+      "score": "左队 RED 好麻烦啊...... 120,0000，右队 BLUE 我发现队友都玩osu 110,0000",
+      "stream": [
+        ""
+      ]
+    }
+  }
+]

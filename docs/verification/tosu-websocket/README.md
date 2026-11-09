@@ -86,3 +86,9 @@ npm test
 ## 尚需实机核对
 
 本模拟器验证程序逻辑、数据传输与界面联动，不复现真实内存读取延迟、选中实例错绑的全部表现、客户端逐步结束时序、实际计分规范或 OBS 视频捕获。真实版本的结束序列、最终队分何时稳定、防抖参数与捕获源仍需直播机录制核对。
+
+## 未启动 tosu 的启动恢复（2026-10-30）
+
+Windows R2 实机报告 Node 22.23.4 在连接失败后，于 `socket.onerror → socket.close → socket.onerror` 递归溢出。现先移除旧连接回调并清除活动连接，再关闭和安排单次重连；关闭本身失败也不向外抛出。控制台提示核实 tosu 已启动及 WebSocket 地址，比赛与自动化意图保留。已开打的来源中断仍沿用原本核对规则，不放宽自动计胜。
+
+`node --test test/tosu-connection.test.js test/data.test.js test/automation-lifecycle.test.js`：37 项通过，覆盖同步错误重入、旧回调失效、关闭异常、停止后不重试、等待提示，以及随机端口上先连接失败后启动隔离模拟器的自动恢复。`npm run build`（含类型检查）通过。此验证使用 macOS 主机 Node 和真实本地 WebSocket，未执行 Windows exe，不代表真实 osu!tourney 结算时序已验收。

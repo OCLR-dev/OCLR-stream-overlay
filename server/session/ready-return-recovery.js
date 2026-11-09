@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { automaticTransition, currentRound, entryOf, prepareAbortedRound, seriesComplete } from './model.js';
+import { observedTransition, observation, currentRound, entryOf, seriesComplete } from './model.js';
 
 const keyOf = state => {
   const round = currentRound(state);
@@ -21,6 +21,8 @@ const sameMap = (state, frame) => {
 // Evidence is volatile: reload/reconnect/undo cannot reuse a previous return.
 export class ReadyReturnRecovery {
   constructor() { this.reset(); }
+  checkpoint() { return structuredClone({ ...this }); }
+  restoreEvidence(checkpoint) { Object.assign(this, checkpoint); }
   reset() { this.anchor = null; this.pending = null; }
   recover(state, frame, now) {
     if (!this.anchor) return state;
@@ -34,7 +36,7 @@ export class ReadyReturnRecovery {
     if (!this.pending) { this.pending = { at: now }; return state; }
     if (now - this.pending.at < 250) return state;
     this.reset();
-    return automaticTransition(state, prepareAbortedRound,
+    return observedTransition(state, observation(state, 'abort', {}, currentRound(state)),
       '本局未结算即返回准备房间：保留原图与播出画面，等待重新开始', randomUUID());
   }
   observe(state, frame, now, observedRun) {

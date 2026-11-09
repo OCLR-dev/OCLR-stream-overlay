@@ -1,7 +1,5 @@
 import type { BeatmapRange, BeatmapRanges } from './session';
 
-// CA follows the same free-mod contract as FM: NM for the labelled test/pool
-// baseline, actual client ranges for live play.
 export const testModForCategory = (mod: string | null) => ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
 export interface TestMapMetadata {
   beatmapId: number;
@@ -62,9 +60,9 @@ export function mapParameterDisplay(id: number | null, mode: 'tosu' | 'official-
   return { source: map ? 'tosu' : calculated ? 'official-test' : 'none', mod: calculated?.mod, rangeMode: !!clientRanges, rows: [
     { label: '★', value: calculated ? numeric(calculated.stars) : actual('stars', map?.stats?.stars?.total) },
     { label: 'CS', value: calculated ? numeric(calculated.cs) : actual('cs', map?.stats?.cs?.converted) },
-    { label: 'HP', value: calculated ? numeric(calculated.hp) : actual('hp', map?.stats?.hp?.converted) },
     { label: 'AR', value: calculated ? numeric(calculated.ar) : actual('ar', map?.stats?.ar?.converted) },
     { label: 'OD', value: calculated ? numeric(calculated.od) : actual('od', map?.stats?.od?.converted) },
+    { label: 'HP', value: calculated ? numeric(calculated.hp) : actual('hp', map?.stats?.hp?.converted) },
     { label: 'BPM', value: calculated ? min === max ? min : min !== '—' && max !== '—' ? `${min}–${max}` : '—' : actual('bpm', map?.stats?.bpm?.common) },
     { label: 'TIME', value: calculated ? playbackDuration(timing, calculated.clockRate)
       : map ? playbackDuration(timing, map.stats?.clockRate, clientRanges?.clockRate) : '—' },

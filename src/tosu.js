@@ -128,6 +128,7 @@ export function normalizeTosuV2(raw) {
       totalScore: { left: number(tourney.totalScore?.left), right: number(tourney.totalScore?.right) },
       chat: Array.isArray(tourney.chat) ? tourney.chat : [],
       players: Array.isArray(tourney.clients) ? tourney.clients.map(client => ({
+        ipcId: Number.isSafeInteger(client.ipcId) && client.ipcId >= 0 ? client.ipcId : null,
         side: ['left', 'right'].includes(client.team) ? client.team : null,
         osuId: number(client.user?.id), name: text(client.user?.name),
         score: number(client.play?.score), accuracy: number(client.play?.accuracy),

@@ -1,14 +1,19 @@
-import { randomUUID } from 'node:crypto';
-import { applyBp, automaticTransition, awardTosuResult, currentRound, entryOf, holdRound, releaseRoundBp, seriesComplete, startRound } from './model.js';
-import { tosuRoomTeams } from '../../src/tosu.js';
+import { resultFacts } from './room-facts.js';
 import { competitionScore } from './scoring.js';
+import { randomUUID } from 'node:crypto';
+import { observedTransition, observation, currentRound, entryOf, seriesComplete, SessionRejection } from './model.js';
+import { tosuRoomTeams } from '../../src/tosu.js';
 
 const playerKeys = room => room.players.filter(p => p.osuId > 0).map(p => `${p.side}:${p.osuId}`).sort();
-const validRoom = (config, frame) => {
+const validRoom = (state, frame) => {
+  const config = state.auto;
   const room = frame?.tourney;
+  // Ranking clients may be cleared before the next map arrives. After a
+  // known finish, room/map observation does not require game-score clients.
+  const finished = ['ranking', 'recorded'].includes(currentRound(state)?.status);
   return tosuRoomTeams(frame) && config.profile === 'stable-tourney' && config.left && config.right && room &&
     room.teams.left === config.left && room.teams.right === config.right &&
-    ([1, 2].includes(room.ipcState) || room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0)) &&
+    ([1, 2].includes(room.ipcState) || finished || room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0)) &&
     [0, 1, 2, 3, 4].includes(room.ipcState) && Number.isSafeInteger(frame?.beatmap?.id) && frame.beatmap.id > 0;
 };
 const preparedContext = (state, frame) => {
@@ -16,7 +21,7 @@ const preparedContext = (state, frame) => {
   const expectedMap = entryOf(state, round?.entryId)?.beatmapId;
   const mapId = frame?.beatmap?.id;
   const unresolvedReplayMap = round?.replayOf && !(Number.isSafeInteger(mapId) && mapId > 0);
-  if (round?.status !== 'prepared' || state.phase !== 'bp' || state.action || state.paused || state.incident || seriesComplete(state) ||
+  if (round?.status !== 'prepared' || round.identityUnresolved || state.phase !== 'bp' || state.action || state.paused || state.incident || seriesComplete(state) ||
     !tosuRoomTeams(frame) || state.auto.profile !== 'stable-tourney' || room.teams.left !== state.auto.left || room.teams.right !== state.auto.right ||
     !expectedMap || mapId !== expectedMap && !unresolvedReplayMap) return null;
   return JSON.stringify([state.id, round.id, round.entryId, expectedMap, state.auto.left, state.auto.right]);
@@ -26,7 +31,14 @@ const preparedContext = (state, frame) => {
 // Continuity is deliberately volatile: restore/reconnect always establishes a baseline.
 export class RoomAutomation {
   constructor() { this.reset(); }
+  checkpoint() { return structuredClone({ ...this }); }
+  restoreEvidence(checkpoint) { Object.assign(this, checkpoint); }
   reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; this.confirmedPlayers = null; this.preparedStart = null; }
+
+  invalidate({ action = false, result = false } = {}) {
+    if (action) this.pending = null;
+    if (result) { this.endRun = null; this.scoreCandidate = null; }
+  }
 
   observePreparedStart(state, frame, now) {
     const key = preparedContext(state, frame); const ipc = frame?.tourney?.ipcState;
@@ -45,7 +57,7 @@ export class RoomAutomation {
     if (!state.paused && !state.incident && state.auto.scenes && presentation?.sessionId === state.id &&
       presentation.left === state.auto.left && presentation.right === state.auto.right &&
       frame?.tourney?.teams.left === state.auto.left && frame.tourney.teams.right === state.auto.right) this.presentation = presentation;
-    if (!state.paused && !state.incident && validRoom(state.auto, frame)) {
+    if (!state.paused && !state.incident && validRoom(state, frame)) {
       // Seed only the observation position, never an endRun or a Playing edge.
       // This consumes the known pre-command snapshot so the next new map is not
       // accidentally swallowed as the first baseline after incident handling.
@@ -58,19 +70,13 @@ export class RoomAutomation {
   hold(state, reason) {
     this.reset();
     const round = currentRound(state);
-    if (!state.warmup && !state.incident && ['playing', 'ranking'].includes(round?.status)) {
-      state = automaticTransition(state, draft => holdRound(draft, 'unverified', reason, 'tosu'), `本图异常待核对：${reason}`, randomUUID());
+    if (!state.incident && ['playing', 'ranking'].includes(round?.status)) {
+      state = observedTransition(state, observation(state, 'hold', { reason }, round), `本图异常待核对：${reason}`, randomUUID());
     }
     return { state, note: reason };
   }
 
   ingest(state, frame, now = Date.now()) {
-    if (state.warmup) {
-      // Warm-up consumes no formal events, including scene following and
-      // room discovery writes. Source telemetry still reaches subscribers.
-      this.reset();
-      return { state, note: 'Warm-up：热身不推进正式 BP、不计赢图、不自动切换画面' };
-    }
     const teams = tosuRoomTeams(frame);
     const bindingChanged = teams && (state.auto.profile !== 'stable-tourney' || state.auto.left !== teams.left || state.auto.right !== teams.right);
     const namesChanged = teams && (state.match.teams.a.name !== teams.left || state.match.teams.b.name !== teams.right);
@@ -79,11 +85,7 @@ export class RoomAutomation {
       // A display-only name refresh must not reset an observed game's finish.
       const changedRoom = this.sourceRoom && (this.sourceRoom.left !== teams.left || this.sourceRoom.right !== teams.right);
       if (changedRoom) state = this.hold(state, 'tosu 房间已变化，原局观战连续性中断；新房间队名已自动读取').state;
-      state = automaticTransition(state, draft => {
-        Object.assign(draft.auto, { profile: 'stable-tourney', ...teams });
-        draft.match.teams.a.name = teams.left;
-        draft.match.teams.b.name = teams.right;
-      }, `自动读取 tosu 房间与播出队名：${teams.left} / ${teams.right}`, randomUUID(), { undo: false });
+      state = observedTransition(state, observation(state, 'bind-room', teams), `自动读取 tosu 房间与播出队名：${teams.left} / ${teams.right}`, randomUUID(), { undo: false });
       if (bindingChanged) this.reset();
     }
     this.sourceRoom = teams;
@@ -97,24 +99,19 @@ export class RoomAutomation {
       room?.teams.left === config.left && room.teams.right === config.right && [0, 1, 2, 3, 4].includes(room.ipcState);
     this.presentation = bound ? { ipc: room.ipcState, mapId: frame?.beatmap?.id, sessionId: result.state.id, left: config.left, right: config.right } : null;
     const playingEvent = bound && room.ipcState === 3 && (!previous || previous.ipc !== 3 || previous.mapId !== frame?.beatmap?.id);
-    if (playingEvent && !result.state.paused && !result.state.incident && result.state.phase !== 'winner' && !seriesComplete(result.state) &&
+    if (playingEvent && !result.state.warmup && !result.state.paused && !result.state.incident && result.state.phase !== 'winner' && !seriesComplete(result.state) &&
       (result.state.scene !== 'playing' || result.state.sceneOverride)) {
-      result.state = automaticTransition(result.state, draft => {
-        draft.scene = 'playing'; draft.sceneOverride = null;
-      }, '房间正在 Playing：自动跟随播出画面（不补建本局或计胜）', randomUUID(), { undo: false });
+      result.state = observedTransition(result.state, observation(result.state, 'scene', { scene: 'playing' }), '房间正在 Playing：自动跟随播出画面（不补建本局或计胜）', randomUUID(), { undo: false });
     }
     const finished = currentRound(result.state);
     const rankingExit = bound && previous?.ipc === 4 && [1, 2].includes(room.ipcState) &&
       previous.sessionId === result.state.id && previous.left === config.left && previous.right === config.right;
-    if (rankingExit && !result.state.paused && result.state.phase !== 'winner' && !seriesComplete(result.state) &&
+    if (rankingExit && !result.state.warmup && !result.state.paused && result.state.phase !== 'winner' && !seriesComplete(result.state) &&
       (!finished || ['prepared', 'ranking', 'recorded'].includes(finished.status)) &&
       (result.state.scene !== 'mappool' || result.state.sceneOverride)) {
       // Returning to the room is a presentation event, even without a new map.
       // Keep pending results/incidents intact; this never advances BP or awards.
-      result.state = automaticTransition(result.state, draft => {
-        draft.scene = 'mappool'; draft.sceneOverride = null;
-        if (currentRound(draft) && !draft.incident) draft.phase = 'bp';
-      }, 'tosu 离开 Ranking 返回房间：自动回到图池（保留本局赛果）', randomUUID(), { undo: false });
+      result.state = observedTransition(result.state, observation(result.state, 'room-return', {}, finished), 'tosu 离开 Ranking 返回房间：自动回到图池（保留本局赛果）', randomUUID(), { undo: false });
       if (!result.state.incident) result.note = '已返回房间，自动回到图池；尚未记录的本局赛果保留';
     }
     if (bound && room.ipcState === 3 && !result.state.paused && !result.state.incident && !currentRound(result.state)) {
@@ -126,6 +123,9 @@ export class RoomAutomation {
 
   ingestProgress(state, frame, now = Date.now()) {
     const config = state.auto;
+    if (currentRound(state)?.identityUnresolved) {
+      this.reset(); return { state, note: '旧比赛记录关联不明确，请人工处理该图；实时画面继续跟随' };
+    }
     if (state.incident) {
       this.reset(); return { state, note: '本图异常待处理：自动推进与计胜已挂起；恢复观战不等于确认重赛' };
     }
@@ -138,7 +138,7 @@ export class RoomAutomation {
     const room = frame?.tourney;
     const mapId = frame?.beatmap?.id;
     this.observePreparedStart(state, frame, now);
-    const valid = validRoom(config, frame);
+    const valid = validRoom(state, frame);
     if (!valid) {
       const preparedStart = this.preparedStart;
       const held = this.hold(state, '房间或观战客户端资料不完整，不能据此判断 abort、选手掉线或 Panic');
@@ -165,19 +165,11 @@ export class RoomAutomation {
       p.score !== confirmed.scores.get(`${p.side}:${p.osuId}`));
     const clearedDisplay = counted?.finalScore && room.scoreVisible === false &&
       room.totalScore.left === 0 && room.totalScore.right === 0 && !changedClientScore;
-    const original = confirmed?.totalScore || counted?.scoreCalculation?.rawTotalScore ||
-      { left: counted?.finalScore?.a, right: counted?.finalScore?.b };
-    if (!clearedDisplay && ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
+    if (confirmed && !clearedDisplay && ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
       entryOf(state, counted.entryId)?.beatmapId === mapId &&
-      (room.totalScore.left !== original.left || room.totalScore.right !== original.right ||
+      (room.totalScore.left !== confirmed.totalScore.left || room.totalScore.right !== confirmed.totalScore.right ||
         totals.left !== null && totals.right !== null && (totals.left !== counted.finalScore?.a || totals.right !== counted.finalScore?.b))) {
-      const next = automaticTransition(state, draft => {
-        const round = currentRound(draft);
-        round.status = 'ranking'; round.winner = null; round.resultSource = 'review'; round.finalScore = null;
-        draft.winner = null;
-        if (draft.phase === 'winner') { draft.phase = 'playing'; draft.scene = 'playing'; }
-        holdRound(draft, 'unverified', '自动计胜后成绩仍有变化，已撤回该局自动加分；请等待全部结束后核对胜方', 'tosu');
-      }, '成绩仍在变化：撤回本局自动计胜，等待人工核对', randomUUID());
+      const next = observedTransition(state, observation(state, 'review-result', { reason: '自动计胜后成绩仍有变化，请人工核对胜方' }, counted), '成绩仍在变化：撤回本局自动计胜，等待人工核对', randomUUID());
       this.reset();
       return { state: next, note: '成绩仍在变化，暂不加分。全部结束后请选择正确胜方' };
     }
@@ -192,11 +184,7 @@ export class RoomAutomation {
       // A fast room return / next selection can follow a single Ranking frame.
       // Release BP from the observed finish, without treating its transient
       // scores (or the next map's scores) as a confirmed result.
-      state = automaticTransition(state, draft => {
-        const finished = currentRound(draft);
-        finished.status = 'ranking'; finished.finalScore = null;
-        releaseRoundBp(draft, finished);
-      }, 'tosu 已离开本图 Ranking：开放下一 BP，原局成绩待核对', randomUUID());
+      state = observedTransition(state, observation(state, 'finish-attempt', {}, leaving), 'tosu 已离开本图 Ranking：开放下一 BP，原局成绩待核对', randomUUID());
       this.observedRun = null; this.ranking = null; this.endRun = null;
       this.scoreCandidate = null; this.runPlayers = null;
     }
@@ -229,20 +217,12 @@ export class RoomAutomation {
         else if (!seriesComplete(state) && state.phase !== 'winner' && round?.status !== 'playing' &&
           (state.phase === 'bp' || state.action || round?.status === 'prepared' || ['ranking', 'recorded'].includes(round?.status))) {
           try {
-            // Return to BP only for an available map. Old/unavailable maps must not move the display.
-            const occupied = Object.values(state.bans).some(slots => slots.includes(entry.id)) ||
-              state.rounds.some(r => r.entryId === entry.id && r.status !== 'void' && r.id !== (round?.status === 'prepared' ? round.id : null));
-            if (occupied) throw new Error('房间谱面已 Ban / 已打 / 正在使用，请手动纠正');
-            const returnToBp = config.scenes && (['ranking', 'recorded'].includes(round?.status) || state.sceneOverride);
-            const consumeBp = config.bp && (state.action || round?.status === 'prepared');
-            if (returnToBp || consumeBp) next = automaticTransition(state, draft => {
-              if (returnToBp) { draft.phase = 'bp'; draft.scene = 'mappool'; draft.sceneOverride = null; }
-              if (config.bp && (draft.action || currentRound(draft)?.status === 'prepared')) {
-                draft.phase = 'bp';
-                applyBp(draft, entry.id, 'room-map', pending.actionId, pending.eventId);
-              }
-            }, `房间换图 ${entry.label} · 按当前动作跟随`, pending.eventId);
-          } catch (error) { note = error.message; }
+            if (config.bp && state.action) next = observedTransition(state, observation(state, 'confirm-bp', { entryId: entry.id }), `房间换图 ${entry.label} · 按当前动作跟随`, pending.eventId);
+            else if (round?.status === 'prepared') note = '本次 Pick 已确认；如需纠正，请手动修改选图';
+          } catch (error) {
+            if (!(error instanceof SessionRejection)) throw error;
+            note = error.message;
+          }
         } else note = '当前阶段不应用自动 BP';
         this.notice = note === '自动跟随房间' ? null : note;
       } else note = '等待换图稳定';
@@ -262,12 +242,7 @@ export class RoomAutomation {
     if (ipc !== 3) this.playEdge = null;
     if (sameMap && !this.pending && next.phase !== 'winner') {
       if (ipc === 3 && this.playEdge === mapId && round.status === 'prepared' && next.phase === 'bp' && !next.action && !seriesComplete(next)) {
-        next = automaticTransition(next, draft => {
-          const scene = draft.scene;
-          startRound(draft, 'tosu');
-          if (!config.scenes) draft.scene = scene;
-          else draft.sceneOverride = null;
-        }, 'tosu Playing → 本局开始', randomUUID());
+        next = observedTransition(next, observation(next, 'start-attempt', {}, round), 'tosu Playing → 本局开始', randomUUID());
         this.observedRun = currentRound(next).runId;
         this.runPlayers = playerKeys(room);
         this.playEdge = null;
@@ -282,15 +257,7 @@ export class RoomAutomation {
         if (this.ranking?.runId === round.runId) {
           this.ranking.frames++;
           if (now - this.ranking.at >= config.rankingDebounceMs && this.ranking.frames >= 2) {
-            next = automaticTransition(next, draft => {
-              const playing = currentRound(draft);
-              playing.status = 'ranking';
-              // A source snapshot, never persisted as live telemetry or used to assign a winner.
-              playing.finalScore = { a: totals.left, b: totals.right };
-              if (calculation.rule === 'fm-ez-v1') playing.scoreCalculation = calculation;
-              releaseRoundBp(draft, playing);
-              if (config.scenes) { draft.scene = 'playing'; draft.sceneOverride = null; }
-            }, 'tosu 连续 Playing → Ranking：保留 Playing 画面与总分', randomUUID());
+            next = observedTransition(next, observation(next, 'finish-attempt', { scores: { a: totals.left, b: totals.right }, scoring: calculation }, round), 'tosu 连续 Playing → Ranking：保留 Playing 画面与总分', randomUUID());
             this.endRun = { roundId: round.id, runId: round.runId };
             this.observedRun = null; this.ranking = null;
           }
@@ -300,22 +267,18 @@ export class RoomAutomation {
     // Keep observing a known continuous finish if totals arrive after Ranking.
     // A fresh connection at Ranking has no endRun and can never backfill a win.
     const finished = currentRound(next);
+    const evidence = resultFacts(room);
     if (config.results && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted', 'series-correction'].includes(finished.resultSource)) {
       const score = this.scoreCandidate;
-      // Agreement is a necessary consistency check, not proof that every player finished.
-      const consistent = ['left', 'right'].every(side => {
-        const players = room.players.filter(p => p.side === side && p.osuId > 0);
-        return players.length > 0 && players.every(p => Number.isSafeInteger(p.score) && p.score >= 0) &&
-          players.reduce((sum, p) => sum + p.score, 0) === room.totalScore[side];
-      });
       const ready = score && score.frames >= 2 && now - score.at >= config.rankingDebounceMs &&
-        [score.left, score.right].every(n => Number.isSafeInteger(n) && n >= 0) && score.left !== score.right && consistent;
-      if (ready && !seriesComplete(next)) {
-        next = automaticTransition(next, draft => {
-          awardTosuResult(draft, finished.id, score);
-          if (score.calculation.rule === 'fm-ez-v1') currentRound(draft).scoreCalculation = score.calculation;
-        },
+        [score.left, score.right].every(n => Number.isSafeInteger(n) && n >= 0) && score.left !== score.right;
+      if (ready) {
+        next = observedTransition(next, observation(next, 'confirm-result', { scores: { left: score.left, right: score.right }, evidence, scoring: score.calculation }, finished),
           `tosu 最终队分 ${score.left}:${score.right} · 自动加赢图`, randomUUID());
+        if (next.rounds.find(round => round.id === finished.id).status !== 'recorded') {
+          this.baseline.ipc = ipc;
+          return { state: next, note: '本图分数或赛制尚不满足自动计胜条件' };
+        }
         this.confirmedPlayers = { roundId: finished.id, totalScore: { ...room.totalScore },
           scores: new Map(room.players.filter(p => p.osuId > 0).map(p => [`${p.side}:${p.osuId}`, p.score])) };
         this.endRun = null;

@@ -14,7 +14,7 @@ export async function boundedBody(response, limit) {
   return Buffer.concat(chunks);
 }
 
-export function parseBeatmapMetadata(body, id) {
+export function parseBeatmapMetadata(body, id, { officialDownload = false } = {}) {
   if (!positiveId(id) || !/^\uFEFF?osu file format v\d+/i.test(body)) return null;
   const sections = Object.create(null); let section = '';
   for (const line of body.split(/\r?\n/)) {
@@ -27,7 +27,9 @@ export function parseBeatmapMetadata(body, id) {
     return colon < 0 ? [] : [[line.slice(0, colon).trim(), line.slice(colon + 1).trim()]];
   }));
   const metadata = values('Metadata');
-  if (Number(metadata.BeatmapID) !== id) return null;
+  // Older official files can omit embedded IDs. Only the direct official
+  // download URL may supply that identity; conflicting embedded IDs reject.
+  if (metadata.BeatmapID === undefined ? !officialDownload : Number(metadata.BeatmapID) !== id) return null;
   const difficulty = values('Difficulty');
   const number = value => value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
   const timing = (sections.TimingPoints || []).flatMap(line => {
@@ -101,7 +103,7 @@ export function createBeatmapMetadataResolver(fetchImpl = fetch, { gapMs = 1000,
         });
         if (!response.ok) throw new Error('BEATMAP_UNAVAILABLE');
         const body = (await boundedBody(response, 2 * 1024 * 1024)).toString('utf8');
-        metadata = parseBeatmapMetadata(body, id);
+        metadata = parseBeatmapMetadata(body, id, { officialDownload: true });
         if (metadata) {
           checksum = createHash('sha256').update(body).digest('hex');
           if (files.size >= 8) files.delete(files.keys().next().value);

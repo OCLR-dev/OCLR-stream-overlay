@@ -16,10 +16,10 @@ async function harness(t) {
   return { store, cmd, tick, pick: (id = 'm1') => cmd('prepare-round', { entryId: id, pickedBy: 'a' }) };
 }
 
-test('a new manual Pick stays in Mappool for exactly 7000ms, then changes display only once', async t => {
+test('a new manual Pick stays in Mappool for exactly 5000ms, then changes display only once', async t => {
   const h = await harness(t); await h.pick();
   const before = structuredClone(h.store.state);
-  await h.tick(6999); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(4999); assert.equal(h.store.state.scene, 'mappool');
   await h.tick(1); assert.equal(h.store.state.scene, 'playing');
   assert.deepEqual(h.store.state.rounds, before.rounds); assert.equal(currentRound(h.store.state).status, 'prepared');
   assert.equal(currentRound(h.store.state).runId, null); assert.deepEqual(seriesOf(h.store.state), { a: 0, b: 0 });
@@ -32,7 +32,7 @@ test('a replacement Pick restarts the delay; unrelated EX and score updates do n
   await h.tick(500); assert.equal(h.store.state.scene, 'mappool');
   await h.cmd('ex', { team: 'a', remaining: { a: 2, b: 2 } });
   await h.cmd('set-series', { a: 1, b: 0, reason: '核对系列分' });
-  await h.tick(6499); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(4499); assert.equal(h.store.state.scene, 'mappool');
   await h.tick(1); assert.equal(h.store.state.scene, 'playing'); assert.equal(currentRound(h.store.state).entryId, 'm2');
 });
 
@@ -51,7 +51,7 @@ for (const kind of ['display', 'same-display', 'undo', 'pause', 'incident', 'sce
     if (kind === 'close') h.store.close();
     const before = structuredClone(h.store.state);
     const stop = h.store.subscribe(() => {}); h.store.snapshot(); stop();
-    await h.tick(7000); assert.deepEqual(h.store.state, before);
+    await h.tick(5000); assert.deepEqual(h.store.state, before);
   });
 }
 
@@ -60,23 +60,35 @@ test('loading an existing prepared Pick and correcting broadcast marks never arm
   const restored = new SessionStore({ state: structuredClone(h.store.state) });
   await h.cmd('map-mark', { entryId: 'm3', status: 'picked', team: 'b' });
   const restoredBefore = structuredClone(restored.state);
-  await h.tick(7000); assert.equal(h.store.state.scene, 'playing'); assert.deepEqual(restored.state, restoredBefore);
+  await h.tick(5000); assert.equal(h.store.state.scene, 'playing'); assert.deepEqual(restored.state, restoredBefore);
   await h.cmd('display', { scene: 'mappool' });
   await h.cmd('map-mark', { entryId: 'm3', status: 'picked', team: 'a' });
-  await h.tick(7000); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(5000); assert.equal(h.store.state.scene, 'mappool');
 });
 
-test('a server-observed room Pick uses the same delay, and actual Playing cancels the old timer', async t => {
+test('a server-observed room Pick uses the same 5-second delay, and actual Playing cancels the old timer', async t => {
   const h = await harness(t);
   const frame = (mapId, ipcState, now) => h.store.frame({ beatmap: { id: mapId }, tourney: { ipcState, teams: { left: 'L', right: 'R' },
     totalScore: { left: 0, right: 0 }, players: [{ side: 'left', osuId: 1, score: 0 }, { side: 'right', osuId: 2, score: 0 }] } }, now);
   await h.cmd('set-action', { action: { kind: 'pick', team: 'b' } });
   await frame(99, 1, 1000); await frame(1, 1, 1100); await frame(1, 1, 1600);
   assert.equal(currentRound(h.store.state).source, 'room-map');
-  await h.tick(6999); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(4999); assert.equal(h.store.state.scene, 'mappool');
   await h.tick(1); assert.equal(h.store.state.scene, 'playing'); assert.equal(currentRound(h.store.state).status, 'prepared');
   await frame(1, 3, 1700); assert.equal(currentRound(h.store.state).status, 'playing');
-  await h.cmd('display', { scene: 'roll' }); await h.tick(7000); assert.equal(h.store.state.scene, 'roll');
+  await h.cmd('display', { scene: 'roll' }); await h.tick(5000); assert.equal(h.store.state.scene, 'roll');
+});
+
+test('an IPC map push restarts the 5-second Mappool hold after a Pick', async t => {
+  const h = await harness(t);
+  const frame = (mapId, now) => h.store.frame({ beatmap: { id: mapId }, tourney: { ipcState: 1, teams: { left: 'L', right: 'R' },
+    totalScore: { left: 0, right: 0 }, players: [{ side: 'left', osuId: 1, score: 0 }, { side: 'right', osuId: 2, score: 0 }] } }, now);
+  await frame(99, 1000);
+  await h.pick('m1');
+  await h.tick(2000);
+  await frame(1, 3000);
+  await h.tick(4999); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(1); assert.equal(h.store.state.scene, 'playing'); assert.equal(currentRound(h.store.state).status, 'prepared');
 });
 
 test('early actual Playing switches immediately and a later manual scene cannot be stolen by the old timer', async t => {
@@ -85,20 +97,20 @@ test('early actual Playing switches immediately and a later manual scene cannot 
     totalScore: { left: 0, right: 0 }, players: [{ side: 'left', osuId: 1, score: 0 }, { side: 'right', osuId: 2, score: 0 }] } });
   await frame(1); await h.tick(100); await frame(3);
   assert.equal(h.store.state.scene, 'playing'); assert.equal(currentRound(h.store.state).status, 'playing');
-  await h.cmd('display', { scene: 'roll' }); await h.tick(7000); assert.equal(h.store.state.scene, 'roll');
+  await h.cmd('display', { scene: 'roll' }); await h.tick(5000); assert.equal(h.store.state.scene, 'roll');
 });
 
 test('resume and reenabling scene automation do not revive a canceled Pick timer', async t => {
   const h = await harness(t); await h.pick(); await h.cmd('pause', { kind: 'technical' }); await h.cmd('resume');
-  await h.tick(7000); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(5000); assert.equal(h.store.state.scene, 'mappool');
   await h.pick('m2'); await h.cmd('auto', { bp: true, scenes: false }); await h.cmd('auto', { bp: true, scenes: true });
-  await h.tick(7000); assert.equal(h.store.state.scene, 'mappool');
+  await h.tick(5000); assert.equal(h.store.state.scene, 'mappool');
 });
 
 test('Bans and replaying an old selection never count as a fresh Pick presentation', async t => {
   const h = await harness(t);
   await h.cmd('set-action', { action: { kind: 'ban', team: 'b', slot: 0 } }); await h.cmd('apply-bp', { entryId: 'm3' });
-  await h.tick(7000); assert.equal(h.store.state.scene, 'mappool'); assert.equal(currentRound(h.store.state), null);
+  await h.tick(5000); assert.equal(h.store.state.scene, 'mappool'); assert.equal(currentRound(h.store.state), null);
   await h.pick(); await h.cmd('start'); await h.cmd('replay', { reason: '裁判确认重赛' });
-  await h.tick(7000); assert.equal(h.store.state.scene, 'mappool'); assert.equal(currentRound(h.store.state).status, 'prepared');
+  await h.tick(5000); assert.equal(h.store.state.scene, 'mappool'); assert.equal(currentRound(h.store.state).status, 'prepared');
 });

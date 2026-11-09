@@ -2,14 +2,13 @@
 import { computed, ref, watch } from 'vue';
 import { useOverlay } from '../useOverlay';
 import MapArtwork from './MapArtwork.vue';
+import ScrollingText from './ScrollingText.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
 import { starRatingDisplay, starRatingRangeDisplay } from '../mapStats';
 import { MAP_METADATA_RETRY_MS, mapFileMetadata } from '../mapMetadata';
 import { modColor, modColorStyle } from '../modColors';
 const { state, view } = useOverlay();
 const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
-const pickName = computed(() => view.value.pickTeam ? view.value.names[view.value.pickTeam] : '');
-const pickSide = computed(() => view.value.pickTeam === 'a' ? '红队选择' : '蓝队选择');
 const mapMod = computed(() => view.value.shared ? view.value.currentMap?.mod : view.value.mod);
 const metadata = ref<TestMapMetadata | null>(null);
 const mapTitle = computed(() => {
@@ -29,7 +28,7 @@ watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod]
   let retry: ReturnType<typeof setTimeout> | undefined;
   cleanup(() => { active = false; clearTimeout(retry); });
   const load = async () => {
-    const value = await mapFileMetadata(id, testModForCategory(mod || null) || '');
+    const value = await mapFileMetadata(id, testModForCategory(mod || null));
     if (!active) return;
     metadata.value = value;
     if (!value) retry = setTimeout(() => { void load(); }, MAP_METADATA_RETRY_MS);
@@ -67,9 +66,6 @@ const slotShadow = computed(() => isBlackInk(modColor(mapMod.value).color) ? 'no
 // The big star block already owns the rating, so the parameter row omits ★.
 const parameterRows = computed(() => parameters.value.rows.filter(row => row.label !== '★'));
 const compactParameters = computed(() => parameters.value.rangeMode && parameterRows.value.reduce((length, row) => length + row.label.length + row.value.length, 0) > 64);
-// An unknown picker no longer reserves a banner row: the mod panel fills the
-// full card height until a real side (or the tiebreaker) is shown.
-const showPickBanner = computed(() => !!view.value.pickTeam || mapMod.value === 'TB');
 </script>
 
 <template>
@@ -90,11 +86,10 @@ const showPickBanner = computed(() => !!view.value.pickTeam || mapMod.value === 
       <div v-if="view.ex || parameters.rangeMode || view.mapRule" class="map-status-slot">
         <span v-if="view.ex" class="map-chip" data-map-ex data-format="ex" :data-ex-team="state.exTeam" :title="view.exLabel" :aria-label="view.exLabel">{{ view.exLabel }}</span>
         <span v-if="parameters.rangeMode" class="map-range-note">选手参数范围</span>
-        <span v-if="view.mapRule" class="map-rule" data-map-rule :title="view.mapRule">{{ view.mapRule }}</span>
+        <ScrollingText v-if="view.mapRule" class="map-rule" data-map-rule :text="view.mapRule" :title="view.mapRule" />
       </div>
     </div>
-    <div class="map-slot" :data-banner="showPickBanner ? 'true' : 'false'" :style="{ '--slot-shadow': slotShadow }">
-      <span v-if="showPickBanner" class="map-pick-banner" :data-team="view.pickTeam" :title="view.pickTeam ? `${pickName} · ${pickSide}` : undefined" :aria-label="view.pickTeam ? `${pickName} · ${pickSide}` : undefined">{{ view.pickTeam ? pickSide : '决胜图' }}</span>
+    <div class="map-slot" :style="{ '--slot-shadow': slotShadow }">
       <span>所属图池位置</span>
       <b :title="mapLabel">{{ mapLabel }}</b>
     </div>

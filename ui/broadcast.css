@@ -38,6 +38,8 @@
   --hairline: #493066;
   --purple: #7c3aed;
   --purple-light: #b794ff;
+  --chat-neutral: #b8b8c5;
+  --chat-bot: #ffda6a;
   --team-a: #ff4d6d;
   --team-b: #3d8bff;
   --team-a-dark: #a3123a;
@@ -170,10 +172,13 @@
 .roll-sides h3 { font-size: 32px; line-height: 48px; min-height: 48px; margin: 0; overflow-wrap: anywhere; }.roll-sides strong { display: block; font: 800 110px/132px var(--display); }
 .roll-sides [data-team='a'] { color: var(--team-a); }.roll-sides [data-team='b'] { color: var(--team-b); }
 .pool-empty { align-self: center; justify-self: center; color: var(--muted); }
-.match-chat-line { margin: 2px 0; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; white-space: normal; }
-.match-chat-line b { color: var(--purple-light); }
+.match-chat-line { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; column-gap: 6px; margin: 2px 0; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; white-space: normal; }
+.match-chat-line time { color: var(--muted); font: 500 12px/20px var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.match-chat-text { min-width: 0; }
+.match-chat-line b { color: var(--chat-neutral); }
 .match-chat-line b[data-team="left"] { color: var(--team-a); }
 .match-chat-line b[data-team="right"] { color: var(--team-b); }
+.match-chat-line b[data-team="bot"] { color: var(--chat-bot); }
 
 /* Slanted team banners with the supplied logo and the reference's stage strip. */
 .broadcast-header { position: relative; flex: 0 0 180px; height: 180px; z-index: 2; }
@@ -264,7 +269,10 @@
 .win-stars { display: flex; gap: 13px; padding: 2px; }
 .win-pip { width: 11px; height: 11px; border: 1.5px solid #ffffffa6; transform: rotate(45deg); }
 .win-pip.is-filled { background: #fff; border-color: #fff; box-shadow: 0 0 10px #ffffff8c; }
-.team-block--b .series-row, .team-block--b .win-stars { flex-direction: row-reverse; }
+/* Win pips fill from the centre outward: the first pip is nearest the event
+   block on both sides, then the row grows toward the outer edge. */
+.team-block--a .win-stars { flex-direction: row-reverse; }
+.team-block--b .win-stars { flex-direction: row; }
 .header-score-line { display: contents; }
 /* Flag placement trial shared by the console preview and standalone output. */
 .team-flag-preview { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
@@ -286,15 +294,71 @@
 .event-logo img { display: block; width: 160px; height: auto; object-fit: contain; }
 .event-meta { position: absolute; top: 94px; left: 50%; display: inline-flex; align-items: center; gap: 10px; max-width: 400px; height: 28px; border: 1px solid var(--purple); border-radius: 6px; padding: 2px 18px; background: var(--paper); color: var(--purple-light); font-family: var(--display); font-size: 14px; font-weight: 700; letter-spacing: .1em; white-space: nowrap; transform: translateX(-50%); }
 .event-meta strong { overflow: hidden; color: var(--ink); font-size: 20px; text-overflow: ellipsis; }
-.event-meta > span { flex-shrink: 0; border-left: 1px solid #7c3aed99; padding-left: 10px; }
+
+/* Automatic tosu win: a full-header colour sweep enters from the winning side,
+   holds the flag and result copy for three seconds, then exits the other way. */
+.map-win-layer { position: absolute; inset: 0; z-index: 20; overflow: hidden; pointer-events: none; }
+.map-win-banner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  color: #fff;
+  animation: map-win-sweep-a 5s cubic-bezier(.65, 0, .35, 1) both;
+  will-change: transform;
+}
+.map-win-banner[data-team='a'] { background: linear-gradient(100deg, #1c0716 0%, var(--team-a-dark) 48%, var(--team-a) 100%); }
+.map-win-banner[data-team='b'] {
+  flex-direction: row-reverse;
+  background: linear-gradient(260deg, #071228 0%, var(--team-b-dark) 48%, var(--team-b) 100%);
+  animation-name: map-win-sweep-b;
+}
+.map-win-banner::before {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, #ffffff30, transparent 56%),
+    repeating-linear-gradient(115deg, #ffffff00 0 68px, #ffffff0d 68px 70px),
+    linear-gradient(180deg, #ffffff1f, transparent 24%, transparent 76%, #00000033);
+  content: '';
+}
+.map-win-banner::after { position: absolute; inset: 0 0 auto; height: 3px; background: #ffffffa6; content: ''; }
+.map-win-copy { position: relative; display: flex; align-items: baseline; gap: 18px; min-width: 0; }
+.map-win-name {
+  max-width: 760px;
+  min-width: 0;
+  overflow: hidden;
+  font: 800 62px/1 var(--display);
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-shadow: 0 3px 26px #0009;
+  white-space: nowrap;
+}
+.map-win-suffix { flex: none; font: 700 40px/1 var(--display); letter-spacing: .2em; opacity: .92; text-shadow: 0 2px 18px #0007; white-space: nowrap; }
+.map-win-banner .team-flag-preview { position: static; width: 150px; margin: 0; transform: none; }
+.map-win-banner .team-flag-preview svg { width: 150px; height: 90px; border: 2px solid #ffffffb3; box-shadow: 0 14px 44px #00000073; }
+@keyframes map-win-sweep-a {
+  0% { transform: translate3d(-101%, 0, 0); }
+  20%, 80% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(101%, 0, 0); }
+}
+@keyframes map-win-sweep-b {
+  0% { transform: translate3d(101%, 0, 0); }
+  20%, 80% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-101%, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .map-win-banner { animation: none; } }
+
 
 /* Six scenes stay mounted. Gameplay and Ranking use one Playing capture grid. */
 .scene-stack { position: relative; flex: 0 0 900px; height: 900px; z-index: 1; }
 .scene { position: relative; width: 100%; height: 900px; }
 .scene-body { position: relative; height: 720px; overflow: hidden; padding: 16px 40px 24px; }
-.scene-head, .waiting-head { display: flex; flex: 0 0 68px; align-items: center; justify-content: center; height: 68px; }
+.scene-head { display: flex; flex: 0 0 68px; align-items: center; justify-content: center; height: 68px; }
 .title-line { display: flex; align-items: center; gap: 18px; }
-.scene-head h2, .waiting-head h2 { margin: 0; color: var(--ink); font-family: var(--display); font-size: 38px; font-weight: 800; letter-spacing: .15em; }
+.scene-head h2 { margin: 0; color: var(--ink); font-family: var(--display); font-size: 38px; font-weight: 800; letter-spacing: .15em; }
 .scene-eyebrow { color: var(--purple-light); font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .16em; }
 .state-badge { display: inline-flex; justify-content: center; border: 1px solid #8865bb; padding: 5px 12px; background: #47227180; color: #dac6f8; font-size: 13px; font-weight: 700; }
 .scene-footer { display: grid; grid-template-columns: 1fr 1.14fr 1fr; gap: 28px; height: 180px; overflow: hidden; border-top: 1px solid #7c3aed66; background: #1c1034d9; padding: 28px 60px; }
@@ -348,6 +412,12 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-3v3
 body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2.source-4x3 {
   clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 360H1920V720H0Z');
 }
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-1v1.source-4x3 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M240 360H720V720H240Z M1200 360H1680V720H1200Z');
+}
+body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-1v1.source-16x9 {
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M240 405H720V675H240Z M1200 405H1680V675H1200Z');
+}
 body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2.source-16x9 {
   clip-path: path(evenodd, 'M0 0H1920V1080H0Z M0 405H1920V675H0Z');
 }
@@ -362,13 +432,17 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .layout-3v3 .pov-cell[data-slot='3'] { justify-self: center; width: var(--pov-width); }
 .layout-3v3 .pov-cell[data-team='a'][data-slot='3'] { grid-column: 1 / 3; }
 .layout-3v3 .pov-cell[data-team='b'][data-slot='3'] { grid-column: 4 / 6; }
-.layout-2v2 .playfield { grid-template-rows: minmax(0, 1fr); align-items: center; }
-.layout-2v2 .pov-cell { align-self: center; height: var(--pov-height); }
+.layout-1v1 .playfield, .layout-2v2 .playfield { grid-template-rows: minmax(0, 1fr); align-items: center; }
+.layout-1v1 .pov-cell, .layout-2v2 .pov-cell { align-self: center; height: var(--pov-height); }
+.layout-1v1 .pov-cell { justify-self: center; width: var(--pov-width); }
+.layout-1v1 .pov-cell[data-team='a'][data-slot='1'] { grid-column: 1 / 3; }
+.layout-1v1 .pov-cell[data-team='b'][data-slot='1'] { grid-column: 4 / 6; }
 
 /* The raised label leaves a continuous track through the centre. Only the
    lead fill scales; the capture grid and its ancestors stay fixed. */
-.playing-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
+.playing-footer, .pause-footer { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0; overflow: visible; border: 0; padding: 0 30px 14px; background: transparent; }
 .playing-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, var(--team-a) 0 50%, var(--team-b) 50% 100%); pointer-events: none; content: ''; }
+.pause-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, #7c3aed66, #b794ff99 50%, #7c3aed66); pointer-events: none; content: ''; }
 .score-stage { position: absolute; top: -768px; left: 340px; width: 1240px; height: 40px; overflow: visible; }
 .score-stage::before { position: absolute; top: 28px; left: 0; right: 0; height: 8px; border-radius: 4px; background: #352547; content: ''; }
 .score-center-anchor { position: absolute; top: 25px; left: 50%; width: 2px; height: 14px; background: #c9a8ff; }
@@ -402,7 +476,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-star-slot[data-range] b { font-size: 22px; }
 .map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
 .map-star-caption, .map-star-slot b,
-.map-slot > span:not(.map-pick-banner), .map-slot > b { text-shadow: var(--slot-shadow, none); }
+.map-slot > span, .map-slot > b { text-shadow: var(--slot-shadow, none); }
 .current-map { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 8px 18px 3px; text-align: center; text-shadow: 0 1px 4px #0008; }
 .map-chip { border: 1px solid #7c3aed99; padding: 2px 7px; background: #7c3aed26; color: #e0cdfa; font-size: 12px; font-weight: 700; }
 .map-chip[data-format='ex'] { color: var(--ex-ink); border-color: var(--ex-color); background: color-mix(in srgb, var(--ex-color) 12%, transparent); }
@@ -414,7 +488,16 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-subline { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; min-width: 0; }
 .map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 20px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.map-rule { flex-shrink: 0; max-width: 60%; overflow: hidden; color: #e6cbff; font-size: 13px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.map-rule { flex: 0 1 auto; min-width: 0; max-width: 60%; color: #e6cbff; font-size: 13px; line-height: 1.2; }
+/* A long map rule becomes a seamless two-copy ticker; short rules stay put.
+   Keep the 28px gap in sync with ScrollingText.vue's GAP. */
+.scrolling-text { display: block; overflow: hidden; white-space: nowrap; }
+.scrolling-text-track { display: inline-flex; }
+.scrolling-text-copy { display: inline-block; flex: none; }
+.scrolling-text.is-scrolling .scrolling-text-copy { padding-right: 28px; }
+.scrolling-text.is-scrolling .scrolling-text-track { animation: scrolling-text-marquee var(--scrolling-text-duration, 12s) linear infinite; will-change: transform; }
+@keyframes scrolling-text-marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .scrolling-text.is-scrolling .scrolling-text-track { animation: none; } }
 .map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
 .map-params > span { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
 .map-params > span b { color: #c9a8ff; font-weight: 700; }
@@ -423,22 +506,28 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Conditional map status sits at the bottom-right, opposite the CS/AR chips. */
 .map-status-slot { display: flex; align-items: center; gap: 8px; overflow: hidden; margin-left: auto; min-width: 0; }
 .map-status-slot .map-rule { max-width: 340px; flex-shrink: 1; }
-.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; padding-top: 28px; background: var(--mod-bg); color: var(--mod-ink); }
-.map-slot[data-banner='false'] { padding-top: 0; }
+.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; background: var(--mod-bg); color: var(--mod-ink); }
 .map-slot b { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-slot span { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
-.map-slot > span:not(.map-pick-banner) { position: relative; z-index: 1; }
-.map-slot .map-pick-banner { position: absolute; inset: 0 0 auto; z-index: 2; display: flex; align-items: center; justify-content: center; height: 28px; background: #241349; color: var(--ink); font-family: var(--sans); font-size: 14px; font-weight: 800; letter-spacing: .02em; }
-.map-slot .map-pick-banner[data-team='a'] { background: var(--team-a); color: #150a2c; }
-.map-slot .map-pick-banner[data-team='b'] { background: var(--team-b); color: #150a2c; }
+.map-slot > span { position: relative; z-index: 1; }
 
 /* Mappool keeps the S11 mod-grouped rows, cover tiles, mod colours, stronger
    picks and subdued bans; team Ban/EX status is rendered in the shared header. */
-.mappool-body { display: flex; flex-direction: column; padding: 4px 60px 20px; }
-.mappool-head { flex-basis: 52px; height: 52px; }
-.mappool-head .title-line { position: relative; }
-.mappool-head h2 { margin-right: -.3em; font-size: 40px; letter-spacing: .3em; }
-.mappool-head .scene-eyebrow { position: absolute; right: calc(100% + 18px); white-space: nowrap; }
+.mappool-body { display: flex; flex-direction: column; padding: 0 60px 20px; }
+/* The heading rides in the shared header's lower empty band (team banners end
+   at 130px), so the whole former heading row is returned to the scene body. */
+.mappool-head, .waiting-head {
+  position: absolute;
+  top: -36px;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  flex: none;
+  height: 28px;
+}
+.mappool-head .title-line, .waiting-head .title-line { position: relative; gap: 12px; }
+.mappool-head h2, .waiting-head h2 { margin-right: -.24em; font-size: 24px; letter-spacing: .24em; }
+.mappool-head .scene-eyebrow, .waiting-head .scene-eyebrow { right: calc(100% + 12px); font-size: 12px; letter-spacing: .12em; }
 /* Mappool-only ban badges sit under each team title, bottom-aligned with the
    flag. The blue side mirrors the row; Ban 1 stays nearest its flag. */
 .header-bans { position: absolute; bottom: 29px; display: flex; align-items: center; gap: 12px; max-width: 560px; white-space: nowrap; }
@@ -456,7 +545,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .header-bans--b .mappool-first-action { color: #dfeeff; }
 .map-ex-mark { border: 1px solid currentColor; padding: 1px 5px; color: #ffe1e7; font-size: 13px; font-weight: 700; }
 .header-bans--b .map-ex-mark { color: #dfeeff; }
-.mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 20px; }
+.mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 0; }
 /* Mod colours arrive per element from ui/modColors.ts (--mod-bg / --mod-ink). */
 .mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
 .map-group-head { display: grid; place-items: center; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); }
@@ -472,7 +561,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry-media .map-artwork[data-loaded='true'] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .map-entry > .map-base-artwork, .map-entry-media .map-artwork { transition: none; } }
 .map-entry > .map-copy { position: relative; z-index: 3; flex: 1 1 auto; align-self: stretch; justify-content: flex-start; padding-top: 0; padding-right: 0; }
-.map-index { position: absolute; right: 8px; bottom: 6px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-index { position: absolute; right: 8px; bottom: 8px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
@@ -480,15 +569,15 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Ban darkens the artwork; its title and corner badge remain legible. */
 .map-state-veil { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #07040fa8; }
 .map-entry.is-banned .map-state-veil { background: #07040fd9; }
-/* Ban keeps a thin tint from the banning team. */
+/* Tint the Ban veil with the team that owns it so a blue Ban still reads blue. */
 .map-state-veil::after { position: absolute; inset: 0; content: ''; background: var(--map-team-color); opacity: .1; }
 .map-state-label { position: absolute; z-index: 7; pointer-events: none; }
-.map-state-label--corner { inset: 6px 6px auto auto; display: block; animation: map-status-reveal 352ms linear 1248ms both; }
+.map-state-label--corner { inset: 8px 8px auto auto; display: block; animation: map-status-reveal 352ms linear 1248ms both; }
 /* Results appear immediately; Ban/Pick badges follow the confirmation wipe. */
 .map-state-label--corner.map-state-label--winner { animation-delay: 0ms; }
 @keyframes map-status-reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .map-state-label--corner { animation: none; } }
-.map-state-label:not(.map-state-label--corner) { top: 6px; right: 6px; }
+.map-state-label:not(.map-state-label--corner) { top: 8px; right: 8px; }
 .map-state-label--corner .map-status { width: auto; min-width: 0; height: 24px; padding: 0 10px; border: 0; border-radius: var(--radius-card); background: var(--status-color); color: #fff; box-shadow: none; font-size: 15px; line-height: 24px; letter-spacing: .02em; }
 /* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner.
    62px keeps the two text lines (25px + 22px) plus the 7px bottom inset and the
@@ -502,9 +591,9 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .mappool-columns--large .map-entry[data-compact='true'][data-star='true'] > .map-copy { grid-template-rows: 1fr auto 1fr 22px; }
 .mappool-columns--large .map-entry[data-compact='true'] .map-title { grid-row: 2; }
 .mappool-columns--large .map-entry[data-compact='true'] .map-meta { grid-row: 4; transform: translateY(-2px); }
-.mappool-columns--large .map-entry[data-compact='true'] .map-star { top: auto; bottom: 10px; left: 8px; padding: 2px 4px 3px; font-size: 14px; line-height: 15px; }
-.mappool-columns--large .map-entry[data-compact='true'] .map-index { right: 10px; bottom: 8px; }
-.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] .map-meta { padding-left: 58px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-star { top: auto; bottom: 10px; left: 8px; padding: 2px 8px 3px 4px; font-size: 14px; line-height: 15px; }
+.mappool-columns--large .map-entry[data-compact='true'] .map-index { right: 8px; bottom: 8px; }
+.mappool-columns--large .map-entry[data-compact='true'][data-star='true'] .map-meta { padding-left: calc(var(--star-chip-width, 47px) + 7px); }
 .mappool-columns--large .map-entry-media { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-right: 0; border-radius: 0; }
 .mappool-columns--large .map-entry::before { z-index: 3; background: linear-gradient(0deg, #100a22f7 0%, #100a22e6 32%, #100a2299 58%, #100a2200 100%); }
 .mappool-columns--large .map-entry > .map-copy { position: absolute; left: 9px; right: 9px; bottom: 7px; z-index: 4; justify-content: flex-end; padding: 0; }
@@ -512,11 +601,20 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .mappool-columns--large .map-meta { padding-right: var(--map-number-reserve); font-size: 19px; line-height: 22px; }
 .mappool-columns--large .map-meta-artist, .mappool-columns--large .map-meta-sep { display: none; }
 .mappool-columns--large .map-index { z-index: 5; }
+/* Very short cards stack the state chip and #N on the right edge. Shrink both
+   so the gap between them never drops below the 8px card inset. */
+.mappool-columns--large .map-entry[data-tight='true'] .map-state-label .map-status {
+  height: 20px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.mappool-columns--large .map-entry[data-tight='true'] .map-index { padding: 1px 6px 2px; font-size: 15px; }
 /* Content-sized chips mirror the #N badge without competing with the
    bottom-right card number. The value's range colour is the background. */
 .map-stat { display: flex; align-items: baseline; gap: 4px; padding: 3px 4px 4px; border-radius: 3px; background: var(--stat-color, #5f596b); box-shadow: inset 0 0 0 1px #ffffff38; color: var(--stat-ink, #fff); font-family: var(--display); font-size: 15px; font-weight: 700; line-height: 16px; white-space: nowrap; text-shadow: 0 1px 2px #0009; }
 .map-stat-label { color: inherit; font-size: 14px; letter-spacing: .04em; }
-.mappool-columns--large .map-star { position: absolute; top: 6px; left: 6px; z-index: 5; pointer-events: none; }
+.mappool-columns--large .map-star { position: absolute; top: 8px; left: 8px; z-index: 5; pointer-events: none; }
 .map-stat-value { color: inherit; font-weight: 800; font-variant-numeric: tabular-nums; }
 /* Team ownership, rather than Ban/Pick kind, determines the frame color.
    Inset strokes keep every card's outer dimensions unchanged. */
@@ -525,6 +623,10 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry[data-team='b'] { --map-team-color: var(--team-b); --map-team-ink: #b7d3ff; }
 .map-entry:is(.is-banned, .is-picked) { border-width: 2px; border-color: var(--map-team-color); }
 .map-entry:is(.is-banned, .is-picked)::after { position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 2px var(--map-team-color); content: ''; }
+/* A picked map keeps its team-tinted frame and adds a chasing light around the
+   card while the pick still belongs to a red/blue selection state. The SVG
+   normalises its perimeter to 100 units, so one dash cycle stays even on cards
+   of different widths. */
 .map-turn-marquee { position: absolute; inset: 3px; z-index: 9; width: calc(100% - 6px); height: calc(100% - 6px); overflow: visible; pointer-events: none; color: var(--map-team-ink); }
 .map-turn-marquee rect { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-dasharray: .6 1.4; filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 5px color-mix(in srgb, currentColor 60%, transparent)); animation: map-turn-marquee 800ms linear infinite; }
 @keyframes map-turn-marquee { to { stroke-dashoffset: -2; } }
@@ -565,6 +667,8 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
 .chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
 .chat-box--compact .chat-box-content { height: 100%; justify-content: flex-end; padding-top: 4px; }
+/* End-anchored messages keep the newest line visible; the waiting status
+   stays at the top until the first message arrives. */
 .chat-box--compact .chat-empty { margin-bottom: auto; }
 .chat-empty { margin: 0; color: var(--muted); font-size: 13px; line-height: 22px; }
 
@@ -596,8 +700,8 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .player-identity > img.player-avatar { z-index: 2; }
 .player-name { position: relative; z-index: 2; width: calc(100% - 12px); margin: 0 6px 15px; overflow: hidden; color: #fff; font-size: 14px; font-weight: 800; line-height: 1.25; text-align: center; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 4px #000c; }
 .layout-3v3 .roster-grid .player-card:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 7px); }
-.layout-2v2 .roster-grid { grid-template-rows: 1fr; align-items: center; }
-.layout-2v2 .roster-grid .player-card { height: calc(50% - 7px); }
+.layout-1v1 .roster-grid, .layout-2v2 .roster-grid { grid-template-rows: 1fr; align-items: center; }
+.layout-1v1 .roster-grid .player-card, .layout-2v2 .roster-grid .player-card { height: calc(50% - 7px); }
 /* Waiting, Roll and Mappool keep compact identity cards in the middle; the
    shared chat panel sits over the empty side columns. */
 .roster-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 14px 30px; }
@@ -616,14 +720,23 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .readiness-state { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 20px; color: var(--muted); font-size: 13px; }
 
 /* Series result: reference winner typography, with an honest unconfirmed state. */
-.victory-body { display: flex; flex-direction: column; padding: 4px 60px 24px; background: repeating-linear-gradient(115deg, #ffffff04 0 60px, transparent 60px 120px); }
+.victory-body { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; padding: 4px 60px 24px; }
+.victory-body::before { content: ""; position: absolute; inset: -2px -160px; background: repeating-linear-gradient(115deg, #ffffff04 0 60px, #ffffff00 60px 120px); animation: victory-stripes-drift 13.24s linear infinite; pointer-events: none; z-index: -1; }
+@keyframes victory-stripes-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-132.405px); }
+}
+@media (prefers-reduced-motion: reduce) { .victory-body::before { animation: none; } }
 .result-head { flex-basis: 52px; height: 52px; }
 .victory-hero { position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 0; text-align: center; }
 .victory-mark { color: #b794ff; font-family: var(--display); font-size: 82px; font-weight: 800; letter-spacing: .4em; line-height: 1; padding-left: .4em; text-shadow: 0 0 44px #7c3aed66; }
 .victory-kicker { color: #c4ade5; font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .2em; }
 .victory-copy h3 { margin: 18px 0 0; font-size: 82px; font-weight: 800; letter-spacing: .03em; }
-.victory-status { display: flex; justify-content: center; gap: 22px; margin: 22px 0 0; color: #e9dcff; font-size: 24px; font-weight: 700; }
-.victory-status span { color: var(--purple-light); font-family: var(--display); }
+.victory-status { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 22px; align-items: baseline; margin: 22px 0 0; color: #e9dcff; font-size: 24px; font-weight: 700; }
+.victory-status .status-team { min-width: 0; }
+.victory-status .status-team--a { justify-self: end; text-align: right; }
+.victory-status .status-team--b { justify-self: start; text-align: left; }
+.victory-status .status-vs { color: var(--purple-light); font-family: var(--display); }
 .victory-result { display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .victory-result > span { color: var(--muted); font-size: 13px; }
 .victory-result strong { display: flex; align-items: center; gap: 50px; font-family: var(--display); font-size: 112px; font-weight: 800; line-height: 1; }
@@ -634,15 +747,24 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Pause uses the same angular, purple-lit stage instead of a separate theme. */
 .pause-body { display: flex; flex-direction: column; padding: 8px 60px 28px; }
 .pause-layout { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr) 500px; gap: 30px; min-height: 0; }
-.pause-primary { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #7c3aed80; background: radial-gradient(ellipse at 50% 30%, #6a2c9b55, transparent 70%), repeating-linear-gradient(115deg, #ffffff04 0 45px, transparent 45px 90px), #1b0f3ab3; text-align: center; }
+.pause-primary { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #7c3aed80; background: radial-gradient(ellipse at 50% 30%, #6a2c9b55, transparent 70%), #1b0f3ab3; text-align: center; }
+.pause-stripes { position: absolute; inset: -2px -160px; z-index: -1; background: repeating-linear-gradient(115deg, #ffffff04 0 45px, #ffffff00 45px 90px); animation: pause-stripes-drift 9.93s linear infinite; pointer-events: none; }
+@keyframes pause-stripes-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-99.304px); }
+}
+@media (prefers-reduced-motion: reduce) { .pause-stripes { animation: none; } }
 .pause-primary::before, .pause-primary::after { position: absolute; width: 56px; height: 56px; border-color: #b794ff; border-style: solid; content: ''; }
 .pause-primary::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
 .pause-primary::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
 .pause-mark { display: flex; gap: 18px; margin-bottom: 18px; }
 .pause-mark span { width: 30px; height: 96px; background: linear-gradient(#c5a3ff, #7c3aed); box-shadow: 0 0 32px #7c3aed66; transform: skew(-8deg); }
 .pause-primary h3 { margin: 18px 0 0; font-size: 64px; font-weight: 800; letter-spacing: .12em; }
-.pause-time { margin: 24px 0 0; color: #dcc3ff; font-family: var(--display); font-size: 46px; font-weight: 700; }
-.pause-recovery { margin: 18px 0 0; color: var(--muted); font-size: 20px; }
+.pause-countdown { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 24px; }
+.pause-countdown span { color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .2em; }
+.pause-countdown strong { color: #e6d6ff; font-family: var(--display); font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; line-height: 1; text-shadow: 0 0 30px #7c3aed55; }
+.pause-countdown strong.is-soon { font-size: 44px; letter-spacing: .12em; padding: 12px 0; }
+.pause-countdown.is-ended span, .pause-countdown.is-ended strong { color: #ffb38a; }
 .pause-side { display: flex; flex-direction: column; justify-content: center; border-top: 4px solid var(--purple); background: #241349b3; padding: 30px; }
 .pause-row { display: flex; justify-content: space-between; align-items: center; gap: 22px; border-bottom: 1px solid #7653aa66; padding: 25px 0; }
 .pause-row:last-child { border-bottom: 0; }

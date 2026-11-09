@@ -10,6 +10,7 @@
     "custom": "node server/custom-match.js",
     "start": "node server/index.js",
     "dev": "vite",
+    "watch": "node tools/dev-watch/index.js",
     "check": "vue-tsc --noEmit",
     "build": "npm run check && vite build",
     "preview": "vite preview",

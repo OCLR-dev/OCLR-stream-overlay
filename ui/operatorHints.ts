@@ -15,10 +15,16 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (panel === 'roll') return s.roll.pickFirst && s.roll.banFirst ? '先手已记录，可切到图池进行 Ban／Pick。' : '记录 Roll 点数与先 Ban、先 Pick 队伍，已有比赛可直接切到现场画面。';
   if (panel === 'victory') return '核对最终比分与胜方，确认后展示 Winner 或初始化下一场。';
   if (round?.status === 'playing') return panel === 'mappool' ? '本图仍在比赛，可切到 Playing 查看队分，结束后再继续 Ban／Pick。' : '本图正在比赛，等待结束；需要等待或重赛时使用「处理异常」。';
-  if (round?.status === 'ranking' && round.resultSource !== 'series-correction') return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。' : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';
-  if (matchPanel && target > 0 && Object.values(s.series).some(score => score >= target)) return '系列比分已到先胜目标，请核对后在 Playing 展示 Winner。';
+  if (round?.status === 'ranking' && round.resultSource !== 'series-correction') {
+    if (s.match.exhibition && !s.match.exhibition.autoResults) return '本图已结束，请在 Playing 核对后记录赛果或校正系列比分。';
+    return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。'
+      : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';
+  }
+  if (matchPanel && s.exhibition?.complete) return s.exhibition.draw || s.exhibition.winner
+    ? '表演赛已达到结束条件，请核对后展示最终结果。' : '已完成指定图数，赛制未允许全场平局。请按裁判结果核对比分。';
+  if (matchPanel && !s.exhibition && target > 0 && Object.values(s.series).some(score => score >= target)) return '系列比分已到先胜目标，请核对后在 Playing 展示 Winner。';
   if (tb?.active && round?.status === 'prepared') return tb.eligible ? 'TB 决胜图已准备，等待比赛开始，双方使用常规人数。' : '系列比分已改变，请先核对决胜比分再开始 TB。';
-  if (tb?.eligible) {
+  if (tb?.eligible && !s.exhibition) {
     if (!tb.canPrepare) return tb.reason;
     const count = s.pool.filter(e => e.mod === 'TB').length;
     if (count !== 1) return '本场有多张 TB，请在开播前设置确定唯一决胜图。';
@@ -29,9 +35,10 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (panel === 'mappool') {
     if (!s.pool.length) return '本场尚无图池，请在「开播前设置」选择或录入本场图池。';
     if (s.pool.find(e => e.id === selectedMap)?.mod === 'TB') return '已选中 TB，请核对决胜比分后点击 TieBreaker。';
+    if (s.action) return `自动待处理：${s.match.teams[s.action.team].name} ${s.action.kind === 'ban' ? `Ban${s.action.slot == null ? '' : ` ${s.action.slot + 1}`}` : 'Pick'}；房间换图后自动记录，也可直接选择谱面。`;
     if (s.poolChoice) return `已选择 ${s.match.teams[s.poolChoice.team].name} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'}，请选择本图或等待房间换图。`;
     return '选择现场 Ban／Pick 队伍与谱面，中途加入无需补录之前的操作。';
   }
   if (hasScores) return '房间队分正在显示，本局尚无记录；可继续播出，结束后核对系列比分。';
-  return '等待比赛开始；需要手动准备时展开「选择本局谱面」。';
+  return '等待比赛开始；需要手动准备时切到图池，选择队伍 Pick 与本局谱面。';
 }

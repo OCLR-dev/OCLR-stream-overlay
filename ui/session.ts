@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted, ref, shallowRef } from 'vue';
-import type { Team } from './model';
+import type { MatchMode, MatchStage, Team } from './model';
 
 export function commandErrorMessage(message: unknown) {
   if (message === '未知会话命令') return '本机服务尚未更新，请重启服务后刷新页面。比赛记录会保留。';
@@ -8,26 +8,39 @@ export function commandErrorMessage(message: unknown) {
 
 export interface PoolEntry { id: string; beatmapId: number; setId?: number; mod: string; label: string; title: string; artist: string; difficulty: string }
 export interface MatchTeam { id: string | null; name: string; roster: { name: string; osuId: number | null }[] }
+export type SeriesRule = { type: 'first_to'; wins: number } | { type: 'fixed_maps'; count: number; allowDraw?: boolean };
+export interface ExhibitionRules {
+  roundName: string; series: SeriesRule | null; tiedMapPolicy: 'require_replay' | 'count_as_draw' | null; autoResults: boolean;
+}
+interface StreamingFixture {
+  id: string; label: string; roundName?: string; scheduledAt: string; exhibition?: boolean; home: MatchTeam | null; away: MatchTeam | null;
+}
 export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: number | null; ordinal?: number }
+export type BpPhase = 'ban1' | 'pick1' | 'ban2' | 'pick2';
 export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; scoreCalculation?: CompetitionScore; exTeam: Team | null }
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
   schema: number; id: string; version: number; warmup?: boolean;
   match: { title: string; edition: string | null; fixtureId: string | null; poolId: string | null; provenance: string;
-    custom?: boolean; stageName?: string; bestOf?: number | null; bpRule?: string; bpPreset?: 'single-ban-alternate' | null; stage: 'group' | 'elimination' | 'final'; mode: '3v3' | '4v4'; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam> };
-  pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; paused: boolean; sceneOverride: { scene: string; until: 'next-match-event' } | null;
+    custom?: boolean; stageName?: string; bestOf?: number | null; bpRule?: string; bpPreset?: string | null; stage: MatchStage; mode: MatchMode; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam>; exhibition?: ExhibitionRules };
+  exhibition?: { limit: number; played: number; complete: boolean; winner: Team | null; draw: boolean };
   poolChoice?: { team: Team; kind: 'ban' | 'pick' } | null;
+  pool: PoolEntry[]; poolMarks?: PoolMark[]; phase: 'arrival' | 'roll' | 'bp' | 'playing' | 'winner'; scene: string; returnScene: string | null; paused: boolean; sceneOverride: { scene: string; until: 'next-match-event' } | null;
   arrived: Record<Team, boolean>; ready: Record<Team, boolean>;
   roll: { a: number | null; b: number | null; winner: Team | null; pickFirst: Team | null; banFirst: Team | null };
   action: BpAction | null; queue: BpAction[]; planVerification?: string | null; bans: Record<Team, [string | null, string | null]>;
   emptyBans?: Record<Team, [boolean, boolean]>;
-  bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string }; preset?: string | null };
+  bp?: { preset?: string | null; retract?: { canRetract: boolean; reason: string | null; actionId: string | null; selectionId: string | null }; phases?: BpPhase[]; current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; phase?: BpPhase | null; canStart?: boolean; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
   auto: { wsUrl?: string; bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
+  bpHistory?: { actionId: string; kind: string; retracted?: boolean }[];
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
+  winnerPending?: { team: Team; endsAt: number } | null;
   incident?: { kind: 'prestart-abort' | 'abort' | 'player-disconnect' | 'spectator' | 'unverified'; roundId: string; reason: string; source: string; at: string } | null;
   series: Record<Team, number>; seriesAdjustment: Record<Team, number>;
-  ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'technical' | 'tactical';
-  history: { id: string; at: string; version: number; message: string; source: string }[]; canUndo: boolean;
+  ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'normal' | 'technical' | 'tactical';
+  pauseTimer?: { durationSeconds: number; endsAt: number } | null;
+  resumeAt?: number | null;
+  history: { id: string; at: string; version: number; message: string; source: string; changes?: { type: string; attemptId?: string; resultId?: string; winner?: Team; scores?: { left: number; right: number } }[] }[]; canUndo: boolean;
 }
 export type BeatmapRange = { min: number; max: number } | null;
 export type BeatmapRanges = Record<'stars' | 'cs' | 'hp' | 'ar' | 'od' | 'bpm' | 'clockRate', BeatmapRange>;
@@ -38,6 +51,8 @@ export interface BeatmapStats {
   stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
   ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null };
 }
+export interface RoomChatLine { team?: string; name?: string; message?: string; timestamp?: string }
+export interface RoomPlayer { ipcId: number | null; side: 'left' | 'right' | null; osuId: number | null; name: string | null }
 export interface CompetitionScore {
   rule: 'client' | 'unknown' | 'fm-ez-v1';
   entryId?: string;
@@ -49,6 +64,10 @@ export interface CompetitionScore {
 export interface Envelope {
   session: Session; persistence: string;
   live: {
+    streaming?: { status: string; edition: string | null; updatedAt: string | null; error: string | null; afterFixtureId?: string | null; hasMore?: boolean;
+      tasks?: { nextFixture: StreamingFixture }[];
+      data: null | { nextFixture: StreamingFixture | null;
+        stage: null | { roundName: string; playersPerTeam?: number | null; mode?: string; scoringRules?: SeriesRule | null }; mappools: { id: string; name: string }[] } };
     sources?: { tosu: 'simulated' | 'live'; oclr: 'remote-read-only' | 'offline-fixture' | 'disabled-custom' };
     note: string;
     oclr: { status: string; updatedAt: string | null; error: string | null };
@@ -57,11 +76,11 @@ export interface Envelope {
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
         stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null; rankingStats?: BeatmapStats | null };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
-        totalScore: { left: number | null; right: number | null }; competitionScore?: CompetitionScore; chat: { team?: string; name?: string; message?: string; timestamp?: string }[] }
+        totalScore: { left: number | null; right: number | null }; competitionScore?: CompetitionScore; chat: RoomChatLine[]; players?: RoomPlayer[] }
     } };
   };
   catalog: null | { edition: string | null; kind?: string; warnings?: string[]; capturedOn?: string | null; teams: MatchTeam[]; pools: { id: string; name: string; entries: PoolEntry[] }[];
-    fixtures: { id: string; label: string; roundName: string; home: { team?: { id: string } | null }; away: { team?: { id: string } | null }; pool: { id: string } | null }[] };
+    fixtures: { id: string; label: string; roundName: string; exhibition?: boolean; home: { team?: { id: string } | null }; away: { team?: { id: string } | null }; pool: { id: string } | null }[] };
 }
 
 export function useSession() {

@@ -1,71 +1,69 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { newSession, transition, currentRound } from '../server/session/model.js';
 import { SessionStore } from '../server/session/store.js';
-import { newCustomSession, newSession, transition, currentRound, bpProgress, seriesOf } from '../server/session/model.js';
-const pool=Array.from({length:15},(_,i)=>({id:`m${i}`,label:`NM${i+1}`,mod:'NM',beatmapId:810000+i}));
+const pool=Array.from({length:16},(_,i)=>({id:`m${i}`,mod:'NM',label:`NM${i+1}`,beatmapId:810000+i}));
 const cmd=(s,type,payload={})=>transition(s,{id:randomUUID(),version:s.version,type,payload});
-function setup(simple=true){let s=newCustomSession();for(const [field,value] of [['bestOf',9],['pool',pool]])s=cmd(s,'setting',{field,value});if(simple)s=cmd(s,'set-bp-preset',{value:'single-ban-alternate'});return s;}
-const select=(s,team,kind)=>cmd(s,'select-bp-action',{team,kind});
-const apply=(s,i)=>cmd(s,'apply-bp',{entryId:`m${i}`,actionId:s.action?.id});
-const signature=s=>s.action&&[s.action.team,s.action.kind,s.action.slot];
-function finished(s){return cmd(cmd(s,'start'),'ranking');}
+function setup(){let s=cmd(newSession(),'setup',{title:'隔离动作优先回归',stage:'group',mode:'4v4',source:'4x3',teams:{a:{name:'Red',roster:[]},b:{name:'Blue',roster:[]}},pool});return cmd(s,'set-roll',{winner:null,banFirst:'a',pickFirst:'b'});}
+const choose=(s,team,kind)=>cmd(s,'select-bp-action',{team,kind});
+const apply=(s,id)=>cmd(s,'apply-bp',{entryId:id,actionId:s.action.id});
 
-test('action-first single Ban workflow: two explicit Bans then alternate Picks, no second Bans or queue entry',()=>{
- let s=setup();assert.equal(s.action,null);s=select(s,'b','ban');assert.equal(s.poolMarks.length,0);assert.equal(s.rounds.length,0);
- assert.deepEqual(signature(s),['b','ban',0]);s=apply(s,0);assert.deepEqual(signature(s),['a','ban',0]);
- s=apply(s,1);assert.equal(s.action,null);assert.match(bpProgress(s).waiting,/先 Pick/);
- s=select(s,'b','pick');assert.deepEqual(signature(s),['b','pick',null]);
- for(let i=2;i<8;i++){assert.equal(s.action.kind,'pick');assert.equal(s.action.team,i%2===0?'b':'a');s=apply(s,i);s=finished(s);}
- assert.equal(s.bpHistory.filter(h=>h.kind==='ban').length,2);assert.deepEqual(seriesOf(s),{a:0,b:0});
- const marked=select(s,'a','ban');assert.deepEqual(marked.rounds,s.rounds);assert.deepEqual(marked.poolChoice,{team:'a',kind:'ban'});
+test('choosing an action before a map arms the server without changing marks, results, independent Roll or future flow',()=>{
+ let s=setup();const before=structuredClone(s);s=choose(s,'a','ban');
+ assert.equal(s.action.team,'a');assert.equal(s.action.kind,'ban');assert.equal(s.action.slot,0);
+ for(const key of ['poolMarks','bpHistory','bans','rounds','queue','roll','bpFlow','auto'])assert.deepEqual(s[key],before[key],key);
+ s=cmd(s,'undo');assert.deepEqual(s.action,before.action);
 });
-test('independent first choices may be provided by Roll; first Pick can be supplied while the second Ban waits',()=>{
- let s=setup();s=select(s,'b','ban');s=apply(s,0);
- s=cmd(s,'set-roll',{winner:null,banFirst:'b',pickFirst:'b'});s=apply(s,1);assert.deepEqual(signature(s),['b','pick',null]);
+test('the next unused Ban slot is selected automatically; full slots still allow marks without adding Bans',()=>{
+ let s=apply(choose(setup(),'a','ban'),'m0');s=apply(choose(s,'a','ban'),'m1');assert.equal(s.bans.a[1],'m1');
+ const bans=structuredClone(s.bans);const history=structuredClone(s.bpHistory);
+ s=cmd(choose(s,'a','ban'),'choose-pool-map',{entryId:'m2'});
+ assert.deepEqual(s.bans,bans);assert.deepEqual(s.bpHistory,history);assert.equal(s.poolMarks.at(-1).entryId,'m2');
 });
-test('empty Ban counts once and undo restores it; a late join may select a current Pick without fabricating Bans',()=>{
- let s=setup();s=select(s,'a','ban');const joined=select(s,'b','pick');assert.equal(joined.action.kind,'pick');assert.deepEqual(joined.bans,s.bans);
- s=cmd(s,'skip-ban',{actionId:s.action.id,reason:'裁判确认空 Ban'});const after=s.action;
- s=cmd(s,'undo');assert.deepEqual(signature(s),['a','ban',0]);s=apply(s,0);assert.equal(s.action.team,after.team);
+test('free modes and broadcast corrections preserve prepared/playing maps, incidents, pause and a completed series',()=>{
+ const protectedChoice=state=>{
+  const next=choose(state,'b','ban');
+  for(const key of ['rounds','action','queue','bans','phase','incident','paused','seriesAdjustment'])assert.deepEqual(next[key],state[key],key);
+  return next;
+ };
+ let s=apply(choose(setup(),'a','pick'),'m0');s=protectedChoice(s);
+ s=cmd(s,'start');const run=currentRound(s).runId;
+ for(const state of [s,cmd(s,'pause',{kind:'technical'}),cmd(s,'incident',{kind:'abort',reason:'核对本局'})]){
+  const next=cmd(protectedChoice(state),'choose-pool-map',{entryId:'m2'});
+  assert.deepEqual(next.rounds,state.rounds);assert.equal(currentRound(next).runId,run);assert.deepEqual(next.bans,state.bans);
+ }
+ s=cmd(s,'ranking');s=cmd(s,'set-series',{a:6,b:0,reason:'核对系列已结束'});
+ const next=cmd(protectedChoice(s),'choose-pool-map',{entryId:'m2'});assert.deepEqual(next.rounds,s.rounds);assert.deepEqual(next.seriesAdjustment,s.seriesAdjustment);
 });
-test('prepared replacement, replay, result correction and selection correction preserve exactly one Pick',()=>{
- let s=apply(select(setup(),'a','ban'),0);s=apply(s,1);s=select(s,'a','pick');s=apply(s,2);
- const picked=currentRound(s);s=select(s,'b','pick');assert.deepEqual(currentRound(s),picked);assert.equal(s.action,null);
- s=apply(s,3);assert.equal(currentRound(s).actionId,picked.actionId);s=finished(s);const next=s.action;
- s=cmd(s,'referee-replay',{reason:'裁判确认重赛'});s=finished(s);assert.deepEqual(s.action,next);
- s=select(s,'a','pick');s=apply(s,4);s=finished(s);assert.equal(s.action.team,'b');
- const old=s.rounds.find(r=>r.id===s.currentRoundId);s=cmd(s,'record-result',{roundId:old.id,winner:'b',keepDisplay:true});assert.equal(s.action.team,'b');
-});
-test('adopting the simple preset preserves two existing first Bans; second-round Ban history is rejected',()=>{
- let s=setup(false);s=apply(select(s,'a','ban'),0);s=apply(select(s,'b','ban'),1);
- const history=s.bpHistory;s=cmd(s,'set-bp-preset',{value:'single-ban-alternate'});assert.deepEqual(s.bpHistory,history);s=select(s,'a','pick');assert.equal(s.queue[0].team,'b');
- let bad=setup(false);bad=apply(select(bad,'a','ban'),0);bad=apply(select(bad,'a','ban'),1);
- assert.throws(()=>cmd(bad,'set-bp-preset',{value:'single-ban-alternate'}),/第二轮 Ban/);
-});
-test('OCLR action-first arming preserves its Roll-generated future flow and marks no map',()=>{
- let s=cmd(newSession(),'setup',{title:'隔离LR回归',stage:'group',mode:'4v4',source:'4x3',teams:{a:{name:'Red',roster:[]},b:{name:'Blue',roster:[]}},pool});
- s=cmd(s,'set-roll',{winner:null,banFirst:'a',pickFirst:'b'});const queue=s.queue,flow=s.bpFlow;
- s=select(s,'a','ban');assert.deepEqual(s.queue,queue);assert.deepEqual(s.bpFlow,flow);assert.equal(s.bans.b[0],null);assert.equal(s.bpHistory.length,0);
- s=cmd(s,'undo');assert.deepEqual(signature(s),['a','ban',0]);
-});
-test('old pending map cannot execute a newly selected action; a fresh stable change can',async()=>{
- const store=new SessionStore({state:select(setup(),'a','ban')});let now=0;
- const frame=map=>store.frame({beatmap:{id:map},tourney:{ipcState:1,teams:{left:'L',right:'R'},players:[{side:'left',osuId:1},{side:'right',osuId:2}],totalScore:{left:0,right:0}}},now+=500);
+test('an old pending map never transfers to a newly armed action; the next fresh map is consumed once',async()=>{
+ const store=new SessionStore({state:setup()});let now=0;
  const send=(type,payload)=>store.command({id:randomUUID(),version:store.state.version,type,payload});
+ const frame=map=>store.frame({beatmap:{id:map},tourney:{ipcState:1,teams:{left:'L',right:'R'},players:[{side:'left',osuId:1},{side:'right',osuId:2}],totalScore:{left:0,right:0}}},now+=500);
  await send('auto',{...store.state.auto,profile:'stable-tourney',left:'L',right:'R'});await frame(899999);await frame(810000);
  await send('select-bp-action',{team:'b',kind:'ban'});await frame(810000);assert.equal(store.state.bpHistory.length,0);
- await frame(810001);await frame(810001);assert.equal(store.state.bans.b[0],'m1');
-});
-
-test('repairing a cleared first Ban mid-series resumes the pending Pick rather than restarting the first rotation',()=>{
- let s=apply(select(setup(),'a','ban'),0);s=apply(s,1);s=select(s,'a','pick');s=finished(apply(s,2));
- assert.equal(s.action.team,'b');s=cmd(s,'clear-ban',{team:'a',slot:0,reason:'核对首 Ban'});s=select(s,'a','ban');s=apply(s,3);
- assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'b');
+ await frame(810001);await frame(810001);assert.equal(store.state.bans.b[0],'m1');await frame(810001);assert.equal(store.state.bpHistory.length,1);
 });
 
 
-test('old custom sessions can undo a newly selected mode without leaving its broadcast choice',()=>{
- let s=setup();delete s.poolChoice;const action=structuredClone(s.action);s=select(s,'b','pick');
+test('choosing an already queued action moves it forward once and preserves the other future actions',()=>{
+ let s=setup();const before=s.queue;const displaced=s.action;assert.equal(before[0].team,'b');
+ s=choose(s,'b','ban');assert.equal(s.action.team,'b');assert.deepEqual(s.queue,[displaced,...before.slice(1)]);
+ s=apply(s,'m0');assert.equal(s.action.kind,'ban');assert.equal(s.action.team,'a');
+ s=apply(s,'m1');assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'b');
+});
+
+test('a first-phase Ban skipped by an action override still comes before any Pick',()=>{
+ let s=cmd(setup(),'set-roll',{winner:null,banFirst:'b',pickFirst:'a'});
+ assert.equal(s.action.team,'b');assert.equal(s.action.kind,'ban');assert.equal(s.action.slot,0);
+ s=choose(s,'a','ban');s=apply(s,'m0');
+ assert.equal(s.action.kind,'ban');assert.equal(s.action.team,'b');assert.equal(s.action.slot,0);
+ s=apply(s,'m1');
+ assert.equal(s.action.kind,'pick');assert.equal(s.action.team,'a');assert.equal(s.action.ordinal,1);
+});
+
+test('an old session without poolChoice can undo a newly selected mode completely',()=>{
+ let s=setup();delete s.poolChoice;const action=structuredClone(s.action);
+ s=choose(s,'b','pick');assert.equal(s.poolChoice.team,'b');
  s=cmd(s,'undo');assert.equal(s.poolChoice,null);assert.deepEqual(s.action,action);
 });

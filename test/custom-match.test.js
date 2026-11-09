@@ -195,7 +195,10 @@ test('custom runtime uses real isolated WebSocket, blocks OCLR and preserves cor
     simulator.set({ mapId: 810000 + i, ipcState: 1 });
     await until(() => i < 4 ? store.state.bpHistory.length === i + 1 : currentRound(store.state)?.status === 'prepared', `BP ${i}`);
   }
-  simulator.set({ mapId: 810005 }); await until(() => currentRound(store.state).entryId === 'm5', 'replacement');
+  simulator.set({ mapId: 810005 }); await delay(700);
+  assert.equal(currentRound(store.state).entryId, 'm4', 'a room-map change cannot silently replace the confirmed Pick');
+  await cmd('prepare-round', { entryId: 'm5', pickedBy: currentRound(store.state).pickedBy });
+  assert.equal(currentRound(store.state).entryId, 'm5');
   simulator.set({ ipcState: 3 }); await until(() => currentRound(store.state).status === 'playing', 'Playing');
   simulator.set({ ipcState: 4, left: 100, right: 50 }); await until(() => currentRound(store.state).status === 'recorded', 'Ranking');
   const next = structuredClone(store.state.action);

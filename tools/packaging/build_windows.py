@@ -56,6 +56,7 @@ def main():
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
     inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.go'))
+    inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.syso'))
     for path in inputs:
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
@@ -72,7 +73,7 @@ def main():
     env.setdefault('GOCACHE', str(out / '.go-cache'))
     flags = f'-H=windowsgui -s -w -X main.buildID={build}'
     if args.custom_config:
-        flags += ' -X main.base=http://127.0.0.1:3011 -X main.entryScript=custom-portable.js'
+        flags += ' -X main.base=http://127.0.0.1:3011 -X main.entryScript=custom-portable.js -X main.dataSubdir=CustomMatchTest'
         flags += ' -X main.mutexName=Local\\OCLR.StreamOverlay.CustomMatchTest -X main.windowTitle=MP5-Xronicle-Test'
     exe_name = 'MP5-Xronicle-Test.exe' if args.custom_config else 'OCLR.exe'
     subprocess.run([args.go, 'build', '-trimpath', '-ldflags', flags,

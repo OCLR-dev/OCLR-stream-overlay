@@ -1,10 +1,10 @@
 <script setup lang="ts">
-defineProps<{ team: 'a' | 'b' }>();
+withDefaults(defineProps<{ team: 'a' | 'b'; decorative?: boolean }>(), { decorative: false });
 </script>
 
 <template>
-  <figure class="team-flag-preview" :aria-label="`${team === 'a' ? '左' : '右'}队队旗占位示例`">
-    <svg viewBox="0 0 120 72" role="img" aria-label="示例队旗，非实际队伍图片">
+  <figure class="team-flag-preview" :aria-label="decorative ? undefined : `${team === 'a' ? '左' : '右'}队队旗占位示例`" :aria-hidden="decorative || undefined">
+    <svg viewBox="0 0 120 72" :role="decorative ? undefined : 'img'" :aria-label="decorative ? undefined : '示例队旗，非实际队伍图片'">
       <template v-if="team === 'a'">
         <path fill="#f2e9da" d="M0 0h120v72H0z" />
         <path fill="#204d49" d="M0 0h45l48 72H0z" />

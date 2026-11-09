@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { StreamingSource } from './streaming.js';
+import { streamingHttp } from './streaming-http.js';
 import { sessionHttp } from './session/http.js';
 import { createArtworkHandler } from './artwork.js';
 import { createPlayerArtHandler } from './player-art.js';
@@ -100,7 +102,19 @@ export async function readBoundedJson(response) {
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session);
   const playerArt = createPlayerArtHandler(fetchImpl);
-  const server = createServer(async (req, res) => {
+  const streaming = config.customMatch ? null : new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
+    const store = config.session || session;
+    if (store) { store.live.streaming = value; store.emit(); }
+  } });
+  const server = createServer((req, res) => {
+    void handleRequest(req, res).catch(() => {
+      // A failed image/API request must not terminate the broadcast service.
+      if (res.destroyed || res.writableEnded) return;
+      if (res.headersSent) res.destroy();
+      else fail(res, 500, 'REQUEST_FAILED');
+    });
+  });
+  const handleRequest = async (req, res) => {
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
     const origins = hosts.map(host => `http://${host}`);
@@ -117,6 +131,8 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
+    if (config.customMatch && (url.pathname.startsWith('/api/oclr/') || url.pathname === '/api/streaming')) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
+    if (streaming && await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;
     if (await artwork(req, res, url)) return;
@@ -133,7 +149,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(body);
     }
-    if (config.customMatch && url.pathname.startsWith('/api/oclr/')) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
     if (!url.pathname.startsWith('/api/oclr/')) return fail(res, 404, 'NOT_FOUND');
     const resource = url.pathname.slice('/api/oclr/'.length);
     if (!isAllowedResource(resource, url.searchParams)) return fail(res, 400, 'RESOURCE_NOT_ALLOWED');
@@ -164,7 +179,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     } finally {
       clearTimeout(timeout);
     }
-  });
-  server.on('close', () => (config.session || session)?.close?.());
+  };
+  server.on('close', () => { streaming?.disconnect(); (config.session || session)?.close?.(); });
   return server;
 }

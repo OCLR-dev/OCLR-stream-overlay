@@ -1,0 +1,22 @@
+
+> oclr-stream-overlay@0.1.0 build
+> npm run check && vite build
+
+
+> oclr-stream-overlay@0.1.0 check
+> vue-tsc --noEmit
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 60 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                0.45 kB │ gzip:  0.33 kB
+dist/assets/s11-rules-BZChqe58.md                              5.77 kB
+dist/assets/saira-condensed-latin-700-normal-BpDqMSKw.woff2   17.80 kB
+dist/assets/saira-condensed-latin-800-normal-Pyk8ZVcZ.woff2   17.98 kB
+dist/assets/jetbrains-mono-latin-500-normal-BWZEU5yA.woff2    21.83 kB
+dist/assets/index-5RsCHbOB.css                                59.21 kB │ gzip: 12.84 kB
+dist/assets/index-CYsoGNMZ.js                                199.09 kB │ gzip: 66.65 kB
+
+✓ built in 143ms

@@ -1,14 +1,33 @@
 name: Windows portable validation
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+  workflow_call:
+    inputs:
+      commit:
+        description: Exact release/windows commit to package
+        type: string
+        required: true
+      release-version:
+        description: Sequential Windows version for this release commit
+        type: string
+        required: true
 permissions:
   contents: read
 jobs:
   windows:
+    permissions:
+      contents: read
     runs-on: windows-latest
     timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.package.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: '22.23.4'
@@ -17,20 +36,104 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: false
+      - name: Test Windows launcher preferences and tosu detection
+        working-directory: tools/windows-launcher
+        run: go test ./...
       - run: npm ci
       - run: python tools/packaging/build_windows.py
       - run: npm test
-      - name: Test the actual portable EXE and bundled runtime
+      - name: Verify and test the distributable ZIP
         shell: pwsh
         run: |
-          & .\release\OCLR-Windows-x64\runtime\node.exe tools/packaging/verify_windows.mjs release/OCLR-Windows-x64 release/windows-native.json
+          $zip = 'release/OCLR-Windows-x64.zip'
+          $expected = (Get-Content -LiteralPath "$zip.sha256").Split(' ')[0]
+          if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne $expected) {
+            throw 'Windows portable ZIP checksum mismatch'
+          }
+          $extracted = Join-Path $env:RUNNER_TEMP 'oclr-portable-check'
+          Expand-Archive -LiteralPath $zip -DestinationPath $extracted
+          $app = Join-Path $extracted 'OCLR-Windows-x64'
+          & (Join-Path $app 'runtime/node.exe') tools/packaging/verify_windows.mjs $app release/windows-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v6
-        if: always()
+        id: package
         with:
-          name: OCLR-Windows-x64-validation
+          name: OCLR-Windows-x64-${{ inputs.commit || github.sha }}
           path: |
             release/OCLR-Windows-x64.zip
             release/OCLR-Windows-x64.zip.sha256
             release/windows-native.json
           if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@v6
+        if: failure() && hashFiles('release/windows-native.json') != ''
+        with:
+          name: OCLR-Windows-x64-failure-${{ inputs.commit || github.sha }}
+          path: release/windows-native.json
+          overwrite: true
+
+  publish:
+    needs: windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release/windows' && inputs.commit != ''
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: windows-prerelease-${{ inputs.commit }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          artifact-ids: ${{ needs.windows.outputs.artifact-id }}
+      - name: Publish commit-specific prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.release-version }}
+        run: |
+          [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_VERSION" =~ ^0\.1\.(0|[1-9][0-9]*)$ ]]
+          tag="v$RELEASE_VERSION"
+          zip=OCLR-Windows-x64.zip
+          checksum="$zip.sha256"
+          sha256sum --check "$checksum"
+          jq -e '.passed == true' windows-native.json > /dev/null
+
+          # GitHub ignores --target when a tag already exists. Check the
+          # actual ref before reusing a published release or resuming a draft.
+          if tagged=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>tag-error); then
+            if [[ "$tagged" != "$RELEASE_COMMIT" ]]; then
+              echo "::error::The release tag already points to a different commit."
+              exit 1
+            fi
+          elif ! grep -q 'HTTP 404' tag-error; then
+            cat tag-error >&2
+            exit 1
+          fi
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,isPrerelease,targetCommitish,assets > release.json 2>release-error; then
+            jq -e '.isPrerelease' release.json > /dev/null
+            if jq -e '.isDraft == false' release.json > /dev/null; then
+              [[ "$tagged" == "$RELEASE_COMMIT" ]]
+              jq -e --arg zip "$zip" --arg checksum "$checksum" \
+                '([.assets[].name] | contains([$zip, $checksum]))' release.json > /dev/null
+              echo "Windows prerelease already published for $RELEASE_COMMIT"
+              exit 0
+            fi
+            jq -e --arg commit "$RELEASE_COMMIT" '.targetCommitish == $commit' release.json > /dev/null
+            gh release upload "$tag" "$zip" "$checksum" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$tag" --draft=false --prerelease --latest=false --repo "$GITHUB_REPOSITORY"
+          elif grep -qx 'release not found' release-error; then
+            printf 'Windows x64 便携版\n\n源码提交：%s\n\n[打包与原生启动验证](%s/%s/actions/runs/%s)\n' \
+              "$RELEASE_COMMIT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release-notes.md
+            gh release create "$tag" "$zip" "$checksum" \
+              --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
+              --title "$tag · Windows x64" \
+              --notes-file release-notes.md --prerelease --latest=false
+          else
+            cat release-error >&2
+            exit 1
+          fi
