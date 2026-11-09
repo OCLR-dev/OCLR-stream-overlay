@@ -5,7 +5,7 @@ import MapArtwork from './MapArtwork.vue';
 import ScrollingText from './ScrollingText.vue';
 import { mapParameterDisplay, testModForCategory, type TestMapMetadata } from '../mapParameters';
 import { starRatingDisplay, starRatingRangeDisplay } from '../mapStats';
-import { mapFileMetadata } from '../mapMetadata';
+import { MAP_METADATA_RETRY_MS, mapFileMetadata } from '../mapMetadata';
 import { modColor, modColorStyle } from '../modColors';
 const { state, view } = useOverlay();
 const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
@@ -21,13 +21,19 @@ const mapDifficulty = computed(() => {
   const map = view.value.currentMap;
   return map?.difficulty || metadata.value?.difficulty || map?.artist || metadata.value?.artist || '—';
 });
-watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod], async ([id, mod], _, cleanup) => {
+watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod], ([id, mod], _, cleanup) => {
   metadata.value = null;
   if (!view.value.shared || !id) return;
   let active = true;
-  cleanup(() => { active = false; });
-  const value = await mapFileMetadata(id, testModForCategory(mod || null));
-  if (active) metadata.value = value;
+  let retry: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => { active = false; clearTimeout(retry); });
+  const load = async () => {
+    const value = await mapFileMetadata(id, testModForCategory(mod || null));
+    if (!active) return;
+    metadata.value = value;
+    if (!value) retry = setTimeout(() => { void load(); }, MAP_METADATA_RETRY_MS);
+  };
+  void load();
 }, { immediate: true, flush: 'sync' });
 const parameters = computed(() => mapParameterDisplay(view.value.currentMap?.beatmapId ?? null, view.value.parameterMode, view.value.mapParameters, metadata.value, view.value.currentMap?.mod || null));
 // Keep the big star block on exactly the same value as the middleware star

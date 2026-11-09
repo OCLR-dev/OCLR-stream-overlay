@@ -762,8 +762,8 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
               <p v-if="rollLinkRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollLinkRemaining }} 秒后自动确认：{{ rollLinkLabel }}。5 秒内仍可手动修改。</p>
               <p role="status">{{ settingMessages.roll || '修改后立即生效。' }}</p>
-              <button v-if="s.roll.pickFirst && s.roll.banFirst" class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('bp')">进入图池 / BP →</button>
-              <p v-else class="operator-hint">选择先 Pick 和先 Ban 后，可直接进入图池 / BP。</p>
+              <button v-if="s.roll.pickFirst && (exhibition || s.roll.banFirst)" class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('bp')">进入图池 / BP →</button>
+              <p v-else class="operator-hint">{{ exhibition ? '选择先 Pick 后进入图池，双方交替选图；如有 Ban，请按裁判要求手动选择。' : '选择先 Pick 和先 Ban 后，可直接进入图池 / BP。' }}</p>
             </div>
             <div v-else-if="panel === 'mappool'" class="operator-action-stack">
               <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : round ? `当前图 ${entry(round.entryId)?.label || '—'} · ${roundStatusLabel(round)}` : s.poolChoice ? `${names[s.poolChoice.team]} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'} · 等待选图` : '选择 Ban／Pick 或谱面' }}</p>

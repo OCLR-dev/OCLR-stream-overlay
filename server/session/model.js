@@ -190,10 +190,10 @@ function promoteBpAction(s, choice) {
 // existing/manual sessions and their undo domains keep their original order.
 const bpStarted = s => s.rounds.length > 0 || (s.bpHistory || []).length > 0 || SIDES.some(t => s.bans[t].some(Boolean));
 function syncRollFlow(s) {
-  if (exhibitionOf(s)) return false;
+  const exhibition = exhibitionOf(s);
   if (bpStarted(s) || s.bpFlow?.mode === 'manual' || (!s.bpFlow &&
     (s.action || s.queue.length || s.planVerification || (s.bpFlow === undefined && s.history.some(h => /设置明确 BP|更新明确配置的后续 BP/.test(h.message)))))) return false;
-  if (!side(s.roll.banFirst) || !side(s.roll.pickFirst)) {
+  if ((!exhibition && !side(s.roll.banFirst)) || !side(s.roll.pickFirst)) {
     if (s.bpFlow?.mode === 'roll') { s.action = null; s.queue = []; s.bpFlow = null; }
     return false;
   }
@@ -211,7 +211,8 @@ function syncRollFlow(s) {
   //   for as long as BP keeps being needed.
   // Keep both Ban rounds in the order when an operator promotes an action.
   // Later Picks are replenished in alternating pairs by takeBpAction.
-  s.queue = [
+  // Exhibition Roll only supplies the first Pick; Ban policies remain manual.
+  s.queue = exhibition ? [pick(pickFirst, 1), pick(other(pickFirst), 1)] : [
     ban(banFirst, 0), ban(other(banFirst), 0),
     pick(pickFirst, 1), pick(other(pickFirst), 1),
     ban(banFirst, 1), ban(other(banFirst), 1),
@@ -237,6 +238,10 @@ function nextPickTeam(s) {
 
 function resolveBpStartOrder(s) {
   const other = team => team === 'a' ? 'b' : 'a';
+  const exhibitionPick = s.bpFlow?.pickFirst || s.roll.pickFirst;
+  if (exhibitionOf(s) && side(exhibitionPick)) {
+    return { pickFirst: exhibitionPick, banFirst: s.bpFlow?.banFirst || s.roll.banFirst || other(exhibitionPick) };
+  }
   if (s.bpFlow?.banFirst && s.bpFlow?.pickFirst) return { banFirst: s.bpFlow.banFirst, pickFirst: s.bpFlow.pickFirst };
   if (s.roll.banFirst && s.roll.pickFirst) return { banFirst: s.roll.banFirst, pickFirst: s.roll.pickFirst };
   const choice = s.poolChoice;
@@ -332,7 +337,7 @@ export function bpStopReason(s) {
   const round = currentRound(s);
   if (!exhibitionOf(s) && round && entryOf(s, round.entryId)?.mod === 'TB') return ['ranking', 'recorded'].includes(round.status) ? 'TB 已结束，等待核对赛果；不推进普通 Pick' : null;
   if (!exhibitionOf(s) && tiebreakerProgress(s).eligible) return '已到决胜比分，请核对赛果并单独准备 TB';
-  if (s.bpFlow?.mode === 'roll') {
+  if (!exhibitionOf(s) && s.bpFlow?.mode === 'roll') {
     const finished = s.rounds.filter(r => ['ranking', 'recorded'].includes(r.status) && entryOf(s, r.entryId)?.mod !== 'TB').length;
     if (finished >= 2 * (targetOf(s) - 1) || SIDES.every(t => seriesOf(s)[t] === targetOf(s) - 1)) return '常规选图已结束，等待裁判核对赛果与 TB；TB 单独准备';
   }
@@ -782,7 +787,7 @@ function applyCommand(s, command) {
       if (s.action && bpActionKey(s.action) === bpActionKey(start)) return `当前已在${labels[p.phase]}起点；未改动比赛记录`;
       requireValue(!phaseHasRecords(s, p.phase), '该阶段已有记录，不能回到起点；如需退回请使用“撤销上一项”');
       s.action = start;
-      s.queue = p.phase === 'ban1'
+      s.queue = exhibitionOf(s) && p.phase === 'pick1' ? [pick(other(pickFirst), 1)] : p.phase === 'ban1'
         ? [ban(other(banFirst), 0), pick(pickFirst, 1), pick(other(pickFirst), 1), ban(banFirst, 1), ban(other(banFirst), 1)]
         : p.phase === 'pick1' ? [pick(other(pickFirst), 1), ban(banFirst, 1), ban(other(banFirst), 1)]
           : p.phase === 'ban2' ? [ban(other(banFirst), 1)]
@@ -802,13 +807,22 @@ function applyCommand(s, command) {
         s.queue = p.queue.map(normalizeAction);
       }
       return '设置明确 BP 动作与后续序列';
-    case 'set-plan':
+    case 'set-plan': {
       s.bpFlow = { ...s.bpFlow, mode: 'manual' };
       requireValue(p.verifiedBy == null || text(p.verifiedBy), '核实来源说明过长');
       requireValue(Array.isArray(p.queue) && p.queue.length <= 40, 'BP 序列过长');
       s.queue = p.queue.map(normalizeAction);
       s.planVerification = p.verifiedBy?.trim() || null;
+      if (!s.action && s.queue.length && !bpProgress(s).waiting) {
+        s.action = takeBpAction(s);
+        if (s.action) {
+          s.poolChoice = { team: s.action.team, kind: s.action.kind };
+          s.phase = 'bp';
+          return '已从手动 BP 队列首项开始，等待选图';
+        }
+      }
       return `更新明确配置的后续 BP 顺序（不修改当前动作）${s.planVerification ? `：${s.planVerification}` : ''}`;
+    }
     case 'apply-bp': return applyBp(s, p.entryId, 'manual', p.actionId);
     case 'apply-room-map':
       requireValue(s.action, '当前没有已选择的 BP 动作，等待房间换图');

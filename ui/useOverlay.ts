@@ -131,7 +131,7 @@ export function createOverlay(shared = false) {
       drawnExhibition: !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
       season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
-      chat: shared ? liveRoomChat(envelope, sessionClient?.connection.value).slice(-4) : [],
+      chat: shared ? liveRoomChat(envelope, sessionClient?.connection.value).slice(-100) : [],
       sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',
       arrivalCount: shared ? (['a', 'b'] as const).filter(arrived).length * base.count : base.arrivalCount,
       readiness: shared ? (s?.ready.a && s?.ready.b ? '双方已就绪' : '等待到场 / 就绪确认') : base.readiness,

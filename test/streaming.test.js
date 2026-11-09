@@ -127,7 +127,9 @@ test('an open exhibition imports from a mixed task page and counts fixed-map dra
   assert.deepEqual(match.teams, { a: { id: id(4), name: 'Crimson', roster: [] }, b: { id: id(5), name: 'Azure', roster: [] } });
   assert.deepEqual(store.state.pool.map(e => e.beatmapId), [101, 102, 103]);
   await command('set-roll', { winner: 'a', pickFirst: 'a', banFirst: 'a' });
-  assert.equal(store.state.action, null, 'the website feed does not contain the referee BP policy');
+  assert.equal(store.state.action.kind, 'pick', 'explicit Roll first-Pick starts exhibition picks without inventing bans');
+  assert.equal(store.state.action.team, 'a');
+  assert.ok(store.state.queue.every(action => action.kind === 'pick'));
   await assert.rejects(command('set-stage', { stage: 'group' }), /初始化表演赛/);
   await assert.rejects(command('set-series', { a: 2, b: 2, reason: 'test' }), /赛制范围/);
   await assert.rejects(command('winner', { team: 'a' }), /尚未确认/);

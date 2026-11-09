@@ -1,0 +1,7 @@
+{
+  "release": "v0.0.7",
+  "afterRoll": { "action": null, "queue": [], "canApply": false },
+  "afterPlan": { "action": null, "queueLength": 2, "canApply": false },
+  "metadataFailureCache": { "requests": 1, "first": null, "retry": null },
+  "note": "Isolated synthetic diagnostics on macOS; no live state modified. BP uses the downloaded v0.0.7 package server; metadata cache uses local ui/mapMetadata.ts, verified identical to release source."
+}
