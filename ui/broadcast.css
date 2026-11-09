@@ -38,6 +38,8 @@
   --hairline: #493066;
   --purple: #7c3aed;
   --purple-light: #b794ff;
+  --chat-neutral: #b8b8c5;
+  --chat-bot: #ffda6a;
   --team-a: #ff4d6d;
   --team-b: #3d8bff;
   --team-a-dark: #a3123a;
@@ -170,10 +172,13 @@
 .roll-sides h3 { font-size: 32px; line-height: 48px; min-height: 48px; margin: 0; overflow-wrap: anywhere; }.roll-sides strong { display: block; font: 800 110px/132px var(--display); }
 .roll-sides [data-team='a'] { color: var(--team-a); }.roll-sides [data-team='b'] { color: var(--team-b); }
 .pool-empty { align-self: center; justify-self: center; color: var(--muted); }
-.match-chat-line { margin: 2px 0; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; white-space: normal; }
-.match-chat-line b { color: var(--purple-light); }
+.match-chat-line { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; column-gap: 6px; margin: 2px 0; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; white-space: normal; }
+.match-chat-line time { color: var(--muted); font: 500 12px/20px var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.match-chat-text { min-width: 0; }
+.match-chat-line b { color: var(--chat-neutral); }
 .match-chat-line b[data-team="left"] { color: var(--team-a); }
 .match-chat-line b[data-team="right"] { color: var(--team-b); }
+.match-chat-line b[data-team="bot"] { color: var(--chat-bot); }
 
 /* Slanted team banners with the supplied logo and the reference's stage strip. */
 .broadcast-header { position: relative; flex: 0 0 180px; height: 180px; z-index: 2; }

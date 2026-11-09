@@ -51,6 +51,8 @@ export interface BeatmapStats {
   stars: { total: number | null }; cs: { converted: number | null }; hp: { converted: number | null };
   ar: { converted: number | null }; od: { converted: number | null }; bpm: { common: number | null };
 }
+export interface RoomChatLine { team?: string; name?: string; message?: string; timestamp?: string }
+export interface RoomPlayer { ipcId: number | null; side: 'left' | 'right' | null; osuId: number | null; name: string | null }
 export interface Envelope {
   session: Session; persistence: string;
   live: {
@@ -66,7 +68,7 @@ export interface Envelope {
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
         stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null; rankingStats?: BeatmapStats | null };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
-        totalScore: { left: number | null; right: number | null }; chat: { team?: string; name?: string; message?: string; timestamp?: string }[] }
+        totalScore: { left: number | null; right: number | null }; chat: RoomChatLine[]; players?: RoomPlayer[] }
     } };
   };
   catalog: null | { edition: string | null; kind?: string; warnings?: string[]; capturedOn?: string | null; teams: MatchTeam[]; pools: { id: string; name: string; entries: PoolEntry[] }[];

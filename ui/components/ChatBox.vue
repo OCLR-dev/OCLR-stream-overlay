@@ -17,7 +17,10 @@ const labels = {
     </header>
     <div class="chat-box-content">
       <template v-if="view.shared && source === 'match' && view.chat.length">
-        <p v-for="(line, index) in view.chat" :key="index" class="match-chat-line"><b :data-team="line.team">{{ line.name || '—' }}</b> {{ line.message }}</p>
+        <p v-for="(line, index) in view.chat" :key="index" class="match-chat-line">
+          <time :title="line.time.title" :aria-label="`${line.time.title} ${line.time.text}`">{{ line.time.text }}</time>
+          <span class="match-chat-text"><b :data-team="line.team">{{ line.name || '—' }}</b> {{ line.message }}</span>
+        </p>
       </template>
       <p v-else-if="source !== 'stream'" class="chat-empty">{{ view.shared ? `等待比赛聊天 · tosu ${view.sourceStatus}` : labels[source].placeholder }}</p>
     </div>
