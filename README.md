@@ -14,7 +14,7 @@ OCLR 直播任务的登录与断开共用一个按钮，随连接状态切换操
 
 ## Windows 便携版
 
-推送到 `main` 的新提交通过 Windows 验证后，会在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 自动发布 Windows x64 Pre-release。下载 `OCLR-Windows-x64.zip` 并全部解压后双击 `OCLR.exe`。包内包含构建好的前端、服务端、Windows x64 Node 运行时和原生启动器，无需安装开发工具。OBS 输出地址为 `http://127.0.0.1:3001/overlay`，比赛保存在 `%LOCALAPPDATA%\OCLR\StreamOverlay`。退出时使用启动窗口按钮。
+需要 Windows 包时，将已确认的提交推进到专用 `release/windows` 分支；该分支最新提交通过 Windows 验证后，会在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 自动发布 Windows x64 Pre-release。日常推送 `main` 不自动发布；重构版从 `v0.1.0` 开始。操作步骤见 [Windows 发布分支](docs/windows-release.md)。下载 `OCLR-Windows-x64.zip` 并全部解压后双击 `OCLR.exe`。包内包含构建好的前端、服务端、Windows x64 Node 运行时和原生启动器，无需安装开发工具。OBS 输出地址为 `http://127.0.0.1:3001/overlay`，比赛保存在 `%LOCALAPPDATA%\OCLR\StreamOverlay`。退出时使用启动窗口按钮。
 
 [简短上手说明](docs/windows-portable.md) · [构建、实际验证与边界](docs/verification/windows-portable/README.md)。旧版本退出后再启动新包；构建标识不一致时拒绝复用旧后端。本轮保留的 3001 模拟比赛服务使用现有本机会话，便携包不包含其数据或本机凭证。
 

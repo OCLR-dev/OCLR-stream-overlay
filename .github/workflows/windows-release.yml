@@ -1,61 +1,41 @@
 name: Windows prerelease
 on:
   push:
-    branches: [main]
+    branches: [release/windows]
 
 permissions:
   contents: read
 
+# Keep version allocation and publication in one queue. A later promotion
+# neither cancels an in-flight build nor takes the same version number.
+concurrency:
+  group: windows-release-branch
+  cancel-in-progress: false
+  queue: max
+
 jobs:
-  commits:
+  version:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      shas: ${{ steps.list.outputs.shas }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: List new main commits
-        id: list
-        shell: bash
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [[ "$BEFORE" == 0000000000000000000000000000000000000000 ]]; then
-            commits="$GITHUB_SHA"
-          else
-            commits=$(git rev-list --first-parent --reverse "$BEFORE..$GITHUB_SHA")
-          fi
-          # Count first-parent main commits from the first Windows release.
-          # This is stable across retries and independent of build finish order.
-          first=e52dd726e70404f9160702e7f35b1bf5a90a89ef
-          shas='[]'
-          while IFS= read -r commit; do
-            [[ -n "$commit" ]] || continue
-            git rev-list --first-parent "$commit" > main-history
-            grep -qx "$first" main-history
-            number=$(git rev-list --first-parent --count "$first^..$commit")
-            shas=$(jq -c --arg commit "$commit" --arg version "0.0.$number" \
-              '. + [{commit: $commit, version: $version}]' <<< "$shas")
-          done <<< "$commits"
-          if [[ $(jq length <<< "$shas") -gt 256 ]]; then
-            echo "::error::A push may contain at most 256 new main commits for Windows releases."
-            exit 1
-          fi
-          printf 'shas=%s\n' "$shas" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.23.4'
+      - name: Select the next Windows version or reuse this commit's tag
+        id: version
+        run: node .github/scripts/windows-release-version.mjs
 
   prerelease:
-    needs: commits
-    if: needs.commits.outputs.shas != '[]'
-    strategy:
-      fail-fast: false
-      matrix:
-        release: ${{ fromJSON(needs.commits.outputs.shas) }}
+    needs: version
     permissions:
       contents: write
     uses: ./.github/workflows/windows-portable.yml
     with:
-      commit: ${{ matrix.release.commit }}
-      release-version: ${{ matrix.release.version }}
+      commit: ${{ github.sha }}
+      release-version: ${{ needs.version.outputs.version }}

@@ -6,11 +6,11 @@ on:
   workflow_call:
     inputs:
       commit:
-        description: Exact main commit to package
+        description: Exact release/windows commit to package
         type: string
         required: true
       release-version:
-        description: Sequential Windows version for this main commit
+        description: Sequential Windows version for this release commit
         type: string
         required: true
 permissions:
@@ -74,7 +74,7 @@ jobs:
 
   publish:
     needs: windows
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.commit != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release/windows' && inputs.commit != ''
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -94,7 +94,7 @@ jobs:
           RELEASE_VERSION: ${{ inputs.release-version }}
         run: |
           [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$RELEASE_VERSION" =~ ^0\.0\.[1-9][0-9]*$ ]]
+          [[ "$RELEASE_VERSION" =~ ^0\.1\.(0|[1-9][0-9]*)$ ]]
           tag="v$RELEASE_VERSION"
           zip=OCLR-Windows-x64.zip
           checksum="$zip.sha256"
