@@ -41,6 +41,7 @@ export function synchronizeRecords(state, { legacy = false } = {}) {
     const status = round.status === 'recorded' ? 'confirmed' : round.status === 'ranking' ? 'pending' : round.status === 'void' ? 'withdrawn' : 'unconfirmed';
     const result = { id: round.resultId, attemptId: round.id, selectionId: round.selectionId, status,
       winner: round.winner, source: round.resultSource ?? null, scores: round.finalScore,
+      ...(round.scoreCalculation ? { scoreCalculation: round.scoreCalculation } : {}),
       protected: !!round.autoProtected || ['manual', 'retracted', 'series-correction'].includes(round.resultSource) };
     const { revision: ignored, ...previous } = old || {};
     result.revision = old ? old.revision + (JSON.stringify(previous) !== JSON.stringify(result) ? 1 : 0) : 1;

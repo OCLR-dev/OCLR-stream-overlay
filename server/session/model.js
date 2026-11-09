@@ -89,7 +89,7 @@ function prepareAbortedRound(s) {
   requireValue(round?.status === 'playing' && round.runId && !round.bpReleased && !s.action, '本局不能自动恢复准备');
   const next = { ...clone(round), id: newId(s), replayOf: round.id, status: 'prepared', winner: null,
     runId: null, finalScore: null, exTeam: s.ex.team };
-  for (const key of ['bpReleased', 'bpReleaseHistory', 'resultSource', 'startedBy', 'autoProtected']) delete next[key];
+  for (const key of ['bpReleased', 'bpReleaseHistory', 'resultSource', 'startedBy', 'autoProtected', 'scoreCalculation']) delete next[key];
   delete next.attemptId; delete next.resultId;
   round.status = 'void';
   s.rounds.push(next); s.currentRoundId = next.id; s.phase = 'bp'; s.incident = null;
@@ -948,7 +948,7 @@ function applyCommand(s, command) {
       const next = { ...clone(round), id: newId(s), replayOf: round.id, status: 'prepared', winner: null, runId: null, finalScore: null };
       delete next.attemptId; delete next.resultId;
       delete next.bpReleased; delete next.bpReleaseHistory;
-      delete next.resultSource; delete next.startedBy; delete next.autoProtected;
+      delete next.resultSource; delete next.startedBy; delete next.autoProtected; delete next.scoreCalculation;
       round.status = 'void';
       // Ranking may already have exposed the next Pick. Put it back until this
       // selection actually finishes, rather than consuming a second BP action.
@@ -1180,12 +1180,15 @@ export function observedTransition(state, operation, message, eventId, options =
       case 'finish-attempt':
         requireValue(round.status === 'playing' && !round.autoProtected, '本次比赛不接受自动结束');
         round.status = 'ranking'; round.finalScore = p.scores || null;
+        if (p.scoring?.rule === 'fm-ez-v1') round.scoreCalculation = p.scoring;
         releaseRoundBp(draft, round);
         if (round.id === draft.currentRoundId) followScene(draft, 'playing');
         break;
       case 'confirm-result':
         requireValue(!round.autoProtected && !['manual', 'retracted', 'series-correction'].includes(round.resultSource), '赛果受人工保护');
-        awardTosuResult(draft, round.id, p.scores); break;
+        awardTosuResult(draft, round.id, p.scores);
+        if (p.scoring?.rule === 'fm-ez-v1') round.scoreCalculation = p.scoring;
+        break;
       case 'room-return':
         requireValue(!round || round.id === draft.currentRoundId && ['prepared', 'ranking', 'recorded'].includes(round.status), '返回房间的比赛目标已变化');
         if (round && !draft.incident) draft.phase = 'bp';

@@ -54,6 +54,13 @@ watch([snapshot, connection, () => s.value?.scene], ([envelope, link, scene]) =>
     lastRoomScores.value = null;
   }
 }, { immediate: true, flush: 'sync' });
+const roomScoreHint = computed(() => {
+  const source = snapshot.value?.live.tosu;
+  const scoring = source?.status === 'live' ? source.data?.tourney?.competitionScore : null;
+  return scoring?.reason || (scoring?.rule === 'fm-ez-v1'
+    ? 'FM 队分已计入 EZ 选手额外 1.5 倍加成，显示队分不代表已计胜。'
+    : roomScores.value ? '来自游戏房间，显示队分不代表已计胜。' : '等待房间队分，未知分数显示 —。');
+});
 const teamScore = (value: number | null | undefined) => formatTeamScore(value);
 const entry = (id?: string | null) => s.value?.pool.find(e => e.id === id);
 const automaticTeamNames = computed(() => !!liveRoom(snapshot.value, connection.value));
@@ -786,7 +793,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <div v-else-if="scorePanel" class="operator-action-stack">
               <p v-if="exhibition?.series?.type === 'fixed_maps'">已完成 {{ exhibitionProgress?.played }} / {{ exhibition.series.count }} 图（含已记录的平局）。</p>
               <p v-if="exhibition && !exhibition.autoResults">本场请按裁判核对的结果人工记分。</p>
-              <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? '来自游戏房间，显示队分不代表已计胜。' : '等待房间队分，未知分数显示 —。' }}</p></section>
+              <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p aria-live="polite">{{ roomScoreHint }}</p></section>
               <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效，作为系列比分校正保留；裁判要求重赛也不会自动撤回。若裁判判本图胜方，请使用下方“记本图胜”，重赛会撤回该图贡献。</p></section>
               <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
               <button v-if="round?.status === 'playing'" :disabled="disabled || s.paused" @click="run('finish-round', { roundId: round.id })">本图已结束，继续 BP（暂不计胜）</button>

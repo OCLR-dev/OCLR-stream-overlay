@@ -1,4 +1,5 @@
 import { resultFacts } from './room-facts.js';
+import { competitionScore } from './scoring.js';
 import { randomUUID } from 'node:crypto';
 import { observedTransition, observation, currentRound, entryOf, seriesComplete, SessionRejection } from './model.js';
 import { tosuRoomTeams } from '../../src/tosu.js';
@@ -150,6 +151,8 @@ export class RoomAutomation {
     if (this.lastAt !== null && (now - this.lastAt > 5000 || now < this.lastAt)) return this.hold(state, '观战数据连续性中断，请核对比赛是否仍在进行');
     this.lastAt = now;
     const counted = currentRound(state);
+    const calculation = competitionScore(state, frame);
+    const totals = calculation.totalScore;
     // osu!tourney hides and clears aggregate scores after showing results,
     // while its clients still retain the verified final scores and IPC stays 4.
     const clients = room.players.filter(p => p.osuId > 0);
@@ -164,7 +167,8 @@ export class RoomAutomation {
       room.totalScore.left === 0 && room.totalScore.right === 0 && !changedClientScore;
     if (confirmed && !clearedDisplay && ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
       entryOf(state, counted.entryId)?.beatmapId === mapId &&
-      (room.totalScore.left !== counted.finalScore?.a || room.totalScore.right !== counted.finalScore?.b)) {
+      (room.totalScore.left !== confirmed.totalScore.left || room.totalScore.right !== confirmed.totalScore.right ||
+        totals.left !== null && totals.right !== null && (totals.left !== counted.finalScore?.a || totals.right !== counted.finalScore?.b))) {
       const next = observedTransition(state, observation(state, 'review-result', { reason: '自动计胜后成绩仍有变化，请人工核对胜方' }, counted), '成绩仍在变化：撤回本局自动计胜，等待人工核对', randomUUID());
       this.reset();
       return { state: next, note: '成绩仍在变化，暂不加分。全部结束后请选择正确胜方' };
@@ -228,9 +232,10 @@ export class RoomAutomation {
     const round = currentRound(next);
     const sameMap = round && entryOf(next, round.entryId)?.beatmapId === mapId;
     if (ipc === 4 && sameMap) {
-      const scores = room.totalScore;
-      if (!this.scoreCandidate || this.scoreCandidate.left !== scores.left || this.scoreCandidate.right !== scores.right) {
-        this.scoreCandidate = { ...scores, at: now, frames: 1 };
+      const scores = totals;
+      const signature = JSON.stringify(calculation);
+      if (!this.scoreCandidate || this.scoreCandidate.signature !== signature) {
+        this.scoreCandidate = { ...scores, calculation, signature, at: now, frames: 1 };
       } else this.scoreCandidate.frames++;
     } else { this.scoreCandidate = null; this.endRun = null; }
     if (ipc === 3 && this.baseline.ipc !== 3) this.playEdge = mapId;
@@ -252,7 +257,7 @@ export class RoomAutomation {
         if (this.ranking?.runId === round.runId) {
           this.ranking.frames++;
           if (now - this.ranking.at >= config.rankingDebounceMs && this.ranking.frames >= 2) {
-            next = observedTransition(next, observation(next, 'finish-attempt', { scores: { a: room.totalScore.left, b: room.totalScore.right } }, round), 'tosu 连续 Playing → Ranking：保留 Playing 画面与总分', randomUUID());
+            next = observedTransition(next, observation(next, 'finish-attempt', { scores: { a: totals.left, b: totals.right }, scoring: calculation }, round), 'tosu 连续 Playing → Ranking：保留 Playing 画面与总分', randomUUID());
             this.endRun = { roundId: round.id, runId: round.runId };
             this.observedRun = null; this.ranking = null;
           }
@@ -268,13 +273,13 @@ export class RoomAutomation {
       const ready = score && score.frames >= 2 && now - score.at >= config.rankingDebounceMs &&
         [score.left, score.right].every(n => Number.isSafeInteger(n) && n >= 0) && score.left !== score.right;
       if (ready) {
-        next = observedTransition(next, observation(next, 'confirm-result', { scores: score, evidence }, finished),
+        next = observedTransition(next, observation(next, 'confirm-result', { scores: { left: score.left, right: score.right }, evidence, scoring: score.calculation }, finished),
           `tosu 最终队分 ${score.left}:${score.right} · 自动加赢图`, randomUUID());
         if (next.rounds.find(round => round.id === finished.id).status !== 'recorded') {
           this.baseline.ipc = ipc;
           return { state: next, note: '本图分数或赛制尚不满足自动计胜条件' };
         }
-        this.confirmedPlayers = { roundId: finished.id,
+        this.confirmedPlayers = { roundId: finished.id, totalScore: { ...room.totalScore },
           scores: new Map(room.players.filter(p => p.osuId > 0).map(p => [`${p.side}:${p.osuId}`, p.score])) };
         this.endRun = null;
         note = '本局已按最终队分自动计胜；可撤回、修正胜方或人工校正系列分';

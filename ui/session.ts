@@ -17,7 +17,7 @@ interface StreamingFixture {
 }
 export interface BpAction { id: string; kind: 'ban' | 'pick'; team: Team; slot: number | null; ordinal?: number }
 export type BpPhase = 'ban1' | 'pick1' | 'ban2' | 'pick2';
-export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; exTeam: Team | null }
+export interface Round { id: string; replayOf?: string; entryId: string; pickedBy: Team | null; status: 'prepared' | 'playing' | 'ranking' | 'recorded' | 'void'; winner: Team | null; runId: string | null; source: string; resultSource?: string; autoProtected?: boolean; finalScore: { a: number | null; b: number | null } | null; scoreCalculation?: CompetitionScore; exTeam: Team | null }
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
   schema: number; id: string; version: number; warmup?: boolean;
@@ -53,6 +53,14 @@ export interface BeatmapStats {
 }
 export interface RoomChatLine { team?: string; name?: string; message?: string; timestamp?: string }
 export interface RoomPlayer { ipcId: number | null; side: 'left' | 'right' | null; osuId: number | null; name: string | null }
+export interface CompetitionScore {
+  rule: 'client' | 'unknown' | 'fm-ez-v1';
+  entryId?: string;
+  players?: { osuId: number; side: 'left' | 'right' | null; mods: string | null; rawScore: number | null; score: number | null }[];
+  totalScore: { left: number | null; right: number | null };
+  rawTotalScore: { left: number | null; right: number | null };
+  reason: string | null;
+}
 export interface Envelope {
   session: Session; persistence: string;
   live: {
@@ -68,7 +76,7 @@ export interface Envelope {
         time: { current: number | null; firstObject: number | null; lastObject: number | null };
         stats: BeatmapStats | null; tourneyStats?: BeatmapStats | null; rankingStats?: BeatmapStats | null };
       tourney: null | { teams: { left: string | null; right: string | null }; ipcState: number | null; scoreVisible?: boolean | null;
-        totalScore: { left: number | null; right: number | null }; chat: RoomChatLine[]; players?: RoomPlayer[] }
+        totalScore: { left: number | null; right: number | null }; competitionScore?: CompetitionScore; chat: RoomChatLine[]; players?: RoomPlayer[] }
     } };
   };
   catalog: null | { edition: string | null; kind?: string; warnings?: string[]; capturedOn?: string | null; teams: MatchTeam[]; pools: { id: string; name: string; entries: PoolEntry[] }[];

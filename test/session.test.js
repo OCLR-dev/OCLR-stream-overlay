@@ -25,7 +25,7 @@ const pick = (s, id = 'nm1') => { const next = action(s, 'pick'); return command
 const frame = (mapId = 999, ipc = 1, extra = {}) => {
   const totalScore = extra.totalScore || { left: 0, right: null };
   return { beatmap: { id: mapId }, tourney: { ipcState: ipc, teams: { left: 'Red room', right: 'Blue room' },
-    players: [{ side: 'left', osuId: 1, score: totalScore.left }, { side: 'right', osuId: 2, score: totalScore.right }], totalScore, ...extra } };
+    players: [{ side: 'left', osuId: 1, score: totalScore.left, mods: 'NF' }, { side: 'right', osuId: 2, score: totalScore.right, mods: 'NF' }], totalScore, ...extra } };
 };
 function simulate(state) {
   const observer = new RoomAutomation();

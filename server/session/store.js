@@ -1,4 +1,5 @@
 import { afterCommit } from './presentation.js';
+import { scoringLive } from './scoring.js';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname } from 'node:path';
@@ -38,7 +39,7 @@ export class SessionStore extends SessionApplication {
     const { undo, commandIds, ...session } = this.state;
     const exhibition = exhibitionProgress(this.state);
     return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state),
-      ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: this.live, persistence: this.persistence, catalog: this.catalog || null });
+      ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: scoringLive(this.state, this.live), persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }
