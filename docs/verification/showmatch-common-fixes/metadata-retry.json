@@ -1,0 +1,8 @@
+{
+  "metadataRequests": 2,
+  "stars": [
+    "★5.25"
+  ],
+  "errors": [],
+  "timerAcceleration": "65000ms retry delay shortened to 100ms only in isolated browser"
+}

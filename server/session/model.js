@@ -681,14 +681,24 @@ function applyCommand(s, command) {
         s.queue = p.queue.map(normalizeAction);
       }
       return '设置明确 BP 动作与后续序列';
-    case 'set-plan':
+    case 'set-plan': {
       if (s.match.custom) s.match.bpPreset = null;
       s.bpFlow = { ...s.bpFlow, mode: 'manual' };
       requireValue(p.verifiedBy == null || text(p.verifiedBy), '核实来源说明过长');
       requireValue(Array.isArray(p.queue) && p.queue.length <= 40, 'BP 序列过长');
       s.queue = p.queue.map(normalizeAction);
       s.planVerification = p.verifiedBy?.trim() || null;
+      if (!s.action && s.queue.length && !bpStopReason(s) && !s.paused && !s.incident &&
+        !['prepared', 'playing'].includes(currentRound(s)?.status)) {
+        s.action = takeBpAction(s);
+        if (s.action) {
+          s.poolChoice = { team: s.action.team, kind: s.action.kind };
+          s.phase = 'bp';
+          return '已从手动 BP 队列首项开始，等待选图';
+        }
+      }
       return `更新明确配置的后续 BP 顺序（不修改当前动作）${s.planVerification ? `：${s.planVerification}` : ''}`;
+    }
     case 'apply-bp': return applyBp(s, p.entryId, 'manual', p.actionId);
     case 'skip-ban': {
       const progress = bpProgress(s);

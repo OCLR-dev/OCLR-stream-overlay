@@ -26,6 +26,37 @@ function opening(s = setup()) { for (let i = 0; i < 4; i++) s = apply(s, i); ret
 const finish = s => command(command(s, 'start'), 'ranking');
 const sig = s => s.action && [s.action.kind, s.action.team, s.action.slot];
 
+test('an explicit custom queue starts its first action and waits for the active map before advancing', () => {
+  let s = setting(newCustomSession(), 'bestOf', 7);
+  s = setting(s, 'pool', pool);
+  const before = s;
+  s = command(s, 'set-plan', { queue: [{ kind: 'pick', team: 'b' }, { kind: 'pick', team: 'a' }] });
+  assert.deepEqual(sig(s), ['pick', 'b', null]);
+  assert.equal(bpProgress(s).canApply, true);
+  assert.equal(s.queue.length, 1);
+  assert.equal(s.match.bpPreset, null);
+  const undone = command(s, 'undo');
+  assert.deepEqual(undone.action, before.action); assert.deepEqual(undone.queue, before.queue);
+  s = apply(s, 0);
+  s = command(s, 'set-plan', { queue: [{ kind: 'pick', team: 'b' }] });
+  assert.equal(s.action, null, 'the prepared map remains the active Pick');
+  s = command(s, 'start');
+  s = command(s, 'set-plan', { queue: [{ kind: 'pick', team: 'a' }] });
+  assert.equal(s.action, null, 'the Playing map cannot be bypassed');
+  s = command(s, 'ranking');
+  assert.deepEqual(sig(s), ['pick', 'a', null]);
+});
+
+test('a custom queue preserves the current action and waits for an explicit BO', () => {
+  const s = setup();
+  const next = command(s, 'set-plan', { queue: [{ kind: 'pick', team: 'b' }] });
+  assert.deepEqual(next.action, s.action);
+  assert.equal(next.queue.length, 1);
+  const noBo = command(newCustomSession(), 'set-plan', { queue: [{ kind: 'pick', team: 'a' }] });
+  assert.equal(noBo.action, null);
+  assert.equal(noBo.queue.length, 1);
+});
+
 test('custom sessions wait for explicit BO and BP; Roll never installs OCLR order', () => {
   let s = newCustomSession();
   assert.equal(targetOf(s), null); assert.equal(seriesComplete(s), false);

@@ -4,7 +4,7 @@ import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
 import MapArtwork from './MapArtwork.vue';
-import { mapFileMetadata } from '../mapMetadata';
+import { MAP_METADATA_RETRY_MS, mapFileMetadata } from '../mapMetadata';
 import { mapStarDisplay } from '../mapStats';
 import { testModForCategory, type TestMapMetadata } from '../mapParameters';
 import type { PoolEntry } from '../session';
@@ -23,6 +23,8 @@ const rows = computed(() => Math.max(1, groups.value.reduce((sum, group) => sum 
 const cardNumber = (entry: { label: string }, index: number) => entry.label.match(/(\d+)$/)?.[1] || String(index + 1);
 const resolvedMetadata = reactive<Record<string, TestMapMetadata>>({});
 const requested = new Set<string>();
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let disposed = false;
 const trimmed = (value: string | null | undefined) => typeof value === 'string' ? value.trim() : '';
 const artistFor = (entry: PoolEntry) => trimmed(entry.artist);
 const metadataKey = (entry: PoolEntry) => `${entry.beatmapId}:${testModForCategory(entry.mod)}`;
@@ -51,8 +53,14 @@ const loadMetadata = (entry: PoolEntry) => {
   if (entry.beatmapId <= 0 || requested.has(key)) return;
   requested.add(key);
   void mapFileMetadata(entry.beatmapId, testModForCategory(entry.mod) || '').then(metadata => {
+    if (disposed) return;
     if (metadata) resolvedMetadata[key] = metadata;
-    else requested.delete(key);
+    else retryTimers.set(key, setTimeout(() => {
+      retryTimers.delete(key);
+      requested.delete(key);
+      const current = view.value.pool.find(item => metadataKey(item) === key);
+      if (current) loadMetadata(current);
+    }, MAP_METADATA_RETRY_MS));
   });
 };
 watch(groups, next => {
@@ -88,7 +96,12 @@ onMounted(() => {
   void nextTick(observeCards);
 });
 watch(groups, () => { void nextTick(observeCards); });
-onBeforeUnmount(() => { cardObserver?.disconnect(); compactCards.clear(); });
+onBeforeUnmount(() => {
+  disposed = true;
+  for (const timer of retryTimers.values()) clearTimeout(timer);
+  retryTimers.clear();
+  cardObserver?.disconnect(); compactCards.clear();
+});
 </script>
 
 <template>
