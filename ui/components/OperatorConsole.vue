@@ -127,6 +127,7 @@ const winnerTeam = computed<Team | null>(() => {
 const recordingPrevious = computed(() => !!resultRound.value && resultRound.value !== s.value?.currentRoundId);
 const panel = computed(() => normalizeScene(s.value?.scene));
 const scorePanel = computed(() => panel.value === 'playing');
+const lastBp = computed(() => s.value?.bp?.retract);
 const panelHeading = computed(() => s.value?.warmup ? 'Warm-up · 热身' : ({ waiting: '到场与就绪', roll: 'Roll 点数与先手', mappool: '图池 Ban / Pick', playing: '比分与赛果', victory: '全场胜方', pause: '暂停管理' }[panel.value]));
 const scenes = [['waiting', '等待'], ['roll', 'Roll / 先手'], ['mappool', '图池 / BP'], ['playing', 'Playing'], ['victory', 'Winner']] as const;
 const form = reactive({ title: 'OCLR S11', a: '', b: '', rosterA: '', rosterB: '', pool: '', mode: '4v4', source: '4x3' });
@@ -377,7 +378,7 @@ const run = async (type: string, payload: unknown = {}) => {
       'clear-records': '已撤销全部比赛记录；队伍、名单、图池与自动跟随设置保留。',
       undo: `已撤销上一项。当前系列比分 ${series.value.a} : ${series.value.b}，请核对当前图后继续。`,
     };
-    const recorded = s.value?.warmup && type === 'display' ? '已手动切换热身播出画面，正式自动流程保持关闭。' : s.value?.history.at(-1)?.message || '';
+    const recorded = s.value?.warmup && type === 'display' ? '已手动切换热手播出画面。' : s.value?.history.at(-1)?.message || '';
     const hintText = type === 'undo'
       ? `当前系列比分 ${series.value.a} : ${series.value.b}。下一步：${nextStep.value}`
       : nextStep.value ? `下一步：${nextStep.value}` : '';
@@ -599,7 +600,7 @@ function poolState(id: string) {
   if (entry(id)?.mod === 'TB' && mark.status !== 'open') return mark.status === 'used' ? '决胜图 · 已结束' : '决胜图 · 已准备';
   return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已结束' : 'Pick'}` : '';
 }
-const nextStep = computed(() => s.value?.warmup ? '热身不会推进 BP、计胜或自动切画面。结束后返回游戏房间，再关闭 Warm-up。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
+const nextStep = computed(() => s.value?.warmup ? '热手仅影响播出显示，可随时手动关闭；比赛记录与房间观测继续。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
 const poolAction = computed(() => {
   const bp = s.value?.bp;
   return bp?.waiting && bp.next ? bp.next : s.value?.poolChoice || null;
@@ -619,6 +620,7 @@ const bpPhases: { id: BpPhase; label: string }[] = [
   { id: 'ban2', label: '第二轮 Ban' },
   { id: 'pick2', label: '第二轮 Pick' },
 ];
+const availableBpPhases = computed(() => bpPhases.filter(phase => s.value?.bp?.phases?.includes(phase.id) ?? true));
 const bpPhase = computed(() => s.value?.bp?.phase || null);
 const bpPhaseDisabled = computed(() => disabled.value || !s.value || !!s.value.warmup || s.value.paused || !!s.value.incident ||
   !s.value.bp || s.value.bp.stopped || !!s.value.bp.waiting || (!['roll', 'manual'].includes(s.value.bp.mode) && !s.value.bp.canStart));
@@ -664,7 +666,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <span>播出画面</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
       </nav>
       <section class="operator-toolbar" aria-label="随时可用的比赛操作">
-        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.warmup ? 'Warm-up · 热身中，不计赢图' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
+        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.warmup ? 'Warm-up · 热手显示' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'normal' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
@@ -675,7 +677,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       <section class="operator-warm-time" aria-label="Warm-up 热身模式">
         <button type="button" :aria-pressed="!!s.warmup" :disabled="disabled" @click="run('warmup', { enabled: !s.warmup })">Warm-up · {{ s.warmup ? '已开启' : '已关闭' }}</button>
         <div v-if="s.bp" class="operator-bp-phases" role="group" aria-label="BP 阶段">
-          <button v-for="phase in bpPhases" :key="phase.id" type="button" :aria-pressed="bpPhase === phase.id" :disabled="bpPhaseDisabled" :title="bpPhaseDisabled ? (s.bp?.waiting || (s.bp?.mode === 'manual' ? '当前为手动 BP；阶段跳转会重建剩余动作' : '当前无法跳转 BP 阶段')) : bpPhase === phase.id ? '当前阶段；点击不会改动比赛记录' : s.bp?.canStart ? `从${phase.label}开始 BP（默认左队先 Ban）` : `跳到${phase.label}起点（只向前，不删除记录）`" @click="jumpBpPhase(phase.id)">{{ phase.label }}</button>
+          <button v-for="phase in availableBpPhases" :key="phase.id" type="button" :aria-pressed="bpPhase === phase.id" :disabled="bpPhaseDisabled" :title="bpPhaseDisabled ? (s.bp?.waiting || (s.bp?.mode === 'manual' ? '当前为手动 BP；阶段跳转会重建剩余动作' : '当前无法跳转 BP 阶段')) : bpPhase === phase.id ? '当前阶段；点击不会改动比赛记录' : s.bp?.canStart ? `从${phase.label}开始 BP` : `跳到${phase.label}起点（只向前，不删除记录）`" @click="jumpBpPhase(phase.id)">{{ phase.label }}</button>
         </div>
       </section>
       <div class="operator-quick-row">
@@ -750,7 +752,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <div v-if="s.warmup" class="operator-action-stack">
               <h3>热身实时队分</h3>
               <div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div>
-              <p>正式比分和比赛记录已保留，热身不计入胜点。画面可在上方手动选择。</p>
+              <p>热手仅影响显示，比赛记录与房间观测继续。画面可在上方手动选择。</p>
             </div>
             <div v-else-if="panel === 'waiting'" class="operator-action-stack">
               <div class="operator-two"><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-team-status" :data-team="team"><h3>{{ names[team] }}</h3><label class="operator-check"><input type="checkbox" :checked="s.arrived[team]" :disabled="disabled" :data-unavailable="connection !== 'synced'" @change="run('arrival', { team, arrived: !s.arrived[team], ready: false })">已到场</label><label class="operator-check"><input type="checkbox" :checked="s.ready[team]" :disabled="disabled || !s.arrived[team]" :data-unavailable="connection !== 'synced' || !s.arrived[team]" @change="run('arrival', { team, arrived: true, ready: !s.ready[team] })">已就绪</label></div></div>
@@ -766,6 +768,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <p v-else class="operator-hint">{{ exhibition ? '选择先 Pick 后进入图池，双方交替选图；如有 Ban，请按裁判要求手动选择。' : '选择先 Pick 和先 Ban 后，可直接进入图池 / BP。' }}</p>
             </div>
             <div v-else-if="panel === 'mappool'" class="operator-action-stack">
+              <button v-if="lastBp?.canRetract" :disabled="disabled" @click="run('retract-bp', { actionId: lastBp.actionId, selectionId: lastBp.selectionId })">撤回本次 Ban / Pick</button>
               <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : round ? `当前图 ${entry(round.entryId)?.label || '—'} · ${roundStatusLabel(round)}` : s.poolChoice ? `${names[s.poolChoice.team]} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'} · 等待选图` : '选择 Ban／Pick 或谱面' }}</p>
               <p v-if="bpAuto" class="operator-bp-auto" aria-live="polite">{{ bpAuto.current ? `自动待处理：${bpAuto.label} · 房间换图后自动记录` : `自动下一步：${bpAuto.label}` }}</p>
               <p v-else-if="s.bp?.waiting && s.bp.mode === 'roll' && !s.bp.stopped" class="operator-bp-auto" aria-live="polite">{{ s.bp.waiting }}；本局结算后自动继续 BP。</p>
@@ -786,7 +789,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p>{{ roomScores ? '来自游戏房间，显示队分不代表已计胜。' : '等待房间队分，未知分数显示 —。' }}</p></section>
               <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效，作为系列比分校正保留；裁判要求重赛也不会自动撤回。若裁判判本图胜方，请使用下方“记本图胜”，重赛会撤回该图贡献。</p></section>
               <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
-              <button v-if="round?.status === 'playing'" :disabled="disabled || !!s.incident || s.paused" @click="run('ranking')">本图已结束，继续 BP（暂不计胜）</button>
+              <button v-if="round?.status === 'playing'" :disabled="disabled || s.paused" @click="run('finish-round', { roundId: round.id })">本图已结束，继续 BP（暂不计胜）</button>
               <section v-if="resultRound" id="manual-result" class="operator-result">
                 <h3>人工记录赛果</h3><label>本图<ControlSelect v-model="resultRound"><option v-for="r in s.rounds.filter(needsResult)" :key="r.id" :value="r.id">{{ entry(r.entryId)?.label }} · {{ roundStatus[r.status] }}{{ r.id !== s.currentRoundId ? '（上一局）' : '' }}</option></ControlSelect></label>
                 <div class="operator-two"><button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled || !resultRound" :data-unavailable="connection !== 'synced' || !resultRound" @click="recordResult(team)">记{{ recordingPrevious ? '上一局' : '本图' }} {{ names[team] }} 胜</button></div>

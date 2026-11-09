@@ -80,12 +80,13 @@ test('normal finish needs no manual confirmation and hidden/reset clients cannot
   const h = harness(); await h.ranking();
   assert.equal(currentRound(h.s).resultSource, 'tosu'); assert.equal(currentRound(h.s).winner, 'a');
   const saved = structuredClone(currentRound(h.s));
+  let cleanupAt = Date.parse(h.store.live.tosu.updatedAt);
   for (const players of [
     [{ side: 'left', osuId: 1, score: 900 }, { side: 'right', osuId: 2, score: 800 }],
     [{ side: 'left', osuId: 1, score: 0 }, { side: 'right', osuId: 2, score: 0 }],
     [{ side: 'left', osuId: 0, score: 0 }, { side: 'right', osuId: 0, score: 0 }],
   ]) {
-    await h.store.frame({ beatmap: { id: 710001 }, tourney: { ipcState: 4, scoreVisible: false, teams: { left: 'L', right: 'R' }, totalScore: { left: 0, right: 0 }, players } }, 10000);
+    await h.store.frame({ beatmap: { id: 710001 }, tourney: { ipcState: 4, scoreVisible: false, teams: { left: 'L', right: 'R' }, totalScore: { left: 0, right: 0 }, players } }, cleanupAt += 100);
     assert.equal(h.s.incident, null); assert.deepEqual(currentRound(h.s), saved); assert.deepEqual(seriesOf(h.s), { a: 1, b: 0 });
   }
   await h.frame(); await h.change(710002); assert.equal(currentRound(h.s).entryId, 'sim-nm2'); assert.equal(currentRound(h.s).source, 'room-map');

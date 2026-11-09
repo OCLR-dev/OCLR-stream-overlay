@@ -8,7 +8,7 @@ function pickKey(state) {
   if (round?.status !== 'prepared' || !entry) return null;
   const event = state.bpHistory?.findLast(item => item.actionId === round.actionId && item.entryId === entry.id &&
     ['pick', 'replace-pick'].includes(item.kind));
-  return JSON.stringify([state.id, round.id, entry.id, entry.beatmapId, entry.mod, round.pickedBy, event?.id || null]);
+  return JSON.stringify([state.id, round.selectionId, round.attemptId, entry.id, entry.beatmapId, entry.mod, round.pickedBy, event?.id || null]);
 }
 const eligible = state => !state.warmup && state.scene === 'mappool' && state.phase === 'bp' && state.auto.scenes &&
   !state.action && !state.paused && !state.incident && !seriesComplete(state);
@@ -22,6 +22,11 @@ export class PickSceneDelay {
     this.pending = null;
   }
   matches(token, state) { return this.pending === token && eligible(state) && pickKey(state) === token.key; }
+  retry(token, state) {
+    if (!this.matches(token, state)) return;
+    token.timer = setTimeout(() => { void this.onDue(token); }, 1000);
+    token.timer.unref?.();
+  }
   update(before, after, allowNew = true) {
     const key = pickKey(after);
     if (this.pending && (!eligible(after) || this.pending.key !== key)) this.cancel();

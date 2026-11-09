@@ -62,7 +62,14 @@ export function attachBroadcast(store, data) {
   };
   const unsubscribe = data.subscribe(snapshot => {
     const tosu = snapshot.tosu;
-    if (tosu.status !== lastStatus) { lastStatus = tosu.status; store.sourceStatus(tosu.status); }
+    if (tosu.status !== lastStatus) {
+      const status = tosu.status;
+      lastStatus = status;
+      void store.sourceStatus(status).catch(() => {
+        if (lastStatus === status) lastStatus = null;
+        store.live.note = '游戏连接状态未保存，请检查本机存储'; store.emit();
+      });
+    }
     if (tosu.status === 'live' && tosu.frameSeq && tosu.frameSeq !== lastFrame) {
       lastFrame = tosu.frameSeq;
       void store.frame(tosu.data).catch(() => { store.live.note = '会话自动更新未保存，请检查本机存储'; store.emit(); });

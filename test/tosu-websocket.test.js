@@ -50,7 +50,9 @@ test('real socket follows Roll-generated BP through both first Picks, replay and
   await map(stack, 730001); await until(() => stack.store.state.bans.b[0], 'Roll-generated first Blue Ban');
   await map(stack, 710001); await until(() => current(stack)?.status === 'prepared', 'Blue first Pick');
   assert.equal(current(stack).pickedBy, 'b'); const id = current(stack).id;
-  await map(stack, 710002); await until(() => current(stack)?.entryId === 'sim-nm2', 'replacement, same Pick');
+  await map(stack, 710002); await delay(500);
+  assert.equal(current(stack).entryId, 'sim-nm1');
+  await operator(stack, 'prepare-round', { entryId: 'sim-nm2', pickedBy: 'b' });
   assert.equal(current(stack).id, id);
   const finish = async () => {
     await simulate(stack, 'set', { ipcState: 3, growing: false }); await until(() => current(stack)?.status === 'playing', 'observed Playing');
@@ -109,7 +111,9 @@ test('real tosu-shaped WebSocket drives Ban/Pick, replacement, live scores/chat,
   await prepare(stack); const roundId = current(stack).id;
   assert.equal(stack.store.state.bans.a[0], 'sim-hd1'); assert.equal(stack.store.state.bans.b[0], 'sim-hr1');
   assert.equal(stack.store.state.phase, 'bp'); assert.equal(stack.store.state.scene, 'mappool');
-  await map(stack, 710002); await until(() => current(stack)?.entryId === 'sim-nm2', 'prepared map replacement');
+  await map(stack, 710002); await delay(500);
+  assert.equal(current(stack).entryId, 'sim-nm1');
+  await operator(stack, 'prepare-round', { entryId: 'sim-nm2', pickedBy: current(stack).pickedBy });
   assert.equal(current(stack).id, roundId); assert.equal(stack.store.state.rounds.length, 1);
   await simulate(stack, 'set', { ipcState: 3 }); await until(() => stack.store.state.scene === 'playing', 'automatic Playing display');
   const firstScore = stack.store.live.tosu.data.tourney.totalScore.left;

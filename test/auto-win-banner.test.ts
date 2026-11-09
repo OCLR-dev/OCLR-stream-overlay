@@ -10,7 +10,10 @@ const session = (history: AwardSession['history'], rounds: AwardSession['rounds'
 
 test('a live tosu award identifies the winning side from the recorded round', () => {
   const round = { id: 'r1', resultSource: 'tosu', winner: 'b', status: 'recorded' } as Session['rounds'][number];
-  const award = latestAutoWinAward(session([entry('tosu', 'tosu 最终队分 3:5 · 自动加赢图')], [round], 'r1'));
+  const event: AwardSession['history'][number] = { ...entry('tosu', '结算文案可以调整'),
+    changes: [{ type: 'ResultConfirmed', attemptId: 'r1', resultId: 'result:r1', winner: 'b', scores: { left: 3, right: 5 } }] };
+  const award = latestAutoWinAward(session([event], [round], 'new-round'));
+  assert.equal(latestAutoWinAward(session([event], [{ ...round, resultSource: 'manual' }], 'new-round')), null);
   assert.equal(award?.team, 'b');
   assert.equal(award?.id, 'h1');
   assert.equal(award?.left, 3);

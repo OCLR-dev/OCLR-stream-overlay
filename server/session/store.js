@@ -1,54 +1,35 @@
+import { afterCommit } from './presentation.js';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname } from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { automaticTransition, bpProgress, canShowWinner, currentRound, entryOf, exhibitionProgress, newSession, requireValue, restoreAutomation, seriesOf, transition } from './model.js';
-import { RoomAutomation } from './automation.js';
-import { rankingMapParameters } from './map-parameters.js';
-import { PickSceneDelay } from './pick-scene-delay.js';
-import { SeriesCorrectionTracker } from './series-correction.js';
-import { SpectatorRecovery } from './spectator-recovery.js';
-import { ReadyReturnRecovery } from './ready-return-recovery.js';
+import { SessionApplication } from './application.js';
+import { migrateSession } from './records.js';
+import { restoreAutomation, bpProgress, exhibitionProgress, seriesOf } from './model.js';
 
-export class SessionStore {
-  constructor({ file = null, state = newSession() } = {}) {
-    this.file = file; this.state = restoreAutomation(state); this.listeners = new Set(); this.automation = new RoomAutomation();
-    this.state.warmup ??= false;
-    if (this.state.pauseTimer === undefined) this.state.pauseTimer = null;
-    if (this.state.resumeAt === undefined) this.state.resumeAt = null;
-    if (!['normal', 'technical', 'tactical'].includes(this.state.pauseType)) this.state.pauseType = 'normal';
-    this.resumeTimer = null;
-    this.winnerTimer = null;
-    if (this.state.winnerPending && (!['a', 'b'].includes(this.state.winnerPending.team) || !Number.isSafeInteger(this.state.winnerPending.endsAt))) this.state.winnerPending = null;
-    if (this.state.winnerPending === undefined) this.state.winnerPending = null;
-    this.parameterHold = null;
-    // Remember when the room itself changed map, so "use the current room map"
-    // cannot silently consume a selection that has been sitting there for long.
-    this.roomMap = { id: null, at: 0 };
-    this.seriesCorrection = new SeriesCorrectionTracker();
-    this.spectatorRecovery = new SpectatorRecovery();
-    this.readyReturn = new ReadyReturnRecovery();
-    this.live = { tosu: { status: 'idle', updatedAt: null, data: null }, oclr: { status: 'idle', updatedAt: null, error: null }, note: '等待房间资料，自动化意图保持开启' };
-    this.persistence = file ? 'ready' : 'memory'; this.tail = Promise.resolve();
-    this.pickScene = new PickSceneDelay(token => this.enqueue(async () => {
-      if (!this.pickScene.matches(token, this.state)) return;
-      this.pickScene.cancel();
-      const next = automaticTransition(this.state, draft => {
-        draft.scene = 'playing'; draft.sceneOverride = null;
-      }, '本次 Pick 展示满 5 秒：自动切到 Playing（本局仍等待比赛开始）', randomUUID(), { undo: false });
-      await this.save(next);
-      this.emit();
-    }).catch(() => { this.live.note = '自动切换画面未保存，请检查本机存储'; this.emit(); }));
-    this.scheduleResume();
-    this.scheduleWinnerConfirm();
+// Infrastructure owns serialization and publication, never competition rules.
+export class SessionStore extends SessionApplication {
+  constructor(options = {}) {
+    super(options);
+    this.file = options.file ?? null;
+    this.persistence = this.file ? 'ready' : 'memory';
+    this.listeners = new Set(); this.tail = Promise.resolve();
   }
 
   static async open(file) {
     let state;
+    let original;
     try {
-      state = JSON.parse(await readFile(file, 'utf8'));
-      if (state.schema !== 1 || !Number.isSafeInteger(state.version) || !state.match || !Array.isArray(state.rounds) || !Array.isArray(state.commandIds)) throw new Error('INVALID_SESSION_FILE');
+      original = await readFile(file, 'utf8');
+      state = JSON.parse(original);
+      if (![1, 2].includes(state.schema) || !Number.isSafeInteger(state.version) || !state.match || !Array.isArray(state.rounds) || !Array.isArray(state.commandIds)) throw new Error('INVALID_SESSION_FILE');
     } catch (error) {
       if (error.code !== 'ENOENT') throw new Error('SESSION_RESTORE_FAILED');
+    }
+    if (state?.schema === 1) {
+      // Preserve the original before any upgraded snapshot can replace it.
+      migrateSession(restoreAutomation(state));
+      try { await writeFile(`${file}.schema-1-${createHash('sha256').update(original).digest('hex').slice(0, 12)}.bak`, original, { mode: 0o600, flag: 'wx' }); }
+      catch (error) { if (error.code !== 'EEXIST') throw error; }
     }
     return new SessionStore({ file, state });
   }
@@ -62,80 +43,11 @@ export class SessionStore {
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }
   enqueue(fn) { const task = this.tail.then(fn); this.tail = task.catch(() => {}); return task; }
-  close() { this.pickScene.cancel(); clearTimeout(this.resumeTimer); this.resumeTimer = null; clearTimeout(this.winnerTimer); this.winnerTimer = null; }
-
-  // "即将开始" gives a 10 second grace period. The deadline lives in the
-  // session, so a reload keeps counting and the output does not depend on the
-  // console staying open.
-  scheduleResume() {
-    clearTimeout(this.resumeTimer);
-    this.resumeTimer = null;
-    if (!this.state.paused || !Number.isSafeInteger(this.state.resumeAt)) return;
-    const delay = Math.max(0, this.state.resumeAt - Date.now());
-    this.resumeTimer = setTimeout(() => {
-      this.resumeTimer = null;
-      this.resumeNow();
-    }, delay);
-    this.resumeTimer.unref?.();
+  async archive() {
+    if (!this.file) return;
+    await mkdir(`${dirname(this.file)}/archive`, { recursive: true, mode: 0o700 });
+    await writeFile(`${dirname(this.file)}/archive/${this.state.id}-${this.state.version}.json`, JSON.stringify(this.state), { mode: 0o600 });
   }
-
-  resumeNow() {
-    this.enqueue(async () => {
-      if (!this.state.paused || !this.state.returnScene || !Number.isSafeInteger(this.state.resumeAt)) return;
-      if (this.state.resumeAt > Date.now()) { this.scheduleResume(); return; }
-      const next = automaticTransition(this.state, draft => {
-        draft.scene = draft.returnScene; draft.returnScene = null; draft.paused = false;
-        draft.sceneOverride = null; draft.pauseTimer = null; draft.resumeAt = null;
-      }, '“即将开始”倒计时结束：已自动返回暂停前的画面', randomUUID(), { undo: false });
-      await this.save(next);
-      this.live.note = '“即将开始”倒计时结束，已自动返回暂停前的画面';
-      this.emit();
-    }).catch(() => { this.live.note = '“即将开始”自动返回未保存，请检查本机存储'; this.emit(); });
-  }
-
-  // A pending Winner confirmation is an absolute deadline saved with the
-  // session, so closing/reloading the console cannot stop the countdown.
-  scheduleWinnerConfirm() {
-    clearTimeout(this.winnerTimer);
-    this.winnerTimer = null;
-    const pending = this.state.winnerPending;
-    if (!pending || !Number.isSafeInteger(pending.endsAt)) return;
-    const delay = Math.max(0, pending.endsAt - Date.now());
-    this.winnerTimer = setTimeout(() => {
-      this.winnerTimer = null;
-      this.confirmWinnerNow();
-    }, delay);
-    this.winnerTimer.unref?.();
-  }
-
-  confirmWinnerNow() {
-    this.enqueue(async () => {
-      const pending = this.state.winnerPending;
-      if (!pending) return;
-      if (pending.endsAt > Date.now()) { this.scheduleWinnerConfirm(); return; }
-      if (this.state.warmup || this.state.incident || this.state.paused || !canShowWinner(this.state, pending.team)) {
-        const note = this.state.warmup
-          ? '5 秒自动确认已取消：已进入 Warm-up，本场不计正式结果'
-          : '5 秒自动确认已取消：比赛状态或系列比分已变化，请手动确认胜方';
-        const cancelled = automaticTransition(this.state, draft => { draft.winnerPending = null; }, note, randomUUID(), { undo: false });
-        await this.save(cancelled);
-        this.live.note = note;
-        this.emit();
-        return;
-      }
-      const next = automaticTransition(this.state, draft => {
-        draft.winner = pending.team; draft.phase = 'winner'; draft.scene = 'victory';
-        draft.sceneOverride = null; draft.winnerPending = null;
-      }, `5 秒倒计时结束：自动确认 ${this.state.match.teams[pending.team].name} 为胜方`, randomUUID());
-      // Undo returns to the reviewed Winner screen without re-arming a stale
-      // expired deadline. The operator can then confirm or cancel manually.
-      next.undo.at(-1).state.winnerPending = null;
-      await this.save(next);
-      this.live.note = `5 秒倒计时结束：已自动确认 ${this.state.match.teams[pending.team].name} 为胜方`;
-      this.emit();
-    }).catch(() => { this.live.note = 'Winner 自动确认未保存，请检查本机存储后手动确认'; this.emit(); });
-  }
-
   async save(next, { allowPickScene = true } = {}) {
     if (this.file) {
       try {
@@ -149,148 +61,7 @@ export class SessionStore {
     this.persistence = this.file ? 'ready' : 'memory';
     const before = this.state;
     this.state = next;
-    this.pickScene.update(before, next, allowPickScene);
-    this.scheduleResume();
-    this.scheduleWinnerConfirm();
+    afterCommit(this, before, next, allowPickScene);
   }
 
-  command(command) {
-    return this.enqueue(async () => {
-      if (command.type === 'resolve-incident' && !this.state.commandIds.includes(command.id) && currentRound(this.state)?.status === 'playing') {
-        const room = this.live.tosu.data?.tourney;
-        requireValue(this.live.tosu.status === 'live' && room?.ipcState === 3 &&
-          this.live.tosu.data?.beatmap.id === entryOf(this.state, currentRound(this.state).entryId)?.beatmapId &&
-          room.teams.left === this.state.auto.left && room.teams.right === this.state.auto.right &&
-          room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0),
-        '尚未恢复到本图有效 Playing；请等待观战恢复，或由裁判确认重赛 / 人工核对赛果');
-      }
-      // Reset only the continuity whose meaning changed. Display, Roll, marks,
-      // counters, future actions and unrelated corrections do not lose a finish.
-      const continuity = state => {
-        const round = currentRound(state);
-        return JSON.stringify([state.id, state.auto.profile, state.auto.left, state.auto.right, state.paused, state.incident, state.warmup,
-          round?.id, round?.entryId, entryOf(state, round?.entryId)?.beatmapId, round?.status, round?.runId]);
-      };
-      let effective = command;
-      if (command.type === 'set-series') {
-        const { finishRoundId: ignored, ...payload } = command.payload || {};
-        effective = { ...command, payload: { ...payload,
-          ...(this.seriesCorrection.canFinish(this.state, this.live.tosu, Date.now() - this.receivedAt < 5000)
-            ? { finishRoundId: this.state.currentRoundId } : {}) } };
-      }
-      let next = transition(this.state, effective);
-      if (this.state.warmup && !next.warmup && next.id === this.state.id && command.type !== 'clear-records') {
-        const room = this.live.tosu.data?.tourney;
-        requireValue(this.live.tosu.status === 'live' && Date.now() - this.receivedAt < 5000 && [1, 2].includes(room?.ipcState),
-          '请先等待热身结束并返回房间，再关闭 Warm-up，避免把热身结算当作正式赛果');
-      }
-      // A room map can be selected before the operator picks the BP action. Use
-      // that already-visible map once, but only for an explicit action request
-      // and only when the map is still fresh and uniquely identified by the pool.
-      if (next !== this.state && (command.type === 'select-bp-action' || command.type === 'set-action') &&
-        command.payload?.applyRoomMap && next.action && next.action.id !== this.state.action?.id) {
-        const entry = this.currentRoomMap(next);
-        if (entry) {
-          try {
-            next = transition(next, { id: randomUUID(), version: next.version, type: 'apply-room-map',
-              payload: { entryId: entry.id, eventId: randomUUID() } });
-          } catch { /* keep the armed action; a pool card or the next map can still apply it */ }
-        }
-      }
-      if (next !== this.state) {
-        // Archive before replacing the match, without exposing local files over HTTP.
-        if (command.type === 'next-match' && this.file) {
-          await mkdir(`${dirname(this.file)}/archive`, { recursive: true, mode: 0o700 });
-          await writeFile(`${dirname(this.file)}/archive/${this.state.id}-${this.state.version}.json`, JSON.stringify(this.state), { mode: 0o600 });
-        }
-        const reset = continuity(next) !== continuity(this.state);
-        const changedAction = next.action?.id !== this.state.action?.id || next.auto.bp !== this.state.auto.bp;
-        const changedResults = next.auto.results !== this.state.auto.results;
-        await this.save(next, { allowPickScene: !['undo', 'replay', 'referee-replay', 'resume', 'resolve-incident'].includes(command.type) });
-        if (command.type === 'set-series' && !next.incident && !next.paused && currentRound(next)?.resultSource === 'series-correction') {
-          this.live.note = '系列比分已确认，本图已处理；自动流程等待下一图，无需再单独记胜';
-        }
-        if (['display', 'undo', 'replay', 'referee-replay'].includes(command.type)) this.pickScene.cancel();
-        if (reset) {
-          this.spectatorRecovery.reset();
-          this.readyReturn.reset();
-          if (this.live.tosu.status === 'live' && Date.now() - this.receivedAt < 5000) {
-            this.automation.rebase(next, this.live.tosu.data, Date.parse(this.live.tosu.updatedAt));
-          } else this.automation.reset();
-        }
-        else if (changedAction) this.automation.pending = null;
-        if (changedResults) { this.automation.endRun = null; this.automation.scoreCandidate = null; }
-        if (command.type === 'set-series' && currentRound(next)?.status === 'ranking') this.automation.endRun = null;
-        this.emit();
-      }
-      return this.snapshot();
-    });
-  }
-
-  currentRoomMap(state) {
-    const frame = this.live.tosu.data; const room = frame?.tourney;
-    const seenAt = Date.parse(this.live.tosu.updatedAt);
-    if (this.live.tosu.status !== 'live' || !Number.isFinite(seenAt) || Date.now() - seenAt > 5000 || !room ||
-      ![1, 2].includes(room.ipcState) || room.teams?.left !== state.auto.left || room.teams?.right !== state.auto.right) return null;
-    if (this.roomMap.id !== frame.beatmap?.id || Date.now() - this.roomMap.at > 10000) return null;
-    const candidates = state.pool.filter(entry => entry.beatmapId === frame.beatmap?.id);
-    return candidates.length === 1 ? candidates[0] : null;
-  }
-
-  sourceStatus(status) {
-    return this.enqueue(async () => { if (status !== 'live') {
-      this.pickScene.cancel();
-      this.seriesCorrection.reset();
-      this.spectatorRecovery.reset();
-      this.readyReturn.reset();
-      this.parameterHold = null;
-      if (!['stopped', 'connecting', 'idle'].includes(status) && !this.state.paused && (this.state.auto.bp || this.state.auto.scenes || this.state.auto.results)) {
-        const held = this.automation.hold(this.state, `tosu ${status}，观战数据中断；比赛是否中止或重赛待核对`);
-        if (held.state !== this.state) await this.save(held.state);
-      }
-      this.automation.reset(); this.roomMap = { id: null, at: 0 }; this.live.tosu = { status, updatedAt: null, data: null };
-      this.live.note = ['connecting', 'error', 'disconnected'].includes(status)
-        ? '尚未连接 tosu，请确认 tosu 已启动并核对 WebSocket 地址。程序会自动重连，比赛资料与自动化设置已保留。'
-        : `等待游戏数据恢复（${status}）；自动化设置不变，恢复后自动建立基线`;
-      this.emit();
-    } });
-  }
-  frame(frame, now = Date.now()) {
-    return this.enqueue(async () => {
-      const previousAt = Date.parse(this.live.tosu.updatedAt);
-      if (!Number.isFinite(previousAt) || now - previousAt > 5000 || now < previousAt) this.parameterHold = null;
-      this.receivedAt = Date.now();
-      const mapId = frame?.beatmap?.id;
-      let mapPushed = false;
-      if (Number.isSafeInteger(mapId) && mapId > 0) {
-        if (this.roomMap.id === null) { this.roomMap.id = mapId; mapPushed = true; }
-        else if (this.roomMap.id !== mapId) { this.roomMap = { id: mapId, at: now }; mapPushed = true; }
-      }
-      this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: frame };
-      const returned = this.state.warmup ? this.state : this.readyReturn.recover(this.state, frame, now);
-      const restoredReady = returned !== this.state;
-      if (restoredReady) {
-        this.pickScene.cancel(); this.spectatorRecovery.reset(); this.seriesCorrection.reset(); this.parameterHold = null;
-        await this.save(returned, { allowPickScene: false });
-        this.automation.rebase(this.state, frame, now);
-      }
-      const recovered = this.state.warmup ? this.state : this.spectatorRecovery.recover(this.state, frame, now);
-      if (recovered !== this.state) {
-        await this.save(recovered);
-        this.automation.rebase(this.state, frame, now);
-      }
-      const result = this.automation.ingest(this.state, frame, now);
-      this.live.note = restoredReady ? '本局已返回准备状态，保留原图，等待裁判重新开始比赛。' : result.note;
-      if (result.state !== this.state) await this.save(result.state);
-      if (mapPushed) this.pickScene.observeRoomMap(this.state, mapId);
-      this.spectatorRecovery.observe(this.state, frame, now);
-      this.readyReturn.observe(this.state, frame, now, this.automation.observedRun);
-      this.seriesCorrection.observe(this.state, frame, now);
-      const display = this.state.warmup ? { frame, hold: null } : rankingMapParameters(this.state, frame, this.parameterHold);
-      this.parameterHold = display.hold;
-      this.live.tosu.data = display.frame;
-      this.emit();
-      return this.snapshot();
-    });
-  }
 }

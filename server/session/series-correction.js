@@ -12,6 +12,8 @@ const matchingRoom = (state, frame) => tosuRoomTeams(frame) && state.auto.profil
 // observed finished map. It never creates a run or supplies an automatic winner.
 export class SeriesCorrectionTracker {
   constructor() { this.reset(); }
+  checkpoint() { return structuredClone({ ...this }); }
+  restoreEvidence(checkpoint) { Object.assign(this, checkpoint); }
   reset() { this.previous = null; this.finished = null; }
   observe(state, frame, now) {
     const key = keyOf(state);

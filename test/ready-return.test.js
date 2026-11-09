@@ -105,3 +105,29 @@ test('return preserves active EX, corrected series and a manually selected Mappo
   assert.deepEqual(model.seriesOf(h.s), { a: 2, b: 1 }); assert.equal(h.store.pickScene.pending, null);
   assert.equal(round(h).exTeam, 'b');
 });
+
+test('EX belongs to one Pick across abort, result correction and explicit replay; old attempts stay inert', async t => {
+  const h = await harness(false, false); t.after(() => h.store.close());
+  await h.cmd('ex', { team: 'a', remaining: { a: 2, b: 2 } });
+  const selection = round(h).selectionId;
+  await h.frame(3); const first = round(h).id;
+  assert.equal(h.s.ex.remaining.a, 2);
+  await h.frame(1); await h.frame(1);
+  assert.equal(round(h).selectionId, selection); assert.notEqual(round(h).id, first);
+  await h.frame(4); await h.frame(4);
+  assert.deepEqual(model.seriesOf(h.s), { a: 0, b: 0 }); assert.equal(h.s.ex.remaining.a, 2);
+  await h.frame(1); await h.frame(3); await h.frame(4); await h.frame(4);
+  assert.deepEqual(model.seriesOf(h.s), { a: 1, b: 0 }); assert.equal(h.s.ex.remaining.a, 1);
+  const finished = round(h).id;
+  await h.cmd('correct-result', { roundId: finished, winner: 'b', reason: '裁判修正胜方' });
+  await h.frame(4); assert.deepEqual(model.seriesOf(h.s), { a: 0, b: 1 }); assert.equal(h.s.ex.remaining.a, 1);
+  await h.cmd('ex', { team: 'a', remaining: { a: 1, b: 1 } });
+  await h.cmd('referee-replay', { reason: '裁判确认同图重赛' });
+  assert.equal(h.s.ex.remaining.b, 1);
+  assert.equal(round(h).selectionId, selection); assert.equal(h.s.ex.remaining.a, 2);
+  assert.deepEqual(model.seriesOf(h.s), { a: 0, b: 0 });
+  await h.frame(4); assert.equal(round(h).status, 'prepared');
+  await h.frame(1); await h.frame(3); await h.frame(4); await h.frame(4);
+  assert.deepEqual(model.seriesOf(h.s), { a: 1, b: 0 }); assert.equal(h.s.ex.remaining.a, 1);
+  assert.notEqual(round(h).id, finished);
+});

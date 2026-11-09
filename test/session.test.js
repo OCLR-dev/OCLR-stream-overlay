@@ -38,7 +38,7 @@ function simulate(state) {
   };
 }
 
-test('manual full match retains Roll/Bans, records each round once, reaches Winner only by result command', () => {
+test('manual full match retains Roll/Bans, records each round once, waits for explicit Winner display', () => {
   let s = setup();
   s = command(s, 'arrival', { team: 'a', arrived: true, ready: true });
   s = command(s, 'begin-roll');
@@ -57,6 +57,8 @@ test('manual full match retains Roll/Bans, records each round once, reaches Winn
     assert.throws(() => command(s, 'record-result', result.payload), /已记录/);
   }
   assert.deepEqual(seriesOf(s), { a: 6, b: 0 });
+  assert.equal(s.scene, 'mappool'); assert.equal(s.winner, null);
+  s = command(s, 'winner', { team: 'a' });
   assert.equal(s.scene, 'victory'); assert.equal(s.winner, 'a');
   assert.equal(s.roll.pickFirst, 'b'); assert.equal(s.roll.banFirst, 'a'); assert.equal(s.bans.a[0], 'hd1');
 });
@@ -170,7 +172,8 @@ test('Ban → Ban → Pick consumes each stable room map once and explicit queue
   sim.change(105); assert.equal(currentRound(sim.state).pickedBy, 'a');
   assert.equal(sim.state.phase, 'bp'); assert.equal(sim.state.scene, 'mappool');
   const id = currentRound(sim.state).id;
-  sim.change(104); assert.equal(currentRound(sim.state).entryId, 'nm2'); assert.equal(currentRound(sim.state).id, id); assert.equal(sim.state.rounds.length, 1);
+  sim.change(104); assert.equal(currentRound(sim.state).entryId, 'dt1');
+  sim.manual('prepare-round', { entryId: 'nm2', pickedBy: 'a' }); assert.equal(currentRound(sim.state).entryId, 'nm2'); assert.equal(currentRound(sim.state).id, id); assert.equal(sim.state.rounds.length, 1);
 });
 
 test('same map in multiple slots, warmups, occupied maps and wrong room never advance BP', () => {
@@ -183,7 +186,8 @@ test('same map in multiple slots, warmups, occupied maps and wrong room never ad
   sim.manual('set-action', { action: { kind: 'ban', team: 'b', slot: 0 } });
   sim.feed(104, 1, 500, { teams: { left: 'wrong', right: 'Blue room' } });
   sim.feed(104); assert.equal(sim.state.bans.b[0], null);
-  assert.match(sim.change(103).note, /已 Ban/);
+  assert.match(sim.change(103).note, /Ban/);
+  assert.equal(sim.state.bans.b[0], null);
 });
 
 test('first connection, reconnect, invalid frames, pause establish baselines without replay', () => {
@@ -362,6 +366,14 @@ test('failed persistence does not apply a command', async t => {
   const store = new SessionStore({ file: dir, state: setup() });
   await assert.rejects(store.command({ id: 'bad-write', version: store.state.version, type: 'bp' }), /保存失败/);
   assert.equal(store.state.phase, 'arrival'); assert.equal(store.persistence, 'error');
+  let state = pick(ready()); state = command(state, 'ex', { team: 'a', remaining: { a: 2, b: 2 } });
+  state = command(state, 'start'); state = command(state, 'ranking');
+  const resultStore = new SessionStore({ file: dir, state }); t.after(() => resultStore.close());
+  const result = { id: 'atomic-ex', version: state.version, type: 'record-result', payload: { roundId: currentRound(state).id, winner: 'a' } };
+  await assert.rejects(resultStore.command(result), /保存失败/);
+  assert.deepEqual(seriesOf(resultStore.state), { a: 0, b: 0 }); assert.equal(resultStore.state.ex.remaining.a, 2);
+  resultStore.file = join(dir, 'recovered.json'); await resultStore.command(result);
+  assert.deepEqual(seriesOf(resultStore.state), { a: 1, b: 0 }); assert.equal(resultStore.state.ex.remaining.a, 1);
 });
 
 test('published catalogue maps actual API fields and empty publication stays empty', () => {
@@ -869,4 +881,91 @@ test('failed archive prevents initialization and leaves the previous session unt
     assert.equal(store.state, state);
     assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), state);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('late manual result changes only its Pick contribution while a different attempt is playing', () => {
+  let s = pick(ready(), 'nm1');
+  s = command(s, 'ex', { team: 'a', remaining: { a: 2, b: 2 } });
+  s = command(s, 'start'); const old = currentRound(s).id;
+  s = command(s, 'incident', { kind: 'spectator', reason: '成绩暂缺' });
+  s = command(s, 'finish-round', { roundId: old });
+  assert.deepEqual(s.pendingResults, [old]);
+  s = pick(s, 'nm2'); s = command(s, 'start');
+  const active = structuredClone(currentRound(s));
+  const progress = JSON.stringify([s.scene, s.phase, s.currentRoundId, s.action, s.queue, s.bpHistory]);
+  s = command(s, 'record-result', { roundId: old, winner: 'a' });
+  assert.equal(JSON.stringify([s.scene, s.phase, s.currentRoundId, s.action, s.queue, s.bpHistory]), progress);
+  assert.deepEqual(currentRound(s), active); assert.equal(s.ex.remaining.a, 1);
+  assert.deepEqual(seriesOf(s), { a: 1, b: 0 }); assert.deepEqual(s.pendingResults, []);
+  s = command(s, 'correct-result', { roundId: old, winner: 'b', reason: '裁判核对' });
+  assert.equal(s.ex.remaining.a, 1); assert.deepEqual(currentRound(s), active);
+});
+
+test('targeted BP withdrawal restores only the latest action and historical mark edits keep later BP', () => {
+  let s = action(ready(), 'ban', 'a', 0, [{ kind: 'ban', team: 'b', slot: 0 }]);
+  const first = s.action.id;
+  s = command(s, 'apply-bp', { entryId: 'hd1' });
+  s = command(s, 'retract-bp', { actionId: first });
+  assert.equal(s.bans.a[0], null); assert.equal(s.action.team, 'a');
+  const replacement = s.action.id;
+  s = command(s, 'apply-bp', { entryId: 'nm1' });
+  s = command(s, 'apply-bp', { entryId: 'hd1' });
+  assert.throws(() => command(s, 'retract-bp', { actionId: replacement }), /后续 BP/);
+  const before = JSON.stringify([s.action, s.queue, s.bans, s.rounds, s.bpHistory]);
+  s = command(s, 'map-mark', { entryId: 'nm1', status: 'open', team: null });
+  assert.equal(JSON.stringify([s.action, s.queue, s.bans, s.rounds, s.bpHistory]), before);
+});
+
+test('v1 migration preserves bytes and undo, shares only explicit replay identity and never back-charges EX', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-v1-')); t.after(() => rm(dir, { recursive: true }));
+  let s = pick(ready(), 'nm1'); s = command(s, 'start');
+  s = command(s, 'ranking'); s = command(s, 'record-result', { roundId: currentRound(s).id, winner: 'a', keepDisplay: true });
+  const root = currentRound(s);
+  const replay = { ...structuredClone(root), id: 'legacy-replay', replayOf: root.id };
+  root.status = 'void'; root.winner = null;
+  s.rounds.push(replay, { ...structuredClone(root), id: 'independent-pick' },
+    { ...structuredClone(root), id: 'missing-link', replayOf: 'unknown-attempt' });
+  s.currentRoundId = replay.id;
+  const strip = state => {
+    state.schema = 1;
+    for (const key of ['selections', 'results', 'pendingResults', 'currentSelectionId', 'rules', 'exRevision']) delete state[key];
+    for (const round of state.rounds) {
+      for (const key of ['attemptId', 'selectionId', 'resultId']) delete round[key];
+      round.exTeam = 'a';
+    }
+  };
+  strip(s); s.undo.forEach(item => strip(item.state));
+  s.ex.remaining.a = 1;
+  const original = JSON.stringify(s, null, 2); const file = join(dir, 'session.json'); await writeFile(file, original);
+  const store = await SessionStore.open(file); t.after(() => store.close());
+  assert.equal(store.state.schema, 2); assert.equal(store.state.ex.remaining.a, 1);
+  assert.equal(store.state.rounds[0].selectionId, store.state.rounds[1].selectionId);
+  assert.notEqual(store.state.rounds[0].selectionId, store.state.rounds[2].selectionId);
+  assert.equal(store.state.rounds[3].identityUnresolved, true);
+  assert.equal(await readFile(file, 'utf8'), original);
+  const { readdir } = await import('node:fs/promises');
+  const backup = (await readdir(dir)).find(name => name.endsWith('.bak'));
+  assert.equal(await readFile(join(dir, backup), 'utf8'), original);
+  await store.command({ id: randomUUID(), version: store.state.version, type: 'correct-result', payload: { roundId: currentRound(store.state).id, winner: 'b', reason: '修正旧图' } });
+  assert.equal(store.state.ex.remaining.a, 1); assert.ok(store.state.undo.every(item => item.state.schema === 2));
+});
+
+test('cleared result clients retain the room-map baseline for the next explicit Ban', () => {
+  let state = action(ready(), 'pick', 'a', 0, [{ kind: 'ban', team: 'b', slot: 1 }, { kind: 'ban', team: 'a', slot: 1 }]);
+  state = command(state, 'apply-bp', { entryId: 'nm1' });
+  const sim = simulate(state);
+  const scores = { totalScore: { left: 900, right: 800 } };
+  sim.feed(103, 1); sim.feed(103, 3); sim.feed(103, 4, 500, scores); sim.feed(103, 4, 500, scores);
+  const round = currentRound(sim.state).id;
+  assert.equal(currentRound(sim.state).status, 'recorded');
+  const cleared = { players: [], totalScore: { left: 0, right: 0 }, scoreVisible: false };
+  sim.feed(103, 4, 500, cleared);
+  sim.feed(105, 4, 150, cleared);
+  sim.feed(105, 1, 500, cleared);
+  assert.equal(sim.state.bans.b[1], 'dt1');
+  sim.change(104, 1);
+  assert.equal(sim.state.bans.a[1], 'nm2');
+  assert.equal(currentRound(sim.state).id, round);
+  assert.equal(currentRound(sim.state).status, 'recorded');
+  assert.deepEqual(seriesOf(sim.state), { a: 1, b: 0 });
 });

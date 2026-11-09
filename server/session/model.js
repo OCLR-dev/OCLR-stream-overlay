@@ -1,16 +1,31 @@
+import { followScene } from './presentation.js';
+import { exhibitionOf, fixedSeries, targetOf, seriesOf, validSeries, seriesComplete, canShowWinner, canShowDraw, exhibitionProgress, rulesOf, automaticResultEligible } from './rules.js';
+import { migrateSession, synchronizeRecords, settleEx, refundReplayEx } from './records.js';
+export { targetOf, seriesOf, seriesComplete, canShowWinner, exhibitionProgress } from './rules.js';
 import { randomUUID } from 'node:crypto';
 
 export const SCENES = ['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause'];
 const MODS = ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'];
 const SIDES = ['a', 'b'];
-export const requireValue = (ok, message) => { if (!ok) throw new Error(message); };
+export class SessionRejection extends Error {}
+export const requireValue = (ok, message) => { if (!ok) throw new SessionRejection(message); };
 const text = (value, max = 160) => typeof value === 'string' && value.length <= max;
 const side = value => SIDES.includes(value);
 const clone = value => structuredClone(value);
 
-export function newSession() {
+// Ephemeral dependencies belong to one decision, never to the saved state.
+const contexts = new WeakMap();
+const contextOf = state => {
+  const context = contexts.get(state);
+  if (!context) throw new Error('MISSING_DECISION_CONTEXT');
+  return context;
+};
+const newId = state => contextOf(state).newId();
+const decidedAt = state => contextOf(state).now;
+
+export function newSession({ newId: makeId = randomUUID } = {}) {
   return {
-    schema: 1, id: randomUUID(), version: 0,
+    schema: 2, id: makeId(), version: 0,
     match: { title: 'OCLR S11', edition: null, fixtureId: null, poolId: null, provenance: 'manual',
       stage: 'group', mode: '4v4', source: '4x3',
       teams: { a: { id: null, name: '左队待设置', roster: [] }, b: { id: null, name: '右队待设置', roster: [] } } },
@@ -19,8 +34,8 @@ export function newSession() {
     phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null, automationVersion: 3,
     auto: { bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', mapDebounceMs: 400, rankingDebounceMs: 250 },
     action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] }, planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
-    rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
-    ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
+    selections: {}, results: {}, pendingResults: [], currentSelectionId: null, rules: { type: 'oclr', version: 1 }, rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
+    exRevision: { a: 0, b: 0 }, ex: { team: null, remaining: { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
     history: [], undo: [], commandIds: [],
   };
 }
@@ -56,64 +71,26 @@ export function restoreAutomation(state) {
   return next;
 }
 
-const exhibitionOf = s => s.match.stage === 'exhibition' ? s.match.exhibition : null;
-const fixedSeries = s => {
-  const series = exhibitionOf(s)?.series;
-  return series?.type === 'fixed_maps' ? series : null;
-};
-export const targetOf = s => {
-  const exhibition = exhibitionOf(s);
-  if (!exhibition) return s.match.stage === 'final' ? 7 : 6;
-  return exhibition.series?.wins ?? exhibition.series?.count ?? 99;
-};
 export const currentRound = s => s.rounds.find(r => r.id === s.currentRoundId) || null;
-export const seriesOf = s => Object.fromEntries(SIDES.map(team => [team,
-  s.rounds.filter(r => r.status === 'recorded' && r.winner === team).length + (s.seriesAdjustment?.[team] || 0)]));
-const drawnMaps = s => s.rounds.filter(r => r.status === 'recorded' && r.winner === null).length;
-const mapsPlayed = (s, score) => score.a + score.b + drawnMaps(s);
-function validSeries(s, score = seriesOf(s)) {
-  const fixed = fixedSeries(s);
-  const firstTo = exhibitionOf(s)?.series?.type === 'first_to';
-  return SIDES.every(team => Number.isSafeInteger(score[team]) && score[team] >= 0 && score[team] <= targetOf(s)) &&
-    (!fixed || mapsPlayed(s, score) <= fixed.count) &&
-    (!firstTo || !SIDES.every(team => score[team] === targetOf(s)));
-}
-export function seriesComplete(s) {
-  const score = seriesOf(s);
-  const fixed = fixedSeries(s);
-  if (fixed) return mapsPlayed(s, score) >= fixed.count;
-  if (exhibitionOf(s) && !exhibitionOf(s).series) return false;
-  return SIDES.some(team => score[team] >= targetOf(s));
-}
-export function canShowWinner(s, team) {
-  if (!side(team) || !seriesComplete(s)) return false;
-  const score = seriesOf(s);
-  return fixedSeries(s) ? score[team] > score[team === 'a' ? 'b' : 'a'] : score[team] >= targetOf(s);
-}
-const canShowDraw = s => fixedSeries(s)?.allowDraw && seriesComplete(s) && seriesOf(s).a === seriesOf(s).b;
-export function exhibitionProgress(s) {
-  if (!exhibitionOf(s)) return null;
-  return { limit: targetOf(s), played: mapsPlayed(s, seriesOf(s)), complete: seriesComplete(s),
-    winner: SIDES.find(team => canShowWinner(s, team)) ?? null, draw: !!canShowDraw(s) };
-}
 export const entryOf = (s, id) => s.pool.find(e => e.id === id);
 const domain = s => ({ warmup: false, poolMarks: [], poolChoice: null, ...Object.fromEntries(Object.entries(s).filter(([key]) => !['version', 'history', 'undo', 'commandIds'].includes(key))) });
 
-export function holdRound(s, kind, reason, source = 'manual') {
+function holdRound(s, kind, reason, source = 'manual') {
   const round = currentRound(s);
   requireValue(round && ['prepared', 'playing', 'ranking'].includes(round.status), '没有待处理本图；已计胜请先撤回本局计胜');
   s.incident = { kind: kind === 'abort' && round.status === 'prepared' ? 'prestart-abort' : kind,
-    roundId: round.id, reason, source, at: new Date().toISOString() };
+    roundId: round.id, reason, source, at: new Date(decidedAt(s)).toISOString() };
 }
 
 // Returning to the ready room cancels only the observed unfinished attempt.
 // Preserve the displayed scene, selection, BP, EX and aggregate corrections.
-export function prepareAbortedRound(s) {
+function prepareAbortedRound(s) {
   const round = currentRound(s);
   requireValue(round?.status === 'playing' && round.runId && !round.bpReleased && !s.action, '本局不能自动恢复准备');
-  const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null,
+  const next = { ...clone(round), id: newId(s), replayOf: round.id, status: 'prepared', winner: null,
     runId: null, finalScore: null, exTeam: s.ex.team };
   for (const key of ['bpReleased', 'bpReleaseHistory', 'resultSource', 'startedBy', 'autoProtected']) delete next[key];
+  delete next.attemptId; delete next.resultId;
   round.status = 'void';
   s.rounds.push(next); s.currentRoundId = next.id; s.phase = 'bp'; s.incident = null;
 }
@@ -165,10 +142,10 @@ function normalizeExhibition(value) {
       { type: series.type, count: series.count, allowDraw: series.allowDraw } };
 }
 
-function normalizeAction(action) {
+function normalizeAction(s, action) {
   requireValue(action && ['ban', 'pick'].includes(action.kind) && side(action.team), '请明确 BP 动作与行动队伍');
   requireValue(action.kind !== 'ban' || [0, 1].includes(action.slot), 'Ban 槽位无效');
-  return { id: randomUUID(), kind: action.kind, team: action.team, slot: action.kind === 'ban' ? action.slot : null };
+  return { id: newId(s), kind: action.kind, team: action.team, slot: action.kind === 'ban' ? action.slot : null };
 }
 
 // Promote an existing action without discarding the one waiting at the cursor.
@@ -182,7 +159,7 @@ function promoteBpAction(s, choice) {
     selected = index < 0 ? {} : s.queue.splice(index, 1)[0];
     if (s.action) s.queue.unshift(s.action);
   }
-  s.action = { ...selected, ...normalizeAction(choice) };
+  s.action = { ...selected, ...normalizeAction(s, choice) };
   s.bpFlow ||= { mode: 'manual' };
 }
 
@@ -190,18 +167,14 @@ function promoteBpAction(s, choice) {
 // existing/manual sessions and their undo domains keep their original order.
 const bpStarted = s => s.rounds.length > 0 || (s.bpHistory || []).length > 0 || SIDES.some(t => s.bans[t].some(Boolean));
 function syncRollFlow(s) {
-  const exhibition = exhibitionOf(s);
   if (bpStarted(s) || s.bpFlow?.mode === 'manual' || (!s.bpFlow &&
     (s.action || s.queue.length || s.planVerification || (s.bpFlow === undefined && s.history.some(h => /设置明确 BP|更新明确配置的后续 BP/.test(h.message)))))) return false;
-  if ((!exhibition && !side(s.roll.banFirst)) || !side(s.roll.pickFirst)) {
+  if (!rulesOf(s).rollReady(s.roll)) {
     if (s.bpFlow?.mode === 'roll') { s.action = null; s.queue = []; s.bpFlow = null; }
     return false;
   }
   const { banFirst, pickFirst } = s.roll;
   if (s.bpFlow?.banFirst === banFirst && s.bpFlow?.pickFirst === pickFirst) return true;
-  const other = team => team === 'a' ? 'b' : 'a';
-  const ban = (team, slot) => normalizeAction({ kind: 'ban', team, slot });
-  const pick = (team, ordinal) => ({ ...normalizeAction({ kind: 'pick', team }), ordinal });
   s.bpFlow = { version: 1, mode: 'roll', banFirst, pickFirst, nextPair: 2 };
   // OCLR S11 rule 8:
   //   Ban 1 (first-Ban team) -> Ban 1 (other) ->
@@ -212,11 +185,7 @@ function syncRollFlow(s) {
   // Keep both Ban rounds in the order when an operator promotes an action.
   // Later Picks are replenished in alternating pairs by takeBpAction.
   // Exhibition Roll only supplies the first Pick; Ban policies remain manual.
-  s.queue = exhibition ? [pick(pickFirst, 1), pick(other(pickFirst), 1)] : [
-    ban(banFirst, 0), ban(other(banFirst), 0),
-    pick(pickFirst, 1), pick(other(pickFirst), 1),
-    ban(banFirst, 1), ban(other(banFirst), 1),
-  ];
+  s.queue = rulesOf(s).opening({ banFirst, pickFirst }).map(action => ({ ...normalizeAction(s, action), ...(action.ordinal ? { ordinal: action.ordinal } : {}) }));
   s.action = s.queue.shift();
   if (['arrival', 'roll'].includes(s.phase)) s.phase = 'bp';
   return true;
@@ -254,21 +223,12 @@ function resolveBpStartOrder(s) {
 // which team leads that action; the other team leads the other action.
 function startBpFromChoice(s, team, kind) {
   const other = team === 'a' ? 'b' : 'a';
-  const ban = (side, slot) => normalizeAction({ kind: 'ban', team: side, slot });
-  const pick = (side, ordinal) => ({ ...normalizeAction({ kind: 'pick', team: side }), ordinal });
   const banFirst = kind === 'ban' ? team : other;
   const pickFirst = kind === 'pick' ? team : other;
   s.bpFlow = { version: 1, mode: 'roll', banFirst, pickFirst, nextPair: 2 };
-  if (kind === 'ban') {
-    s.action = ban(team, 0);
-    const otherPick = pickFirst === 'a' ? 'b' : 'a';
-    s.queue = [ban(other, 0), pick(pickFirst, 1), pick(otherPick, 1), ban(team, 1), ban(other, 1)];
-  } else {
-    s.action = pick(team, 1);
-    // A pick-first start skips the opening bans and goes straight into the
-    // alternating pick pair the operator asked for.
-    s.queue = [pick(other, 1)];
-  }
+  const plan = rulesOf(s).fromChoice({ team, kind, pickFirst: s.roll.pickFirst }).map(action => ({ ...normalizeAction(s, action), ...(action.ordinal ? { ordinal: action.ordinal } : {}) }));
+  s.bpFlow.pickFirst = plan.find(action => action.kind === 'pick').team;
+  s.action = plan.shift(); s.queue = plan;
   s.poolChoice = { team, kind };
   s.planVerification = null;
   s.phase = 'bp';
@@ -309,8 +269,7 @@ function takeBpAction(s) {
     if (s.bpFlow?.mode !== 'roll' || s.queue.length) return;
     const { nextPair } = s.bpFlow;
     const first = nextPickTeam(s) || s.bpFlow.pickFirst;
-    const pick = (team, ordinal) => ({ ...normalizeAction({ kind: 'pick', team }), ordinal });
-    s.queue.push(pick(first, nextPair), pick(first === 'a' ? 'b' : 'a', nextPair));
+    s.queue.push(...rulesOf(s).replenish(first, nextPair).map(action => ({ ...normalizeAction(s, action), ordinal: action.ordinal })));
     s.bpFlow.nextPair++;
   };
   for (;;) {
@@ -323,7 +282,7 @@ function takeBpAction(s) {
 
 // End-of-map and awarding a win are deliberately separate. Release once at a
 // verified finish; missing totals must not prevent preparing the next map.
-export function releaseRoundBp(s, round) {
+function releaseRoundBp(s, round) {
   if (round.bpReleased) return;
   round.bpReleased = true;
   round.bpReleaseHistory = (s.bpHistory || []).length;
@@ -348,8 +307,7 @@ export function tiebreakerProgress(s) {
   const target = targetOf(s);
   const score = seriesOf(s);
   const exhibition = exhibitionOf(s);
-  const eligible = exhibition ? !seriesComplete(s) && s.pool.some(e => e.mod === 'TB')
-    : target > 1 && SIDES.every(team => score[team] === target - 1);
+  const eligible = rulesOf(s).tbEligible(s);
   const round = currentRound(s);
   const active = !!round && round.status !== 'void' && entryOf(s, round.entryId)?.mod === 'TB';
   const unresolved = s.rounds.some(r => ['playing', 'ranking'].includes(r.status) && r.resultSource !== 'series-correction' && !(active && r.id === round.id));
@@ -365,16 +323,50 @@ export function tiebreakerProgress(s) {
     (!round || round.status !== 'prepared' || active) && (!active || round.status === 'prepared') && s.pool.some(e => e.mod === 'TB'), reason };
 }
 
+function retractionTarget(s, request = {}) {
+  const history = s.bpHistory.filter(event => !event.retracted);
+  const latest = history.at(-1);
+  const round = request.selectionId
+    ? s.rounds.find(item => item.selectionId === request.selectionId && item.status !== 'void')
+    : request.actionId
+      ? s.rounds.find(item => item.status !== 'void' && (item.actionId === request.actionId || history.some(event => event.actionId === request.actionId && event.selectionId === item.selectionId)))
+      : !['ban', 'empty-ban'].includes(latest?.kind) && currentRound(s)?.status === 'prepared' ? currentRound(s) : null;
+  let events;
+  if (round) {
+    const linked = history.filter(event => event.selectionId === round.selectionId);
+    if (linked.length) events = linked;
+    else {
+      // Pre-review v2 history had no selection tag. Follow the explicit
+      // contiguous replace-pick revisions back to their original Pick.
+      let index = history.findLastIndex(event => event.actionId === round.actionId);
+      while (index >= 0 && history[index].kind === 'replace-pick') index--;
+      events = index >= 0 && history[index].kind === 'pick'
+        ? history.slice(index).filter(event => ['pick', 'replace-pick'].includes(event.kind)) : [];
+    }
+  } else events = history.filter(event => event.actionId === (request.actionId || latest?.actionId));
+  const event = events.find(item => ['ban', 'pick', 'empty-ban'].includes(item.kind));
+  const matchesRequest = (!request.selectionId || round?.selectionId === request.selectionId) &&
+    (!request.actionId || round?.actionId === request.actionId || events.some(item => item.actionId === request.actionId));
+  const reason = !matchesRequest ? 'BP 撤回目标已变化，请核对当前动作'
+    : !event ? '该 BP 动作不存在或已撤回'
+    : !events.includes(latest) || history.slice(history.indexOf(event)).some(item => !events.includes(item)) ? '已有后续 BP，请直接修正目标标记或 Ban 记录，不连带回退'
+    : round && (round.status !== 'prepared' || round.replayOf) ? '该 Pick 已开始，请处理对应比赛记录'
+    : !round && event.kind === 'pick' ? '该 Pick 已开始或已撤回，请处理对应比赛记录' : null;
+  return { canRetract: !reason, reason, actionId: round?.actionId || event?.actionId || null,
+    selectionId: round?.selectionId || null, round, event, events };
+}
+
 export function bpProgress(s) {
   const round = currentRound(s);
   const stop = bpStopReason(s);
+  const { canRetract, reason, actionId, selectionId } = retractionTarget(s);
   const waiting = stop || (s.incident ? '本图异常待核对，BP 暂停推进' : s.paused ? '明确暂停中，返回原画面后继续'
     : round?.status === 'prepared' ? entryOf(s, round.entryId)?.mod === 'TB' ? 'TB 决胜图已准备，等待比赛开始' : `${s.match.teams[round.pickedBy].name}已选图，等待本局开始`
     : round?.status === 'playing' ? '本图进行中，结束后继续 BP' : null);
   return { current: waiting ? null : s.action, next: stop ? null : waiting ? s.action || s.queue[0] || null : s.queue[0] || null,
-    waiting, stopped: !!stop, mode: s.bpFlow?.mode || 'legacy', phase: currentBpPhase(s),
+    retract: { canRetract, reason, actionId, selectionId }, phases: rulesOf(s).phases, waiting, stopped: !!stop, mode: s.bpFlow?.mode || 'legacy', phase: currentBpPhase(s),
     canApply: !waiting && !!s.action, canReplace: !stop && !s.incident && !s.paused && round?.status === 'prepared',
-    canStart: !bpStarted(s) && !s.action && !s.queue.length && !s.warmup && !s.paused && !s.incident && !seriesComplete(s),
+    canStart: !bpStarted(s) && !s.action && !s.queue.length && !s.paused && !s.incident && !seriesComplete(s),
     tiebreaker: tiebreakerProgress(s),
     rollChanged: s.bpFlow?.mode === 'roll' && (s.roll.banFirst !== s.bpFlow.banFirst || s.roll.pickFirst !== s.bpFlow.pickFirst) };
 }
@@ -410,18 +402,18 @@ function available(s, entryId, exceptRoundId) {
 
 function recordBp(s, action, entryId, source, eventId, kind = action.kind) {
   s.bpHistory ||= [];
-  s.bpHistory.push({ id: randomUUID(), matchId: s.id, actionId: action.id, kind,
-    team: action.team, slot: action.slot ?? null, entryId, source, eventId, at: new Date().toISOString() });
+  s.bpHistory.push({ id: newId(s), matchId: s.id, actionId: action.id, kind,
+    team: action.team, slot: action.slot ?? null, action: clone(action),
+    selectionId: ['pick', 'replace-pick'].includes(kind) ? currentRound(s).selectionId || `selection:${currentRound(s).id}` : null, entryId, source, eventId, at: new Date(decidedAt(s)).toISOString() });
 }
 
-export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, eventId = null) {
-  requireValue(!s.warmup, 'Warm-up 已开启，热身不推进正式 BP');
+function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, eventId = null) {
   requireResolved(s);
   requireValue(!s.paused && !bpStopReason(s), bpStopReason(s) || '明确暂停中，请先返回原画面');
   requireValue(s.scene !== 'pause' && (source === 'manual' || s.phase === 'bp' || s.scene === 'mappool'), '请先进入 BP');
   const round = currentRound(s);
   requireValue(round?.status !== 'playing', '本图尚未结束，不能执行下一个 BP 动作');
-  const replace = round?.status === 'prepared' && (!s.action || (source === 'manual' && s.action.kind === 'pick'));
+  const replace = source === 'manual' && round?.status === 'prepared' && (!s.action || (source === 'manual' && s.action.kind === 'pick'));
   requireValue(replace || (s.action && s.action.id === actionId), 'BP 动作已改变，请刷新当前动作');
   if (replace) {
     available(s, entryId, round.id);
@@ -463,7 +455,7 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
     s.bans[action.team][action.slot] = entryId;
   } else {
     requireValue(entry.mod !== 'TB', 'TB 单独准备，不混入普通 Pick 队列');
-    const next = { id: randomUUID(), entryId, pickedBy: action.team, status: 'prepared', winner: null,
+    const next = { id: newId(s), entryId, pickedBy: action.team, status: 'prepared', winner: null,
       source, actionId: action.id, bpAction: clone(action), eventId, runId: null, finalScore: null, exTeam: null };
     s.rounds.push(next);
     s.currentRoundId = next.id;
@@ -483,8 +475,7 @@ export function applyBp(s, entryId, source = 'manual', actionId = s.action?.id, 
   return `${s.match.teams[action.team].name} ${action.kind === 'ban' ? `Ban ${action.slot + 1}` : 'Pick'} ${entry.label}`;
 }
 
-export function startRound(s, source = 'manual') {
-  requireValue(!s.warmup, 'Warm-up 已开启，热身不创建正式比赛或计胜');
+function startRound(s, source = 'manual') {
   requireResolved(s);
   const round = currentRound(s);
   requireValue(round?.status === 'prepared', '尚未准备本轮谱面');
@@ -492,15 +483,14 @@ export function startRound(s, source = 'manual') {
   requireValue(!s.action, '当前还有 BP 动作，请完成后再开始本局');
   requireValue(!seriesComplete(s), '系列已达到目标，请核对 Winner 或人工修正比分');
   requireValue(!bpStopReason(s), bpStopReason(s));
-  round.status = 'playing'; round.runId = randomUUID(); round.startedBy = source; round.exTeam = s.ex.team;
+  round.status = 'playing'; round.runId = newId(s); round.startedBy = source; round.exTeam = s.ex.team;
   delete round.autoProtected;
   s.phase = 'playing'; s.scene = 'playing';
 }
 
 // Ranking changes the display; this separately awards the round from validated
 // totals. Calling it twice cannot award again. Winner display remains an operator action.
-export function awardTosuResult(s, roundId, scores) {
-  requireValue(!s.warmup, 'Warm-up 已开启，热身不创建正式比赛或计胜');
+function awardTosuResult(s, roundId, scores) {
   requireResolved(s, roundId);
   const round = s.rounds.find(r => r.id === roundId);
   requireValue(round?.status === 'ranking', '该局已计胜或尚未结算');
@@ -522,17 +512,29 @@ function leaveInvalidWinner(s) {
 
 function applyCommand(s, command) {
   const p = command.payload || {};
-  if (s.warmup && ['map-mark', 'choose-pool-map', 'prepare-round', 'select-bp-action', 'jump-bp-phase', 'set-action', 'set-plan', 'apply-bp', 'apply-room-map', 'skip-ban', 'correct-ban', 'clear-ban', 'start', 'ranking', 'record-result', 'correct-result', 'retract-result', 'set-series', 'begin-roll', 'roll', 'set-roll', 'bp', 'ex', 'winner', 'winner-soon', 'adjust-round', 'void-round'].includes(command.type))
-    requireValue(false, 'Warm-up 已开启，请结束热身后再操作正式比赛');
   switch (command.type) {
     case 'warmup': {
       requireValue(typeof p.enabled === 'boolean', 'Warm-up 开关无效');
-      if (p.enabled) requireValue(!s.paused && !s.incident && !['playing', 'ranking'].includes(currentRound(s)?.status), '正式本局进行中或待核对，请先处理本局再开始热身');
-      // A later warmup may reuse the most recently played map. Its Ranking
-      // frames must never reopen or retract that already-confirmed result.
-      if (p.enabled && currentRound(s)?.status === 'recorded') currentRound(s).autoProtected = true;
       s.warmup = p.enabled;
-      return p.enabled ? 'Warm-up 已开启：热身不推进 BP、不计赢图，不切换播出画面' : 'Warm-up 已结束，恢复正式比赛自动化';
+      return p.enabled ? '热手显示已开启' : '热手显示已关闭';
+    }
+    case 'retract-bp': {
+      const target = retractionTarget(s, p);
+      requireValue(target.canRetract, target.reason);
+      const { events, round, event } = target;
+      if (round) {
+        round.status = 'void'; s.currentRoundId = null; s.ex.team = null;
+      } else {
+        s.bans[event.team][event.slot] = null; s.emptyBans[event.team][event.slot] = false;
+      }
+      if (s.action) s.queue.unshift(s.action);
+      const action = round?.bpAction || event.action || event;
+      s.action = { ...action, id: newId(s), kind: action.kind === 'empty-ban' ? 'ban' : action.kind };
+      for (const item of events) item.retracted = true;
+      s.poolMarks = s.poolMarks.filter(mark => !events.some(item => item.entryId === mark.entryId && item.team === mark.team &&
+        mark.status === (item.kind === 'ban' ? 'banned' : 'picked')));
+      s.phase = 'bp';
+      return '已撤回指定 BP，等待明确选图';
     }
     case 'map-mark': {
       const entry = entryOf(s, p.entryId);
@@ -597,7 +599,7 @@ function applyCommand(s, command) {
           round.entryId = p.entryId; round.pickedBy = null; round.exTeam = null; s.ex.team = null;
           return '已更换 TB 决胜图，等待比赛开始';
         }
-        const next = { id: randomUUID(), entryId: p.entryId, pickedBy: null, status: 'prepared', winner: null,
+        const next = { id: newId(s), entryId: p.entryId, pickedBy: null, status: 'prepared', winner: null,
           source: 'manual-tb', actionId: null, eventId: null, runId: null, finalScore: null, exTeam: null };
         if (s.action) s.queue.unshift(s.action);
         s.action = null; s.rounds.push(next); s.currentRoundId = next.id; s.ex.team = null; s.phase = 'bp';
@@ -612,7 +614,7 @@ function applyCommand(s, command) {
           const index = s.queue.findIndex(action => action.kind === 'pick' && action.team === p.pickedBy);
           const nextAction = index >= 0
             ? s.queue.splice(index, 1)[0]
-            : { ...normalizeAction({ kind: 'pick', team: p.pickedBy }), ordinal: round.bpAction?.ordinal ?? 1 };
+            : { ...normalizeAction(s, { kind: 'pick', team: p.pickedBy }), ordinal: round.bpAction?.ordinal ?? 1 };
           s.action = nextAction;
           applyBp(s, p.entryId);
           round.pickedBy = p.pickedBy;
@@ -768,7 +770,7 @@ function applyCommand(s, command) {
     case 'jump-bp-phase': {
       const phases = ['ban1', 'pick1', 'ban2', 'pick2'];
       const labels = { ban1: '第一轮 Ban', pick1: '第一轮 Pick', ban2: '第二轮 Ban', pick2: '第二轮 Pick' };
-      requireValue(phases.includes(p.phase), 'BP 阶段无效');
+      requireValue(rulesOf(s).phases.includes(p.phase), '表演赛仅支持 Pick 阶段；BP 阶段无效');
       const progress = bpProgress(s);
       requireValue(!progress.stopped, progress.waiting || '比赛已结束，无法跳转 BP 阶段');
       requireValue(!progress.waiting, progress.waiting || '当前等待本局结束，无法跳转 BP 阶段');
@@ -776,22 +778,13 @@ function applyCommand(s, command) {
       const targetIndex = phases.indexOf(p.phase);
       requireValue(currentIndex < 0 || targetIndex >= currentIndex, '只能跳到当前或之后的阶段；退回已发生的阶段请使用“撤销上一项”');
       const { banFirst, pickFirst } = resolveBpStartOrder(s);
-      const other = team => team === 'a' ? 'b' : 'a';
-      const ban = (team, slot) => normalizeAction({ kind: 'ban', team, slot });
-      const pick = (team, ordinal) => ({ ...normalizeAction({ kind: 'pick', team }), ordinal });
       const pairFirst = p.phase === 'pick2' ? nextPickTeam(s) || pickFirst : pickFirst;
-      const start = p.phase === 'ban1' ? ban(banFirst, 0)
-        : p.phase === 'pick1' ? pick(pickFirst, 1)
-          : p.phase === 'ban2' ? ban(banFirst, 1)
-            : pick(pairFirst, 2);
+      const plan = rulesOf(s).phasePlan({ phase: p.phase, banFirst, pickFirst, pairFirst }).map(action => ({ ...normalizeAction(s, action), ...(action.ordinal ? { ordinal: action.ordinal } : {}) }));
+      const start = plan.shift();
       if (s.action && bpActionKey(s.action) === bpActionKey(start)) return `当前已在${labels[p.phase]}起点；未改动比赛记录`;
       requireValue(!phaseHasRecords(s, p.phase), '该阶段已有记录，不能回到起点；如需退回请使用“撤销上一项”');
       s.action = start;
-      s.queue = exhibitionOf(s) && p.phase === 'pick1' ? [pick(other(pickFirst), 1)] : p.phase === 'ban1'
-        ? [ban(other(banFirst), 0), pick(pickFirst, 1), pick(other(pickFirst), 1), ban(banFirst, 1), ban(other(banFirst), 1)]
-        : p.phase === 'pick1' ? [pick(other(pickFirst), 1), ban(banFirst, 1), ban(other(banFirst), 1)]
-          : p.phase === 'ban2' ? [ban(other(banFirst), 1)]
-            : [pick(other(pairFirst), 2)];
+      s.queue = plan;
       s.bpFlow = { ...(s.bpFlow || {}), version: 1, mode: 'roll', banFirst, pickFirst, nextPair: p.phase === 'pick2' ? 3 : 2 };
       s.poolChoice = { team: start.team, kind: start.kind };
       s.planVerification = null;
@@ -801,17 +794,17 @@ function applyCommand(s, command) {
     }
     case 'set-action':
       s.bpFlow = { ...s.bpFlow, mode: 'manual' };
-      s.action = p.action === null ? null : normalizeAction(p.action);
+      s.action = p.action === null ? null : normalizeAction(s, p.action);
       if (p.queue !== undefined) {
         requireValue(Array.isArray(p.queue) && p.queue.length <= 40, 'BP 序列过长');
-        s.queue = p.queue.map(normalizeAction);
+        s.queue = p.queue.map(action => normalizeAction(s, action));
       }
       return '设置明确 BP 动作与后续序列';
     case 'set-plan': {
       s.bpFlow = { ...s.bpFlow, mode: 'manual' };
       requireValue(p.verifiedBy == null || text(p.verifiedBy), '核实来源说明过长');
       requireValue(Array.isArray(p.queue) && p.queue.length <= 40, 'BP 序列过长');
-      s.queue = p.queue.map(normalizeAction);
+      s.queue = p.queue.map(action => normalizeAction(s, action));
       s.planVerification = p.verifiedBy?.trim() || null;
       if (!s.action && s.queue.length && !bpProgress(s).waiting) {
         s.action = takeBpAction(s);
@@ -866,11 +859,16 @@ function applyCommand(s, command) {
       if (s.emptyBans) s.emptyBans[p.team][p.slot] = false;
       return `修正 Ban：${p.reason}`;
     case 'start': startRound(s); return '手动进入 Playing';
+    case 'finish-round':
     case 'ranking': {
-      requireResolved(s);
-      const round = currentRound(s);
+      const round = p.roundId ? s.rounds.find(item => item.id === p.roundId) : currentRound(s);
+      if (command.type === 'finish-round') {
+        if (s.incident?.roundId === round?.id) s.incident = null;
+      } else requireResolved(s, round?.id);
       requireValue(round && ['playing', 'ranking'].includes(round.status), '没有进行中的轮次');
-      round.status = 'ranking'; s.scene = 'playing';
+      round.status = 'ranking';
+      if (command.type === 'finish-round') { round.resultSource = 'manual-finish'; round.autoProtected = true; }
+      if (round.id === s.currentRoundId) s.scene = 'playing';
       releaseRoundBp(s, round);
       return '本图已结束，在 Playing 保留总分（不重复计胜）';
     }
@@ -898,10 +896,7 @@ function applyCommand(s, command) {
         const outcome = draw ? '平局' : `${s.match.teams[p.winner].name} 胜`;
         return `已记录 ${entryOf(s, round.entryId).label}：${outcome}，系列比分 ${seriesOf(s).a}:${seriesOf(s).b}；保留当前画面`;
       }
-      const winner = fixedSeries(s) ? SIDES.find(team => canShowWinner(s, team)) : canShowWinner(s, p.winner) ? p.winner : null;
-      if (winner) {
-        s.winner = winner; s.phase = 'winner'; s.scene = 'victory';
-      } else if (round.id === s.currentRoundId) {
+      if (round.id === s.currentRoundId) {
         s.phase = 'bp'; s.scene = 'mappool';
       }
       return p.reviewReason ? `异常赛果经人工核对后计胜：${p.reviewReason}` : round.id === s.currentRoundId ? '记录本图结果并更新播出画面' : '补记上一局结果，保留当前轮次与画面';
@@ -949,7 +944,9 @@ function applyCommand(s, command) {
       s.incident = null;
       if (round.status === 'prepared') return `比赛尚未开始，保留原选图继续准备（不新增重赛）：${p.reason}`;
       requireValue(round.bpReleaseHistory == null || (s.bpHistory || []).length <= round.bpReleaseHistory, '本图结束后已有新的 BP 记录；请先撤销后续 BP，再确认原图重赛');
-      const next = { ...clone(round), id: randomUUID(), replayOf: round.id, status: 'prepared', winner: null, runId: null, finalScore: null };
+      refundReplayEx(s, round);
+      const next = { ...clone(round), id: newId(s), replayOf: round.id, status: 'prepared', winner: null, runId: null, finalScore: null };
+      delete next.attemptId; delete next.resultId;
       delete next.bpReleased; delete next.bpReleaseHistory;
       delete next.resultSource; delete next.startedBy; delete next.autoProtected;
       round.status = 'void';
@@ -973,14 +970,23 @@ function applyCommand(s, command) {
       return `作废本轮：${p.reason}`;
     }
     case 'ex': {
-      requireValue(!exhibitionOf(s), '表演赛不使用 S11 EX 规则');
+      requireValue(rulesOf(s).ex, '表演赛不使用 S11 EX 规则');
       requireValue(p.team === null || side(p.team), 'EX 开启方无效');
       requireValue(SIDES.every(t => [0, 1, 2].includes(p.remaining?.[t])), 'EX 剩余次数无效');
       const round = currentRound(s);
       const changingActivation = p.team !== s.ex.team;
       requireValue(!p.team || !changingActivation || (round?.status === 'prepared' && entryOf(s, round.entryId)?.mod !== 'TB'), '仅普通图准备期可以设置 EX，TB 禁 EX');
       requireValue(!p.team || !changingActivation || p.remaining[p.team] > 0, '该队没有 EX 剩余次数');
+      for (const team of SIDES) if (p.remaining[team] !== s.ex.remaining[team]) s.exRevision[team]++;
       s.ex = { team: p.team, remaining: { a: p.remaining.a, b: p.remaining.b } };
+      if (round?.status === 'prepared') {
+        round.exTeam = p.team;
+        if (changingActivation) {
+          const selection = s.selections[round.selectionId];
+          selection.exBaseline = p.team ? { team: p.team, revision: s.exRevision[p.team] } : null;
+          if (p.team) selection.consumption = null;
+        }
+      }
       return `EX 剩余次数：${s.match.teams.a.name} ${p.remaining.a}，${s.match.teams.b.name} ${p.remaining.b}；${p.team ? `${s.match.teams[p.team].name} 本图已开启` : '本图未开启'}`;
     }
     case 'display': {
@@ -1006,13 +1012,13 @@ function applyCommand(s, command) {
         return '已清除暂停倒计时';
       }
       requireValue(Number.isSafeInteger(p.seconds) && p.seconds >= 1 && p.seconds <= 3600, '倒计时需在 1 秒到 60 分钟之间');
-      s.pauseTimer = { durationSeconds: p.seconds, endsAt: Date.now() + p.seconds * 1000 };
+      s.pauseTimer = { durationSeconds: p.seconds, endsAt: decidedAt(s) + p.seconds * 1000 };
       const clock = `${String(Math.floor(p.seconds / 60)).padStart(2, '0')}:${String(p.seconds % 60).padStart(2, '0')}`;
       return `暂停倒计时已开始：${clock}（到 0 不会自动返回画面）`;
     }
     case 'resume-soon':
       requireValue(s.paused && s.scene === 'pause' && s.returnScene, '请先展示暂停画面');
-      s.resumeAt = Date.now() + 10000;
+      s.resumeAt = decidedAt(s) + 10000;
       return '10 秒后自动返回暂停前的画面';
     case 'resume':
       requireValue(s.returnScene, '没有暂停返回位置');
@@ -1041,7 +1047,7 @@ function applyCommand(s, command) {
       requireResolved(s);
       requireValue(canShowWinner(s, p.team), '该队尚未达到系列目标');
       requireValue(!s.paused, '暂停中不能开始自动确认胜方');
-      s.winner = null; s.winnerPending = { team: p.team, endsAt: Date.now() + 5000 };
+      s.winner = null; s.winnerPending = { team: p.team, endsAt: decidedAt(s) + 5000 };
       s.phase = 'winner'; s.scene = 'victory'; s.sceneOverride = null;
       return `已展示 Winner：5 秒后自动确认 ${s.match.teams[p.team].name} 为胜方`;
     }
@@ -1061,8 +1067,8 @@ function applyCommand(s, command) {
         phase: 'arrival', scene: 'waiting', returnScene: null, paused: false, sceneOverride: null,
         action: null, queue: [], bpFlow: null, emptyBans: { a: [false, false], b: [false, false] },
         planVerification: null, bans: { a: [null, null], b: [null, null] }, bpHistory: [],
-        rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
-        ex: { team: null, remaining: exhibitionOf(s) ? { a: 0, b: 0 } : { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
+        selections: {}, results: {}, pendingResults: [], currentSelectionId: null, rules: { type: 'oclr', version: 1 }, rounds: [], currentRoundId: null, incident: null, winner: null, winnerPending: null, seriesAdjustment: { a: 0, b: 0 },
+        exRevision: { a: 0, b: 0 }, ex: { team: null, remaining: exhibitionOf(s) ? { a: 0, b: 0 } : { a: 2, b: 2 } }, pauseType: 'normal', pauseTimer: null, resumeAt: null,
         history: [], undo: [], commandIds: [],
       });
       Object.assign(s, kept);
@@ -1070,7 +1076,7 @@ function applyCommand(s, command) {
     }
     case 'next-match': {
       requireValue(p.keepRoomBinding === undefined || typeof p.keepRoomBinding === 'boolean', '房间连接保留选项无效');
-      const fresh = newSession();
+      const fresh = newSession(contextOf(s));
       if (p.keepRoomBinding) {
         requireValue(s.auto.profile === 'stable-tourney' && s.auto.left && s.auto.right, '尚未收到 tosu 房间队名');
         fresh.auto = clone(s.auto);
@@ -1082,11 +1088,13 @@ function applyCommand(s, command) {
   }
 }
 
-export function transition(state, command) {
+export function transition(state, command, { now = Date.now(), newId: makeId = randomUUID } = {}) {
   requireValue(command && text(command.id, 100) && command.id && Number.isSafeInteger(command.version), '命令 ID / 版本无效');
   if (state.commandIds.includes(command.id)) return state;
   requireValue(command.version === state.version, '会话已被其他操作更新，请核对最新状态后重试');
+  state = migrateSession(state);
   const next = clone(state);
+  contexts.set(next, { now, newId: makeId });
   let message;
   if (command.type === 'undo') {
     const previous = next.undo.pop();
@@ -1098,21 +1106,116 @@ export function transition(state, command) {
     next.undo.push({ state: domain(state), message });
     next.undo = next.undo.slice(-20);
   }
+  synchronizeRecords(next);
+  settleEx(next, state);
   next.version++;
   next.commandIds.push(command.id); next.commandIds = next.commandIds.slice(-1000);
-  next.history.push({ id: command.id, at: new Date().toISOString(), version: next.version, message, source: 'manual',
+  next.history.push({ id: command.id, at: new Date(decidedAt(next)).toISOString(), version: next.version, message, source: 'manual',
     bp: (next.bpHistory || []).slice((state.bpHistory || []).length) });
   next.history = next.history.slice(-300);
   return next;
 }
 
-export function automaticTransition(state, mutate, message, eventId, { undo = true } = {}) {
+function automaticTransition(state, mutate, message, eventId, { undo = true, now = Date.now(), newId: makeId = randomUUID } = {}) {
   const next = clone(state);
+  contexts.set(next, { now, newId: makeId });
   mutate(next);
+  synchronizeRecords(next);
+  settleEx(next, state);
   if (undo) { next.undo.push({ state: domain(state), message }); next.undo = next.undo.slice(-20); }
   next.version++;
-  next.history.push({ id: eventId, at: new Date().toISOString(), version: next.version, message, source: 'tosu',
+  next.history.push({ id: eventId, at: new Date(decidedAt(next)).toISOString(), version: next.version, message, source: 'tosu',
     bp: (next.bpHistory || []).slice((state.bpHistory || []).length) });
   next.history = next.history.slice(-300);
   return next;
+}
+
+// All machine requests use the same mutation owner as manual commands. Targets
+// are captured at observation time; a current pointer never retargets an event.
+export function observedTransition(state, operation, message, eventId, options = {}) {
+  state = migrateSession(state);
+  if (state.commandIds.includes(eventId)) return state;
+  requireValue(operation.matchId === state.id && operation.version === state.version, '观测目标或版本已变化');
+  if (operation.attemptId) {
+    const target = state.rounds.find(round => round.id === operation.attemptId);
+    requireValue(target && !target.identityUnresolved, '比赛记录身份无法关联');
+    requireValue(operation.runId === undefined || operation.runId === target.runId, '比赛记录已被替代');
+  }
+  if (operation.type === 'confirm-result' && (seriesComplete(state) || !automaticResultEligible(state, operation.payload.evidence))) return state;
+  const next = automaticTransition(state, draft => {
+    const p = operation.payload || {};
+    const round = operation.attemptId ? draft.rounds.find(item => item.id === operation.attemptId) : null;
+    switch (operation.type) {
+      case 'bind-room':
+        Object.assign(draft.auto, { profile: 'stable-tourney', ...p });
+        draft.match.teams.a.name = p.left; draft.match.teams.b.name = p.right;
+        break;
+      case 'hold':
+        requireValue(round.id === draft.currentRoundId, '异常目标已变化');
+        holdRound(draft, 'unverified', p.reason, 'tosu'); break;
+      case 'recover-spectator':
+        requireValue(draft.incident?.roundId === round.id && draft.incident.source === 'tosu', '观战恢复目标已变化');
+        draft.incident = null; break;
+      case 'abort':
+        requireValue(round.id === draft.currentRoundId, '中止目标已变化');
+        prepareAbortedRound(draft); break;
+      case 'review-result':
+        requireValue(round.status === 'recorded' && round.resultSource === 'tosu' && !round.autoProtected, '赛果受人工保护');
+        round.status = 'ranking'; round.winner = null; round.resultSource = 'review'; round.finalScore = null;
+        holdRound(draft, 'unverified', p.reason, 'tosu'); break;
+      case 'confirm-bp':
+        requireValue(draft.action?.id === operation.actionId, 'BP 动作已改变');
+        draft.phase = 'bp';
+        applyBp(draft, p.entryId, 'room-map', operation.actionId, eventId);
+        followScene(draft, 'mappool');
+        break;
+      case 'start-attempt': {
+        requireValue(round.id === draft.currentRoundId && !round.identityUnresolved, '比赛开始目标已变化');
+        const scene = draft.scene;
+        startRound(draft, 'tosu');
+        draft.scene = scene;
+        followScene(draft, 'playing');
+        break;
+      }
+      case 'finish-attempt':
+        requireValue(round.status === 'playing' && !round.autoProtected, '本次比赛不接受自动结束');
+        round.status = 'ranking'; round.finalScore = p.scores || null;
+        releaseRoundBp(draft, round);
+        if (round.id === draft.currentRoundId) followScene(draft, 'playing');
+        break;
+      case 'confirm-result':
+        requireValue(!round.autoProtected && !['manual', 'retracted', 'series-correction'].includes(round.resultSource), '赛果受人工保护');
+        awardTosuResult(draft, round.id, p.scores); break;
+      case 'room-return':
+        requireValue(!round || round.id === draft.currentRoundId && ['prepared', 'ranking', 'recorded'].includes(round.status), '返回房间的比赛目标已变化');
+        if (round && !draft.incident) draft.phase = 'bp';
+        followScene(draft, 'mappool');
+        break;
+      case 'scene':
+        requireValue(SCENES.includes(p.scene), '显示画面无效');
+        followScene(draft, p.scene);
+        break;
+      case 'resume-deadline':
+        requireValue(draft.paused && draft.resumeAt === p.deadline && p.now >= p.deadline, '暂停展示期限已变化');
+        draft.scene = draft.returnScene; draft.returnScene = null; draft.paused = false;
+        draft.sceneOverride = null; draft.pauseTimer = null; draft.resumeAt = null; break;
+      case 'cancel-winner-deadline': draft.winnerPending = null; break;
+      case 'winner-deadline':
+        requireValue(draft.winnerPending?.endsAt === p.deadline && p.now >= p.deadline, '胜方展示期限已变化');
+        applyCommand(draft, { type: 'winner', payload: { team: draft.winnerPending.team } }); break;
+      default: throw new Error('未知观测操作');
+    }
+  }, message, eventId, options);
+  next.commandIds.push(eventId); next.commandIds = next.commandIds.slice(-1000);
+  next.history.at(-1).changes = operation.type === 'confirm-result'
+    ? [{ type: 'ResultConfirmed', attemptId: operation.attemptId, resultId: next.rounds.find(round => round.id === operation.attemptId).resultId,
+      winner: next.rounds.find(round => round.id === operation.attemptId).winner, scores: operation.payload.scores }]
+    : [{ type: operation.type, attemptId: operation.attemptId ?? null, actionId: operation.actionId ?? null }];
+  return next;
+}
+
+export function observation(state, type, payload = {}, round = null) {
+  return { matchId: state.id, version: state.version, type, payload,
+    ...(round ? { attemptId: round.id, runId: round.runId } : {}),
+    ...(type === 'confirm-bp' ? { actionId: state.action?.id } : {}) };
 }

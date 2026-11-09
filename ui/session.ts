@@ -30,8 +30,9 @@ export interface Session {
   roll: { a: number | null; b: number | null; winner: Team | null; pickFirst: Team | null; banFirst: Team | null };
   action: BpAction | null; queue: BpAction[]; planVerification?: string | null; bans: Record<Team, [string | null, string | null]>;
   emptyBans?: Record<Team, [boolean, boolean]>;
-  bp?: { current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; phase?: BpPhase | null; canStart?: boolean; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
+  bp?: { retract?: { canRetract: boolean; reason: string | null; actionId: string | null; selectionId: string | null }; phases?: BpPhase[]; current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; phase?: BpPhase | null; canStart?: boolean; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
   auto: { bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
+  bpHistory?: { actionId: string; kind: string; retracted?: boolean }[];
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
   winnerPending?: { team: Team; endsAt: number } | null;
   incident?: { kind: 'prestart-abort' | 'abort' | 'player-disconnect' | 'spectator' | 'unverified'; roundId: string; reason: string; source: string; at: string } | null;
@@ -39,7 +40,7 @@ export interface Session {
   ex: { team: Team | null; remaining: Record<Team, number> }; pauseType: 'normal' | 'technical' | 'tactical';
   pauseTimer?: { durationSeconds: number; endsAt: number } | null;
   resumeAt?: number | null;
-  history: { id: string; at: string; version: number; message: string; source: string }[]; canUndo: boolean;
+  history: { id: string; at: string; version: number; message: string; source: string; changes?: { type: string; attemptId?: string; resultId?: string; winner?: Team; scores?: { left: number; right: number } }[] }[]; canUndo: boolean;
 }
 export type BeatmapRange = { min: number; max: number } | null;
 export type BeatmapRanges = Record<'stars' | 'cs' | 'hp' | 'ar' | 'od' | 'bpm' | 'clockRate', BeatmapRange>;
