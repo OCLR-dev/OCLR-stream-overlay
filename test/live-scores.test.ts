@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { computed, shallowRef } from 'vue';
 import { normalizeTosuV2 } from '../src/tosu.js';
 import { newSession } from '../server/session/model.js';
-import { liveBeatmap, livePlayingMap, liveRoomChat, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
+import { createPlayingScoreDisplay, liveBeatmap, livePlayingMap, liveRoomChat, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
 import type { Envelope } from '../ui/session';
 
 function fixture() {
@@ -213,4 +213,34 @@ test('restored room totals remain live throughout a held Panic incident without 
   }
   assert.equal(JSON.stringify(envelope.session), before);
   envelope.live.tosu.status = 'disconnected'; assert.equal(liveTeamScores(envelope, 'synced'), null);
+});
+
+test('FM Playing bridges brief unaligned totals, but clears on missing Mods, timeout, round change or Ranking', () => {
+  const { envelope } = fixture();
+  const source = envelope.live.tosu;
+  const room = source.data!.tourney!;
+  room.competitionScore = { rule: 'fm-ez-v1', reason: null, rawTotalScore: { left: 100, right: 50 },
+    totalScore: { left: 150, right: 50 }, players: [
+      { osuId: 1, side: 'left', mods: 'EZ', rawScore: 100, score: 150 },
+      { osuId: 2, side: 'right', mods: 'NF', rawScore: 50, score: 50 }] };
+  const fm = room.competitionScore;
+  const read = createPlayingScoreDisplay();
+  const seed = () => {
+    source.updatedAt = new Date(1000).toISOString();
+    fm.rawTotalScore.left = 100; fm.totalScore.left = 150;
+    assert.equal(read(envelope, 'synced')?.left, 150);
+    source.updatedAt = new Date(1200).toISOString();
+    fm.rawTotalScore.left = 110; fm.totalScore.left = null;
+  };
+  seed();
+  assert.deepEqual(read(envelope, 'synced'), { left: 150, right: 50 });
+  assert.equal(fm.totalScore.left, null);
+  source.updatedAt = new Date(4000).toISOString();
+  assert.equal(read(envelope, 'synced')?.left, null);
+  seed(); envelope.session.currentRoundId = 'next';
+  assert.equal(read(envelope, 'synced')?.left, null);
+  seed(); room.ipcState = 4;
+  assert.equal(read(envelope, 'synced')?.left, null);
+  room.ipcState = 3; seed(); fm.players![0]!.mods = null; fm.players![0]!.score = null;
+  assert.equal(read(envelope, 'synced')?.left, null);
 });

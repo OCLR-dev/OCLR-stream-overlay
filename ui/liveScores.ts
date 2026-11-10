@@ -27,6 +27,44 @@ export function liveTeamScores(envelope: Envelope | null | undefined, connection
   return room.competitionScore?.totalScore ?? room.totalScore;
 }
 
+// During Playing the manager totals and client scores arrive on separate ticks.
+// Bridge only brief sum mismatches for the same lineup with known scores and Mods.
+export function createPlayingScoreDisplay() {
+  type Sample = { value: number; at: number };
+  let previousKey = '';
+  let last: Partial<Record<'left' | 'right', Sample>> = {};
+  return (envelope: Envelope | null | undefined, connection: string | undefined) => {
+    const scores = liveTeamScores(envelope, connection);
+    const room = liveRoom(envelope, connection);
+    const fm = room?.competitionScore;
+    const session = envelope?.session;
+    const at = Date.parse(envelope?.live.tosu.updatedAt || '');
+    if (!scores || !session || room?.ipcState !== 3 || fm?.rule !== 'fm-ez-v1' ||
+        !fm.players?.length || !Number.isFinite(at) || session.incident) {
+      last = {}; previousKey = '';
+      return scores;
+    }
+    const round = session.rounds.find(r => r.id === session.currentRoundId);
+    const key = JSON.stringify([session.id, session.warmup, session.currentRoundId, round?.runId,
+      envelope?.live.tosu.data?.beatmap.id, fm.entryId, room.teams.left, room.teams.right,
+      fm.players.map(p => [p.osuId, p.side, p.mods])]);
+    if (key !== previousKey) { last = {}; previousKey = key; }
+    const display = { ...scores };
+    for (const side of ['left', 'right'] as const) {
+      const value = scores[side];
+      if (value !== null) { last[side] = { value, at }; continue; }
+      const saved = last[side];
+      const members = fm.players.filter(p => p.side === side);
+      const mismatch = fm.rawTotalScore[side] !== null && members.length > 0 &&
+        fm.players.every(p => p.side !== null) && members.every(p => p.score !== null) &&
+        members.reduce((sum, p) => sum + p.rawScore!, 0) !== fm.rawTotalScore[side];
+      if (saved && mismatch && at >= saved.at && at - saved.at <= 2500) display[side] = saved.value;
+      else delete last[side];
+    }
+    return display;
+  };
+}
+
 export function resultTeamScores(envelope: Envelope | null | undefined, connection: string | undefined) {
   const session = envelope?.session;
   const round = session?.warmup ? undefined : session?.rounds.find(r => r.id === session.currentRoundId);

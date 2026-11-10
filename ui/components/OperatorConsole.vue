@@ -9,7 +9,7 @@ import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
 import { modColorStyle } from '../modColors';
 import { useMotionReady } from '../motion';
-import { liveRoom, liveTeamScores } from '../liveScores';
+import { liveRoom, liveTeamScores, createPlayingScoreDisplay } from '../liveScores';
 import { formatRosterInput, parseRosterInput } from '../rosterInput';
 import { formatTeamScore } from '../scoreFormat';
 import '../control.css';
@@ -37,8 +37,10 @@ const automaticPanicGap = computed(() => {
   return connection.value === 'synced' && !!session?.incident && session.incident.source === 'tosu' &&
     session.incident.kind === 'unverified' && session.incident.roundId === session.currentRoundId;
 });
+const readPlayingScores = createPlayingScoreDisplay();
+const playingScores = ref<ReturnType<typeof readPlayingScores>>(null);
 const roomScores = computed(() => {
-  const live = liveTeamScores(snapshot.value, connection.value);
+  const live = playingScores.value;
   if (live) return live;
   const session = s.value;
   if (automaticPanicGap.value && session && lastRoomScores.value?.key === `${session.id}:${session.currentRoundId || ''}`)
@@ -46,6 +48,7 @@ const roomScores = computed(() => {
   return null;
 });
 watch([snapshot, connection, () => s.value?.scene], ([envelope, link, scene]) => {
+  playingScores.value = readPlayingScores(envelope, link);
   const scores = liveTeamScores(envelope, link);
   if (link === 'synced' && normalizeScene(scene) === 'playing' && scores &&
     Number.isSafeInteger(scores.left) && scores.left! >= 0 && Number.isSafeInteger(scores.right) && scores.right! >= 0) {
@@ -59,6 +62,8 @@ const roomScoreHint = computed(() => {
   const source = snapshot.value?.live.tosu;
   const scoring = source?.status === 'live' ? source.data?.tourney?.competitionScore : null;
   const hasScores = scoring?.rawTotalScore?.left != null || scoring?.rawTotalScore?.right != null;
+  if (scoring && playingScores.value && (['left', 'right'] as const).some(side =>
+    scoring.totalScore[side] === null && playingScores.value?.[side] != null)) return '队分同步中，暂时显示最近核对的分数。';
   return (hasScores && scoring?.reason) || (hasScores && scoring?.rule === 'fm-ez-v1' && !scoring.reason
     ? 'FM 队分已计入 EZ 选手1.5 倍计分，显示队分不代表已计胜。'
     : roomScores.value ? '来自游戏房间，显示队分不代表已计胜。' : '等待房间队分，未知分数显示 —。');
