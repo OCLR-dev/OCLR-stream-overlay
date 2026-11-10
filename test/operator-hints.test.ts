@@ -56,3 +56,12 @@ test('room scores without a tracked round remain broadcastable without fabricati
   assert.match(operatorNextStep(s, 'playing', 'synced', true, 6), /可继续播出/);
   assert.match(hint(s), /开播前设置/);
 });
+
+test('Ranking hints follow actual scene automation; missed finishes require manual results', () => {
+  const s = fixture('recorded');
+  assert.match(operatorNextStep(s, 'playing', 'synced', true, 6, '', 4), /自动回到图池/);
+  s.auto.scenes = false;
+  assert.doesNotMatch(operatorNextStep(s, 'playing', 'synced', true, 6, '', 4), /自动回到图池/);
+  s.rounds[0]!.status = 'ranking'; s.rounds[0]!.resultSource = 'manual-finish';
+  assert.match(hint(s, 'playing'), /核对后记录胜方/);
+});

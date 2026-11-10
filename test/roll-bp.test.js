@@ -506,3 +506,57 @@ test('explicit map-first commands record Ban and Pick atomically and never fall 
   s = cmd(s, 'start');
   assert.throws(() => cmd(s, 'choose-pool-map', { team: 'a', kind: 'pick', entryId: 'm2' }));
 });
+
+test('correcting a prepared room map is explicit, scoped to the live map and preserves the Pick', async () => {
+  const h = harness();
+  await h.bind();
+  await h.cmd('choose-pool-map', { entryId: 'm2', team: 'b', kind: 'pick' });
+  const before = currentRound(h.s);
+  const queue = structuredClone(h.s.queue);
+  await h.change(3);
+  const review = h.store.snapshot().roomReview;
+  assert.equal(review.stage, 'ready');
+  assert.equal(before.entryId, 'm2');
+  const confirm = { stage: 'ready', kind: 'pick', entryId: 'm3', ifCurrentRoundId: before.id };
+  await h.frame(810004);
+  await assert.rejects(h.cmd('confirm-room-map', confirm), /重新核对/);
+  await h.frame(810003);
+  await h.cmd('confirm-room-map', confirm);
+  assert.equal(currentRound(h.s).selectionId, before.selectionId);
+  assert.equal(currentRound(h.s).pickedBy, 'b');
+  assert.equal(currentRound(h.s).entryId, 'm3');
+  assert.deepEqual(h.s.queue, queue);
+  assert.ok(!h.s.poolMarks.some(mark => mark.entryId === 'm2'));
+  await h.frame(810003, 3);
+  assert.equal(currentRound(h.s).status, 'playing');
+});
+
+test('a missed wrong-map or TB finish survives return to Ready and waits for an explicit result', async () => {
+  for (const isTb of [false, true]) {
+    const h = harness();
+    await h.bind();
+    if (isTb) await h.cmd('set-series', { a: 5, b: 5, reason: '核对决胜比分' });
+    else await h.cmd('choose-pool-map', { entryId: 'm2', team: 'b', kind: 'pick' });
+    if (isTb) { assert.ok(h.s.action); assert.equal(h.store.snapshot().session.action, null); }
+    const map = isTb ? 819999 : 810003;
+    const entryId = isTb ? 'tb' : 'm3';
+    await h.frame(map, 4);
+    assert.equal(h.store.snapshot().roomReview.stage, 'ranking', 'a map loaded at the previous Ranking is not a finish');
+    await h.frame(map, 1);
+    assert.equal(h.store.snapshot().roomReview.stage, 'ready');
+    const confirm = { kind: isTb ? 'tb' : 'pick', stage: 'ready', entryId, ifCurrentRoundId: h.s.currentRoundId };
+    await h.frame(map, 3);
+    assert.equal(h.store.snapshot().roomReview.stage, 'playing');
+    await assert.rejects(h.cmd('confirm-room-map', confirm), /重新核对/);
+    await h.frame(map, 4); await h.frame(map, 1);
+    assert.equal(h.store.snapshot().roomReview.stage, 'finished');
+    if (isTb) await assert.rejects(h.cmd('prepare-round', { entryId, tiebreaker: true }), /已开打或已结束/);
+    const before = seriesOf(h.s);
+    await h.cmd('confirm-room-map', { ...confirm, stage: 'finished' });
+    const round = currentRound(h.s);
+    assert.equal(round.status, 'ranking'); assert.equal(round.entryId, entryId); assert.equal(round.runId, null);
+    assert.deepEqual(seriesOf(h.s), before);
+    await h.cmd('record-result', { roundId: round.id, winner: 'b', keepDisplay: true });
+    assert.deepEqual(seriesOf(h.s), { a: before.a, b: before.b + 1 });
+  }
+});

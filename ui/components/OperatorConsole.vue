@@ -108,10 +108,12 @@ watch(resumeAt, () => { pauseClockNow.value = Date.now(); });
 const tb = computed(() => s.value?.bp?.tiebreaker);
 const tbEntries = computed(() => s.value?.pool.filter(e => e.mod === 'TB') || []);
 const tbButtonHint = computed(() => tbEntries.value.length > 1 ? '本场有多张 TB，请先在开播前设置确定唯一决胜图。' : tb.value?.reason || '先核对系列比分与赛制，再准备 TB。');
-const prepareTiebreaker = async () => {
+const roomReview = computed(() => connection.value === 'synced' ? snapshot.value?.roomReview : null);
+const tbAlreadyPlayed = computed(() => roomReview.value?.kind === 'tb' && roomReview.value.stage !== 'ready');
+const prepareTiebreaker = async (forReplay = false) => {
   if (!tb.value?.canPrepare || tbEntries.value.length !== 1) return;
   const entryId = tbEntries.value[0]!.id;
-  if (await run('prepare-round', { entryId, tiebreaker: true, ifCurrentRoundId: s.value?.currentRoundId })) {
+  if (await run('prepare-round', { entryId, tiebreaker: true, forReplay, ifCurrentRoundId: s.value?.currentRoundId })) {
     poolEntryId.value = '';
   }
 };
@@ -565,7 +567,7 @@ function poolState(id: string) {
   if (entry(id)?.mod === 'TB' && mark.status !== 'open') return mark.status === 'used' ? '决胜图 · 已结束' : '决胜图 · 已准备';
   return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已结束' : 'Pick'}` : '';
 }
-const nextStep = computed(() => s.value?.warmup ? '热身仅影响播出显示，可随时手动关闭；比赛记录与房间观测继续。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
+const nextStep = computed(() => s.value?.warmup ? '热身仅影响播出显示，可随时手动关闭；比赛记录与房间观测继续。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value, liveRoom(snapshot.value, connection.value)?.ipcState, roomReview.value));
 const bpPhases: { id: BpPhase; label: string }[] = [
   { id: 'ban1', label: '第一轮 Ban' },
   { id: 'pick1', label: '第一轮 Pick' },
@@ -614,7 +616,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
     <p v-if="!s" class="operator-empty">正在连接本场比赛。连接恢复后会自动显示原有记录。</p>
     <template v-if="s">
       <section v-if="!settings && !diagnostics" class="operator-toolbar" aria-label="随时可用的比赛操作">
-        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.warmup ? 'Warm-up · 热身显示' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
+        <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.warmup ? 'Warm-up · 热身显示' : roomReview ? '房间用图待核对' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'normal' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button v-if="!s.paused" :disabled="disabled" @click="run('pause', { kind: 'tactical' })">战术暂停</button>
@@ -681,7 +683,12 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
 
         <div class="operator-workspace">
           <section class="operator-actions" aria-label="当前画面管理">
-            <section class="operator-situation" aria-label="当前步骤"><div><span class="operator-kicker">当前步骤 · {{ sceneLabels[s.scene as Scene] }}</span><h2>{{ panelHeading }}</h2><p role="status" aria-live="polite">{{ nextStep }}</p><p v-if="!s.warmup && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
+            <section class="operator-situation" aria-label="当前步骤"><div><span class="operator-kicker">当前步骤 · {{ sceneLabels[s.scene as Scene] }}</span><h2>{{ panelHeading }}</h2><p role="status" aria-live="polite">{{ nextStep }}</p>
+              <template v-if="roomReview?.entryId">
+                <button v-if="roomReview.stage === 'ready' || roomReview.stage === 'finished'" class="operator-primary" :disabled="disabled" @click="run('confirm-room-map', { kind: roomReview.kind, stage: roomReview.stage, entryId: roomReview.entryId, ifCurrentRoundId: roomReview.roundId })">{{ roomReview.stage === 'finished' ? '确认 ' + roomReview.roomLabel + ' 已结束，核对赛果' : roomReview.kind === 'tb' ? '确认准备决胜图 ' + roomReview.roomLabel : '改为房间当前谱面 ' + roomReview.roomLabel }}</button>
+                <button v-if="tbAlreadyPlayed && roomReview.stage === 'finished' && [1, 2].includes(live?.tosu.data?.tourney?.ipcState ?? -1)" :disabled="disabled" @click="prepareTiebreaker(true)">裁判要求重打，重新准备 TB</button>
+              </template>
+              <p v-if="!s.warmup && !roomReview && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
             <div v-if="s.warmup" class="operator-action-stack">
               <h3>热身实时队分</h3>
               <div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div>
@@ -702,14 +709,14 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <div class="operator-section-head"><h3>本场图池</h3>
                 <button :disabled="disabled || poolRecordingBlocked && !poolSelection" :aria-expanded="!!poolAnchor && !poolSelection" @click="openPoolMenu($event)">先选动作</button>
               </div>
-              <p v-if="armedAction && s.poolChoice" role="status">{{ names[s.poolChoice.team] }} {{ s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick' }} · 请选择谱面</p>
-              <button class="operator-tiebreaker" :aria-pressed="!!tb?.active" :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || !!tb.active" :title="tbButtonHint" @click="prepareTiebreaker">TieBreaker · 准备决胜图</button>
+              <p v-if="armedAction && s.poolChoice && !s.bp?.stopped" role="status">{{ names[s.poolChoice.team] }} {{ s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick' }} · 请选择谱面</p>
+              <button class="operator-tiebreaker" :aria-pressed="!!tb?.active" :disabled="disabled || tbAlreadyPlayed || !tb?.canPrepare || tbEntries.length !== 1 || !!tb.active" :title="tbButtonHint" @click="prepareTiebreaker()">TieBreaker · 准备决胜图</button>
               <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-expanded="!!poolAnchor && poolEntryId === e.id" :aria-controls="poolEntryId === e.id ? 'map-actions' : undefined" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id, $event)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <MapActionPopover v-if="poolAnchor" :anchor="poolAnchor" @dismiss="closePoolMenu">
                 <strong id="map-title">{{ poolSelection ? poolSelection.label + ' · ' + (poolSelection.title || poolSelection.beatmapId) : '选择本次 BP 动作' }}</strong>
                 <template v-if="poolSelection?.mod === 'TB'">
                   <p>{{ tbButtonHint }}</p>
-                  <button :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || !!tb.active" @click="prepareTiebreaker(); closePoolMenu()">准备决胜图</button>
+                  <button :disabled="disabled || tbAlreadyPlayed || !tb?.canPrepare || tbEntries.length !== 1 || !!tb.active" @click="prepareTiebreaker(); closePoolMenu()">准备决胜图</button>
                 </template>
                 <template v-else>
                   <div class="operator-bp-buttons"><template v-for="team in (['a','b'] as const)" :key="team">
@@ -742,7 +749,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               <p v-if="exhibition && !exhibition.autoResults">本场请按裁判核对的结果人工记分。</p>
               <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p aria-live="polite">{{ roomScoreHint }}</p></section>
               <details class="operator-series-edit"><summary>校正系列比分</summary><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效，作为系列比分校正保留；裁判要求重赛也不会自动撤回。若裁判判本图胜方，请使用下方“记本图胜”，重赛会撤回该图贡献。</p></details>
-              <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
+              <button v-if="round?.status === 'prepared' && !roomReview" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
               <details v-if="round?.status === 'playing'"><summary>本图已结束，游戏仍显示进行中</summary><button :disabled="disabled || s.paused" @click="run('finish-round', { roundId: round.id })">本图已结束，继续 BP（暂不计胜）</button></details>
               <details v-if="resultRound" id="manual-result" class="operator-result" :key="resultRound + round?.status" :open="s.rounds.find(r => r.id === resultRound)?.status === 'ranking'"><summary>核对后人工记录赛果</summary>
                 <label>本图<ControlSelect v-model="resultRound"><option v-for="r in s.rounds.filter(needsResult)" :key="r.id" :value="r.id">{{ entry(r.entryId)?.label }} · {{ roundStatus[r.status] }}{{ r.id !== s.currentRoundId ? '（上一局）' : '' }}</option></ControlSelect></label>
