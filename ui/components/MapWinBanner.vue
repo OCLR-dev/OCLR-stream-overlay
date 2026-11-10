@@ -58,7 +58,7 @@ onUnmounted(() => clearTimeout(hideTimer));
     <div :key="banner.sequence" class="map-win-banner" :data-team="banner.team" data-map-win-banner>
       <div class="map-win-copy">
         <strong class="map-win-name">{{ banner.name }}</strong>
-        <span class="map-win-suffix">队伍获胜</span>
+        <span class="map-win-suffix">赢得本图</span>
       </div>
       <TeamFlagPreview class="map-win-flag" :team="banner.team" decorative />
     </div>
