@@ -1,5 +1,7 @@
 # 自动化、直接编辑与恢复验收
 
+> 历史验收。单图结算已并入 Playing。见[当前控制台操作约定](../../main-operator-contract.md)。
+
 日期：2026-10-29（America/New_York）。仅模拟流程及本机浏览器／OBS 显示验证通过，未完成真实 osu!tourney／tosu 直播验证。没有提交或推送。
 
 ## 根因与最终行为

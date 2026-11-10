@@ -242,3 +242,15 @@ test('explicit BO1 can play one ordinary configured Pick without guessing an ini
   s = command(s, 'record-result', { roundId: s.currentRoundId, winner: 'a', keepDisplay: true });
   assert.equal(seriesComplete(s), true); assert.equal(bpProgress(s).canApply, false);
 });
+
+test('the map menu consumes the configured custom action once and requires a BO for real records', () => {
+  const fresh = setting(newCustomSession(), 'pool', pool);
+  assert.throws(() => command(fresh, 'choose-pool-map', { team: 'a', kind: 'pick', entryId: 'm0' }), /BO/);
+  const state = setup();
+  const armed = command(state, 'select-bp-action', { team: 'b', kind: 'ban' });
+  assert.deepEqual(armed.queue, state.queue);
+  const next = command(armed, 'choose-pool-map', { team: 'b', kind: 'ban', entryId: 'm0' });
+  assert.equal(next.bans.b[0], 'm0');
+  assert.equal(next.action.id, state.queue[0].id);
+  assert.deepEqual(next.queue, state.queue.slice(1));
+});

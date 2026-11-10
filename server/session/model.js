@@ -611,7 +611,7 @@ function applyCommand(s, command) {
     case 'warmup': {
       requireValue(typeof p.enabled === 'boolean', 'Warm-up 开关无效');
       s.warmup = p.enabled;
-      return p.enabled ? '热手显示已开启' : '热手显示已关闭';
+      return p.enabled ? '热身显示已开启' : '热身显示已关闭';
     }
     case 'retract-bp': {
       const target = retractionTarget(s, p);
@@ -653,17 +653,21 @@ function applyCommand(s, command) {
       return `已清除全部图池标记（${visible.length} 项）`;
     }
     case 'choose-pool-map': {
+      const explicit = p.team !== undefined || p.kind !== undefined;
+      if (explicit) applyCommand(s, { type: 'select-bp-action', payload: { team: p.team, kind: p.kind } });
       const choice = s.poolChoice;
       requireValue(choice && side(choice.team) && ['ban', 'pick'].includes(choice.kind), '先选择队伍的 Ban／Pick，或直接选择谱面后再点击动作');
       const round = currentRound(s);
       const entry = entryOf(s, p.entryId);
       const mark = () => applyCommand(s, { type: 'map-mark', payload: { entryId: p.entryId, status: choice.kind === 'ban' ? 'banned' : 'picked', team: choice.team } });
       const occupied = SIDES.some(t => s.bans[t].includes(p.entryId)) || s.rounds.some(r => r.entryId === p.entryId && r.status !== 'void' && !(r.id === round?.id && r.status === 'prepared'));
-      // A prepared Pick is still the active round. Do not let the next team
-      // mark or replace any map until that game settles; only its own Pick can
-      // still be re-pointed before the game starts.
-      // Marks stay editable without rewriting an active run or its result.
-      if (s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || round?.status === 'playing' || occupied) return `${mark()}（比赛记录保留）`;
+      const unavailable = s.paused || s.incident || seriesComplete(s) || s.phase === 'winner' || round?.status === 'playing' || occupied;
+      if (explicit) {
+        requireValue(targetOf(s), '请先设置本场 BO，再记录 Ban／Pick');
+        requireValue(entry && entry.mod !== 'TB', '普通 Ban／Pick 请选择图池内的非 TB 谱面');
+        requireValue(!unavailable, '当前无法记录此 Ban／Pick。只需改画面时，请展开图池纠错修改播出标记');
+      }
+      if (unavailable) return `${mark()}（比赛记录保留）`;
       if (!targetOf(s) || entry?.mod === 'TB') return mark();
       if (choice.kind === 'pick') {
         const message = applyCommand(s, { type: 'prepare-round', payload: { entryId: p.entryId, pickedBy: choice.team } });
@@ -675,6 +679,7 @@ function applyCommand(s, command) {
         mark();
         return message;
       }
+      requireValue(!explicit, '当前不能记录该队 Ban，请核对已准备的本局和 Ban 槽');
       return mark();
     }
     case 'prepare-round': {
@@ -833,8 +838,15 @@ function applyCommand(s, command) {
           s.roll[team] = p[team];
         }
       }
-      for (const field of ['winner', 'pickFirst', 'banFirst']) requireValue(p[field] === null || side(p[field]), '先手归属无效');
-      for (const field of ['winner', 'pickFirst', 'banFirst']) s.roll[field] = p[field];
+      if (p.winner === undefined && SIDES.some(team => p[team] !== undefined)) {
+        const { a, b } = s.roll;
+        s.roll.winner = a === null || b === null || a === b ? null : a > b ? 'a' : 'b';
+      }
+      for (const field of ['winner', 'pickFirst', 'banFirst']) {
+        if (p[field] === undefined) continue;
+        requireValue(p[field] === null || side(p[field]), '先手归属无效');
+        s.roll[field] = p[field];
+      }
       const built = syncRollFlow(s);
       if (built && s.match.stage === 'exhibition') {
         return `已记录表演赛 Roll，先选队伍为${s.match.teams[s.roll.pickFirst].name}，默认双方轮流 Pick`;
@@ -913,6 +925,9 @@ function applyCommand(s, command) {
           s.action = normalizeAction(s, { ...p, slot }); s.queue = [];
           const next = nextSimpleAction(s, s.action); if (next) s.queue.push(next);
         } else {
+          if (s.action?.team === p.team && s.action.kind === p.kind && (p.kind !== 'ban' || s.action.slot === slot)) {
+            return '已选择当前 BP 动作，等待谱面';
+          }
           // Arm one event under the established rule; move a queued match here once.
           // A pending old map event is invalidated by the new action ID in Store.
           const queued = s.queue.findIndex(action => action.team === p.team && action.kind === p.kind && (p.kind !== 'ban' || action.slot === slot));

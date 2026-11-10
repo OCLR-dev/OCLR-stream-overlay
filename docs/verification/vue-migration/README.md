@@ -1,5 +1,7 @@
 # Vue 迁移验收
 
+> 历史验收。独立单图结算画面已合并到 Playing。见[当前控制台操作约定](../../main-operator-contract.md)。
+
 日期：2026-10-27（America/New_York）。本轮由 Codex 直接实现，未使用 DeepSeek。
 
 ## 交付范围

@@ -483,3 +483,26 @@ test('an out-of-turn pick replaces the current selection and keeps old labels', 
   assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm3' && mark.team === 'a' && mark.status === 'picked'), true, 'the replaced selection keeps its label');
   assert.equal(h.s.poolMarks.some(mark => mark.entryId === 'm4' && mark.team === 'b' && mark.status === 'picked'), true);
 });
+
+test('edits to Roll scores recalculate the winner without changing either first right', () => {
+  let s = cmd(setup(), 'set-roll', roll('a', 'a'));
+  for (const [b, winner] of [[95, 'b'], [90, null], [null, null], [0, 'a']]) {
+    s = cmd(s, 'set-roll', { b });
+    assert.deepEqual(s.roll, { a: 90, b, winner, pickFirst: 'a', banFirst: 'a' });
+  }
+  s = cmd(s, 'set-roll', { winner: 'b' });
+  assert.equal(cmd(s, 'set-roll', { pickFirst: 'b' }).roll.winner, 'b');
+});
+
+test('explicit map-first commands record Ban and Pick atomically and never fall back to a mark', () => {
+  const initial = setup();
+  let s = cmd(initial, 'choose-pool-map', { team: 'a', kind: 'ban', entryId: 'm0' });
+  assert.equal(s.bans.a[0], 'm0');
+  assert.deepEqual(cmd(s, 'undo').bans, initial.bans);
+  assert.throws(() => cmd(s, 'choose-pool-map', { team: 'b', kind: 'pick', entryId: 'm0' }));
+  s = cmd(s, 'choose-pool-map', { team: 'b', kind: 'pick', entryId: 'm1' });
+  assert.equal(currentRound(s).entryId, 'm1');
+  assert.equal(currentRound(s).pickedBy, 'b');
+  s = cmd(s, 'start');
+  assert.throws(() => cmd(s, 'choose-pool-map', { team: 'a', kind: 'pick', entryId: 'm2' }));
+});
