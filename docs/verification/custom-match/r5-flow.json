@@ -1,0 +1,17 @@
+{
+  "platform": "darwin",
+  "runtime": "v24.16.0",
+  "build": "fe03cbfba7cf1c8f23e708d52a3b9579b4626d80c4b715df99bce62c1bfdc92a",
+  "label": "MP5-Xronicle-Windows-x64-20261106-r5",
+  "checks": [
+    "Packaged backend starts with the complete MP5 template, 0:0, working control/overlay and disabled OCLR access.",
+    "Warm-up displays live totals through Playing/Ranking and exits at fresh Idle without changing formal records or scene.",
+    "Roll assigns independent first Ban/Pick and both opening Bans complete.",
+    "Interrupted Playing returns to preparation and the same Pick restarts automatically.",
+    "Retracted result stays retracted under repeated Ranking; manual winner and correction stay effective.",
+    "Eight regular maps automatically start, score once and return to Mappool, reaching 4:4.",
+    "Separate TB has no Pick owner, automatically reaches 5:4 and Winner is explicitly displayed.",
+    "Restart restores the exact saved session with nine recorded maps, the interrupted attempt, 5:4, Winner and undo history."
+  ],
+  "passed": true
+}

@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--go', default='go')
     parser.add_argument('--custom-config', type=Path, help='Build isolated custom-match portable with this configuration')
     parser.add_argument('--package-name', help='Explicit output folder and ZIP label')
+    parser.add_argument('--verification-file', type=Path, help='Verification notes included in the distribution')
     args = parser.parse_args()
     if args.package_name and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,119}', args.package_name):
         raise RuntimeError('Invalid package name')
@@ -79,7 +80,8 @@ def main():
     subprocess.run([args.go, 'build', '-trimpath', '-ldflags', flags,
                     '-o', str(stage / exe_name), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
     shutil.copyfile(ROOT / ('docs/custom-match-windows.md' if args.custom_config else 'docs/windows-portable.md'), stage / '使用说明.txt')
-    shutil.copyfile(ROOT / ('docs/verification/custom-match/README.md' if args.custom_config else 'docs/verification/windows-portable/README.md'), stage / '验证状态.txt')
+    verification = args.verification_file or ROOT / ('docs/verification/custom-match/README.md' if args.custom_config else 'docs/verification/windows-portable/README.md')
+    shutil.copyfile(verification, stage / '验证状态.txt')
     if args.custom_config:
         shutil.copyfile(args.custom_config, stage / '比赛配置.json')
         (stage / '图池录入.txt').write_text('\n'.join(f"{entry['label']} {entry['beatmapId']} {entry.get('title', '')}".rstrip() for entry in config['pool'])+'\n', encoding='utf-8')

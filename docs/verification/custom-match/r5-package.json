@@ -1,0 +1,9 @@
+{
+  "zip": "release/MP5-Xronicle-Windows-x64-20261106-r5.zip",
+  "bytes": 36698312,
+  "sha256": "913ed3988f5ee4a9d22f823c80b21015d6060f08ec74aec47c9ccbc031ba15a6",
+  "filesVerified": 59,
+  "build": "fe03cbfba7cf1c8f23e708d52a3b9579b4626d80c4b715df99bce62c1bfdc92a",
+  "flowPassed": true,
+  "credentialsIncluded": false
+}
