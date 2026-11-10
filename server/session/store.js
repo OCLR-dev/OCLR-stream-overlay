@@ -40,7 +40,10 @@ export class SessionStore extends SessionApplication {
   snapshot() {
     const { undo, commandIds, ...session } = this.state;
     const exhibition = exhibitionProgress(this.state);
-    return structuredClone({ startupChoice: this.startupChoice, session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state),
+    const bp = bpProgress(this.state);
+    // Keep the regular cursor internally so correcting the score can resume it.
+    const suspended = bp.stopped && bp.tiebreaker.eligible && !exhibition;
+    return structuredClone({ roomReview: this.roomReview(), startupChoice: this.startupChoice, session: { ...session, ...(suspended ? { action: null, poolChoice: null } : {}), bp, series: seriesOf(this.state),
       ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: scoringLive(this.state, this.live), persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }

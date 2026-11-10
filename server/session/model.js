@@ -820,6 +820,27 @@ function applyCommand(s, command) {
       else throw new Error('设置字段无效');
       return `已同步${{ stageName: '阶段名称', bestOf: 'BO', title: '比赛标题', mode: '常规人数', source: '游戏源比例', 'team-name': '队名', roster: '上场名单', pool: '本场图池' }[field]}，保留比赛进度与记录`;
     }
+    case 'confirm-room-map': {
+      requireValue(p.ifCurrentRoundId === s.currentRoundId && !s.paused && !s.incident &&
+        ['ready', 'finished'].includes(p.stage), '请重新核对本局与房间谱面');
+      if (p.kind === 'tb') {
+        applyCommand(s, { type: 'prepare-round', payload: { entryId: p.entryId, tiebreaker: true } });
+      } else {
+        const round = currentRound(s);
+        requireValue(p.kind === 'pick' && round?.status === 'prepared' && !s.action, '当前没有可修正的准备图');
+        const old = round.entryId;
+        applyBp(s, p.entryId);
+        s.poolMarks = s.poolMarks.filter(mark => mark.entryId !== old && mark.entryId !== p.entryId);
+      }
+      const round = currentRound(s);
+      const label = entryOf(s, round.entryId).label;
+      if (p.stage === 'finished') {
+        round.status = 'ranking'; round.resultSource = 'manual-finish'; round.autoProtected = true;
+        releaseRoundBp(s, round); s.scene = 'playing';
+        return `人工核对 ${label} 已结束，等待记录赛果`;
+      }
+      return `已确认房间谱面 ${label}，等待本局开始`;
+    }
     case 'adjust-round': {
       const round = currentRound(s);
       requireValue(!('ifCurrentRoundId' in p) || p.ifCurrentRoundId === s.currentRoundId, '本局已切换，请在最新轮次重新修改');

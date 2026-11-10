@@ -61,7 +61,12 @@ export interface CompetitionScore {
   rawTotalScore: { left: number | null; right: number | null };
   reason: string | null;
 }
+export interface RoomReview {
+  kind: 'pick' | 'tb'; stage: 'ready' | 'playing' | 'ranking' | 'finished'; roundId: string | null;
+  entryId: string | null; roomLabel: string; preparedLabel: string | null;
+}
 export interface Envelope {
+  roomReview?: RoomReview | null;
   startupChoice?: string | null;
   session: Session; persistence: string;
   live: {

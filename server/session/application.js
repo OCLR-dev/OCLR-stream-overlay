@@ -1,6 +1,6 @@
 import { migrateSession, validateSessionV2 } from './records.js';
 import { randomUUID } from 'node:crypto';
-import { observedTransition, observation, canShowWinner, currentRound, entryOf, newSession, requireValue, SessionRejection, restoreAutomation, transition } from './model.js';
+import { observedTransition, observation, tiebreakerProgress, canShowWinner, currentRound, entryOf, newSession, requireValue, SessionRejection, restoreAutomation, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
 import { rankingMapParameters } from './map-parameters.js';
 import { PickSceneDelay } from './pick-scene-delay.js';
@@ -142,6 +142,21 @@ export class SessionApplication {
           room.players.some(p => p.side === 'left' && p.osuId > 0) && room.players.some(p => p.side === 'right' && p.osuId > 0),
         '尚未恢复到本图有效 Playing；请等待观战恢复，或由裁判确认重赛 / 人工核对赛果');
       }
+      if (!this.state.commandIds.includes(command.id)) {
+        const p = command.payload || {};
+        if (command.type === 'confirm-room-map') {
+          const review = this.roomReview();
+          requireValue(review?.entryId && review.entryId === p.entryId && review.kind === p.kind &&
+            review.stage === p.stage && ['ready', 'finished'].includes(review.stage) && review.roundId === p.ifCurrentRoundId,
+          '房间谱面或比赛进度已改变，请重新核对');
+        }
+        if (command.type === 'prepare-round' && p.tiebreaker) {
+          const review = this.roomReview();
+          requireValue(review?.kind !== 'tb' || review.stage === 'ready' ||
+            (p.forReplay === true && review.stage === 'finished' && [1, 2].includes(this.live.tosu.data.tourney.ipcState)),
+          '房间的 TB 已开打或已结束，请先核对本图');
+        }
+      }
       // Reset only the continuity whose meaning changed. Display, Roll, marks,
       // counters, future actions and unrelated corrections do not lose a finish.
       const continuity = state => {
@@ -201,6 +216,34 @@ export class SessionApplication {
     });
   }
 
+  roomReview() {
+    const s = this.state; const frame = this.live.tosu.data; const room = frame?.tourney;
+    if (this.live.tosu.status !== 'live' || !this.receivedAt || Date.now() - this.receivedAt > 5000 ||
+        s.paused || s.warmup || s.incident || !room || ![1, 2, 3, 4].includes(room.ipcState) ||
+        !s.auto.left || !s.auto.right || room.teams?.left !== s.auto.left || room.teams?.right !== s.auto.right) return null;
+    const mapId = frame.beatmap?.id;
+    if (!Number.isSafeInteger(mapId) || mapId <= 0) return null;
+    const round = currentRound(s);
+    const prepared = round?.status === 'prepared' ? entryOf(s, round.entryId) : null;
+    const matches = s.pool.filter(e => e.beatmapId === mapId);
+    const entry = matches.length === 1 ? matches[0] : null;
+    let kind;
+    if (prepared && prepared.beatmapId !== mapId) kind = 'pick';
+    else if (entry?.mod === 'TB' && (round?.status === 'void' || round?.entryId !== entry.id) && tiebreakerProgress(s).canPrepare &&
+        s.pool.filter(e => e.mod === 'TB').length === 1) kind = 'tb';
+    else return null;
+    const usable = entry && (kind === 'tb' || prepared.mod !== 'TB' && entry.mod !== 'TB') &&
+      !Object.values(s.bans).some(slots => slots.includes(entry.id)) &&
+      !s.rounds.some(r => r.status !== 'void' && r.entryId === entry.id);
+    const key = JSON.stringify([s.id, s.currentRoundId, prepared?.id, kind, mapId, room.teams.left, room.teams.right]);
+    let stage = 'ready';
+    if (room.ipcState === 3) stage = 'playing';
+    else if (this.reviewRankingKey === key) stage = 'finished';
+    else if (room.ipcState === 4) stage = 'ranking';
+    return { key, kind, stage, roundId: s.currentRoundId, entryId: usable ? entry.id : null,
+      roomLabel: entry?.label || `谱面 ${mapId}`, preparedLabel: prepared?.label || null };
+  }
+
   currentRoomMap(state) {
     const frame = this.live.tosu.data; const room = frame?.tourney;
     const seenAt = Date.parse(this.live.tosu.updatedAt);
@@ -231,6 +274,7 @@ export class SessionApplication {
       }
     }
     this.pendingSourceStatus = null;
+    this.reviewRankingKey = null; this.reviewPlayingKey = null;
     this.pickScene.cancel();
     this.seriesCorrection.reset(); this.spectatorRecovery.reset(); this.readyReturn.reset();
     this.parameterHold = null; this.automation.reset(); this.roomMap = { id: null, at: 0 };
@@ -276,6 +320,14 @@ export class SessionApplication {
       [automation, readyReturn, spectatorRecovery, seriesCorrection].forEach((observer, index) => originals[index].restoreEvidence(observer.checkpoint()));
       this.parameterHold = display.hold; this.roomMap = roomMap; this.receivedAt = receivedAt;
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: display.frame };
+      const review = this.roomReview();
+      const ipc = frame.tourney?.ipcState;
+      // A new map can appear while the previous Ranking screen is still up.
+      // Only carry a missed finish into Ready after observing this map in play.
+      const continuous = now >= previousAt && now - previousAt <= 5000;
+      if (!continuous || !review || review.key !== this.reviewRankingKey || ipc === 3) this.reviewRankingKey = null;
+      if (continuous && ipc === 4 && review && this.reviewPlayingKey === review.key) this.reviewRankingKey = review.key;
+      this.reviewPlayingKey = ipc === 3 ? review?.key : null;
       if (restoredReady) this.pickScene.cancel();
       if (mapPushed) this.pickScene.observeRoomMap(this.state, mapId);
       this.live.note = restoredReady ? '本局已返回准备状态，保留原图，等待裁判重新开始比赛。' : result.note;
