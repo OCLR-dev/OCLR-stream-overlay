@@ -12,6 +12,12 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   const matchPanel = panel === 'playing' || panel === 'mappool';
   if (panel === 'pause') return '当前展示暂停画面，可按现场情况切回所需画面。';
   if (panel === 'waiting') return '按现场情况勾选到场与就绪，双方到齐后可开始 Roll。';
+  if (panel === 'roll' && s.match.stage === 'exhibition') {
+    if (s.bp?.mode === 'manual' || s.action?.kind === 'ban') return '本场已调整禁选顺序，可到图池查看当前动作。';
+    return s.roll.pickFirst
+      ? `表演赛默认轮流选图，先选队伍为${s.match.teams[s.roll.pickFirst].name}。`
+      : '表演赛默认轮流选图，请按 Roll 结果选择先 Pick 的队伍。';
+  }
   if (panel === 'roll') return s.roll.pickFirst && s.roll.banFirst ? '先手已记录，可切到图池进行 Ban／Pick。' : '记录 Roll 点数与先 Ban、先 Pick 队伍，已有比赛可直接切到现场画面。';
   if (panel === 'victory') return '核对最终比分与胜方，确认后展示 Winner 或初始化下一场。';
   if (round?.status === 'playing') return panel === 'mappool' ? '本图仍在比赛，可切到 Playing 查看队分，结束后再继续 Ban／Pick。' : '本图正在比赛，等待结束；需要等待或重赛时使用「处理异常」。';

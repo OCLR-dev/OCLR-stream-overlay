@@ -28,7 +28,7 @@ export function createOverlay(shared = false) {
     state.seriesB = s?.series.b ?? null;
     if (!s) return;
     state.scene = normalizeScene(s.scene); state.mode = s.match.mode; state.source = s.match.source; state.stage = s.match.stage;
-    state.pickFirst = s.roll.pickFirst || 'unknown'; state.banFirst = s.roll.banFirst || 'unknown';
+    state.pickFirst = s.roll.pickFirst || 'unknown'; state.banFirst = s.match.stage === 'exhibition' ? 'unknown' : s.roll.banFirst || 'unknown';
     state.pauseType = s.pauseType; state.exTeam = s.ex.team || 'none'; state.exA = s.ex.remaining.a; state.exB = s.ex.remaining.b;
     const entry = s.pool.find(e => e.id === s.rounds.find(r => r.id === s.currentRoundId)?.entryId);
     state.mapType = entry?.mod === 'TB' ? 'tb' : 'normal';

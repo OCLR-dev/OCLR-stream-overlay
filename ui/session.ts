@@ -62,6 +62,7 @@ export interface CompetitionScore {
   reason: string | null;
 }
 export interface Envelope {
+  startupChoice?: string | null;
   session: Session; persistence: string;
   live: {
     streaming?: { status: string; edition: string | null; updatedAt: string | null; error: string | null; afterFixtureId?: string | null; hasMore?: boolean;

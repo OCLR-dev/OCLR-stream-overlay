@@ -4,6 +4,7 @@ import { useSession, type BpPhase, type PoolEntry, type Round } from '../session
 import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type Team } from '../model';
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
+import MapActionPopover from './MapActionPopover.vue';
 import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
 import { modColorStyle } from '../modColors';
@@ -105,7 +106,7 @@ const prepareTiebreaker = async () => {
   if (!tb.value?.canPrepare || tbEntries.value.length !== 1) return;
   const entryId = tbEntries.value[0]!.id;
   if (await run('prepare-round', { entryId, tiebreaker: true, ifCurrentRoundId: s.value?.currentRoundId })) {
-    poolEntryId.value = entryId; poolNeedsAction.value = false;
+    closePoolMenu();
   }
 };
 const exhibition = computed(() => s.value?.match.exhibition);
@@ -139,6 +140,8 @@ const panelHeading = computed(() => s.value?.warmup ? 'Warm-up · 热身' : ({ w
 const scenes = [['waiting', '等待'], ['roll', 'Roll / 先手'], ['mappool', '图池 / BP'], ['playing', 'Playing'], ['victory', 'Winner']] as const;
 const form = reactive({ title: 'OCLR S11', a: '', b: '', rosterA: '', rosterB: '', pool: '', mode: '4v4', source: '4x3' });
 const rollForm = reactive({ a: '', b: '', winner: '', pickFirst: '', banFirst: '' });
+const regularRollFields = [['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const;
+const rollFields = computed(() => exhibition.value ? regularRollFields.filter(([field]) => field !== 'banFirst') : regularRollFields);
 type RollAutoPatch = { winner?: Team; pickFirst?: Team; banFirst?: Team };
 const otherTeam = (team: Team): Team => team === 'a' ? 'b' : 'a';
 // Recompute the derived fields from the latest operator edit. The side the
@@ -176,7 +179,7 @@ const rollWinnerKey = computed(() => {
   return rollWinnerTarget();
 });
 const rollLinkKey = computed(() => {
-  if (connection.value !== 'synced' || !s.value) return '';
+  if (exhibition.value || connection.value !== 'synced' || !s.value) return '';
   const patch = rollLinkPatch();
   return Object.keys(patch).length ? JSON.stringify(patch) : '';
 });
@@ -242,7 +245,7 @@ const autoForm = reactive({ bp: true, scenes: true, results: true, profile: 'unv
 const actionForm = reactive({ kind: '', team: '', slot: -1 });
 const mapForm = reactive({ entryId: '', pickedBy: '' });
 const poolEntryId = ref('');
-const poolNeedsAction = ref(false);
+const poolAnchor = ref<HTMLElement>();
 const poolSelection = computed(() => s.value?.pool.find(e => e.id === poolEntryId.value));
 const selectedMark = computed(() => s.value && poolSelection.value ? poolDisplay(s.value, poolEntryId.value) : null);
 const hasPoolMarks = computed(() => {
@@ -255,6 +258,21 @@ const resultRound = ref('');
 const reason = ref('');
 const localError = ref('');
 const settings = ref(false);
+const startupDialog = ref<HTMLDialogElement>();
+const startupChoice = computed(() => snapshot.value?.startupChoice);
+watch([startupChoice, startupDialog], ([token, dialog]) => {
+  if (token && dialog && !dialog.open) dialog.showModal();
+  else if (!token) dialog?.close();
+}, { flush: 'post' });
+async function chooseStartup(fresh: boolean) {
+  if (!startupChoice.value || disabled.value) return;
+  const ok = await command(fresh ? 'next-match' : 'continue-match', { startupChoice: startupChoice.value });
+  if (ok && fresh) {
+    settings.value = true;
+    diagnostics.value = false;
+    feedback.value = '上一场已存档，请选择新比赛。';
+  }
+}
 const initializeDialog = ref<HTMLDialogElement>();
 const initializeError = ref('');
 const clearRecordsDialog = ref<HTMLDialogElement>();
@@ -319,7 +337,6 @@ watch(s, value => {
     settingTimers.clear(); settingQueue.clear(); dirtySettings.clear(); settingVersions.clear();
     for (const key of Object.keys(settingMessages)) delete settingMessages[key];
     plan.rows = []; plan.verifiedBy = ''; poolEntryId.value = '';
-    poolNeedsAction.value = false;
     Object.assign(mapForm, { entryId: '', pickedBy: '' });
     settingContexts.clear();
     Object.assign(selection, { edition: catalog.value?.edition || value.match.edition || 's11', fixtureId: '', poolId: '', leftTeamId: '', rightTeamId: '' });
@@ -386,11 +403,8 @@ const run = async (type: string, payload: unknown = {}) => {
       undo: `已撤销上一项。当前系列比分 ${series.value.a} : ${series.value.b}，请核对当前图后继续。`,
     };
     const recorded = s.value?.warmup && type === 'display' ? '已手动切换热手播出画面。' : s.value?.history.at(-1)?.message || '';
-    const hintText = type === 'undo'
-      ? `当前系列比分 ${series.value.a} : ${series.value.b}。下一步：${nextStep.value}`
-      : nextStep.value ? `下一步：${nextStep.value}` : '';
     const fallback = messages[type] || ({ 'prepare-round': '本图已准备，等待比赛开始。', 'record-result': '已记录本图胜方。', 'correct-result': '已修正本图胜方。', 'retract-result': '已撤回本图计胜，请核对赛果。', 'referee-replay': '已按裁判决定准备原图重赛。', 'resolve-incident': '已继续原局。', 'void-round': '已作废本图，可重新选图。', ranking: '已标记本图结束，成绩尚未计胜。' } as Record<string, string>)[type] || '';
-    feedback.value = recorded ? [recorded, hintText].filter(Boolean).join(' ') : [fallback, hintText].filter(Boolean).join(' ') || '操作已同步。';
+    feedback.value = recorded || fallback || '操作已同步。';
     feedbackKind.value = type === 'undo' ? 'undo' : 'success';
   }
   return ok;
@@ -562,25 +576,26 @@ async function correctBan(team: Team, slot: number, value: string | number) {
   const ok = await run('correct-ban', { team, slot, entryId: selected.startsWith('map:') ? selected.slice(4) : null, empty: selected === 'empty' });
   banMessages[key] = ok ? '已同步，可撤销上一项。' : error.value || '未同步，请重新选择。';
 }
-const choosePoolAction = async (team: Team, kind: 'ban' | 'pick') => {
-  if (poolSelection.value?.mod === 'TB') { localError.value = 'TB 单独准备，不指定 Ban／Pick 队伍。'; return; }
-  const useRoomMap = !(poolNeedsAction.value && poolEntryId.value);
-  if (await run('select-bp-action', { team, kind, applyRoomMap: useRoomMap })) {
-    if (poolNeedsAction.value && poolEntryId.value && await run('choose-pool-map', { entryId: poolEntryId.value })) poolNeedsAction.value = false;
-  }
-};
-const choosePoolMap = async (entryId: string) => {
+watch([() => s.value?.id, () => s.value?.action?.id, () => s.value?.currentRoundId, () => round.value?.status], () => closePoolMenu());
+watch(poolSelection, selection => { if (!selection) closePoolMenu(); });
+watch([panel, settings, diagnostics, () => s.value?.warmup], () => closePoolMenu());
+function closePoolMenu(restoreFocus = false) {
+  if (restoreFocus) poolAnchor.value?.focus({ preventScroll: true });
+  poolEntryId.value = '';
+  poolAnchor.value = undefined;
+}
+function openPoolMenu(entryId: string, event: MouseEvent) {
+  if (entryId === poolEntryId.value && poolAnchor.value) { closePoolMenu(); return; }
   poolEntryId.value = entryId;
-  if (entry(entryId)?.mod === 'TB') { poolNeedsAction.value = false; return; }
-  poolNeedsAction.value = true;
-  if (s.value?.poolChoice) {
-    await run('choose-pool-map', { entryId });
-    poolNeedsAction.value = false;
-    // The action now owns the map. Do not leave the old map looking selected
-    // after the next team's preselection takes over.
-    poolEntryId.value = '';
-  }
-};
+  poolAnchor.value = event.currentTarget as HTMLElement;
+}
+async function setPoolMark(status: 'open' | 'banned' | 'picked', team: Team | null) {
+  if (await markPool(status, team)) closePoolMenu(true);
+}
+async function recordPoolChoice() {
+  if (!poolEntryId.value) return;
+  if (await run('apply-bp', { entryId: poolEntryId.value, actionId: s.value?.action?.id, updateMark: true })) closePoolMenu(true);
+}
 const note = (fallback: string) => reason.value.trim() || fallback;
 const incidentNote = (fallback: string) => incidentReason.value.trim() || fallback;
 const hold = (kind: string, message: string) => run(round.value?.status === 'recorded' ? 'wait-result' : 'incident', { kind, reason: incidentNote(message) });
@@ -608,19 +623,6 @@ function poolState(id: string) {
   return mark.team && mark.status !== 'open' ? `${names.value[mark.team]} ${mark.status === 'banned' ? 'Ban' : mark.status === 'used' ? '已结束' : 'Pick'}` : '';
 }
 const nextStep = computed(() => s.value?.warmup ? '热手仅影响播出显示，可随时手动关闭；比赛记录与房间观测继续。' : operatorNextStep(s.value, panel.value, connection.value, !!roomScores.value, target.value, poolEntryId.value));
-const poolAction = computed(() => {
-  const bp = s.value?.bp;
-  return bp?.waiting && bp.next ? bp.next : s.value?.poolChoice || null;
-});
-const bpAuto = computed(() => {
-  const action = s.value?.action || s.value?.bp?.next || null;
-  if (!action) return null;
-  return {
-    ...action,
-    current: !!s.value?.action,
-    label: `${names.value[action.team]} ${action.kind === 'ban' ? `Ban${action.slot == null ? '' : ` ${action.slot + 1}`}` : 'Pick'}`,
-  };
-});
 const bpPhases: { id: BpPhase; label: string }[] = [
   { id: 'ban1', label: '第一轮 Ban' },
   { id: 'pick1', label: '第一轮 Pick' },
@@ -634,7 +636,6 @@ const bpPhaseDisabled = computed(() => disabled.value || !s.value || !!s.value.w
 async function jumpBpPhase(phase: BpPhase) {
   if (await run('jump-bp-phase', { phase })) {
     poolEntryId.value = '';
-    poolNeedsAction.value = false;
   }
 }
 const gameStatus = computed(() => live.value?.sources?.tosu === 'simulated' && live.value?.tosu.status === 'live' ? '游戏模拟信号已连接' : ({ live: '游戏数据已连接', stale: '游戏数据已过期', 'invalid-data': '游戏数据暂不可用', error: '游戏未连接 · 请检查连接设置', disconnected: '游戏连接中断 · 正在重连', connecting: '正在连接游戏', stopped: '游戏数据已停止', idle: '尚未接入游戏数据' }[live.value?.tosu.status || 'idle'] || '等待游戏数据'));
@@ -642,7 +643,7 @@ const latestResult = computed(() => [...(s.value?.rounds || [])].reverse().find(
 const seriesPayload = (team: Team, value: number) => ({ ...s.value!.series, [team]: value, reason: note('直播员核对后直接校正系列比分') });
 const display = (scene: string) => run('display', { scene });
 const onKey = (event: KeyboardEvent) => {
-  if (event.ctrlKey || event.metaKey || !event.altKey || event.defaultPrevented || disabled.value) return;
+  if (startupDialog.value?.open || poolAnchor.value || event.ctrlKey || event.metaKey || !event.altKey || event.defaultPrevented || disabled.value) return;
   const element = event.target as HTMLElement;
   if (element?.isContentEditable || /INPUT|SELECT|TEXTAREA|BUTTON/.test(element?.tagName || '')) return;
   const shortcuts: Record<string, string> = { '1': 'waiting', '2': 'roll', '3': 'mappool', '4': 'playing', '5': 'victory' };
@@ -657,48 +658,26 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
 <template>
   <main class="operator" :class="{ 'motion-ready': motionReady }">
     <header class="operator-header">
-      <div class="operator-brand"><span class="operator-kicker">OCLR {{ s?.match.edition?.toUpperCase() || 'S11' }} / BROADCAST</span><h1>直播控制台</h1></div>
+      <div class="operator-brand"><span class="operator-kicker">OCLR {{ s?.match.edition?.toUpperCase() || 'S11' }}</span><h1>直播控制台</h1></div>
       <div class="operator-match"><span>{{ names.a }}</span><strong>{{ s?.warmup ? 'Warm-up' : `${series.a} : ${series.b}` }}</strong><span>{{ names.b }}</span></div>
       <div class="operator-edition">{{ s?.match.title }}<br>{{ stageSummary }}</div>
     </header>
     <nav class="operator-tabs" aria-label="控制台页面">
-      <button :aria-pressed="!settings && !diagnostics" @click="settings = false; diagnostics = false">比赛中操作</button>
+      <button :aria-pressed="!settings && !diagnostics" @click="settings = false; diagnostics = false">比赛现场</button>
       <button :aria-pressed="settings" @click="settings = true; diagnostics = false">开播前设置</button>
-      <button :aria-pressed="diagnostics" @click="diagnostics = true; settings = false">维护详情</button>
-      <a href="/overlay" target="_blank" rel="noopener">打开独立输出 ↗</a>
+
+      <a href="/overlay" target="_blank" rel="noopener">打开观众画面 ↗</a>
     </nav>
     <p v-if="!s" class="operator-empty">正在连接本场比赛。连接恢复后会自动显示原有记录。</p>
     <template v-if="s">
-      <nav class="operator-scenes" aria-label="一键切换播出画面">
-        <span>播出画面</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
-      </nav>
-      <section class="operator-toolbar" aria-label="随时可用的比赛操作">
+      <section v-if="!settings && !diagnostics" class="operator-toolbar" aria-label="随时可用的比赛操作">
         <span class="operator-follow-status">{{ connection !== 'synced' ? '控制台连接中断' : s.warmup ? 'Warm-up · 热手显示' : s.incident ? '等待核对 · 暂不加分' : s.paused ? '播出已暂停' : !(s.auto.bp || s.auto.scenes || s.auto.results) ? '自动跟随已关闭' : live?.tosu.status !== 'live' ? '等待游戏连接' : !liveRoom(snapshot, connection) ? '等待比赛房间' : round?.resultSource === 'series-correction' ? '系列比分已确认 · 等待下一图': s.sceneOverride ? '保持所选画面 · 数据跟随中' : roomScores ? live?.tosu.data?.tourney?.ipcState === 4 ? '结算成绩同步中' : '比赛进行中' : round?.status === 'prepared' ? '等待比赛开始' : '等待现场操作' }}</span>
         <button v-if="!s.paused" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('pause', { kind: 'normal' })">暂停播出</button>
         <button v-else class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('resume')">返回{{ sceneLabels[s.returnScene as Scene] || '原画面' }}</button>
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
-        <button :disabled="disabled || !hasMatchRecords" :data-unavailable="connection !== 'synced' || !hasMatchRecords" @click="openClearRecords">全部撤销</button>
-        <button v-if="round && !s.warmup" @click="showIncidents()">处理异常</button><button v-if="!s.warmup" @click="showAdjustments">手动调整 / 改比分</button>
-        <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
+        <button v-if="round && !s.warmup" @click="showIncidents()">处理异常</button><button v-if="!s.warmup" @click="showAdjustments">比赛纠错</button>
       </section>
-      <section class="operator-warm-time" aria-label="Warm-up 热身模式">
-        <button type="button" :aria-pressed="!!s.warmup" :disabled="disabled" @click="run('warmup', { enabled: !s.warmup })">Warm-up · {{ s.warmup ? '已开启' : '已关闭' }}</button>
-        <div v-if="s.bp" class="operator-bp-phases" role="group" aria-label="BP 阶段">
-          <button v-for="phase in availableBpPhases" :key="phase.id" type="button" :aria-pressed="bpPhase === phase.id" :disabled="bpPhaseDisabled" :title="bpPhaseDisabled ? (s.bp?.waiting || (s.bp?.mode === 'manual' ? '当前为手动 BP；阶段跳转会重建剩余动作' : '当前无法跳转 BP 阶段')) : bpPhase === phase.id ? '当前阶段；点击不会改动比赛记录' : s.bp?.canStart ? `从${phase.label}开始 BP` : `跳到${phase.label}起点（只向前，不删除记录）`" @click="jumpBpPhase(phase.id)">{{ phase.label }}</button>
-        </div>
-      </section>
-      <div class="operator-quick-row">
-        <section v-if="!s.warmup && !exhibition" class="operator-ex-quick" aria-label="EX 常用操作">
-          <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
-            <span>本图 EX</span>
-            <button :aria-pressed="!s.ex.team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="setExTeam(null)">关闭 EX</button>
-            <button v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team" :aria-pressed="s.ex.team === team" :aria-label="`${names[team]} 开启 EX`" :disabled="disabled || exUnavailable(team)" :data-unavailable="connection !== 'synced' || exUnavailable(team)" :title="s.ex.remaining[team] <= 0 && s.ex.team !== team ? '该队没有 EX 剩余次数' : exHint" @click="setExTeam(team)">{{ names[team] }} {{ s.ex.team === team ? '已开启 EX' : '开启 EX' }}</button>
-          </div>
-          <div class="operator-ex-counters" role="group" aria-label="EX 剩余次数">
-            <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
-          </div>
-          <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
-        </section>
+      <div v-if="feedback || error || localError">
         <div class="operator-notice" aria-label="操作反馈" :aria-busy="busy">
           <p v-show="error || localError" role="alert" class="operator-error">{{ localError || error }}</p>
           <p v-show="!error && !localError" class="operator-feedback" :class="{ 'operator-feedback--undo': feedbackKind === 'undo' }" role="status">{{ feedback }}</p>
@@ -726,13 +705,13 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <label>右队<ControlSelect v-model="selection.rightTeamId" @change="scheduleSetting('import', true)"><option value="">请选择</option><option v-for="t in catalog?.teams" :key="t.id!" :value="t.id">{{ t.name }}</option></ControlSelect></label>
           </div><p role="status">{{ settingMessages.import || '选择完整资料后立即使用；不改变已有比赛进度。' }}</p>
         </details>
-        <div>
+        <details><summary>手动编辑队伍、名单与图池</summary>
           <div class="setup-teams">
             <div><label>左队名称<input v-model="form.a" :readonly="automaticTeamNames" aria-label="左队名称" maxlength="80" required @input="scheduleSetting('a')" @blur="dirtySettings.has('a') && scheduleSetting('a', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.a || (automaticTeamNames ? '从 tosu 房间左队自动读取' : '') }}</span></label><label>左队上场名单 · 每行「用户名,UID」<textarea v-model="form.rosterA" aria-label="左队上场名单 · 每行「用户名,UID」" @input="scheduleSetting('rosterA')" @blur="dirtySettings.has('rosterA') && scheduleSetting('rosterA', true)" rows="4" placeholder="Alice,12345（UID 可省略）"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterA || '用户名可省略；只有 UID 时用 UID 作名称' }}</span></label></div>
             <div><label>右队名称<input v-model="form.b" :readonly="automaticTeamNames" aria-label="右队名称" maxlength="80" required @input="scheduleSetting('b')" @blur="dirtySettings.has('b') && scheduleSetting('b', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.b || (automaticTeamNames ? '从 tosu 房间右队自动读取' : '') }}</span></label><label>右队上场名单 · 每行「用户名,UID」<textarea v-model="form.rosterB" aria-label="右队上场名单 · 每行「用户名,UID」" @input="scheduleSetting('rosterB')" @blur="dirtySettings.has('rosterB') && scheduleSetting('rosterB', true)" rows="4" placeholder="Alice,12345（UID 可省略）"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.rosterB || '用户名可省略；只有 UID 时用 UID 作名称' }}</span></label></div>
             <label>本场图池 · 每行「标签 谱面ID 标题」<textarea v-model="form.pool" aria-label="本场图池 · 每行「标签 谱面ID 标题」" @input="scheduleSetting('pool')" @blur="dirtySettings.has('pool') && scheduleSetting('pool', true)" rows="7" placeholder="HD2 谱面ID 标题" spellcheck="false"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.pool }}</span></label>
           </div><p>文字输入停顿后自动同步；无效内容保留在输入框并显示原因，播出继续使用上一次有效设置。名单与图池修改会标为人工资料。</p>
-        </div>
+        </details>
           <details class="operator-follow"><summary>房间连接与自动跟随 <span>{{ s.auto.bp || s.auto.scenes || s.auto.results ? '已启用' : '关闭' }}</span></summary>
             <p>房间左右队名直接读取 tosu，收到有效赛事数据后自动跟随，无需手动填写或确认。</p>
             <p>当前读数：{{ live?.tosu.data?.tourney?.teams.left || '—' }} / {{ live?.tosu.data?.tourney?.teams.right || '—' }} · IPC {{ live?.tosu.data?.tourney?.ipcState ?? '—' }} · 谱面 {{ live?.tosu.data?.beatmap.id ?? '—' }}</p>
@@ -744,6 +723,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
           <div v-for="(row, i) in plan.rows" :key="i" class="operator-plan-row"><label>第 {{ i + 1 }} 项队伍<ControlSelect v-model="row.team" @change="scheduleSetting('plan', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><label>动作<ControlSelect v-model="row.kind" @change="scheduleSetting('plan', true)"><option value="">请选择</option><option value="ban">Ban</option><option value="pick">Pick</option></ControlSelect></label><label v-if="row.kind === 'ban'">Ban 槽<ControlSelect v-model="row.slot" @change="scheduleSetting('plan', true)"><option :value="-1">请选择</option><option :value="0">Ban 1</option><option :value="1">Ban 2</option></ControlSelect></label><button @click="plan.rows.splice(i, 1); scheduleSetting('plan', true)">删除第 {{ i + 1 }} 项</button></div>
           <div class="operator-inline"><button :disabled="plan.rows.length >= 40" @click="plan.rows.push({ team: '', kind: '', slot: -1 }); scheduleSetting('plan', true)">添加一项</button><button @click="plan.rows = s.queue.map(a => ({ team: a.team, kind: a.kind, slot: a.slot ?? -1 }))">载入现有后续动作</button></div><label>核实来源 / 负责人（可选）<input v-model="plan.verifiedBy" maxlength="160" placeholder="可补充本场顺序的来源" @input="scheduleSetting('plan')" @blur="dirtySettings.has('plan') && scheduleSetting('plan', true)"></label><p role="status">{{ settingMessages.plan || '队伍与动作选全后自动生效；核实来源可选。' }}</p>
         </details>
+        <details class="desk-management"><summary>管理比赛记录</summary><div class="operator-inline">
+          <button :disabled="disabled || !hasMatchRecords" :data-unavailable="connection !== 'synced' || !hasMatchRecords" @click="openClearRecords">全部撤销</button>
+        <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
+        </div></details>
+        <button @click="diagnostics = true; settings = false">查看维护详情</button>
       </section>
 
       <section v-if="diagnostics" class="operator-records" aria-label="维护详情">
@@ -755,11 +739,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
 
         <div class="operator-workspace">
           <section class="operator-actions" aria-label="当前画面管理">
-            <section class="operator-situation" aria-label="当前画面管理说明"><div><span class="operator-kicker">{{ sceneLabels[s.scene as Scene] }} · 管理</span><h2>{{ panelHeading }}</h2><p role="status" aria-live="polite">{{ nextStep }}</p><p v-if="!s.warmup && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
+            <section class="operator-situation" aria-label="当前步骤"><div><span class="operator-kicker">当前步骤 · {{ sceneLabels[s.scene as Scene] }}</span><h2>{{ panelHeading }}</h2><p role="status" aria-live="polite">{{ nextStep }}</p><p v-if="!s.warmup && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
             <div v-if="s.warmup" class="operator-action-stack">
               <h3>热身实时队分</h3>
               <div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div>
-              <p>热手仅影响显示，比赛记录与房间观测继续。画面可在上方手动选择。</p>
+              <p>热手仅影响显示，比赛记录与房间观测继续。可在观众预览下方切换画面。</p>
             </div>
             <div v-else-if="panel === 'waiting'" class="operator-action-stack">
               <div class="operator-two"><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-team-status" :data-team="team"><h3>{{ names[team] }}</h3><label class="operator-check"><input type="checkbox" :checked="s.arrived[team]" :disabled="disabled" :data-unavailable="connection !== 'synced'" @change="run('arrival', { team, arrived: !s.arrived[team], ready: false })">已到场</label><label class="operator-check"><input type="checkbox" :checked="s.ready[team]" :disabled="disabled || !s.arrived[team]" :data-unavailable="connection !== 'synced' || !s.arrived[team]" @change="run('arrival', { team, arrived: true, ready: !s.ready[team] })">已就绪</label></div></div>
@@ -767,34 +751,61 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             </div>
             <div v-else-if="panel === 'roll'" class="operator-action-stack">
               <div class="operator-two"><label>{{ names.a }} Roll<input v-model="rollForm.a" type="number" min="0" step="1" @input="scheduleSetting('roll')" @blur="dirtySettings.has('roll') && scheduleSetting('roll', true)"></label><label>{{ names.b }} Roll<input v-model="rollForm.b" type="number" min="0" step="1" @input="scheduleSetting('roll')" @blur="dirtySettings.has('roll') && scheduleSetting('roll', true)"></label></div>
-              <label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="changeRoll(field)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label>
+              <label v-for="[field, label] in rollFields" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="changeRoll(field)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label>
               <p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
               <p v-if="rollLinkRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollLinkRemaining }} 秒后自动确认：{{ rollLinkLabel }}。5 秒内仍可手动修改。</p>
               <p role="status">{{ settingMessages.roll || '修改后立即生效。' }}</p>
-              <button v-if="s.roll.pickFirst && (exhibition || s.roll.banFirst)" class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('bp')">进入图池 / BP →</button>
-              <p v-else class="operator-hint">{{ exhibition ? '选择先 Pick 后进入图池，双方交替选图；如有 Ban，请按裁判要求手动选择。' : '选择先 Pick 和先 Ban 后，可直接进入图池 / BP。' }}</p>
+              <button v-if="s.roll.pickFirst && (exhibition || s.roll.banFirst)" class="operator-primary" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('bp')">{{ exhibition ? '进入图池' : '进入图池 / BP' }} →</button>
+              <p v-if="exhibition" class="operator-hint">如裁判安排禁图，在图池的「调整禁选顺序」中选择先禁图的队伍。</p>
             </div>
             <div v-else-if="panel === 'mappool'" class="operator-action-stack">
-              <button v-if="lastBp?.canRetract" :disabled="disabled" @click="run('retract-bp', { actionId: lastBp.actionId, selectionId: lastBp.selectionId })">撤回本次 Ban / Pick</button>
-              <div class="operator-pool-actions"><p class="operator-action-now">{{ poolSelection ? `${poolSelection.label} · ${poolState(poolSelection.id) || '无标记'}` : round ? `当前图 ${entry(round.entryId)?.label || '—'} · ${roundStatusLabel(round)}` : s.poolChoice ? `${names[s.poolChoice.team]} ${s.poolChoice.kind === 'ban' ? 'Ban' : 'Pick'} · 等待选图` : '选择 Ban／Pick 或谱面' }}</p>
-              <p v-if="bpAuto" class="operator-bp-auto" aria-live="polite">{{ bpAuto.current ? `自动待处理：${bpAuto.label} · 房间换图后自动记录` : `自动下一步：${bpAuto.label}` }}</p>
-              <p v-else-if="s.bp?.waiting && s.bp.mode === 'roll' && !s.bp.stopped" class="operator-bp-auto" aria-live="polite">{{ s.bp.waiting }}；本局结算后自动继续 BP。</p>
-              <p v-else-if="s.bp?.waiting" class="operator-bp-auto" aria-live="polite">{{ s.bp.waiting }}</p>
-              <p v-else-if="s.bp?.mode === 'manual'" class="operator-bp-auto" aria-live="polite">当前为手动 BP 顺序；自动轮换只在开赛前确认 Roll 时建立。</p>
-              <p v-else-if="s.bp?.canStart" class="operator-bp-auto" aria-live="polite">自动 BP 尚未开始；点击阶段按钮或选择队伍即可开始。</p>
-              <p v-else class="operator-bp-auto" aria-live="polite">{{ exhibition ? '按裁判确认的顺序手动选择 Ban／Pick。' : '自动 BP 顺序已走完；后续按现场手动选择。' }}</p>
-              <div class="operator-bp-buttons"><template v-for="team in (['a', 'b'] as const)" :key="team"><button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :aria-pressed="poolAction?.team === team && poolAction.kind === (kind === 'banned' ? 'ban' : 'pick')" :disabled="disabled || poolSelection?.mod === 'TB'" :data-unavailable="connection !== 'synced' || poolSelection?.mod === 'TB'" @click="choosePoolAction(team, kind === 'banned' ? 'ban' : 'pick')">{{ names[team] }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}</button></template></div>
-              <button class="operator-tiebreaker" :aria-pressed="!!tb?.active" :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || !!tb?.active" :title="tbButtonHint" @click="prepareTiebreaker">TieBreaker</button>
-              <button :disabled="disabled || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" :data-unavailable="connection !== 'synced' || !poolSelection || poolSelection.mod === 'TB' || selectedMark?.status === 'open'" @click="markPool('open', null)">清除标记</button><button :disabled="disabled || !hasPoolMarks" :data-unavailable="connection !== 'synced' || !hasPoolMarks" @click="clearAllPoolMarks">清除所有标记</button><button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button></div>
-              <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-pressed="poolEntryId === e.id" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="choosePoolMap(e.id)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
+              <div v-if="s.bp" class="operator-bp-phases desk-phase-jump" role="group" aria-label="跳转禁选阶段">
+                <strong>跳到阶段</strong>
+                <button v-for="(phase, index) in availableBpPhases" :key="phase.id" type="button"
+                  :aria-pressed="bpPhase === phase.id"
+                  :disabled="bpPhaseDisabled || index < availableBpPhases.findIndex(item => item.id === bpPhase)"
+                  @click="jumpBpPhase(phase.id)">{{ phase.label }}</button>
+              </div>
+              <h3>本场图池 <small>点击谱面选择操作</small></h3>
+              <div class="operator-pool" aria-label="本场图池"><button v-for="e in s.pool" :key="e.id" :data-mod="e.mod" :style="modColorStyle(e.mod)" :data-team="poolDisplay(s, e.id).team" :data-map-state="poolDisplay(s, e.id).status" :aria-expanded="poolEntryId === e.id" :aria-controls="poolEntryId === e.id ? 'map-actions' : undefined" :title="e.title || `谱面 ${e.beatmapId}`" :disabled="disabled" @click="openPoolMenu(e.id, $event)"><strong>{{ e.label }}</strong><span>{{ e.title || `谱面 ${e.beatmapId}` }}</span><small v-if="poolState(e.id)">{{ poolState(e.id) }}</small></button></div>
               <p v-if="!s.pool.length">还没有图池，请在本场设置选择真实资料。</p>
-              <p>已结束的谱面仍可修改播出标记。本局开始标记和记胜在 Playing 面板操作。</p>
+              <MapActionPopover v-if="poolAnchor && poolSelection" :anchor="poolAnchor" @dismiss="closePoolMenu()">
+                  <strong id="map-title">{{ poolSelection.label }} · {{ poolState(poolSelection.id) || '无标记' }}</strong>
+                  <template v-if="poolSelection.mod === 'TB'">
+                    <p>{{ tbButtonHint }}</p>
+                    <button class="operator-primary" :disabled="disabled || !tb?.canPrepare || tbEntries.length !== 1 || tb.active" @click="prepareTiebreaker">TieBreaker · 准备决胜图</button>
+                  </template>
+                  <template v-else>
+                    <button v-if="s.action && s.bp?.canApply" class="operator-primary" :disabled="disabled" @click="recordPoolChoice">记录本步：{{ names[s.action.team] }} {{ s.action.kind === 'ban' ? 'Ban' : 'Pick' }}</button>
+                    <button v-else-if="s.bp?.canReplace && !tb?.active && round?.entryId !== poolEntryId && (!s.action || s.action.kind === 'pick')" class="operator-primary" :disabled="disabled" @click="recordPoolChoice">更换本局选图</button>
+                    <small>播出标记（只改画面）</small>
+                    <div class="operator-bp-buttons">
+                      <template v-for="team in (['a', 'b'] as const)" :key="team">
+                        <button v-for="kind in (['banned', 'picked'] as const)" :key="kind" :data-team="team" :disabled="disabled" :aria-pressed="selectedMark?.status === kind && selectedMark.team === team" @click="setPoolMark(kind, team)">
+                          {{ team === 'a' ? 'Red' : 'Blue' }} {{ kind === 'banned' ? 'Ban' : 'Pick' }}<small>{{ names[team] }} · {{ kind === 'banned' ? '禁用' : '选用' }}</small>
+                        </button>
+                      </template>
+                    </div>
+                    <button :disabled="disabled || selectedMark?.status === 'open'" @click="setPoolMark('open', null)">清除标记</button>
+                  </template>
+                  <p v-if="error || localError" role="alert">{{ localError || error }}</p>
+              </MapActionPopover>
+              <details><summary>调整禁选顺序</summary>
+                <div class="operator-bp-buttons">
+                  <template v-for="team in (['a','b'] as const)" :key="team">
+                    <button v-for="kind in (['ban','pick'] as const)" :key="kind" :data-team="team" :disabled="disabled" @click="run('select-bp-action', { team, kind })">{{ names[team] }} 先{{ kind === 'ban' ? '禁图' : '选图' }}</button>
+                  </template>
+                </div>
+              <button v-if="lastBp?.canRetract" :disabled="disabled" @click="run('retract-bp', { actionId: lastBp.actionId, selectionId: lastBp.selectionId })">撤回本次 Ban / Pick</button>
+<button v-if="s.bp?.canApply && s.action?.kind === 'ban' && s.poolChoice?.kind === 'ban' && s.poolChoice.team === s.action.team" :disabled="disabled" @click="run('skip-ban', { actionId: s.action.id, reason: note('已核实本次空 Ban') })">{{ names[s.action.team] }} 空 Ban（已确认）</button>
+                <button :disabled="disabled || !hasPoolMarks" @click="clearAllPoolMarks">清除所有播出标记</button>
+              </details>
             </div>
             <div v-else-if="scorePanel" class="operator-action-stack">
               <p v-if="exhibition?.series?.type === 'fixed_maps'">已完成 {{ exhibitionProgress?.played }} / {{ exhibition.series.count }} 图（含已记录的平局）。</p>
               <p v-if="exhibition && !exhibition.autoResults">本场请按裁判核对的结果人工记分。</p>
               <section class="operator-series-edit" aria-label="本图实时队分"><h3>{{ live?.tosu.data?.tourney?.ipcState === 4 ? '本图结算总分' : '本图实时队分' }}</h3><div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div><p aria-live="polite">{{ roomScoreHint }}</p></section>
-              <section class="operator-series-edit"><h3>直接校正系列比分</h3><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效，作为系列比分校正保留；裁判要求重赛也不会自动撤回。若裁判判本图胜方，请使用下方“记本图胜”，重赛会撤回该图贡献。</p></section>
+              <details class="operator-series-edit"><summary>校正系列比分</summary><div class="operator-two"><label v-for="team in (['a', 'b'] as const)" :key="team">{{ names[team] }} 赢图<input v-model.number="correctedScore[team]" :aria-label="`${names[team]} 赢图`" :aria-describedby="`series-${team}-status`" type="number" min="0" :max="target" step="1" required @input="scheduleSetting(`series-${team}`, true)"><span :id="`series-${team}-status`" class="operator-hint" aria-live="polite">{{ settingMessages[`series-${team}`] }}</span></label></div><p>修改即生效，作为系列比分校正保留；裁判要求重赛也不会自动撤回。若裁判判本图胜方，请使用下方“记本图胜”，重赛会撤回该图贡献。</p></details>
               <button v-if="round?.status === 'prepared'" :disabled="disabled || !!s.incident || !!s.action" :data-unavailable="connection !== 'synced' || !!s.incident || !!s.action" @click="run('start')">手动标记本局已开始</button>
               <button v-if="round?.status === 'playing'" :disabled="disabled || s.paused" @click="run('finish-round', { roundId: round.id })">本图已结束，继续 BP（暂不计胜）</button>
               <section v-if="resultRound" id="manual-result" class="operator-result">
@@ -850,7 +861,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             </div>
           </section>
           <aside class="operator-side">
-            <section class="operator-preview"><div class="operator-section-head"><h2>当前播出画面</h2><span>{{ sceneLabels[s.scene as Scene] }}</span></div><iframe ref="preview" src="/overlay" title="共享浏览器输出预览" @load="sharePreview"></iframe>
+            <section class="operator-preview"><div class="operator-section-head"><h2>观众正在看</h2><span>{{ sceneLabels[s.scene as Scene] }}</span></div><iframe ref="preview" src="/overlay" title="观众画面预览" @load="sharePreview"></iframe>
+      <nav class="operator-scenes" aria-label="一键切换播出画面">
+        <span>切换画面</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
+      </nav>
+
 
             </section>
             <section v-if="round && (incidentOpen || s.incident)" id="incident-panel" class="operator-incident" aria-label="现场处理"><div class="operator-section-head"><h2>现场处理</h2><button v-if="!s.incident" @click="incidentOpen = false">收起</button></div>
@@ -865,6 +880,22 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
                 <label>补充说明（可选）<input v-model="incidentReason" maxlength="160" placeholder="无需填写也能处理"></label><p>等待或重赛会撤回本图已有计胜。重赛只更新播出记录，保留 Pick、BP、EX 与其余系列比分，等待裁判重新开始比赛。若比分曾直接校正，请同时核对系列比分。</p>
               </template><p v-else>本次比赛已作废，请等待重新开始。</p>
             </section>
+            <details class="operator-records desk-tools"><summary>热身与 EX <small>{{ s.warmup ? '热身中' : s.ex.team ? names[s.ex.team] + ' 已开启 EX' : '' }}</small></summary>
+      <section class="operator-warm-time" aria-label="Warm-up 热身模式">
+        <button type="button" :aria-pressed="!!s.warmup" :disabled="disabled" @click="run('warmup', { enabled: !s.warmup })">Warm-up · {{ s.warmup ? '已开启' : '已关闭' }}</button>
+      </section>
+        <section v-if="!s.warmup && !exhibition" class="operator-ex-quick" aria-label="EX 常用操作">
+          <div class="operator-ex-mode" role="group" aria-label="本图 EX 开启方" aria-describedby="ex-quick-hint">
+            <span>本图 EX</span>
+            <button :aria-pressed="!s.ex.team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="setExTeam(null)">关闭 EX</button>
+            <button v-for="team in (['a', 'b'] as const)" :key="team" :data-team="team" :aria-pressed="s.ex.team === team" :aria-label="`${names[team]} 开启 EX`" :disabled="disabled || exUnavailable(team)" :data-unavailable="connection !== 'synced' || exUnavailable(team)" :title="s.ex.remaining[team] <= 0 && s.ex.team !== team ? '该队没有 EX 剩余次数' : exHint" @click="setExTeam(team)">{{ names[team] }} {{ s.ex.team === team ? '已开启 EX' : '开启 EX' }}</button>
+          </div>
+          <div class="operator-ex-counters" role="group" aria-label="EX 剩余次数">
+            <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
+          </div>
+          <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
+        </section>
+            </details>
           </aside>
         </div>
         <details id="manual-adjustments" class="operator-records" :open="adjustments" @toggle="adjustments = ($event.target as HTMLDetailsElement).open">
@@ -888,9 +919,9 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
               </div>
               <p>已选用／已打的谱面、其他 Ban 槽位的谱面及 TB 不可选。同队 HD／HR／DT 不能重复 Ban，NM／FM 可重复。</p>
             </section>
-            <section><h3>Roll 与先手修正</h3><label v-for="[field, label] in ([['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const)" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="changeRoll(field)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
+            <section><h3>Roll 与先手修正</h3><label v-for="[field, label] in rollFields" :key="field">{{ label }}<ControlSelect v-model="rollForm[field]" @change="changeRoll(field)"><option value="">未确认</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><p v-if="rollWinnerRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollWinnerRemaining }} 秒后自动确认：{{ rollWinnerLabel }}。5 秒内仍可手动修改。</p>
               <p v-if="rollLinkRemaining > 0" class="operator-hint" role="status" aria-live="polite">{{ rollLinkRemaining }} 秒后自动确认：{{ rollLinkLabel }}。5 秒内仍可手动修改。</p><p role="status">{{ settingMessages.roll || '修改后立即生效，保留当前进度。' }}</p></section>
-            <section v-if="!exhibition"><h3>EX 剩余次数修正</h3><p>本图开启／关闭请使用顶部 EX 常用操作。</p><div class="operator-two"><label>{{ names.a }} 剩余<input v-model.number="exForm.a" type="number" min="0" max="2" @input="scheduleSetting('ex-a')" @blur="dirtySettings.has('ex-a') && scheduleSetting('ex-a', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-a'] }}</span></label><label>{{ names.b }} 剩余<input v-model.number="exForm.b" type="number" min="0" max="2" @input="scheduleSetting('ex-b')" @blur="dirtySettings.has('ex-b') && scheduleSetting('ex-b', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-b'] }}</span></label></div><p>修改后自动同步，无需保存；不推定实际上场名单。</p></section>
+            <section v-if="!exhibition"><h3>EX 剩余次数修正</h3><p>本图开启／关闭请使用「热身与 EX」。</p><div class="operator-two"><label>{{ names.a }} 剩余<input v-model.number="exForm.a" type="number" min="0" max="2" @input="scheduleSetting('ex-a')" @blur="dirtySettings.has('ex-a') && scheduleSetting('ex-a', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-a'] }}</span></label><label>{{ names.b }} 剩余<input v-model.number="exForm.b" type="number" min="0" max="2" @input="scheduleSetting('ex-b')" @blur="dirtySettings.has('ex-b') && scheduleSetting('ex-b', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-b'] }}</span></label></div><p>修改后自动同步，无需保存；不推定实际上场名单。</p></section>
 
           </div>
           <section><h3>逐局赛果修正</h3><div v-for="r in s.rounds.filter(r => r.status === 'recorded')" :key="r.id" class="operator-round-record"><span>{{ entry(r.entryId)?.label }} · {{ r.winner ? names[r.winner] : '未知' }} 胜 · {{ r.resultSource === 'tosu' ? '自动' : '人工' }}</span><div class="operator-inline"><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('correct-result', { roundId: r.id, winner: r.winner === 'a' ? 'b' : 'a', reason: note('直播员核对后修正胜方') })">改为 {{ names[r.winner === 'a' ? 'b' : 'a'] }} 胜</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('retract-result', { roundId: r.id, reason: note('直播员撤回计胜，等待核对') })">撤回计胜</button></div></div></section>
@@ -898,6 +929,19 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <details class="operator-records"><summary>最近操作记录</summary><ol class="operator-history"><li v-for="item in [...s.history].reverse().slice(0, 40)" :key="item.id"><time>{{ operationTime(item.at) }}</time><span>{{ item.message }}</span><b>{{ item.source === 'tosu' ? '自动' : '人工' }}</b></li><li v-if="!s.history.length">尚无操作记录</li></ol></details>
       </template>
     </template>
+    <dialog ref="startupDialog" class="operator-initialize-dialog desk-startup" aria-labelledby="startup-title" @cancel.prevent>
+      <h2 id="startup-title">继续上次的比赛？</h2>
+      <p>上次保存的对阵</p>
+      <strong>{{ s?.match.teams.a.name }}　{{ series.a }} : {{ series.b }}　{{ s?.match.teams.b.name }}</strong>
+      <button type="button" class="operator-primary" autofocus :disabled="disabled" @click="chooseStartup(false)">
+        继续上场比赛<small>沿用队伍、图池、比分和禁选进度</small>
+      </button>
+      <button type="button" :disabled="disabled" @click="chooseStartup(true)">
+        存档并开始新比赛<small>保存上一场，从零比分重新设置队伍和图池</small>
+      </button>
+      <p v-if="connection !== 'synced'" role="status">正在连接比赛服务…</p>
+      <p v-if="error" role="alert">{{ error }}</p>
+    </dialog>
     <dialog ref="initializeDialog" class="operator-initialize-dialog" aria-labelledby="initialize-title" aria-describedby="initialize-description" @cancel="initializeError = ''">
       <form @submit.prevent="initializeMatch">
         <h2 id="initialize-title">初始化本场比赛？</h2>

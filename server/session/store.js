@@ -1,7 +1,7 @@
 import { afterCommit } from './presentation.js';
 import { scoringLive } from './scoring.js';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import { SessionApplication } from './application.js';
 import { migrateSession } from './records.js';
@@ -11,6 +11,7 @@ import { restoreAutomation, bpProgress, exhibitionProgress, seriesOf } from './m
 export class SessionStore extends SessionApplication {
   constructor(options = {}) {
     super(options);
+    this.startupChoice = options.state ? randomUUID() : null;
     this.file = options.file ?? null;
     this.persistence = this.file ? 'ready' : 'memory';
     this.listeners = new Set(); this.tail = Promise.resolve();
@@ -38,7 +39,7 @@ export class SessionStore extends SessionApplication {
   snapshot() {
     const { undo, commandIds, ...session } = this.state;
     const exhibition = exhibitionProgress(this.state);
-    return structuredClone({ session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state),
+    return structuredClone({ startupChoice: this.startupChoice, session: { ...session, bp: bpProgress(this.state), series: seriesOf(this.state),
       ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: scoringLive(this.state, this.live), persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }

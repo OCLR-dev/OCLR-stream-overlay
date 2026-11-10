@@ -1,6 +1,9 @@
 /* Lazer reference, integrated into the existing OCLR frame. Only decorations
    are animated; content and capture ancestors keep their original geometry. */
-.broadcast-canvas:is([data-current-scene='playing'], [data-current-scene='mappool']) :is(.spectrum-grid, .broadcast-ambient) { display: none; }
+.broadcast-canvas:is([data-current-scene='roll'], [data-current-scene='playing'], [data-current-scene='mappool']) .broadcast-ambient { display: none; }
+.broadcast-canvas[data-current-scene='playing'] .spectrum-grid { opacity: .15; }
+.broadcast-canvas[data-current-scene='mappool'] .spectrum-grid { opacity: .22; }
+.broadcast-canvas[data-current-scene='roll'] .lazer-ribbon-edge { --ribbon-pace: 1.1; --ribbon-strength: .6; }
 .lazer-ribbon-edge { position: absolute; inset: 0; z-index: 0; overflow: hidden; contain: paint; pointer-events: none; --ribbon-pace: .83; --ribbon-strength: 1; }
 .lazer-ribbon-band { position: absolute; left: 0; right: 0; height: 178px; overflow: hidden; }
 /* The middle shares the same direction and colours as the edges, with a
