@@ -1,0 +1,142 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OCLR · 导播练习台</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f4f8;color:#24212c;font:15px/1.55 system-ui,"PingFang SC",sans-serif}button,select{font:inherit;color:inherit}button{background:#fff;border:1px solid #d5d1dd;border-radius:9px;min-height:44px;padding:8px 16px;cursor:pointer}button:hover:not(:disabled){border-color:#7653bc;background:#f5f0ff}button:focus-visible,select:focus-visible{outline:3px solid #9668eb;outline-offset:3px}button:disabled{opacity:.55;cursor:default}header{height:66px;padding:0 5vw;background:#231b32;color:#fff;display:flex;align-items:center;gap:15px}header b{font:italic 900 24px system-ui;letter-spacing:-2px}header span{border-left:1px solid #665871;padding-left:15px}header small{margin-left:auto;background:#3e324e;border-radius:30px;padding:4px 12px;color:#ebe2fb}main{width:min(1180px,92%);margin:30px auto}h1,h2,h3,p{margin:0}h1{font-size:clamp(24px,3vw,37px);letter-spacing:-.04em}h2{font-size:24px;line-height:1.4}h3{font-size:17px}small,.muted{color:#645e70}header small{color:#ebe2fb}.ey{font:700 11px/1.5 ui-monospace,monospace;letter-spacing:.15em;color:#70509c}.intro,.row,.bar{display:flex;align-items:center;justify-content:space-between;gap:12px}.intro{margin-bottom:20px}.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}.stack{display:grid;gap:16px}.card{background:#fff;border:1px solid #e0dce6;border-radius:16px;padding:22px}.guide{border-top:4px solid #7751bd}.guide h2{margin:10px 0 5px}.guide p{color:#625b6b;margin-bottom:16px}.primary{background:#6542a5;color:white;border-color:#6542a5;font-weight:650}.primary:hover:not(:disabled){background:#55368d}.chip{font-size:12px;border-radius:20px;padding:4px 10px;background:#f1ebfc;color:#64428e}.light{color:#67469d}.preview{margin:16px 0 12px;aspect-ratio:16/9;border-radius:10px;color:white;position:relative;overflow:hidden;background:repeating-radial-gradient(ellipse at 95% 130%,transparent 0 25px,#c1a4ed19 26px 27px,transparent 28px 39px),linear-gradient(115deg,#21192e,#49335f);display:grid;align-content:center;text-align:center}.preview:before{content:"OCLR   /   MATCH ROOM";position:absolute;left:12px;top:10px;font:700 9px monospace;letter-spacing:.15em}.preview strong{font:800 clamp(28px,3vw,46px) system-ui;line-height:1.25}.preview small{color:#dfd0ec}.versus{display:flex;align-items:center;justify-content:center;gap:16px;font-weight:650}.red,.blue{border-left:4px solid #d55e78;padding-left:8px}.blue{border-color:#588cce}.pool{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}.map{text-align:left;border-left:4px solid var(--mod);padding:8px 12px}.map b,.map small{display:block}.map.chosen{outline:2px solid #7855b3;background:#f5efff}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.report{margin:12px 0 0;padding:0;list-style:none}.report li{padding:8px 0;border-top:1px solid #eeeaf2;display:flex;gap:12px}.report span{font:12px/24px monospace;color:#70677c}.bar{border-top:1px solid #ded9e5;padding:14px 0;margin-top:20px}.bar button{background:transparent}.details{font-size:13px;color:#655e70}dialog{width:min(430px,92vw);border:1px solid #d8d1df;border-radius:14px;padding:24px;color:inherit}dialog::backdrop{background:#211b2b66}dialog p{margin:10px 0}select{min-height:44px;border:1px solid #ccc5d4;border-radius:8px;padding:6px;background:white}.score{font:750 23px system-ui;white-space:nowrap}#note{min-height:1.5em}.stage{font-size:13px;color:#6d617a}.dots{display:flex;gap:5px}.dots i{width:21px;height:4px;background:#e7e1ed;border-radius:6px}.dots .filled{background:#7854b5}@media(max-width:780px){main{width:94%;margin:18px auto}.grid{grid-template-columns:1fr}.card{padding:16px}.intro{align-items:end}.intro .ey{font-size:10px}.bar{align-items:start}.bar small{max-width:60%}header{padding:0 4%;height:54px}.preview{max-height:270px}.pool{gap:6px}.map{padding:7px}.score{font-size:19px}}
+
+.mark-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.mark-options button{text-align:left;font-weight:650}
+.mark-options small{display:block;font-weight:400;color:inherit}
+.team-red{background:#fff0f2;border-color:#df9da9;color:#8c2943}
+.team-blue{background:#eef5ff;border-color:#99b4dc;color:#284f89}
+button[data-mark^="Red"] small{color:#922b47}
+button[data-mark^="Blue"] small{color:#27588b}
+#choices:has(.mark-options){display:block}
+.roll-fields{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.roll-fields select{margin-left:4px}
+</style>
+<header><b>OCLR</b><span>导播工作台</span><small>本地练习 · 未开播</small></header>
+<main><div class="intro"><div><h1>比赛现场</h1><small>练习赛 · 五局三胜 · 虚构队伍与图池</small></div><strong class="score" id="series"></strong></div>
+<div class="grid"><div class="stack"><section class="card guide"><div class="row"><b class="light">现在做什么</b><span class="stage" id="stage"></span></div><h2 id="title"></h2><p id="tip"></p><div id="operation"></div></section>
+<section class="card"><div class="row"><h3>本场图池</h3><small>点谱面管理标记</small></div><div class="pool" id="pool"></div></section></div>
+<aside class="stack"><section class="card"><div class="row"><h3>观众画面</h3><span class="chip">模拟预览</span></div><div class="preview" id="preview"></div><div class="row"><span class="details" id="follow"></span><button data-action="scene">切换画面</button></div></section>
+<section class="card"><div class="row"><h3>比赛记录</h3><button id="undo" data-action="undo">撤销上一步</button></div><ul class="report" id="history"></ul></section></aside></div>
+<div class="bar"><small id="note" role="status">可以放心试操作，所有变化仅在本页生效。</small><button data-action="reset">重新练习</button></div></main>
+<dialog id="dialog" aria-labelledby="dt" aria-describedby="dd"><h2 id="dt"></h2><p id="dd"></p><div id="choices" class="actions"></div><div class="actions"><button autofocus data-action="close">取消</button></div></dialog>
+<script>
+const $=id=>document.getElementById(id), maps=['NM1','NM2','NM3','HD1','HD2','HR1','HR2','DT1','DT2','TB'], teams=['赤羽','蓝岸'], colors={NM:'#9671bc',HD:'#b69549',HR:'#b56a75',DT:'#6594ac',TB:'#836235'}, scenes=['等待','Roll','图池','比赛中','单图结算','胜者'];
+const sideNames = ['Red', 'Blue'];
+const target = 3;
+const fresh = () => ({
+  banFirst: 0, pickFirst: 1, phase: 'roll', turn: 0, round: 1, stars: [0, 0], used: {}, committed: [],
+  map: null, scene: 'Roll', queue: [], log: ['双方已到场，等待确认先手。']
+});
+function setNextStep() {
+  const next = s.queue[0];
+  s.phase = next.kind;
+  s.turn = next.side;
+  s.scene = '图池';
+  s.map = null;
+}
+function startPool() {
+  const ban = Number($('banFirst').value);
+  const pick = Number($('pickFirst').value);
+  const pair = (kind, first) => [first, 1 - first].map(side => ({ kind, side }));
+  change(() => {
+    s.queue = [...pair('ban', ban), ...pair('pick', pick), ...pair('ban', ban), ...pair('pick', pick)];
+    setNextStep();
+  }, teams[ban] + '先 Ban，' + teams[pick] + '先 Pick。');
+}
+function markName(side, kind) {
+  return sideNames[side] + (kind === 'ban' ? ' Ban' : ' Pick');
+}
+function followsStep(map, mark) {
+  return ['ban', 'pick'].includes(s.phase) && !s.committed.includes(map) &&
+    !s.used[map] && mark === markName(s.turn, s.phase);
+}
+function applyMark(map, mark) {
+  const advance = followsStep(map, mark);
+  change(() => {
+    if (mark) s.used[map] = mark;
+    else delete s.used[map];
+    if (!advance) return;
+    s.committed.push(map);
+    s.queue.shift();
+    if (s.phase === 'ban') setNextStep();
+    else { s.map = map; s.phase = 'ready'; }
+  }, mark ? map + ' · ' + mark + (advance ? '，已记录本步。' : '，已更新播出标记。') : map + ' · 已清除播出标记。');
+}
+function openMap(map) {
+  selected = map;
+  if (map === 'TB') {
+    dialog('TB · 决胜图', s.phase === 'tb' ? '双方都差一分获胜。裁判确认后可准备决胜图。' : '双方都差一分获胜时，由裁判确认启用。', btn('prepare-tb','准备决胜图','primary',s.phase !== 'tb'));
+    return;
+  }
+  const options = [];
+  for (const [side, name] of teams.entries()) {
+    for (const kind of ['ban','pick']) {
+      const label = markName(side, kind);
+      const hint = followsStep(map, label) ? '记录本步' : '修改标记';
+      const action = label === s.used[map] ? '当前标记' : hint;
+      options.push(btn('mark:' + label, label + '<small>' + name + ' · ' + action + '</small>',
+        side === 0 ? 'team-red' : 'team-blue', label === s.used[map]));
+    }
+  }
+  dialog(map + ' · 谱面标记', '当前：' + (s.used[map] || '无标记') + '。修改播出标记会保留比赛进度和比分。',
+    '<div class="mark-options">' + options.join('') + '</div>' + btn('mark:', '清除标记', '', !s.used[map]));
+}
+function rollFields() {
+  const options = '<option value="0">赤羽（红）</option><option value="1">蓝岸（蓝）</option>';
+  return '<div class="roll-fields"><label>先禁图<select id="banFirst">' + options + '</select></label>' +
+    '<label>先选图<select id="pickFirst">' + options.replace('value="1"', 'value="1" selected') + '</select></label>' +
+    btn('start-pool', '进入图池', 'primary') + '</div>';
+}
+let s=fresh(), selected=null, past=[];
+const btn=(a,t,cl='',off=false)=>'<button data-action="'+a+'" class="'+cl+'" '+(off?'disabled':'')+'>'+t+'</button>';
+function change(f,msg){past.push(structuredClone(s));f();s.log.push(msg);selected=null;render();$('note').textContent=msg}
+function render(){const p=s.phase, map=s.map, team=teams[s.turn], win=teams[s.stars[0]>s.stars[1]?0:1];$('series').textContent='赤羽 '+s.stars[0]+' : '+s.stars[1]+' 蓝岸';
+const data={roll:['确认 Roll 后的先手','按裁判公布的顺序选择先禁图、先选图的队伍。'],tb:['准备决胜图','等裁判确认后，点图池里的 TB 准备本局。'],ban:[team+'禁用一张图','房间换图会自动记录。手动操作时，点一张未用谱面，选择带「记录本步」的 Ban。'],pick:[team+'选择本局用图','房间换图会自动准备本局。也可以点一张未用谱面，选择带「记录本步」的 Pick。'],ready:['等待选手开始 '+map,'正式直播会跟随房间开打；练习时点下方按钮，看看开打后的画面。'],playing:[map+' 正在比赛','正常情况下只需观察。模拟选手打完后，系统会根据练习分数自动记胜。'],review:['本局分数不完整','系列比分保持不变。请根据裁判决定处理本局。'],result:[s.result,'本局已经记入系列比分。继续练习下一步。'],done:[win+'赢得这场练习赛','观众画面已显示胜者。可以查看比赛记录，或重新练习。']};
+$('stage').textContent='第 '+s.round+' 局 · '+({roll:'Roll / 先手',tb:'决胜图',ban:'禁图',pick:'选图',ready:'准备',playing:'进行中',review:'等待裁判',result:'已结算',done:'已结束'})[p];$('title').textContent=data[p][0];$('tip').textContent=data[p][1];$('operation').innerHTML=p==='roll'?rollFields():p==='tb'?'':p==='ban'||p==='pick'?btn('room','模拟房间换图','primary'):p==='ready'?btn('play','模拟选手开打','primary'):p==='playing'?btn('finish','模拟正常完赛','primary')+' '+btn('missing','试试分数不齐'):p==='review'?btn('r0','裁判判赤羽胜')+' '+btn('r1','裁判判蓝岸胜')+' '+btn('replay','按裁判决定重赛'):p==='result'?btn('next',Math.max(...s.stars)>=target?'展示胜者画面':'进入下一局','primary'):btn('reset','再练一场','primary');
+if (p === 'roll') {
+  for (const field of ['banFirst', 'pickFirst']) {
+    $(field).value = s[field];
+    $(field).onchange = () => { s[field] = Number($(field).value); };
+  }
+}
+$('pool').innerHTML = maps.map(map => {
+  const mark = s.used[map] || '';
+  const status = mark || (s.committed.includes(map) ? '已记录 · 无标记' : map === 'TB' ? '决胜专用' : '无标记');
+  return '<button class="map" aria-haspopup="dialog" data-mark="' + mark + '" data-map="' + map +
+    '" style="--mod:' + colors[map.slice(0,2)] + '"><b>' + map + '</b><small>' + status + '</small></button>';
+}).join('');
+$('preview').innerHTML='<small>练习赛 · 第 '+s.round+' 局</small><strong>'+(s.scene==='胜者'?win+' 获胜':s.scene==='比赛中'?(map||'比赛中'):s.scene)+'</strong><div class="versus"><span class="red">赤羽</span>'+s.stars.join(' : ')+'<span class="blue">蓝岸</span></div>';$('follow').textContent='正在展示：'+s.scene;$('history').innerHTML=s.log.slice(-5).reverse().map((l,i)=>'<li><span>'+String(s.log.length-i).padStart(2,'0')+'</span>'+l+'</li>').join('');$('undo').disabled=!past.length}
+function dialog(title,desc,html){$('dt').textContent=title;$('dd').textContent=desc;$('choices').innerHTML=html;$('dialog').showModal()}
+function record(i,manual){const msg=(manual?'按裁判决定，':(i===0?'练习分数 820,000 : 760,000，':'练习分数 760,000 : 820,000，'))+teams[i]+'赢得 '+s.map;change(()=>{s.stars[i]++;s.result=teams[i]+'赢得 '+s.map;s.phase='result';s.scene='单图结算'},msg)}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.map){openMap(b.dataset.map);return}
+const a=b.dataset.action;
+const map = selected;
+if($('dialog').open)$('dialog').close();
+if(a === 'start-pool') startPool();
+if(a.startsWith('mark:')) {
+  applyMark(map, a.slice(5));
+  document.querySelector('[data-map="' + map + '"]').focus();
+}
+if(a === 'room') {
+  const candidate = maps.find(map => map !== 'TB' && !s.used[map] && !s.committed.includes(map));
+  if (candidate) applyMark(candidate, markName(s.turn, s.phase));
+  else $('note').textContent = '可用谱面均有标记，请先清除一张未使用谱面的标记。';
+}
+if(a === 'prepare-tb') change(() => {
+  s.map = 'TB'; s.phase = 'ready'; s.used.TB = '决胜图';
+}, '按裁判决定，已准备 TB。');
+if(a==='play')change(()=>{s.phase='playing';s.scene='比赛中'},s.map+' 已开打');
+if(a==='finish')record((s.round-1)%2,false);
+if(a==='missing')change(()=>{s.phase='review';s.scene='单图结算'},'有选手分数缺失，暂未计胜。');
+if(a==='r0'||a==='r1')record(Number(a[1]),true);
+if(a==='replay')change(()=>{s.phase='ready';s.scene='图池'},'本局重赛，保留选图和系列比分。');
+if(a==='next'){if(Math.max(...s.stars)>=target)change(()=>{s.phase='done';s.scene='胜者'},'已展示胜者画面。');else change(()=>{s.round++;if(s.stars.every(score => score === target - 1)){s.phase='tb';s.map=null;s.scene='图池'}else setNextStep()},'回到图池，准备下一局。')}
+if(a==='scene')dialog('切换观众画面','只改变展示内容。下一次开打或结算时会自动跟随比赛。',scenes.filter(x=>x!=='胜者'||Math.max(...s.stars)>=target).map(x=>btn('show:'+x,x,x===s.scene?'primary':'',x===s.scene)).join(''));
+if(a?.startsWith('show:'))change(()=>{s.scene=a.slice(5)},'手动展示：'+a.slice(5));
+if(a==='undo'&&past.length){s=past.pop();selected=null;render();$('note').textContent='已撤销，练习已回到上一步。'}
+if(a==='reset')dialog('重新开始练习？','本次练习的比分、选图和记录将清空。',btn('restart','重新开始','primary'));
+if(a==='restart'){s=fresh();past=[];selected=null;render();$('note').textContent='已开始新的练习。'}
+});render();
+</script></html>
