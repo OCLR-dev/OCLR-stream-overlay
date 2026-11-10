@@ -836,6 +836,9 @@ function applyCommand(s, command) {
       for (const field of ['winner', 'pickFirst', 'banFirst']) requireValue(p[field] === null || side(p[field]), '先手归属无效');
       for (const field of ['winner', 'pickFirst', 'banFirst']) s.roll[field] = p[field];
       const built = syncRollFlow(s);
+      if (built && s.match.stage === 'exhibition') {
+        return `已记录表演赛 Roll，先选队伍为${s.match.teams[s.roll.pickFirst].name}，默认双方轮流 Pick`;
+      }
       return built ? '已同步 Roll，按独立先 Ban / 先 Pick 自动建立 BP 当前动作与后续顺序' : '已同步 Roll 点数与先手，保留当前局、BP 和比分；后续有误可在手动调整中修正';
     }
     case 'import-streaming': {
@@ -881,6 +884,7 @@ function applyCommand(s, command) {
       if (!bpStarted(s)) s.phase = p.enterBp === false ? 'roll' : 'bp';
       s.scene = p.enterBp === false ? 'roll' : 'mappool';
       syncRollFlow(s);
+      if (s.match.stage === 'exhibition') return p.enterBp === false ? '展示表演赛 Roll 结果' : '已记录表演赛 Roll，进入图池';
       return p.enterBp === false ? '展示真实 Roll 与独立先手' : '记录真实 Roll 与独立先手，进入 BP';
     }
     case 'bp': s.phase = 'bp'; s.scene = 'mappool'; return '进入 BP（保留比赛记录）';
@@ -997,7 +1001,14 @@ function applyCommand(s, command) {
       }
       return `更新明确配置的后续 BP 顺序（不修改当前动作）${s.planVerification ? `：${s.planVerification}` : ''}`;
     }
-    case 'apply-bp': return applyBp(s, p.entryId, 'manual', p.actionId);
+    case 'apply-bp': {
+      const choice = s.action || currentRound(s)?.bpAction || { team: currentRound(s)?.pickedBy, kind: 'pick' };
+      const message = applyBp(s, p.entryId, 'manual', p.actionId);
+      if (p.updateMark === true && side(choice.team)) {
+        applyCommand(s, { type: 'map-mark', payload: { entryId: p.entryId, status: choice.kind === 'ban' ? 'banned' : 'picked', team: choice.team } });
+      }
+      return message;
+    }
     case 'apply-room-map':
       requireValue(s.action, '当前没有已选择的 BP 动作，等待房间换图');
       return applyBp(s, p.entryId, 'room-map', s.action.id, p.eventId || null);

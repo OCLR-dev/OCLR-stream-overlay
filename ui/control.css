@@ -139,3 +139,40 @@
 @media (max-width: 760px) {
   .operator-bp-phases { width: 100%; padding-left: 0; border-left: 0; }
 }
+
+/* Live desk: operator task first, program monitor beside it. */
+.operator-workspace { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: 8px; }
+.operator-actions > .operator-situation { min-height: 0; padding-left: 16px; border-left: 3px solid var(--op-purple); border-bottom: 0; padding-bottom: 0; margin-bottom: 24px; }
+.operator-preview .operator-scenes { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; }
+.operator-preview .operator-scenes span { flex-basis: 100%; }
+.operator-preview .operator-scenes button { flex: 1 1 auto; min-height: 44px; }
+.operator-action-stack h3 small, .desk-tools summary small { color: var(--op-muted); font-size: 13px; font-weight: normal; margin-left: 8px; }
+.operator .desk-tools { margin: 0; padding: 12px 18px; }
+.operator .desk-management { margin-bottom: 16px; }
+.desk-map-menu { position: fixed; z-index: 30; display: grid; gap: 6px; width: min(280px, calc(100vw - 12px)); max-height: calc(100dvh - 12px); overflow: auto; padding: 12px; border: 1px solid var(--op-purple); border-radius: 9px; background: var(--op-panel); box-shadow: 0 8px 24px #0b071c70; }
+.desk-map-menu .operator-bp-buttons { gap: 6px; }
+.desk-map-menu button { padding: 5px 9px; }
+.desk-map-menu small { display: block; color: var(--op-muted); font-weight: normal; }
+.operator-pool button[aria-expanded='true'] { outline: 2px solid var(--op-purple); outline-offset: 1px; }
+.operator-notice { height: auto; }
+.operator-notice > p { position: static; }
+.operator-toolbar { padding-block: 10px; }
+.operator { max-width: 1440px; --op-line: #544463; }
+.operator-tabs { gap: 2px; padding: 0; }
+.operator-tabs button { background: transparent; border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding-inline: 18px; }
+.operator-tabs button[aria-pressed='true'] { background: transparent; color: #e1caff; border-color: #ba91ed; }
+.operator-actions, .operator-preview { border-radius: 12px; }
+.operator-pool button { min-height: 57px; }
+.operator .operator-section-head { margin-bottom: 12px; }
+@media (min-width: 761px) { .operator-side { position: sticky; top: 12px; } }
+@media (max-width: 760px) {
+  .operator-tabs a { flex-basis: auto; margin-left: auto; }
+  .operator-pool button { grid-template-columns: auto minmax(0, 1fr); }
+  .operator-pool small { grid-row: 2; grid-column: 1 / -1; text-align: left; }
+}
+.operator .desk-phase-jump { border: 0; padding: 0; gap: 8px; }
+.desk-phase-jump strong { font-size: 14px; }
+.desk-startup[open] { display: grid; gap: 12px; }
+.desk-startup > strong { margin-bottom: 8px; font-size: 20px; }
+.desk-startup button { text-align: left; padding: 12px 16px; }
+.desk-startup small { display: block; font-weight: 400; margin-top: 3px; }

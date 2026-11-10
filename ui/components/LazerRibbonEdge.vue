@@ -39,7 +39,7 @@ function renew(event: AnimationEvent, name: BandName, ribbon: Ribbon) {
 </script>
 
 <template>
-  <div v-show="state.scene === 'playing' || state.scene === 'mappool'" class="lazer-ribbon-edge" aria-hidden="true">
+  <div v-show="state.scene === 'roll' || state.scene === 'playing' || state.scene === 'mappool'" class="lazer-ribbon-edge" aria-hidden="true">
     <div v-for="band in bands" :key="band.name" class="lazer-ribbon-band" :class="`lazer-ribbon-band--${band.name}`">
       <div v-if="band.name === 'bottom'" class="lazer-ribbon-foot"></div>
       <span v-for="(ribbon, index) in band.ribbons" :key="index" class="lazer-ribbon" :data-tone="ribbon.tone"

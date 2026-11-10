@@ -124,6 +124,16 @@ export class SessionApplication {
 
   command(command) {
     return this.enqueue(async () => {
+      const startupToken = command.payload?.startupChoice;
+      if (command.type === 'continue-match' || startupToken !== undefined) {
+        requireValue(startupToken && startupToken === this.startupChoice &&
+          ['continue-match', 'next-match'].includes(command.type), '开场选择已更新，请核对当前比赛');
+        if (command.type === 'continue-match') {
+          this.startupChoice = null;
+          this.emit();
+          return this.snapshot();
+        }
+      }
       if (command.type === 'resolve-incident' && !this.state.commandIds.includes(command.id) && currentRound(this.state)?.status === 'playing') {
         const room = this.live.tosu.data?.tourney;
         requireValue(this.live.tosu.status === 'live' && room?.ipcState === 3 &&
@@ -170,6 +180,7 @@ export class SessionApplication {
         const changedAction = next.action?.id !== this.state.action?.id || next.auto.bp !== this.state.auto.bp;
         const changedResults = next.auto.results !== this.state.auto.results;
         await this.save(next, { allowPickScene: !['undo', 'replay', 'referee-replay', 'resume', 'resolve-incident'].includes(command.type) });
+        if (command.type === 'next-match') this.startupChoice = null;
         if (command.type === 'set-series' && !next.incident && !next.paused && currentRound(next)?.resultSource === 'series-correction') {
           this.live.note = '系列比分已确认，本图已处理；自动流程等待下一图，无需再单独记胜';
         }
