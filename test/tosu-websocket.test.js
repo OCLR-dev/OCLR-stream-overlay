@@ -308,3 +308,22 @@ test('return to ready automatically restores the same map after dropout and cont
   assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 1 });
   assert.equal(stack.store.state.rounds.filter(r => r.resultSource === 'manual').length, 0);
 });
+
+test('an explicit console Pick can enable EX and settle once from observed game frames', async t => {
+  const stack = await boot(t);
+  await operator(stack, 'choose-pool-map', { entryId: 'sim-nm2', team: 'b', kind: 'pick' });
+  const prepared = current(stack);
+  assert.equal(prepared.status, 'prepared');
+  await operator(stack, 'ex', { team: 'a', remaining: { a: 2, b: 2 } });
+  await map(stack, 710002);
+  await until(() => stack.store.live.tosu.data.beatmap.id === 710002, 'room map matches the Pick');
+  await simulate(stack, 'set', { ipcState: 3 });
+  await until(() => current(stack)?.status === 'playing', 'observed start');
+  await simulate(stack, 'set', { ipcState: 4, left: 1200000, right: 1100000 });
+  await until(() => current(stack)?.status === 'recorded', 'automatic result');
+  await delay(650);
+  assert.equal(current(stack).id, prepared.id);
+  assert.equal(current(stack).resultSource, 'tosu');
+  assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
+  assert.deepEqual(stack.store.state.ex.remaining, { a: 1, b: 2 });
+});

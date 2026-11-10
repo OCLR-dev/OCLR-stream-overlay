@@ -1,5 +1,7 @@
 # Ranking 总分与顶部占位
 
+> 历史验收。排名总分现在显示在 Playing。见[当前控制台操作约定](../../main-operator-contract.md)。
+
 2026-10-30，main。
 
 - Playing 输出在 tosu Ranking（IPC 4）时继续读取当前双方总分和分差，控制台同步显示“本图结算总分”。

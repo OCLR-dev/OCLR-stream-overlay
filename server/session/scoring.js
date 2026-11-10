@@ -26,7 +26,7 @@ export function competitionScore(state, frame) {
   const rawTotalScore = Object.fromEntries(SIDES.map(side => [side, validScore(room?.totalScore?.[side]) ? room.totalScore[side] : null]));
   const entry = mapEntry(state, frame);
   if (!entry?.mod) return { rule: 'unknown', totalScore: rawTotalScore, rawTotalScore,
-    reason: '图池分组未确认，当前显示客户端原始队分，尚未应用 EZ 加成' };
+    reason: SIDES.some(side => rawTotalScore[side] !== null) ? '图池分组未确认，显示房间原始队分' : null };
   if (entry.mod !== 'FM') return { rule: 'client', totalScore: rawTotalScore, rawTotalScore, reason: null };
 
   const active = (room?.players || []).filter(player => player.osuId > 0);

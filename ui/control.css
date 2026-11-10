@@ -117,7 +117,7 @@
 .operator .operator-pool button[data-map-state='banned'] { background: #110c1c; }
 .operator-pool button[data-map-state='banned'] strong { background: transparent; }
 .operator-pool button[data-map-state='banned'] > span { color: #bdb6cb; }
-.operator-pool button[aria-pressed='true'] { outline: 2px solid #dbc6ff; outline-offset: 2px; }
+.operator-pool button[aria-expanded='true'] { outline: 2px solid #dbc6ff; outline-offset: 2px; }
 
 .operator button.operator-reset { border-color: #bb7388; color: #ffd0dc; }
 .operator-initialize-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 24px; border: 1px solid var(--op-line); border-radius: 8px; background: var(--op-panel); color: #f3eeff; overflow: auto; }
@@ -146,16 +146,10 @@
 .operator-preview .operator-scenes { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; }
 .operator-preview .operator-scenes span { flex-basis: 100%; }
 .operator-preview .operator-scenes button { flex: 1 1 auto; min-height: 44px; }
-.operator-action-stack h3 small, .desk-tools summary small { color: var(--op-muted); font-size: 13px; font-weight: normal; margin-left: 8px; }
-.operator .desk-tools { margin: 0; padding: 12px 18px; }
+.operator-action-stack h3 small { color: var(--op-muted); font-size: 13px; font-weight: normal; margin-left: 8px; }
 .operator .desk-management { margin-bottom: 16px; }
-.desk-map-menu { position: fixed; z-index: 30; display: grid; gap: 6px; width: min(280px, calc(100vw - 12px)); max-height: calc(100dvh - 12px); overflow: auto; padding: 12px; border: 1px solid var(--op-purple); border-radius: 9px; background: var(--op-panel); box-shadow: 0 8px 24px #0b071c70; }
-.desk-map-menu .operator-bp-buttons { gap: 6px; }
-.desk-map-menu button { padding: 5px 9px; }
-.desk-map-menu small { display: block; color: var(--op-muted); font-weight: normal; }
-.operator-pool button[aria-expanded='true'] { outline: 2px solid var(--op-purple); outline-offset: 1px; }
-.operator-notice { height: auto; }
-.operator-notice > p { position: static; }
+.operator-notice { height: 48px; }
+@media (max-width: 760px) { .operator-notice { height: 66px; } }
 .operator-toolbar { padding-block: 10px; }
 .operator { max-width: 1440px; --op-line: #544463; }
 .operator-tabs { gap: 2px; padding: 0; }
@@ -176,3 +170,8 @@
 .desk-startup > strong { margin-bottom: 8px; font-size: 20px; }
 .desk-startup button { text-align: left; padding: 12px 16px; }
 .desk-startup small { display: block; font-weight: 400; margin-top: 3px; }
+
+.desk-map-menu { position: fixed; z-index: 30; display: grid; gap: 10px; width: min(320px, calc(100vw - 16px)); max-height: calc(100dvh - 12px); overflow: auto; padding: 12px; border: 1px solid var(--op-purple); border-radius: 9px; background: var(--op-panel); box-shadow: 0 8px 24px #0b071c70; }
+.desk-map-menu .operator-bp-buttons { gap: 8px; }
+.desk-map-menu button { min-height: 44px; overflow-wrap: anywhere; }
+.desk-map-menu strong { overflow-wrap: anywhere; }

@@ -1,5 +1,7 @@
 # Neon Broadcast 改版验证
 
+> 以下截图和尺寸检查使用当时独立的单图结算画面。当前结算在 Playing 展示，见[控制台操作约定](../../main-operator-contract.md)。
+
 日期：2026-10-28（America/New_York）。按用户提供的 `osu! 組隊賽直播界面.html` 直接重构 Vue 直播 UI，并融合项目已有 S11 规则。参考文件未修改，也未复制其比赛规则、正式队名或示例赛果。
 
 提交前复核（2026-10-28）：`npm run build`（含类型检查）、`npm test`（18/18）与 `git diff --check` 通过。首次测试受沙箱回环端口监听权限限制，获准后完整重跑通过。该轮未重复浏览器截图检查，未做真实 tosu / osu!tourney / OBS 联调。`docs/design/` 的控制台、自动 BP 与自动切画面方案均为待实现设计。
