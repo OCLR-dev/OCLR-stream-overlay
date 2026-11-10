@@ -3,7 +3,7 @@ import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods,
 import { useSession } from './session';
 import { useMotionReady } from './motion';
 import { poolDisplay, poolWinner } from './poolDisplay';
-import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, liveTeamScores, playingPickTeam, resultTeamScores } from './liveScores';
+import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, createPlayingScoreDisplay, playingPickTeam, resultTeamScores } from './liveScores';
 import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
 import { matchFormat } from './matchFormat';
 import { formatTeamScore } from './scoreFormat';
@@ -41,10 +41,13 @@ export function createOverlay(shared = false) {
   const lastScores = shallowRef<{ key: string; left: number; right: number } | null>(null);
   const scoreKey = (envelope: { session: { id: string; currentRoundId: string | null } } | null | undefined) =>
     envelope?.session ? `${envelope.session.id}:${envelope.session.currentRoundId || ''}` : '';
+  const readPlayingScores = createPlayingScoreDisplay();
+  const playingScores = shallowRef<ReturnType<typeof readPlayingScores>>(null);
   if (shared) watch([() => sessionClient?.snapshot.value, () => sessionClient?.connection.value, () => state.scene],
     ([envelope, connection, scene]) => {
       rankingScores.value = retainRankingScores(envelope, connection, scene, rankingScores.value);
-      const scores = rankingScores.value?.scores || liveTeamScores(envelope, connection);
+      playingScores.value = readPlayingScores(envelope, connection);
+      const scores = rankingScores.value?.scores || playingScores.value;
       if (connection === 'synced' && scene === 'playing' && scores &&
         Number.isSafeInteger(scores.left) && scores.left! >= 0 && Number.isSafeInteger(scores.right) && scores.right! >= 0) {
         lastScores.value = { key: scoreKey(envelope), left: scores.left!, right: scores.right! };
@@ -65,7 +68,7 @@ export function createOverlay(shared = false) {
     const envelope = sessionClient?.snapshot.value;
     const remembered = automaticPanicGap.value && lastScores.value?.key === (s ? `${s.id}:${s.currentRoundId || ''}` : '')
       ? lastScores.value : null;
-    const scores = rankingScores.value?.scores || liveTeamScores(envelope, sessionClient?.connection.value) ||
+    const scores = rankingScores.value?.scores || playingScores.value ||
       (remembered ? { left: remembered.left, right: remembered.right } : null);
     const names = s ? { a: s.match.teams.a.name, b: s.match.teams.b.name } : shared ? { a: '左队待设置', b: '右队待设置' } : teamNames;
     const round = s?.rounds.find(r => r.id === s.currentRoundId);
