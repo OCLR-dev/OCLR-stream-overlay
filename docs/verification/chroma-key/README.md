@@ -1,6 +1,6 @@
 # 原尺寸游戏捕获与绿幕
 
-> 历史验收。单图结算已并入 Playing，现行捕获区使用纯绿幕。见[当前控制台操作约定](../../main-operator-contract.md)。
+> 历史验收。单图结算已并入 Playing，正式 /overlay 的 Playing 捕获区已改用透明窗口，根路径演示保留绿色区域标记。见[当前控制台操作约定](../../main-operator-contract.md)。
 
 2026-10-30。
 
