@@ -65,3 +65,11 @@ test('Ranking hints follow actual scene automation; missed finishes require manu
   s.rounds[0]!.status = 'ranking'; s.rounds[0]!.resultSource = 'manual-finish';
   assert.match(hint(s, 'playing'), /核对后记录胜方/);
 });
+
+test('a blocked room map names the recovery command after the room finishes', () => {
+  const review = { kind: 'pick', stage: 'finished', roundId: 'r', preparedLabel: 'NM1',
+    roomLabel: 'HD1', entryId: null, unavailableReason: '已被 Ban' } as const;
+  const message = operatorNextStep(fixture('prepared'), 'mappool', 'synced', false, 6, '', 1, review);
+  assert.match(message, /NM1.*HD1.*已被 Ban.*已结算.*未计胜/);
+  assert.match(message, /比赛纠错.*作废当前选图，重新 BP/);
+});

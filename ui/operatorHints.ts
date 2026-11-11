@@ -13,13 +13,17 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (review) {
     const context = review.kind === 'tb' ? `房间已载入决胜图 ${review.roomLabel}，尚未确认 TB。`
       : `已准备 ${review.preparedLabel}，房间当前为 ${review.roomLabel}。`;
-    if (!review.entryId) return context + (review.stage === 'playing' ? '房间已开打，此图暂不自动计胜。' : '') +
-      '请核对图池与比赛记录，再由裁判确认实际用图。';
+    if (!review.entryId) {
+      const progress = review.stage === 'finished' ? '房间已结算，此图未计胜。' : review.stage === 'playing' ? '房间已开打，此图暂不自动计胜。' : '';
+      return context + '房间谱面' + (review.unavailableReason || '不可用') + '。' + progress +
+        '请与裁判核对。若继续原 Pick，请切回已准备的图；若需重选，请打开「比赛纠错」，点击「作废当前选图，重新 BP」。';
+    }
     if (review.stage === 'ranking') return context + '房间仍在结算，尚未观察到此图开打。请核对现场，返回准备后再操作。';
     if (review.stage === 'playing') return context + '房间已开打，此图暂不自动计胜。请核对现场，结算时人工确认赛果。';
     if (review.stage === 'finished') return context + '房间已出现结算。请核对确已打完的谱面，再记录胜方。';
     return context + (review.kind === 'tb' ? '开打前请确认准备决胜图。' : '请确认改用房间谱面，或让裁判切回已准备的图。');
   }
+  if (round?.status === 'ranking' && round.resultSource === 'manual-finish') return '本图已确认结束，请核对后记录胜方。';
   if (panel === 'pause') return '当前展示暂停画面，可按现场情况切回所需画面。';
   if (panel === 'waiting') return '按现场情况勾选到场与就绪，双方到齐后可开始 Roll。';
   if (panel === 'roll' && s.match.stage === 'exhibition') {
@@ -32,7 +36,6 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (panel === 'victory') return '核对最终比分与胜方，确认后展示 Winner 或初始化下一场。';
   if (round?.status === 'playing') return panel === 'mappool' ? '本图仍在比赛，可切到 Playing 查看队分，结束后再继续 Ban／Pick。' : '本图正在比赛，等待结束；需要等待或重赛时使用「处理异常」。';
   if (round?.status === 'ranking' && round.resultSource !== 'series-correction') {
-    if (round.resultSource === 'manual-finish') return '本图已由直播员确认结束，请在 Playing 核对后记录胜方。';
     if (s.match.exhibition && !s.match.exhibition.autoResults) return '本图已结束，请在 Playing 核对后记录赛果或校正系列比分。';
     return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。'
       : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';

@@ -706,7 +706,7 @@ function applyCommand(s, command) {
       const label = entryOf(s, round.entryId).label;
       if (p.stage === 'finished') {
         round.status = 'ranking'; round.resultSource = 'manual-finish'; round.autoProtected = true;
-        releaseRoundBp(s, round); s.scene = 'playing';
+        releaseRoundBp(s, round);
         return `人工核对 ${label} 已结束，等待记录赛果`;
       }
       return `已确认房间谱面 ${label}，等待本局开始`;

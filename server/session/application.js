@@ -232,15 +232,17 @@ export class SessionApplication {
     else if (entry?.mod === 'TB' && (round?.status === 'void' || round?.entryId !== entry.id) && tiebreakerProgress(s).canPrepare &&
         s.pool.filter(e => e.mod === 'TB').length === 1) kind = 'tb';
     else return null;
-    const usable = entry && (kind === 'tb' || prepared.mod !== 'TB' && entry.mod !== 'TB') &&
-      !Object.values(s.bans).some(slots => slots.includes(entry.id)) &&
-      !s.rounds.some(r => r.status !== 'void' && r.entryId === entry.id);
+    let unavailableReason = null;
+    if (!entry) unavailableReason = matches.length ? '对应多个图池条目' : '不在本场图池中';
+    else if (Object.values(s.bans).some(slots => slots.includes(entry.id))) unavailableReason = '已被 Ban';
+    else if (s.rounds.some(r => r.status !== 'void' && r.entryId === entry.id)) unavailableReason = '已用于其他局';
+    else if (kind !== 'tb' && (prepared.mod === 'TB' || entry.mod === 'TB')) unavailableReason = '不能在普通 Pick 与决胜图之间替换';
     const key = JSON.stringify([s.id, s.currentRoundId, prepared?.id, kind, mapId, room.teams.left, room.teams.right]);
     let stage = 'ready';
     if (room.ipcState === 3) stage = 'playing';
     else if (this.reviewRankingKey === key) stage = 'finished';
     else if (room.ipcState === 4) stage = 'ranking';
-    return { key, kind, stage, roundId: s.currentRoundId, entryId: usable ? entry.id : null,
+    return { key, kind, stage, roundId: s.currentRoundId, unavailableReason, entryId: unavailableReason ? null : entry.id,
       roomLabel: entry?.label || `谱面 ${mapId}`, preparedLabel: prepared?.label || null };
   }
 

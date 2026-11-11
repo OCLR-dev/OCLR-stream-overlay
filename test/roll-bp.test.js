@@ -551,12 +551,48 @@ test('a missed wrong-map or TB finish survives return to Ready and waits for an 
     await h.frame(map, 4); await h.frame(map, 1);
     assert.equal(h.store.snapshot().roomReview.stage, 'finished');
     if (isTb) await assert.rejects(h.cmd('prepare-round', { entryId, tiebreaker: true }), /已开打或已结束/);
+    await h.cmd('display', { scene: 'mappool' });
     const before = seriesOf(h.s);
     await h.cmd('confirm-room-map', { ...confirm, stage: 'finished' });
     const round = currentRound(h.s);
+    assert.equal(h.s.scene, 'mappool');
     assert.equal(round.status, 'ranking'); assert.equal(round.entryId, entryId); assert.equal(round.runId, null);
     assert.deepEqual(seriesOf(h.s), before);
     await h.cmd('record-result', { roundId: round.id, winner: 'b', keepDisplay: true });
+    assert.equal(h.s.scene, 'mappool');
     assert.deepEqual(seriesOf(h.s), { a: before.a, b: before.b + 1 });
   }
+});
+
+test('a banned room map remains blocked through finish and Ready until the referee resolves the Pick', async () => {
+  const h = harness();
+  await h.bind();
+  await h.cmd('choose-pool-map', { entryId: 'm0', team: 'a', kind: 'ban' });
+  await h.cmd('choose-pool-map', { entryId: 'm2', team: 'b', kind: 'pick' });
+  for (const ipc of [1, 3, 4, 1]) {
+    await h.frame(810000, ipc);
+    const review = h.store.snapshot().roomReview;
+    assert.equal(review.entryId, null);
+    assert.equal(review.unavailableReason, '已被 Ban');
+  }
+  assert.equal(h.store.snapshot().roomReview.stage, 'finished');
+  assert.equal(currentRound(h.s).entryId, 'm2');
+  assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
+  await h.cmd('void-round', { reason: '裁判要求重新选图' });
+  assert.equal(h.store.snapshot().roomReview, null);
+});
+
+test('a previously played room map directs the operator to corrections without replacing the Pick', async () => {
+  const h = harness();
+  await h.bind();
+  await h.cmd('choose-pool-map', { entryId: 'm0', team: 'a', kind: 'pick' });
+  await h.cmd('start');
+  await h.cmd('record-result', { roundId: h.s.currentRoundId, winner: 'a', keepDisplay: true });
+  await h.cmd('choose-pool-map', { entryId: 'm2', team: 'b', kind: 'pick' });
+  await h.frame(810000, 1);
+  const review = h.store.snapshot().roomReview;
+  assert.equal(review.entryId, null);
+  assert.equal(review.unavailableReason, '已用于其他局');
+  assert.equal(currentRound(h.s).entryId, 'm2');
+  assert.deepEqual(seriesOf(h.s), { a: 1, b: 0 });
 });

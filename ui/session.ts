@@ -63,7 +63,7 @@ export interface CompetitionScore {
 }
 export interface RoomReview {
   kind: 'pick' | 'tb'; stage: 'ready' | 'playing' | 'ranking' | 'finished'; roundId: string | null;
-  entryId: string | null; roomLabel: string; preparedLabel: string | null;
+  unavailableReason?: string | null; entryId: string | null; roomLabel: string; preparedLabel: string | null;
 }
 export interface Envelope {
   roomReview?: RoomReview | null;
