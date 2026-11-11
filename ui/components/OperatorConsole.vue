@@ -502,9 +502,9 @@ async function drainSettings() {
 }
 watch([busy, connection], () => { void drainSettings(); });
 
-function recordResult(winner: Team | null) {
-  return run('record-result', { roundId: resultRound.value, winner, keepDisplay: true,
-    reviewReason: s.value?.incident?.roundId === resultRound.value ? incidentNote('直播员已核对实际成绩，人工记录胜方') : undefined });
+function recordResult(winner: Team | null, roundId = resultRound.value) {
+  return run('record-result', { roundId, winner, keepDisplay: true,
+    reviewReason: s.value?.incident?.roundId === roundId ? incidentNote('直播员已核对实际成绩，人工记录胜方') : undefined });
 }
 const markPool = (status: 'open' | 'banned' | 'picked', team: Team | null) => run('map-mark', { entryId: markEntryId.value, status, team });
 const clearAllPoolMarks = () => run('clear-pool-marks');
@@ -709,6 +709,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
                 <button v-if="roomReview.stage === 'ready' || roomReview.stage === 'finished'" class="operator-primary" :disabled="disabled" @click="run('confirm-room-map', { kind: roomReview.kind, stage: roomReview.stage, entryId: roomReview.entryId, ifCurrentRoundId: roomReview.roundId })">{{ roomReview.stage === 'finished' ? '确认 ' + roomReview.roomLabel + ' 已结束，核对赛果' : roomReview.kind === 'tb' ? '确认准备决胜图 ' + roomReview.roomLabel : '改为房间当前谱面 ' + roomReview.roomLabel }}</button>
                 <button v-if="tbAlreadyPlayed && roomReview.stage === 'finished' && [1, 2].includes(live?.tosu.data?.tourney?.ipcState ?? -1)" :disabled="disabled" @click="prepareTiebreaker(true)">裁判要求重打，重新准备 TB</button>
               </template>
+              <button v-else-if="roomReview" @click="showAdjustments">打开比赛纠错</button>
+              <div v-else-if="!scorePanel && !s.warmup && !s.paused && !s.incident && round?.status === 'ranking' && round.resultSource === 'manual-finish'" class="operator-inline">
+                <button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled" @click="recordResult(team, round.id)">记 {{ entry(round.entryId)?.label }} {{ names[team] }} 胜</button>
+                <button v-if="exhibition?.tiedMapPolicy === 'count_as_draw'" :disabled="disabled" @click="recordResult(null, round.id)">记录本图平局</button>
+              </div>
               <p v-if="!s.warmup && !roomReview && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
             <div v-if="s.warmup" class="operator-action-stack">
               <h3>热身实时队分</h3>
