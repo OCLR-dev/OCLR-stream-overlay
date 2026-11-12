@@ -16,7 +16,7 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3003,
     strictPort: true,
-    fs: { strict: true, allow: [fileURLToPath(new URL('./ui', import.meta.url))] },
+    fs: { strict: true, allow: [fileURLToPath(new URL('./ui', import.meta.url)), fileURLToPath(new URL('./src/playing-layout.js', import.meta.url))] },
     // The local server requires same-origin writes, so requests proxied from
     // 3003 must present the backend's own origin rather than the Vite origin.
     proxy: { '/api': { target: backend, changeOrigin: true, headers: { Origin: backendOrigin } } },

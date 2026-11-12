@@ -1,6 +1,7 @@
 // Local demonstration state. No API records, player identity or official result
 // is inferred here; live data remains a separate subscription boundary.
 import type { SeriesRule } from './session';
+import { playingLayout } from '../src/playing-layout.js';
 
 export const scenes = ['waiting', 'mappool', 'playing', 'victory', 'pause', 'roll'] as const;
 export type Scene = typeof scenes[number];
@@ -151,9 +152,7 @@ export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) 
   const exhibition = stage === 'exhibition';
   const target = exhibitionRule?.type === 'first_to' ? exhibitionRule.wins : 0;
   const meta = exhibition ? { label: '表演赛', format: exhibitionFormat(exhibitionRule), target: target <= 7 ? target : 0 } : stages[stage];
-  const format = state.mapType === 'tb' ? 'tb' : state.exTeam === 'none' ? 'normal' : 'ex';
-  const ex = format === 'ex';
-  const count = Number.parseInt(state.mode, 10) - (ex ? 1 : 0);
+  const { format, ex, count } = playingLayout(state.mode, state.exTeam, state.mapType === 'tb');
   const roster = (team: Team) => Array.from({ length: count }, (_, i) => ({
     team, id: `${team.toUpperCase()}${i + (ex ? 3 : 1)}`, slot: i + 1,
     role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null,
