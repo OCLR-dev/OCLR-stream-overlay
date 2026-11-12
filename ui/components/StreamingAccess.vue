@@ -93,7 +93,7 @@ async function act(action: string, extra: Record<string, unknown> = {}) {
     <p>登录后自动读取本人已指派的直播任务，选择场次即可预览；本场记录不会被自动覆盖。</p>
     <div class="setup-meta">
       <label>授权赛季<input v-model="edition" maxlength="80" :disabled="pending" autocomplete="off"></label>
-      <button :disabled="disabled || pending || (!connected && !validEdition)" :aria-busy="pending" @click="connected ? act('disconnect') : login()">{{ connectionLabel }}</button>
+      <button class="streaming-connection-button" :disabled="disabled || pending || (!connected && !validEdition)" :aria-busy="pending" @click="connected ? act('disconnect') : login()">{{ connectionLabel }}</button>
     </div>
     <p role="status">{{ source?.edition?.toUpperCase() || 'OCLR' }} · {{ status }} · {{ source?.updatedAt || '尚无成功读取' }}</p>
     <template v-if="source?.status === 'ready' && source.tasks?.length">
@@ -122,3 +122,9 @@ async function act(action: string, extra: Record<string, unknown> = {}) {
     </details>
   </section>
 </template>
+
+<style scoped>
+.streaming-connection-button {
+  align-self: end;
+}
+</style>
