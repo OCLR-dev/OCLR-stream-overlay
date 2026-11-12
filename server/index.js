@@ -5,12 +5,14 @@ import { attachBroadcast } from './session/data.js';
 import { createBroadcastData, OclrClient } from '../src/index.js';
 import { fileURLToPath } from 'node:url';
 import { acquireRuntime } from './runtime.js';
+import { attachObs } from './obs/controller.js';
 
 let lease;
 try {
   const config = loadConfig();
   lease = await acquireRuntime({ appPort: config.port, mode: 'production' });
   const session = await SessionStore.open(fileURLToPath(new URL('../.local/session.json', import.meta.url)));
+  await attachObs(config, session);
   const server = createOverlayServer(config, fetch, undefined, session);
   server.on('error', () => {
     console.error('SERVER_START_FAILED: check whether the configured port is in use.');

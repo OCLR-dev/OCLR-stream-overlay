@@ -7,6 +7,7 @@ import { streamingHttp } from './streaming-http.js';
 import { sessionHttp } from './session/http.js';
 import { createArtworkHandler } from './artwork.js';
 import { createPlayerArtHandler } from './player-art.js';
+import { obsHttp } from './obs/http.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -131,6 +132,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
+    if (await obsHttp(req, res, url, config.obs)) return;
     if (await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;
@@ -179,6 +181,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       clearTimeout(timeout);
     }
   };
-  server.on('close', () => { streaming.disconnect(); (config.session || session)?.close?.(); });
+  server.on('close', () => { config.obs?.close(); streaming.disconnect(); (config.session || session)?.close?.(); });
   return server;
 }

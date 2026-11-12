@@ -10,6 +10,7 @@ import { seedCommands, simulationSession } from './fixture.js';
 import { TosuSimulator } from './server.js';
 import { acquireRuntime } from '../../server/runtime.js';
 import { loadConfig, ROOT } from '../../server/config.js';
+import { attachObs } from '../../server/obs/controller.js';
 
 export async function startSimulation({ appPort = 3005, wsPort = 24051, sessionFile = null, initialRoom = null,
   offlineOclr = false, oclrConfig = null, oclrFetch = fetch } = {}) {
@@ -45,6 +46,7 @@ export async function startSimulation({ appPort = 3005, wsPort = 24051, sessionF
     if (initialRoom) simulator.room = structuredClone(initialRoom);
     await simulator.start();
     const config = { ...(offlineOclr ? { mode: 'anonymous' } : oclrConfig || loadConfig()), port: appPort, wsUrl: simulator.wsUrl };
+    await attachObs(config, store);
     server = createOverlayServer(config, offlineOclr ? async () => { throw new Error('SIMULATION_OFFLINE'); } : oclrFetch, undefined, store);
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(appPort, '127.0.0.1', resolve); });
     config.port = server.address().port;

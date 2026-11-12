@@ -10,6 +10,7 @@ import { SessionStore } from './session/store.js';
 import { attachBroadcast } from './session/data.js';
 import { createBroadcastData, OclrClient } from '../src/index.js';
 import { preparePortableData, backupBeforeVersion } from './portable-data.js';
+import { attachObs } from './obs/controller.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let lease, server, session, stopData;
@@ -44,6 +45,7 @@ try {
   session = await SessionStore.open(file);
   if (!await access(file).then(() => true, () => false)) await session.save(session.state);
   config.session = session;
+  await attachObs(config, session);
   const data = await createBroadcastData({ config: { tosuWsUrl: config.wsUrl },
     oclr: new OclrClient({ baseUrl: 'http://127.0.0.1:3001/api/oclr' }) });
   stopData = attachBroadcast(session, data);

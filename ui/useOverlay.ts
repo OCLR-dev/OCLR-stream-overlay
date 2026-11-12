@@ -7,6 +7,7 @@ import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, createPlayingScore
 import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
 import { formatTeamScore } from './scoreFormat';
 import { presentMatchChat } from './matchChat';
+import { currentPoolEntry } from '../src/playing-layout.js';
 
 export function createOverlay(shared = false) {
   const state = reactive(parseLocation(shared ? '' : location.search, shared ? '' : location.hash));
@@ -30,7 +31,7 @@ export function createOverlay(shared = false) {
     state.scene = normalizeScene(s.scene); state.mode = s.match.mode; state.source = s.match.source; state.stage = s.match.stage;
     state.pickFirst = s.roll.pickFirst || 'unknown'; state.banFirst = s.match.stage === 'exhibition' ? 'unknown' : s.roll.banFirst || 'unknown';
     state.pauseType = s.pauseType; state.exTeam = s.ex.team || 'none'; state.exA = s.ex.remaining.a; state.exB = s.ex.remaining.b;
-    const entry = s.pool.find(e => e.id === s.rounds.find(r => r.id === s.currentRoundId)?.entryId);
+    const entry = currentPoolEntry(s);
     state.mapType = entry?.mod === 'TB' ? 'tb' : 'normal';
     state.mapMod = ['NM', 'HD', 'HR', 'DT', 'FM'].includes(entry?.mod || '') ? entry!.mod as typeof state.mapMod : 'NM';
   }, { immediate: true });

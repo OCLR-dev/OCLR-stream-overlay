@@ -4,6 +4,8 @@ import { useSession, type BpPhase, type PoolEntry, type Round } from '../session
 import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type Team } from '../model';
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
+import ObsSettings from './ObsSettings.vue';
+import { useObsControl } from '../obsControl';
 import MapActionPopover from './MapActionPopover.vue';
 import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
@@ -107,6 +109,7 @@ const startResumeSoon = () => { void run('resume-soon'); };
 watch(resumeAt, () => { pauseClockNow.value = Date.now(); });
 const tb = computed(() => s.value?.bp?.tiebreaker);
 const tbEntries = computed(() => s.value?.pool.filter(e => e.mod === 'TB') || []);
+const obs = useObsControl();
 const tbButtonHint = computed(() => tbEntries.value.length > 1 ? '本场有多张 TB，请先在开播前设置确定唯一决胜图。' : tb.value?.reason || '先核对系列比分与赛制，再准备 TB。');
 const roomReview = computed(() => connection.value === 'synced' ? snapshot.value?.roomReview : null);
 const tbAlreadyPlayed = computed(() => roomReview.value?.kind === 'tb' && roomReview.value.stage !== 'ready');
@@ -630,6 +633,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       <section v-show="settings" class="operator-setup" aria-label="本场设置">
         <div class="operator-section-head"><h2>本场设置</h2><span>修改后自动同步，无需保存；已有比赛记录保留</span></div>
         <StreamingAccess v-if="snapshot" :snapshot="snapshot" :disabled="disabled" />
+        <ObsSettings :obs="obs" />
         <div class="setup-meta">
           <label>比赛标题<input v-model="form.title" aria-label="比赛标题" maxlength="160" @input="scheduleSetting('title')" @blur="dirtySettings.has('title') && scheduleSetting('title', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.title }}</span></label>
           <p v-if="exhibition">阶段：{{ stageSummary }}</p>
@@ -840,6 +844,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
           </div>
           <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
+        </section>
+        <section v-if="obs.state?.enabled" class="operator-inline" aria-label="OBS 实际播出">
+          <span role="status">{{ obs.status }}</span>
+          <span v-if="obs.error || obs.state.error" class="operator-error" role="alert">{{ obs.error || obs.state.error }}</span>
+          <button v-if="obs.canReturn" :disabled="!!obs.pending" @click="obs.act('return')">切回当前比赛布局</button>
         </section>
           </aside>
         </div>
