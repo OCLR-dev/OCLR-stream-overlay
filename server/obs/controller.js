@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
+import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
 import { arrangeCaptures, buildPreset, ensureDesktopAudio, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
 
 const defaults = () => ({ enabled: false, port: 4455, password: '', profiles: [] });
@@ -81,6 +82,7 @@ export class ObsController {
       phase: this.phase, collection: this.collection, program: this.program, scenes: this.scenes,
       regular: p.regular, ex: p.ex, follow: p.follow, target: this.target ?? null,
       managed: !!this.managed, lineup: this.managed ? p.preset.lineup : [], ...this.captures,
+      streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
       error: this.storageError || this.error || this.missing(p) };
   }
 
@@ -179,6 +181,11 @@ export class ObsController {
       this.collection = currentSceneCollectionName;
       this.phase = 'ready';
       this.error = '';
+      const profile = this.profile;
+      if (profile.streamChat?.pending && profile.regular && profile.ex && !this.missing(profile)) {
+        try { await this.placeStreamChat(call); }
+        catch (error) { this.guard(epoch); this.error = safeMessage(error); }
+      }
       this.scheduleSync();
       if (this.managed) this.scheduleScan(0);
     }).catch(error => {
@@ -249,13 +256,22 @@ export class ObsController {
     const preset = await buildPreset(call, previous, this.overlayUrl(), this.source,
       progress => this.saveProfile({ ...profile, preset: progress }));
     const alreadyBound = profile.regular === presetScenes.regular && profile.ex === presetScenes.ex;
-    await this.saveProfile({ ...profile, ...presetScenes, sceneIds: preset.sceneIds, follow: alreadyBound ? profile.follow : true, preset });
+    await this.saveProfile({ ...profile, ...presetScenes, sceneIds: preset.sceneIds, follow: alreadyBound ? profile.follow : true, preset,
+      ...(profile.streamChat?.code && { streamChat: { ...profile.streamChat, pending: true } }) });
     const { scenes } = await call('GetSceneList');
     this.setScenes(scenes);
     await ensureDesktopAudio(call, preset, progress =>
       this.saveProfile({ ...this.profile, preset: { ...this.profile.preset, ...progress } }));
+    if (this.profile.streamChat?.code) await this.placeStreamChat(call);
     await this.scan(call, preset, { useDesktopAudio: true });
     this.scheduleSync();
+  }
+
+  async placeStreamChat(call) {
+    const profile = this.profile;
+    const missing = this.missing(profile);
+    if (missing) throw new ObsError(missing);
+    await ensureStreamChat(call, profile, streamChat => this.saveProfile({ ...profile, streamChat }));
   }
 
   command(input) {
@@ -279,10 +295,16 @@ export class ObsController {
         const call = this.caller(epoch);
         const p = this.profile;
         if (input.action === 'create') await this.create(call, p);
-        else if (input.action === 'bind') {
+        else if (input.action === 'stream-chat') {
+          const code = chatIdentityCode(input.code ?? p.streamChat?.code);
+          await this.saveProfile({ ...p, streamChat: { ...p.streamChat, code, pending: true } });
+          if (p.regular && p.ex) await this.placeStreamChat(call);
+        } else if (input.action === 'bind') {
           if (!['regular', 'ex'].includes(input.layout) || !this.scenes.includes(input.name) ||
               input.name === p[input.layout === 'ex' ? 'regular' : 'ex']) throw new ObsError('请为常规与 EX 选择两个不同的现有场景。');
-          await this.saveProfile({ ...p, [input.layout]: input.name, sceneIds: { ...p.sceneIds, [input.layout]: this.sceneIds.get(input.name) || null } });
+          await this.saveProfile({ ...p, [input.layout]: input.name, sceneIds: { ...p.sceneIds, [input.layout]: this.sceneIds.get(input.name) || null },
+            ...(p.streamChat?.code && { streamChat: { ...p.streamChat, pending: true } }) });
+          if (this.profile.streamChat?.code && this.profile.regular && this.profile.ex) await this.placeStreamChat(call);
           this.captures = { windows: [], rows: [] };
           if (this.managed) this.scheduleScan(0);
           this.scheduleSync();

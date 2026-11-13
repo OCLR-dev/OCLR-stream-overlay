@@ -169,7 +169,9 @@ npm test
 
 当前按画面管理的实现、81 项回归测试与截图见 [面板职责验收](docs/verification/scene-management/README.md)。此前的整体改造见 [志愿直播员控制台验收](docs/verification/volunteer-console/README.md)。原有实现记录见 [控制台验证](docs/verification/operator-console/README.md)。合成 tosu 序列只验证本地状态逻辑；真实 OCLR S10 历史 API 已在仅模拟 tosu 的实例验证，见 [数据来源分离验收](docs/verification/tosu-real-oclr/README.md)；本 Mac 没有 tosu，**尚未完成真实 tosu / osu!tourney / OBS 联调**。
 
-游戏视频、原生结算捕获与直播间 Chat 源叠放仍需直播机接线，当前游戏窗口明确显示待接入。Playing 在同一组窗口展示比赛和结算，直播间 Chat 固定为 `(1470,928,420,138)`。EX 对称减员窗口保留，但真实 EX 选手映射、捕获源和完整 EX 裁判规则仍待核对，不自动推定减员名单。EX 次数现按本次 Pick 的有效赛果计算；迁移旧 Pick 的历史消耗保持未知。自动回 BP 的空闲状态计时策略尚未启用，只支持下一有效谱面或人工返回。
+游戏视频与原生结算捕获仍需直播机接线，当前游戏窗口明确显示待接入。Playing 在同一组窗口展示比赛和结算。控制台输入 B 站直播身份码后，OBS 常规与 EX 场景会共用一个 blive.chat 浏览器源，显示在右下角 `(1470,928,420,138)` 的 STREAM CHAT 框内。[直播间弹幕设置](docs/windows-portable.md#b-站直播间弹幕)
+
+EX 对称减员窗口保留，但真实 EX 选手映射、捕获源和完整 EX 裁判规则仍待核对，不自动推定减员名单。EX 次数现按本次 Pick 的有效赛果计算；迁移旧 Pick 的历史消耗保持未知。自动回 BP 的空闲状态计时策略尚未启用，只支持下一有效谱面或人工返回。
 
 ### 界面动效
 

@@ -211,6 +211,84 @@ test('an existing scene output is shared with the other preset using its origina
   assert.equal(studio.inputs.has(desktop), false);
 });
 
+const chatSource = 'OCLR · 直播间弹幕';
+const testIdentity = 'TESTONLY000001';
+
+test('a saved identity installs one transparent chat input above both presets and rotates in place', async t => {
+  const { obs, studio, store } = await setup(t);
+  studio.useUuids = true;
+  await ready(obs);
+  const configure = code => obs.command({ action: 'stream-chat', code });
+  const pending = await configure('  ' + testIdentity + ' ');
+  assert.equal(pending.streamChat, 'pending');
+  assert.equal(studio.scenes.size, 1);
+  assert.equal((await obs.command({ action: 'create' })).streamChat, 'configured');
+  const input = studio.inputs.get(chatSource);
+  assert.equal(input.inputKind, 'browser_source');
+  assert.equal(input.inputSettings.url, `https://blive.chat/room/${testIdentity}?roomKeyType=2`);
+  assert.deepEqual([input.inputSettings.width, input.inputSettings.height, input.inputSettings.shutdown, input.inputSettings.restart_when_active], [398, 112, false, false]);
+  assert.match(input.inputSettings.css, /background: transparent/);
+  for (const scene of [regular, ex]) {
+    const item = studio.scenes.get(scene).at(-1);
+    assert.equal(item.sourceUuid, input.inputUuid);
+    assert.equal(item.sceneItemEnabled, true); assert.equal(item.sceneItemLocked, true);
+    assert.deepEqual(item.transform, { alignment: 5, positionX: 1481, positionY: 950, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' });
+  }
+  const adjusted = studio.scenes.get(regular).at(-1);
+  adjusted.sceneItemLocked = false; adjusted.transform.positionX += 5;
+  const before = writes(studio).length;
+  const next = 'TESTONLY000002';
+  const response = await configure(next);
+  assert.deepEqual(writes(studio).slice(before).map(call => call.type), ['SetInputSettings']);
+  assert.equal(input.inputSettings.url, `https://blive.chat/room/${next}?roomKeyType=2`);
+  await configure(next); await obs.command({ action: 'create' });
+  assert.equal(writes(studio).length, before + 1);
+  await studio.removeScene(ex);
+  await obs.command({ action: 'create' });
+  assert.equal(studio.scenes.get(ex).at(-1).sourceUuid, input.inputUuid);
+  assert.equal(adjusted.sceneItemLocked, false); assert.equal(adjusted.transform.positionX, 1486);
+  assert.equal(studio.log.filter(call => call.type === 'CreateInput' && call.inputName === chatSource).length, 1);
+  assert.doesNotMatch(JSON.stringify([response, await obs.command({ action: 'measure' }), store.snapshot()]), /TESTONLY|blive\.chat\/room/);
+  assert.equal(studio.program, '休息');
+});
+
+test('chat can target bound scenes and resume an interrupted placement after a restart', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-chat-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'obs-settings.json');
+  const { obs, studio, store } = await setup(t, { file });
+  for (const scene of ['八路', '六路']) studio.scenes.set(scene, []);
+  await ready(obs);
+  await obs.command({ action: 'bind', layout: 'regular', name: '八路' });
+  await obs.command({ action: 'bind', layout: 'ex', name: '六路' });
+  studio.before = (type, data) => { if (type === 'SetSceneItemTransform' && data.sceneName === '六路') studio.failNext = type; };
+  await assert.rejects(obs.command({ action: 'stream-chat', code: testIdentity }), /模拟请求失败/);
+  assert.equal(obs.snapshot().streamChat, 'pending');
+  const regularItem = studio.scenes.get('八路')[0];
+  regularItem.sceneItemLocked = false; regularItem.transform.positionY = 945;
+  studio.before = null; obs.close();
+  const resumed = (await setup(t, { studio, store, file })).obs;
+  await until(() => resumed.snapshot().streamChat === 'configured'); await resumed.tail;
+  assert.equal(studio.scenes.get('六路').length, 1); assert.equal(studio.scenes.get('六路')[0].sceneItemLocked, true);
+  assert.equal(regularItem.sceneItemLocked, false); assert.equal(regularItem.transform.positionY, 945);
+  assert.equal(studio.inputs.size, 1); assert.deepEqual(studio.scenes.get('休息'), []);
+  assert.doesNotMatch(JSON.stringify(resumed.snapshot()), /TESTONLY/);
+});
+
+test('chat rejects invalid identity codes and leaves a foreign same-name input untouched', async t => {
+  const { obs, studio } = await setup(t); await ready(obs); await obs.command({ action: 'create' });
+  for (const code of ['1234', 'TOOSHORT', 'https://blive.chat/room/123', 'A/B?CDEFGHIJ', '']) {
+    await assert.rejects(obs.command({ action: 'stream-chat', code }), /身份码/);
+  }
+  assert.equal(obs.snapshot().streamChat, 'off');
+  await studio.request('CreateInput', { sceneName: '休息', inputName: chatSource, inputKind: 'browser_source',
+    inputSettings: { url: 'about:blank' }, sceneItemEnabled: true });
+  const before = writes(studio).length;
+  await assert.rejects(obs.command({ action: 'stream-chat', code: testIdentity }), /名称已被占用/);
+  assert.equal(writes(studio).length, before);
+  assert.equal(studio.inputs.get(chatSource).inputSettings.url, 'about:blank');
+});
+
 test('rescanning binds padded osu!tourney titles by client number and writes their exact OBS identifiers', async t => {
   const { obs, studio } = await setup(t);
   studio.windows = [];

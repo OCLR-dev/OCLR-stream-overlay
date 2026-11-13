@@ -4,6 +4,7 @@ interface ObsStatus {
   enabled: boolean; port: number; hasPassword: boolean; phase: 'off' | 'connecting' | 'offline' | 'ready';
   collection: string | null; program: string | null; scenes: string[]; regular: string; ex: string;
   follow: boolean; target: 'regular' | 'ex' | null; managed: boolean; lineup: string[]; error: string;
+  streamChat: 'off' | 'pending' | 'configured';
   windows: { value: string; label: string }[];
   rows: { slot: string; input: string; value: string; status: string }[];
 }
@@ -32,7 +33,7 @@ export function useObsControl() {
     }
   }
   async function act(action: string, fields: Record<string, unknown> = {}) {
-    if (pending.value) return;
+    if (pending.value) return false;
     generation++;
     pending.value = action;
     error.value = '';
@@ -45,8 +46,11 @@ export function useObsControl() {
       else measurement.value = '';
       state.value = result;
       unreachable.value = false;
-    } catch (err) { error.value = err instanceof Error && /[\u3400-\u9fff]/.test(err.message) ? err.message : '本机服务未响应，请核对 OBS 后重试。'; }
-    finally { generation++; pending.value = ''; }
+      return true;
+    } catch (err) {
+      error.value = err instanceof Error && /[\u3400-\u9fff]/.test(err.message) ? err.message : '本机服务未响应，请核对 OBS 后重试。';
+      return false;
+    } finally { generation++; pending.value = ''; }
   }
   const status = computed(() => {
     const s = state.value;
