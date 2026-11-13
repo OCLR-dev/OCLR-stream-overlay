@@ -6,6 +6,8 @@ import ControlSelect from './ControlSelect.vue';
 const props = defineProps<{ obs: ObsControl }>();
 const port = ref(4455);
 const password = ref<HTMLInputElement>();
+const chatCode = ref('');
+const chatHint = ref('');
 const layouts = [{ key: 'regular', label: '常规 4v4' }, { key: 'ex', label: 'EX 3v3' }] as const;
 const positions = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'];
 watch(() => props.obs.state?.port, value => { if (value) port.value = value; }, { immediate: true });
@@ -13,6 +15,23 @@ function connect() {
   const value = password.value?.value || '';
   if (password.value) password.value.value = '';
   void props.obs.act('connect', { port: port.value, password: value });
+}
+watch(() => props.obs.state?.collection, () => { chatCode.value = ''; chatHint.value = ''; });
+async function applyChat(retry = false) {
+  if (props.obs.pending) return;
+  const code = chatCode.value.trim();
+  if (!code && !retry) return;
+  if (code && !/^[0-9A-Z]{12,14}$/.test(code)) {
+    chatHint.value = '身份码由 12 至 14 位大写字母或数字组成，请核对后重新粘贴。';
+    return;
+  }
+  chatHint.value = '';
+  if (await props.obs.act('stream-chat', code ? { code } : {})) chatCode.value = '';
+}
+function editChat(event: Event) {
+  chatCode.value = (event.target as HTMLInputElement).value;
+  chatHint.value = '';
+  if ((event as InputEvent).inputType === 'insertFromPaste') void applyChat();
 }
 </script>
 
@@ -80,6 +99,23 @@ function connect() {
         <label v-if="obs.measurement">本次 OBS 读数<textarea :value="obs.measurement" readonly rows="6" spellcheck="false"></textarea></label>
       </details>
     </template>
+    <section class="obs-stream-chat" aria-labelledby="obs-stream-chat-heading">
+      <h3 id="obs-stream-chat-heading">B 站直播间弹幕</h3>
+      <p>用主播账号登录 <a href="https://play-live.bilibili.com/" target="_blank" rel="noopener noreferrer">B 站互动玩法</a>，复制「身份码」。<a href="https://blive.chat/help" target="_blank" rel="noopener noreferrer">查看身份码图文教程 ↗</a></p>
+      <template v-if="obs.state?.phase === 'ready'">
+        <label>直播身份码<input v-model="chatCode" type="password" autocomplete="off" spellcheck="false"
+          :placeholder="obs.state.streamChat === 'off' ? '粘贴身份码' : '粘贴新身份码可更换直播间'"
+          aria-describedby="obs-chat-status" :aria-invalid="!!chatHint" :disabled="!!obs.pending"
+          @input="editChat" @blur="applyChat()" @keydown.enter.prevent="applyChat()"></label>
+        <p v-if="chatHint" role="alert" class="operator-error">{{ chatHint }}</p>
+        <p id="obs-chat-status" role="status">{{ obs.pending === 'stream-chat' ? '正在配置弹幕源…'
+          : obs.state.streamChat === 'configured' ? '常规与 EX 已共用弹幕源。可在 OBS 右下角 STREAM CHAT 查看观众消息。'
+          : obs.state.streamChat === 'pending' ? (obs.state.regular && obs.state.ex ? '身份码已保存，弹幕源待配置。' : '身份码已保存。创建比赛场景，或绑定常规与 EX 两套场景后会自动加入弹幕。')
+          : '粘贴后自动配置到常规和 EX 场景的 STREAM CHAT。手动输入可按回车。' }}</p>
+        <button v-if="obs.state.streamChat === 'pending' && obs.state.regular && obs.state.ex" type="button" :disabled="!!obs.pending" @click="applyChat(true)">重试配置弹幕源</button>
+      </template>
+      <p v-else>连接本机 OBS 后即可粘贴身份码。</p>
+    </section>
   </details>
 </template>
 
@@ -87,4 +123,5 @@ function connect() {
 .obs-settings > * + *, .obs-settings form > * + * { margin-top: 10px; }
 .obs-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 8px 16px; }
 .obs-slots label { min-width: 0; }
+.obs-stream-chat { display: grid; gap: 8px; }
 </style>
