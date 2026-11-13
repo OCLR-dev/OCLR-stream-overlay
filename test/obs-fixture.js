@@ -46,7 +46,7 @@ export class Studio {
   }
   addItem(scene, name, enabled) {
     const input = this.inputs.get(name);
-    const item = { sourceName: name, sourceUuid: input?.inputUuid, inputKind: input?.inputKind, sceneItemId: ++this.counter, sceneItemEnabled: enabled, transform: {} };
+    const item = { sourceName: name, sourceUuid: input?.inputUuid, inputKind: input?.inputKind, sceneItemId: ++this.counter, sceneItemEnabled: enabled, sceneItemLocked: false, transform: {} };
     this.scenes.get(scene).push(item);
     return { sceneItemId: item.sceneItemId };
   }
@@ -101,6 +101,7 @@ export class Studio {
       case 'CreateSceneItem':
         assert.ok(this.inputs.has(args.sourceName)); return this.addItem(args.sceneName, args.sourceName, args.sceneItemEnabled);
       case 'SetSceneItemTransform': Object.assign(item.transform, args.sceneItemTransform); break;
+      case 'SetSceneItemLocked': item.sceneItemLocked = args.sceneItemLocked; break;
       case 'SetSceneItemEnabled': item.sceneItemEnabled = args.sceneItemEnabled; break;
       case 'SetSceneItemIndex':
         sceneItems.splice(sceneItems.indexOf(item), 1); sceneItems.splice(args.sceneItemIndex, 0, item); break;

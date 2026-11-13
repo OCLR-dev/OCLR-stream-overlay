@@ -6,16 +6,19 @@ export function playingPickTeam(session: Session | null | undefined, map: PoolEn
   return round.pickedBy;
 }
 
-export function liveRoom(envelope: Envelope | null | undefined, connection: string | undefined) {
+function liveTosuData(envelope: Envelope | null | undefined, connection: string | undefined) {
   const source = envelope?.live.tosu;
-  const room = source?.data?.tourney;
-  return connection === 'synced' && source?.status === 'live' && room &&
+  return connection === 'synced' && source?.status === 'live' ? source.data : null;
+}
+
+export function liveRoom(envelope: Envelope | null | undefined, connection: string | undefined) {
+  const room = liveTosuData(envelope, connection)?.tourney;
+  return room &&
     room.ipcState !== null && [0, 1, 2, 3, 4].includes(room.ipcState) && room.teams.left?.trim() && room.teams.right?.trim() ? room : null;
 }
 
 export function liveRoomChat(envelope: Envelope | null | undefined, connection: string | undefined) {
-  const source = envelope?.live.tosu;
-  return connection === 'synced' && source?.status === 'live' ? source.data?.tourney?.chat || [] : [];
+  return liveTosuData(envelope, connection)?.tourney?.chat || [];
 }
 
 // Both Playing and Ranking display the room's current totals. Showing scores
@@ -80,11 +83,31 @@ export function resultTeamScores(envelope: Envelope | null | undefined, connecti
   return room.competitionScore?.totalScore ?? room.totalScore;
 }
 
+function validBeatmapId(id: number | null): id is number {
+  return id !== null && Number.isSafeInteger(id) && id > 0;
+}
+
+function matchingPoolEntry(pool: PoolEntry[], id: number, recordedMap: PoolEntry | null) {
+  if (recordedMap?.beatmapId === id) return recordedMap;
+  const matches = pool.filter(entry => entry.beatmapId === id);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+export function consoleNowPlaying(envelope: Envelope | null | undefined, connection: string | undefined, recordedMap: PoolEntry | null = null) {
+  const map = liveTosuData(envelope, connection)?.beatmap;
+  if (!envelope || !map) return null;
+  const id = validBeatmapId(map.id) ? map.id : null;
+  const entry = id === null ? null : matchingPoolEntry(envelope.session.pool, id, recordedMap);
+  const title = map.title?.trim() || entry?.title?.trim() || (id ? `谱面 ${id}` : '');
+  const difficulty = map.difficulty?.trim() || entry?.difficulty?.trim() || '';
+  if (!title && !difficulty) return null;
+  return { title: title || '曲名未知', difficulty, slot: entry?.label || null };
+}
+
 export function livePlayingMap(envelope: Envelope | null | undefined, connection: string | undefined, recordedMap: PoolEntry | null = null): PoolEntry | null {
   const map = liveBeatmap(envelope, connection);
   if (!map) return null;
-  const matches = envelope!.session.pool.filter(entry => entry.beatmapId === map.id);
-  const entry = recordedMap?.beatmapId === map.id ? recordedMap : matches.length === 1 ? matches[0]! : null;
+  const entry = matchingPoolEntry(envelope!.session.pool, map.id, recordedMap);
   if (entry) {
     // Pool imports may contain only a title. Fill display text from the same
     // fresh beatmap without mutating the pool, round or its known mod/slot.
@@ -99,10 +122,10 @@ export function livePlayingMap(envelope: Envelope | null | undefined, connection
 }
 
 export function liveBeatmap(envelope: Envelope | null | undefined, connection: string | undefined) {
-  const source = envelope?.live.tosu;
-  const map = source?.data?.beatmap;
-  if (connection !== 'synced' || source?.status !== 'live' || !map?.id || !Number.isSafeInteger(map.id) || map.id <= 0) return null;
-  const room = source.data?.tourney;
+  const data = liveTosuData(envelope, connection);
+  const map = data?.beatmap;
+  if (!map || !validBeatmapId(map.id)) return null;
+  const room = data.tourney;
   const stats = room?.ipcState === 4 && map.rankingStats ? map.rankingStats
     : room && [3, 4].includes(room.ipcState ?? -1) && map.tourneyStats ? map.tourneyStats : map.stats;
   return { ...map, stats, id: map.id };

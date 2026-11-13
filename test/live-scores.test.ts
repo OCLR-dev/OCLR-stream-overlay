@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { computed, shallowRef } from 'vue';
 import { normalizeTosuV2 } from '../src/tosu.js';
 import { newSession } from '../server/session/model.js';
-import { createPlayingScoreDisplay, liveBeatmap, livePlayingMap, liveRoomChat, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
+import { consoleNowPlaying, createPlayingScoreDisplay, liveBeatmap, livePlayingMap, liveRoomChat, liveTeamScores, resultTeamScores } from '../ui/liveScores.ts';
 import type { Envelope } from '../ui/session';
 
 function fixture() {
@@ -78,6 +78,42 @@ test('room map display needs no pool or round and cannot show the stale prepared
   assert.equal(JSON.stringify(envelope.session), before);
   assert.equal(livePlayingMap(envelope, 'disconnected', prepared), null);
   envelope.live.tosu.data!.beatmap.id = null; assert.equal(livePlayingMap(envelope, 'synced', prepared), null);
+});
+
+test('console Now Playing follows unmarked and warm-up maps independently of the match record', () => {
+  const { envelope, raw } = fixture();
+  const unmarked = { id: 'nm1', beatmapId: raw.beatmap.id, mod: 'NM', label: 'NM1', title: 'Pool title', artist: '', difficulty: 'Pool version' };
+  const picked = { ...unmarked, id: 'hr1', beatmapId: 102, mod: 'HR', label: 'HR1' };
+  envelope.session.pool = [unmarked, picked];
+  envelope.session.poolMarks = [{ entryId: picked.id, status: 'picked', team: 'a' }];
+  envelope.session.rounds = [{ id: 'r1', runId: 'run1', entryId: picked.id, pickedBy: 'a', winner: 'b', status: 'recorded',
+    finalScore: { a: 100, b: 200 }, exTeam: null, source: 'manual' }];
+  envelope.session.currentRoundId = 'r1';
+  const before = structuredClone(envelope.session);
+  const play = (id: number, title: string, version: string) => {
+    envelope.live.tosu.data = normalizeTosuV2({ ...raw, tourney: null, beatmap: { id, title, version } });
+    return consoleNowPlaying(envelope, 'synced', picked);
+  };
+  assert.deepEqual(play(unmarked.beatmapId, 'Client title', 'Client difficulty'), { title: 'Client title', difficulty: 'Client difficulty', slot: 'NM1' });
+  assert.deepEqual(play(picked.beatmapId, 'Picked title', ''), { title: 'Picked title', difficulty: 'Pool version', slot: 'HR1' });
+  assert.deepEqual(play(103, 'Warm-up', 'Extra'), { title: 'Warm-up', difficulty: 'Extra', slot: null });
+  assert.deepEqual(play(-1, 'Local edit', 'WIP'), { title: 'Local edit', difficulty: 'WIP', slot: null });
+  assert.deepEqual(envelope.session, before);
+  envelope.live.tosu.status = 'stale';
+  assert.equal(consoleNowPlaying(envelope, 'synced', picked), null);
+  envelope.live.tosu.status = 'live';
+  assert.equal(consoleNowPlaying(envelope, 'disconnected', picked), null);
+  assert.equal(play(0, ' ', ''), null);
+});
+
+test('console Now Playing only adds a slot when the live ID identifies it', () => {
+  const { envelope, raw } = fixture();
+  const nm = { id: 'nm1', beatmapId: raw.beatmap.id, mod: 'NM', label: 'NM1', title: 'NM pool title', artist: '', difficulty: '' };
+  const hr = { ...nm, id: 'hr1', mod: 'HR', label: 'HR1' };
+  envelope.session.pool = [nm, hr];
+  Object.assign(envelope.live.tosu.data!.beatmap, { title: 'Client title', difficulty: 'Expert' });
+  assert.deepEqual(consoleNowPlaying(envelope, 'synced'), { title: 'Client title', difficulty: 'Expert', slot: null });
+  assert.equal(consoleNowPlaying(envelope, 'synced', hr)?.slot, 'HR1');
 });
 
 test('duplicate beatmap IDs preserve a known round slot but never guess the first mod without a round', () => {

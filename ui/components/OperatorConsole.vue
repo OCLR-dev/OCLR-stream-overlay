@@ -11,7 +11,7 @@ import ControlSelect from './ControlSelect.vue';
 import { poolDisplay } from '../poolDisplay';
 import { modColorStyle } from '../modColors';
 import { useMotionReady } from '../motion';
-import { liveRoom, liveTeamScores, createPlayingScoreDisplay } from '../liveScores';
+import { consoleNowPlaying, liveRoom, liveTeamScores, createPlayingScoreDisplay } from '../liveScores';
 import { formatRosterInput, parseRosterInput } from '../rosterInput';
 import { formatTeamScore } from '../scoreFormat';
 import '../control.css';
@@ -72,6 +72,11 @@ const roomScoreHint = computed(() => {
 });
 const teamScore = (value: number | null | undefined) => formatTeamScore(value);
 const entry = (id?: string | null) => s.value?.pool.find(e => e.id === id);
+const nowPlaying = computed(() => {
+  const current = round.value;
+  const recordedMap = current && current.status !== 'void' && !s.value?.warmup ? entry(current.entryId) : null;
+  return consoleNowPlaying(snapshot.value, connection.value, recordedMap);
+});
 const automaticTeamNames = computed(() => !!liveRoom(snapshot.value, connection.value));
 const names = computed(() => ({ a: s.value?.match.teams.a.name || '左队', b: s.value?.match.teams.b.name || '右队' }));
 const series = computed(() => s.value?.series || { a: 0, b: 0 });
@@ -697,7 +702,18 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
                 <button v-for="team in (['a', 'b'] as const)" :key="team" :disabled="disabled" @click="recordResult(team, round.id)">记 {{ entry(round.entryId)?.label }} {{ names[team] }} 胜</button>
                 <button v-if="exhibition?.tiedMapPolicy === 'count_as_draw'" :disabled="disabled" @click="recordResult(null, round.id)">记录本图平局</button>
               </div>
-              <p v-if="!s.warmup && !roomReview && round && scorePanel" class="operator-round-context">当前图 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
+              <p v-if="!s.warmup && !roomReview && round && scorePanel" class="operator-round-context">本局记录 {{ entry(round.entryId)?.label }} · {{ roundStatusLabel(round) }}</p></div><span :class="{ 'status-good': connection === 'synced' }">{{ connection === 'synced' ? '画面已同步' : '等待重连' }}<br>{{ gameStatus }}</span></section>
+            <section class="operator-now-playing" aria-labelledby="now-playing-heading">
+              <h3 id="now-playing-heading" lang="en">Now Playing</h3>
+              <p role="status" aria-atomic="true">
+                <template v-if="nowPlaying">
+                  <strong>{{ nowPlaying.title }}</strong>
+                  <span v-if="nowPlaying.difficulty"> · {{ nowPlaying.difficulty }}</span>
+                  <span v-if="nowPlaying.slot"> · {{ nowPlaying.slot }}</span>
+                </template>
+                <template v-else>等待读取客户端谱面</template>
+              </p>
+            </section>
             <div v-if="s.warmup" class="operator-action-stack">
               <h3>热身实时队分</h3>
               <div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div>

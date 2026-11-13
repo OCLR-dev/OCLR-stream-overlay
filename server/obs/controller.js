@@ -252,8 +252,8 @@ export class ObsController {
     await this.saveProfile({ ...profile, ...presetScenes, sceneIds: preset.sceneIds, follow: alreadyBound ? profile.follow : true, preset });
     const { scenes } = await call('GetSceneList');
     this.setScenes(scenes);
-    await ensureDesktopAudio(call, preset, desktopAudio =>
-      this.saveProfile({ ...this.profile, preset: { ...preset, desktopAudio } }));
+    await ensureDesktopAudio(call, preset, progress =>
+      this.saveProfile({ ...this.profile, preset: { ...this.profile.preset, ...progress } }));
     await this.scan(call, preset, { useDesktopAudio: true });
     this.scheduleSync();
   }
