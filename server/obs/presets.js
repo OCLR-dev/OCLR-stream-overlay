@@ -115,7 +115,13 @@ export async function buildPreset(call, preset, overlayUrl, source, checkpoint) 
     inputIds[name] = input.inputUuid || null;
   }
 
-  const saveProgress = () => checkpoint({ ...preset, ready: false, pendingLayouts: pending, sceneIds: { ...sceneIds }, inputIds: { ...inputIds } });
+  const remaining = new Set(pending);
+  const pendingLocks = { ...preset.pendingLocks };
+  const appliedSource = pending.length === layouts.length ? source : preset.appliedSource;
+  const saveProgress = () => checkpoint({
+    ...preset, ready: false, pendingLayouts: [...remaining], pendingLocks: { ...pendingLocks },
+    appliedSource, sceneIds: { ...sceneIds }, inputIds: { ...inputIds },
+  });
   await saveProgress();
   for (const layout of pending) {
     let sceneItems = itemsByLayout.get(layout);
@@ -126,9 +132,11 @@ export async function buildPreset(call, preset, overlayUrl, source, checkpoint) 
       sceneItems = [];
     }
     const target = sceneTarget(layout, sceneIds);
-    for (const name of sources) {
+    const missing = sources.filter(name => !sceneItems.some(item => item.sourceName === name));
+    pendingLocks[layout] = [...new Set([...(pendingLocks[layout] ?? []), ...missing])];
+    await saveProgress();
+    for (const name of missing) {
       const overlay = name === browser;
-      if (sceneItems.some(item => item.sourceName === name)) continue;
       if (byName.has(name)) {
         const input = inputIds[name] ? { sourceUuid: inputIds[name] } : { sourceName: name };
         await call('CreateSceneItem', { ...target, ...input, sceneItemEnabled: false });
@@ -146,14 +154,22 @@ export async function buildPreset(call, preset, overlayUrl, source, checkpoint) 
     await call('SetSceneItemTransform', { ...overlay, sceneItemTransform: { alignment: 5, positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' } });
     await call('SetSceneItemIndex', { ...overlay, sceneItemIndex: items.length - 1 });
     await call('SetSceneItemEnabled', { ...overlay, sceneItemEnabled: true });
+    await arrangeCaptures(call, { ...preset, sceneIds }, source, [layout]);
+    // Save each completed lock so a retry cannot relock an item the operator unlocked.
+    for (const name of pendingLocks[layout]) {
+      await call('SetSceneItemLocked', { ...target, sceneItemId: itemId(items, name), sceneItemLocked: true });
+      pendingLocks[layout] = pendingLocks[layout].slice(1);
+      await saveProgress();
+    }
+    delete pendingLocks[layout];
+    remaining.delete(layout);
+    if (remaining.size) await saveProgress();
   }
-  await arrangeCaptures(call, { ...preset, sceneIds }, source, pending);
-  return { ...preset, sceneIds, inputIds, ready: true, pendingLayouts: [],
-    appliedSource: pending.length === layouts.length ? source : preset.appliedSource,
+  return { ...preset, sceneIds, inputIds, ready: true, pendingLayouts: [], pendingLocks: {}, appliedSource,
     lineupDirty: pending.includes('ex') ? false : preset.lineupDirty };
 }
 
-async function createDesktopInput(call, target, inputs) {
+async function availableDesktopName(call, inputs) {
   const { inputKinds } = await call('GetInputKindList');
   if (!inputKinds.includes(desktopKind)) throw new ObsError('OBS 缺少音频输出采集。请在 OBS 的「设置 → 音频」启用桌面音频，再点「创建比赛场景」。');
   const { scenes } = await call('GetSceneList');
@@ -161,16 +177,37 @@ async function createDesktopInput(call, target, inputs) {
   const usedNames = new Set([...inputs.map(i => i.inputName), ...scenes.map(s => s.sceneName), ...groups]);
   let inputName = desktopName;
   for (let n = 2; usedNames.has(inputName); n++) inputName = `${desktopName} (${n})`;
-  const result = await call('CreateInput', { ...target, inputName, inputKind: desktopKind, inputSettings: { device_id: 'default' }, sceneItemEnabled: true });
-  return { ...result, inputName };
+  return inputName;
+}
+
+async function placeDesktopItem(call, target, sceneItemId) {
+  const item = { ...target, sceneItemId };
+  await call('SetSceneItemIndex', { ...item, sceneItemIndex: 0 });
+  await call('SetSceneItemLocked', { ...item, sceneItemLocked: true });
 }
 
 // Global desktop devices already feed every scene. When none is configured,
 // use one playback input for both layouts, including presets from older packages.
 export async function ensureDesktopAudio(call, preset, remember) {
+  let saved = preset.desktopAudio;
+  // Only an interrupted addition needs placement on retry. Existing outputs may
+  // have been unlocked or moved in OBS, including the same input in another scene.
+  const pending = preset.pendingDesktopItem;
+  if (pending) {
+    const target = sceneTarget(pending.layout, preset.sceneIds);
+    if ((target.sceneUuid || null) === pending.sceneUuid) {
+      const { sceneItems } = await call('GetSceneItemList', target);
+      const item = sceneItems.find(i => i.inputKind === desktopKind && i.sourceName === pending.name &&
+        (!pending.uuid || i.sourceUuid === pending.uuid));
+      if (item) {
+        await placeDesktopItem(call, target, item.sceneItemId);
+        if (pending.newInput) saved = { name: item.sourceName, uuid: item.sourceUuid || null };
+      }
+    }
+    await remember({ desktopAudio: saved, pendingDesktopItem: null });
+  }
   const { desktop1, desktop2 } = await call('GetSpecialInputs');
   const globalDesktop = desktop1 || desktop2;
-  const saved = preset.desktopAudio;
   if (globalDesktop && !saved) return;
 
   const { inputs } = await call('GetInputList');
@@ -181,11 +218,11 @@ export async function ensureDesktopAudio(call, preset, remember) {
   for (const layout of layouts) {
     const target = sceneTarget(layout, preset.sceneIds);
     const { sceneItems } = await call('GetSceneItemList', target);
-    scenes.push({ target, outputs: sceneItems.filter(item => item.inputKind === desktopKind) });
+    scenes.push({ layout, target, outputs: sceneItems.filter(item => item.inputKind === desktopKind) });
   }
   const existing = scenes.flatMap(scene => scene.outputs).find(item => item.sceneItemEnabled);
   let shared = owned || inputs.find(input => input.inputName === existing?.sourceName);
-  for (const { target, outputs } of scenes) {
+  for (const { layout, target, outputs } of scenes) {
     const ownItem = outputs.find(item => item.sourceName === owned?.inputName);
     const hasOtherOutput = outputs.some(item => item !== ownItem && item.sceneItemEnabled);
     const needsOutput = !globalDesktop && !hasOtherOutput;
@@ -197,21 +234,26 @@ export async function ensureDesktopAudio(call, preset, remember) {
     }
     if (!needsOutput) continue;
 
+    const existingItem = shared && outputs.find(output => output.sourceName === shared.inputName);
+    if (existingItem) {
+      await call('SetSceneItemEnabled', { ...target, sceneItemId: existingItem.sceneItemId, sceneItemEnabled: true });
+      continue;
+    }
+    const name = shared?.inputName ?? await availableDesktopName(call, inputs);
+    await remember({ pendingDesktopItem: {
+      layout, sceneUuid: target.sceneUuid || null, name, uuid: shared?.inputUuid || null, newInput: !shared,
+    } });
     let added;
     if (shared) {
-      const item = outputs.find(output => output.sourceName === shared.inputName);
-      if (item) {
-        await call('SetSceneItemEnabled', { ...target, sceneItemId: item.sceneItemId, sceneItemEnabled: true });
-        continue;
-      }
       const source = shared.inputUuid ? { sourceUuid: shared.inputUuid } : { sourceName: shared.inputName };
       added = await call('CreateSceneItem', { ...target, ...source, sceneItemEnabled: true });
     } else {
-      added = await createDesktopInput(call, target, inputs);
-      shared = added;
-      await remember({ name: added.inputName, uuid: added.inputUuid || null });
+      added = await call('CreateInput', { ...target, inputName: name, inputKind: desktopKind, inputSettings: { device_id: 'default' }, sceneItemEnabled: true });
+      shared = { inputName: name, inputUuid: added.inputUuid };
+      saved = { name, uuid: added.inputUuid || null };
     }
-    await call('SetSceneItemIndex', { ...target, sceneItemId: added.sceneItemId, sceneItemIndex: 0 });
+    await placeDesktopItem(call, target, added.sceneItemId);
+    await remember({ desktopAudio: saved, pendingDesktopItem: null });
   }
 }
 

@@ -122,6 +122,7 @@ test('presets share inputs, exactly match both capture aspects, and preserve adj
   for (const scene of [regular, ex]) {
     const [item] = studio.scenes.get(scene);
     assert.equal(item.sourceName, desktop); assert.equal(item.sceneItemEnabled, true);
+    assert.ok(studio.scenes.get(scene).every(item => item.sceneItemLocked));
   }
   for (const slot of slots) assert.equal(studio.inputs.get(capture(slot)).inputSettings.capture_audio, false);
   const browser = studio.scenes.get(regular).at(-1).sourceName;
@@ -150,8 +151,10 @@ test('presets share inputs, exactly match both capture aspects, and preserve adj
   assert.deepEqual(obs.snapshot().lineup, ['A1', 'A4', 'A3', 'B3', 'B2', 'B1']);
   assert.deepEqual(cuts(studio), []);
   current(studio, ex, 'B3').transform.positionY = 226;
+  current(studio, ex, 'B3').sceneItemLocked = false;
   const before = writes(studio).length; await obs.command({ action: 'create' }); await obs.tail;
   assert.equal(writes(studio).length, before); assert.equal(current(studio, ex, 'B3').transform.positionY, 226);
+  assert.equal(current(studio, ex, 'B3').sceneItemLocked, false);
   const { measurements } = await obs.command({ action: 'measure' });
   assert.equal(measurements.filter(row => row.visible && row.scene === ex).length, 7);
   assert.equal(measurements.find(row => row.scene === ex && row.input === capture('B3')).y, 226);
@@ -202,6 +205,7 @@ test('an existing scene output is shared with the other preset using its origina
   for (const scene of [regular, ex]) {
     const outputs = studio.scenes.get(scene).filter(item => item.inputKind === 'wasapi_output_capture');
     assert.deepEqual(outputs.map(item => [item.sourceName, item.sceneItemEnabled]), [[name, true]]);
+    assert.equal(outputs[0].sceneItemLocked, scene === regular); // Only the newly linked item was placed by the preset.
   }
   assert.equal(studio.inputs.get(name).inputSettings.device_id, 'USB headphones');
   assert.equal(studio.inputs.has(desktop), false);
@@ -267,6 +271,36 @@ test('creation checks canvas, capture support and name collisions; interrupted c
   await obs.command({ action: 'create' }); await obs.tail;
   assert.equal(studio.inputs.get(capture('A4')).inputKind, 'window_capture');
   assert.equal(studio.scenes.get(regular).length, 10); assert.equal(studio.scenes.get(ex).length, 10);
+  for (const scene of [regular, ex]) assert.ok(studio.scenes.get(scene).every(item => item.sceneItemLocked));
+});
+
+test('a failed scene-item lock resumes only unfinished placement, including an added desktop audio item', async t => {
+  const { obs, studio } = await setup(t);
+  await ready(obs);
+  studio.before = (type, args) => {
+    if (type === 'SetSceneItemLocked' && args.sceneName === ex && args.sceneItemId === current(studio, ex, 'A2').sceneItemId) studio.failNext = type;
+  };
+  await assert.rejects(obs.command({ action: 'create' }), /模拟请求失败/);
+  const unlockedInPartialScene = current(studio, ex, 'A1');
+  assert.equal(unlockedInPartialScene.sceneItemLocked, true);
+  unlockedInPartialScene.sceneItemLocked = false;
+  const unlocked = current(studio, regular, 'A1');
+  unlocked.sceneItemLocked = false;
+  unlocked.transform.positionX = 123;
+  studio.before = (type, args) => {
+    const audio = studio.scenes.get(regular).find(i => i.sourceName === desktop);
+    if (type === 'SetSceneItemLocked' && audio && args.sceneItemId === audio.sceneItemId) studio.failNext = type;
+  };
+  await assert.rejects(obs.command({ action: 'create' }), /模拟请求失败/);
+  assert.equal(studio.scenes.get(regular).find(i => i.sourceName === desktop).sceneItemLocked, false);
+  studio.before = undefined;
+  await obs.command({ action: 'create' }); await obs.tail;
+  assert.equal(unlocked.sceneItemLocked, false);
+  assert.equal(unlocked.transform.positionX, 123);
+  assert.equal(unlockedInPartialScene.sceneItemLocked, false);
+  assert.ok(studio.scenes.get(ex).filter(item => item !== unlockedInPartialScene).every(item => item.sceneItemLocked));
+  assert.equal(studio.scenes.get(regular)[0].sceneItemLocked, true);
+  assert.equal(studio.log.filter(r => r.type === 'CreateInput' && r.inputName === desktop).length, 1);
 });
 
 for (const [removed, kept] of [[regular, ex], [ex, regular]]) {
@@ -277,6 +311,9 @@ for (const [removed, kept] of [[regular, ex], [ex, regular]]) {
     await obs.command({ action: 'lineup', position: 'A2', slot: 'A4' });
     await obs.command({ action: 'follow', enabled: false });
     current(studio, kept, 'A1').transform.positionX = 97;
+    current(studio, kept, 'A1').sceneItemLocked = false;
+    studio.scenes.get(kept).at(-1).sceneItemLocked = false;
+    studio.scenes.get(kept)[0].sceneItemLocked = false;
     const keptItems = structuredClone(studio.scenes.get(kept));
     const beforeIds = new Map(studio.sceneIds);
     const beforeInputs = structuredClone(studio.inputs);
@@ -293,6 +330,7 @@ for (const [removed, kept] of [[regular, ex], [ex, regular]]) {
     assert.equal(studio.sceneIds.get(kept), beforeIds.get(kept));
     assert.notEqual(studio.sceneIds.get(removed), beforeIds.get(removed));
     assert.equal(studio.scenes.get(removed).length, 10);
+    assert.ok(studio.scenes.get(removed).every(item => item.sceneItemLocked));
     assert.equal(studio.scenes.get(removed).filter(item => item.sceneItemEnabled).length, removed === ex ? 8 : 10);
     const mutations = writes(studio).slice(before);
     assert.deepEqual(mutations.filter(call => call.type === 'CreateScene').map(call => call.sceneName), [removed]);
@@ -366,12 +404,18 @@ test('actual match commands drive Program independently of Preview, scene displa
   await act('setting', { field: 'pool', value: [{ id: 'nm', mod: 'NM', label: 'NM1', beatmapId: 101 }, { id: 'tb', mod: 'TB', label: 'TB', beatmapId: 102 }] });
   await act('prepare-round', { entryId: 'nm', pickedBy: 'a' });
   await ready(obs); await obs.command({ action: 'create' }); await obs.command({ action: 'return' });
+  current(studio, regular, 'A1').sceneItemLocked = false;
+  const lockCount = studio.log.filter(r => r.type === 'SetSceneItemLocked').length;
   const setEx = async team => { await act('ex', { team, remaining: { a: 2, b: 2 } }); await obs.tail; };
   await setEx('a'); await act('undo'); await obs.tail;
   await setEx('a'); await setEx('b');
   await act('display', { scene: 'playing' }); await obs.tail;
   await setEx(null); await setEx('b');
   assert.deepEqual(cuts(studio), [regular, ex, regular, ex, regular, ex]);
+  studio.socket.close(); await until(() => obs.phase === 'ready'); await obs.tail;
+  assert.equal(studio.log.filter(r => r.type === 'SetSceneItemLocked').length, lockCount);
+  assert.equal(current(studio, regular, 'A1').sceneItemLocked, false);
+  assert.equal(current(studio, ex, 'A1').sceneItemLocked, true);
   assert.equal(studio.preview, '预览');
   assert.deepEqual(store.snapshot().session.series, { a: 0, b: 0 }); assert.deepEqual(store.state.ex.remaining, { a: 2, b: 2 });
   await act('set-series', { a: 5, b: 5, reason: '已核对' });

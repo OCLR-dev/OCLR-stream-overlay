@@ -143,6 +143,8 @@
 /* Live desk: operator task first, program monitor beside it. */
 .operator-workspace { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: 8px; }
 .operator-actions > .operator-situation { min-height: 0; padding-left: 16px; border-left: 3px solid var(--op-purple); border-bottom: 0; padding-bottom: 0; margin-bottom: 24px; }
+.operator-now-playing { margin-bottom: 20px; }
+.operator-now-playing p strong { color: #f3eeff; }
 .operator-preview .operator-scenes { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; }
 .operator-preview .operator-scenes span { flex-basis: 100%; }
 .operator-preview .operator-scenes button { flex: 1 1 auto; min-height: 44px; }
