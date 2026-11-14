@@ -21,9 +21,9 @@ const RESOURCES = [
 const MODULES = ['index', 'oclr', 'tosu', 'broadcast'];
 const MAX_BYTES = 2 * 1024 * 1024;
 const UI_ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
-const UI_ASSET = /^\/assets\/[A-Za-z0-9_-]+\.(?:js|css|svg|md|woff2?)$/;
+const UI_ASSET = /^\/assets\/[A-Za-z0-9_-]+\.(?:js|css|svg|webp|md|woff2?)$/;
 const MIME = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml', '.md': 'text/markdown; charset=utf-8', '.woff': 'font/woff', '.woff2': 'font/woff2' };
+  '.svg': 'image/svg+xml', '.webp': 'image/webp', '.md': 'text/markdown; charset=utf-8', '.woff': 'font/woff', '.woff2': 'font/woff2' };
 
 // Serve only the generated index and flat, named Vite assets. Never fall back
 // to the project directory, source files, .env files, or arbitrary SPA paths.

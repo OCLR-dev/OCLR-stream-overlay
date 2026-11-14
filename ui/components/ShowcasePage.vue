@@ -8,6 +8,9 @@ import type { MapInfoSource } from '../mapInfo';
 import MapInfoCard from './MapInfoCard.vue';
 import ChatBox from './ChatBox.vue';
 import ObsSettings from './ObsSettings.vue';
+import SpectrumGrid from './SpectrumGrid.vue';
+import BroadcastAmbient from './BroadcastAmbient.vue';
+import seasonLogo from '../assets/oclr-s11-logo.webp';
 import '../showcase.css';
 
 const clean = new URLSearchParams(location.search).get('clean') === '1';
@@ -87,14 +90,21 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
           <span><strong>{{ map.title || `谱面 #${map.beatmapId}` }}</strong><small>{{ map.difficulty || `#${map.beatmapId}` }}</small></span>
         </li>
       </ul>
-      <p class="showcase-help">使用 tosu 读取 osu! 普通客户端的当前谱面。游戏画面在 OBS 中自行添加，放在 Showcase 浏览器源下方，并完整缩放到上方预留区域。</p>
+      <p class="showcase-help">使用 tosu 读取 osu! 普通客户端的当前谱面。在 OBS 自行添加回放采集源，放到 Showcase 浏览器源上方，并完整缩放到上半区；16:9 画面可使用 1600×900，位置 (160, 0)。</p>
       <ShowcaseObsSetup />
     </aside>
     <main class="canvas-stage" ref="stage" aria-label="Showcase 画面预览">
       <div class="canvas-sizer" :style="{ width: `${1920 * scale}px`, height: `${1080 * scale}px` }">
         <div class="broadcast-canvas showcase-canvas" :style="{ transform: `scale(${scale})` }" aria-label="1920×1080 图池 Showcase 播出画布" data-showcase-canvas>
-          <div class="showcase-game" data-showcase-capture aria-label="单客户端回放演示区域"></div>
+          <div class="showcase-stage-ambient" aria-hidden="true">
+            <SpectrumGrid />
+            <BroadcastAmbient />
+          </div>
+          <div class="showcase-game victory-body" data-showcase-capture aria-label="单客户端回放演示区域，游戏采集在 OBS 中叠放到本背景上方"></div>
           <footer class="showcase-footer">
+            <div class="showcase-logo">
+              <img :src="seasonLogo" width="1200" height="1200" alt="OCLR S11 比赛 Logo" decoding="async">
+            </div>
             <MapInfoCard :source="source" />
             <ChatBox source="stream" compact />
           </footer>
