@@ -13,10 +13,18 @@ yt-live-chat-text-message-renderer { padding: 0 2px !important; }
 #author-name { color: #dac1ff !important; }
 #message { color: #faf6ff !important; font-weight: 400 !important; }`;
 // Hide the inner scroller's native track without disabling automatic message scrolling.
-const css = `${legacyCss}
+const scrollbarCss = `${legacyCss}
 yt-live-chat-renderer { --scrollbar-width: 0px !important; }
 #item-scroller { scrollbar-width: none !important; padding-right: 0 !important; }
 ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }`;
+const css = `${scrollbarCss}
+yt-live-chat-text-message-renderer { background: transparent !important; padding: 2px 2px !important; }
+#author-photo { display: inline-flex !important; width: 20px !important; height: 20px !important; min-width: 20px !important; margin: 0 6px 0 0 !important; border-radius: 50% !important; overflow: hidden !important; }
+#author-photo img { width: 100% !important; height: 100% !important; object-fit: cover; }
+yt-live-chat-author-chip, #author-name { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+#author-name { padding: 0 !important; }
+#author-name, #message { text-shadow: none !important; }
+#message { overflow-wrap: anywhere; }`;
 
 export function chatIdentityCode(value) {
   const code = typeof value === 'string' ? value.trim() : '';
@@ -59,14 +67,14 @@ export async function ensureStreamChat(call, profile, save) {
     const { inputSettings } = await call('GetInputSettings', { inputName: name });
     // Without an OBS UUID, verify the saved source (including creation whose reply was lost).
     const knownItem = scenes.some(({ scene, item }) => item && chat.items[scene]?.id === item.sceneItemId);
-    const hasPresetSettings = [css, legacyCss].includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
+    const hasPresetSettings = [css, scrollbarCss, legacyCss].includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
     if (!chat.uuid && !knownItem && !hasPresetSettings) {
       throw new ObsError('原直播间弹幕来源已被替换，请在 OBS 核对来源名称后重试。');
     }
     const updates = {};
     if (inputSettings.url !== url) updates.url = url;
     // Upgrade only our original preset; retain CSS customized by the operator.
-    if (inputSettings.css === legacyCss) updates.css = css;
+    if ([legacyCss, scrollbarCss].includes(inputSettings.css)) updates.css = css;
     if (Object.keys(updates).length) await call('SetInputSettings', { inputName: name, inputSettings: updates, overlay: true });
   } else {
     const { groups } = await call('GetGroupList');
