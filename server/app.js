@@ -8,6 +8,7 @@ import { sessionHttp } from './session/http.js';
 import { createArtworkHandler } from './artwork.js';
 import { createPlayerArtHandler } from './player-art.js';
 import { obsHttp } from './obs/http.js';
+import { ShowcaseStore, showcaseHttp } from './showcase.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -27,7 +28,7 @@ const MIME = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; chars
 // Serve only the generated index and flat, named Vite assets. Never fall back
 // to the project directory, source files, .env files, or arbitrary SPA paths.
 export async function serveUi(pathname, res, uiRoot = UI_ROOT) {
-  if (!['/', '/index.html', '/overlay', '/control'].includes(pathname) && !UI_ASSET.test(pathname)) return false;
+  if (!['/', '/index.html', '/overlay', '/control', '/showcase'].includes(pathname) && !UI_ASSET.test(pathname)) return false;
   const name = UI_ASSET.test(pathname) ? pathname.slice(1) : 'index.html';
   const filename = resolve(uiRoot, name);
   if (!filename.startsWith(resolve(uiRoot) + sep)) return false;
@@ -101,6 +102,7 @@ export async function readBoundedJson(response) {
 }
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
+  const showcase = new ShowcaseStore(config.session || session);
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session);
   const playerArt = createPlayerArtHandler(fetchImpl);
   const streaming = new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
@@ -123,7 +125,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     // Permit only that entry navigation; API and cross-site fetches stay blocked.
     const uiNavigation = req.method === 'GET' &&
       req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document' &&
-      ['/', '/index.html', '/overlay', '/control'].includes(req.url.split('?')[0]);
+      ['/', '/index.html', '/overlay', '/control', '/showcase'].includes(req.url.split('?')[0]);
     if (!hosts.includes(req.headers.host) ||
         (req.headers.origin && !origins.includes(req.headers.origin)) ||
         (req.headers['sec-fetch-site'] === 'cross-site' && !uiNavigation)) return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
@@ -133,6 +135,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
     if (await obsHttp(req, res, url, config.obs)) return;
+    if (await showcaseHttp(req, res, url, showcase)) return;
     if (await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;

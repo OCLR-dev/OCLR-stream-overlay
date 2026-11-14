@@ -1,4 +1,5 @@
 import { ObsError } from './socket.js';
+import { showcaseScene } from './showcase.js';
 
 const sourceName = 'OCLR · 直播间弹幕';
 // Inside the 420×138 STREAM CHAT fieldset on the 1920×1080 broadcast canvas.
@@ -54,9 +55,10 @@ export async function ensureStreamChat(call, profile, save) {
   if (input && input.inputKind !== 'browser_source') throw new ObsError('直播间弹幕需要浏览器源，请在 OBS 核对同名来源。');
   const name = input?.inputName || chat.name || sourceName;
   const scenes = [];
-  for (const layout of ['regular', 'ex']) {
-    const sceneName = profile[layout];
-    const sceneUuid = profile.sceneIds?.[layout] || null;
+  const targets = ['regular', 'ex'].filter(layout => profile[layout]).map(layout => ({ name: profile[layout], uuid: profile.sceneIds?.[layout] }));
+  if (profile.showcase?.ready) targets.push({ name: showcaseScene, uuid: profile.showcase.sceneUuid });
+  for (const { name: sceneName, uuid } of targets) {
+    const sceneUuid = uuid || null;
     const target = sceneUuid ? { sceneUuid } : { sceneName };
     const { sceneItems } = await call('GetSceneItemList', target);
     const matches = sceneItems.filter(i => i.sourceName === name);

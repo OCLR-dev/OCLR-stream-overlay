@@ -436,3 +436,14 @@ BanchoBot 名称不区分大小写，或消息明确标为 `bot` 时，昵称优
 ### FM EZ 队分补偿（2026-11-09）
 
 按 Issue #29 的最终范围，仅 FM 对实际使用 EZ 的选手客户端分数额外乘 1.5，逐人四舍五入后汇总。顶栏、分差、Playing／Ranking、控制台和保存赛果统一读取服务端比赛队分；保留客户端原始分数。控制台在队分旁注明已包含加成或当前无法计算的原因，布局和游戏窗口不变。NM 不纳入。详见 [计分口径与验证](docs/verification/fm-ez-scoring/README.md)。
+
+
+### 独立图池 Showcase（2026-11-14，Issue #32）
+
+按 [Issue #32](https://github.com/OCLR-dev/OCLR-stream-overlay/issues/32) 于 `2026-11-14T07:47:07Z` 更新的正文实现。`/showcase` 提供已加载本场图池的选图、查找、前后切图和 OBS 设置，`/showcase?clean=1` 为独立 OBS 浏览器源。它不在比赛场景枚举或 `/control` 场景切换中，`/overlay` 继续承担比赛输出。
+
+1920×1080 上方 1920×900 保持透明，供直播员自行配置普通 osu! 客户端的单 rep 捕获；底部 180px 内仅保留谱面信息与 Stream Chat。谱面卡从 Playing 拆出为共用 `MapInfoCard`，保留字号、背景图、星数、参数和完整图池槽位样式；Showcase 使用 x=30、y=928、1430×138 的宽卡，Stream Chat 仍为 x=1470、y=928、420×138。无队名、系列分、分差、Match Chat 或自动比赛切换。
+
+Showcase 通过专用 API／SSE 同步，选图与可选参数设置保存在独立 `showcase.json`。图池只读取本场已加载条目，不改比赛会话；本场或图池变化使旧选择失效。可选参数读取现有 tosu 连接的普通客户端快照，只接受新鲜且 ID 匹配的数据；赛事数据、错图、断线或过期时参数未知。此数据不驱动选图或比赛自动化。
+
+OBS 通过独立创建操作生成 `OCLR · Showcase`，仅添加其浏览器源，并在配置了身份码时复用直播间弹幕源。保留常规／EX 预设、人工捕获摆位和 Program；重复创建保留人工调整，中断后可重试。验证与实机边界见 [Showcase 验证](docs/verification/showcase/README.md)。

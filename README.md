@@ -31,6 +31,7 @@ npm start
 
 - 直播员：[http://localhost:3001/control](http://localhost:3001/control)。按当前画面管理、浏览器预览、现场处理与完整手动调整；设置修改自动同步。
 - OBS：[http://localhost:3001/overlay](http://localhost:3001/overlay)。只读输出，画幅 1920×1080；始终使用同一个浏览器源与这个固定地址。不要固定 `#scene`，旧 hash 也不会覆盖共享会话。
+- 图池 Showcase：[http://localhost:3001/showcase](http://localhost:3001/showcase)。独立选图与播出；OBS 浏览器源使用 `/showcase?clean=1`。
 - 视觉演示：[http://localhost:3001/](http://localhost:3001/)。保留独立演示数据、URL 恢复和原评审控件，不改变正式会话。
 
 控制台与输出是两个独立页面，通过 Node 服务的快照和 SSE 同步。控制台内的只读 iframe 复用父页已收到的快照，减少重复长连接；独立 /overlay 仍直接订阅服务端。关闭或刷新控制台不影响输出；浏览器重新连接会取得统一快照。最终合成可在 OBS 的 Program（实际播出）或录像中检查。
@@ -48,6 +49,14 @@ npm run watch
 ```
 
 首次会执行一次 `npm run build`，然后启动模拟服务；若本项目已有服务在运行则直接复用，不会结束不是它启动的进程。之后 `ui/` 修改在安静 5 秒后自动重新构建（刷新页面即可，模拟服务和 OBS 连接不中断）；`server/`、`src/`、`tools/tosu-simulator/` 修改会重启由本命令启动的模拟服务，沿用已保存比赛。修改 `server/` 等代码但使用的是已有外部服务时，脚本会提示手动重启。按 `Ctrl+C` 退出并关闭由它启动的模拟服务。可用 `--watch-delay <毫秒>` 调整安静期，`--app-port`、`--ws-port`、`--offline-oclr` 等参数原样传给模拟器，例如 `npm run watch -- --app-port 3006 --ws-port 24052`。
+
+## 图池 Showcase
+
+打开 `/showcase`，从控制台已加载的本场图池中点选谱面，或使用上一张／下一张。选图立即同步到独立 OBS 浏览器源，刷新及重启保留；更换本场或图池后需重新选择。无图池时先在 `/control` 加载本场图池。Showcase 的展示选择独立保存到比赛文件同目录的 `showcase.json`，不写 Ban/Pick、局次、比分或比赛场景。
+
+在页面的「Showcase 的 OBS 设置」中连接本机 OBS，然后点击「创建 Showcase 场景」。会创建 `OCLR · Showcase` 和 1920×1080 的独立 `/showcase?clean=1` 浏览器源；不会自动切 Program。已有直播身份码时会复用同一弹幕源，也可在 Showcase 设置中粘贴身份码。osu! 普通客户端运行单张谱面的 rep 后，请自行在 OBS 添加游戏／窗口采集源并放到 Showcase 浏览器源下方。上方 1920×900 区域透明，底部只显示 Playing 同款谱面信息与 `STREAM CHAT`。
+
+「补充普通客户端的 tosu 谱面参数」为可选项，复用服务端当前已连接的 tosu 数据，不另建游戏连接。只在普通客户端、来源新鲜且谱面 ID 与展示选图一致时显示参数；不会跟随客户端换图、读赛事客户端参数或将缺失值补成零。曲名、难度与封面沿用已加载图池和现有谱面元数据／图片服务。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
 
 ## 贡献者实机测试数据
 

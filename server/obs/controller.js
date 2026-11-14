@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
+import { buildShowcase, showcaseScene } from './showcase.js';
 import { arrangeCaptures, buildPreset, ensureDesktopAudio, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
 
 const defaults = () => ({ enabled: false, port: 4455, password: '', profiles: [] });
@@ -83,6 +84,7 @@ export class ObsController {
       regular: p.regular, ex: p.ex, follow: p.follow, target: this.target ?? null,
       managed: !!this.managed, lineup: this.managed ? p.preset.lineup : [], ...this.captures,
       streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
+      showcase: !!p.showcase?.ready && this.scenes.includes(showcaseScene) && (!p.showcase.sceneUuid || this.sceneIds.get(showcaseScene) === p.showcase.sceneUuid),
       error: this.storageError || this.error || this.missing(p) };
   }
 
@@ -182,7 +184,7 @@ export class ObsController {
       this.phase = 'ready';
       this.error = '';
       const profile = this.profile;
-      if (profile.streamChat?.code && profile.regular && profile.ex && !this.missing(profile)) {
+      if (profile.streamChat?.code && ((profile.regular && profile.ex && !this.missing(profile)) || this.snapshot().showcase)) {
         try { await this.placeStreamChat(call); }
         catch (error) { this.guard(epoch); this.error = safeMessage(error); }
       }
@@ -269,9 +271,24 @@ export class ObsController {
 
   async placeStreamChat(call) {
     const profile = this.profile;
-    const missing = this.missing(profile);
-    if (missing) throw new ObsError(missing);
-    await ensureStreamChat(call, profile, streamChat => this.saveProfile({ ...profile, streamChat }));
+    // A standalone Showcase can use chat before either competition layout exists.
+    const matchReady = profile.regular && profile.ex && !this.missing(profile);
+    const targets = { ...profile, regular: matchReady ? profile.regular : '', ex: matchReady ? profile.ex : '',
+      showcase: this.snapshot().showcase ? profile.showcase : null };
+    if (!matchReady && !targets.showcase) throw new ObsError(this.missing(profile) || '请先创建 Showcase 或比赛场景。');
+    await ensureStreamChat(call, targets, streamChat => this.saveProfile({ ...profile, streamChat }));
+  }
+
+  async createShowcase(call, profile) {
+    const url = new URL(this.overlayUrl());
+    url.pathname = '/showcase';
+    url.search = '?clean=1';
+    url.hash = '';
+    await buildShowcase(call, profile.showcase, url.href,
+      showcase => this.saveProfile({ ...this.profile, showcase }));
+    const { scenes } = await call('GetSceneList');
+    this.setScenes(scenes);
+    if (this.profile.streamChat?.code) await this.placeStreamChat(call);
   }
 
   command(input) {
@@ -294,11 +311,12 @@ export class ObsController {
         if (input.collection && input.collection !== this.collection) throw new ObsError(changed);
         const call = this.caller(epoch);
         const p = this.profile;
-        if (input.action === 'create') await this.create(call, p);
+        if (input.action === 'create-showcase') await this.createShowcase(call, p);
+        else if (input.action === 'create') await this.create(call, p);
         else if (input.action === 'stream-chat') {
           const code = chatIdentityCode(input.code ?? p.streamChat?.code);
           await this.saveProfile({ ...p, streamChat: { ...p.streamChat, code, pending: true } });
-          if (p.regular && p.ex) await this.placeStreamChat(call);
+          if ((p.regular && p.ex) || p.showcase?.ready) await this.placeStreamChat(call);
         } else if (input.action === 'bind') {
           if (!['regular', 'ex'].includes(input.layout) || !this.scenes.includes(input.name) ||
               input.name === p[input.layout === 'ex' ? 'regular' : 'ex']) throw new ObsError('请为常规与 EX 选择两个不同的现有场景。');
