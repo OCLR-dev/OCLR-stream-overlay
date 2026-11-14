@@ -40,15 +40,30 @@
   "backdrop": {
     "stripes": "victory-stripes-drift",
     "duration": "13.24s",
-    "diamonds": 36,
+    "diamonds": 54,
     "grid": 66,
     "logoLoaded": true,
-    "logoSource": "/assets/oclr-s11-logo-BjOvKRej.webp"
+    "logoSource": "/assets/oclr-s11-logo-white-Bt4L765t.svg"
+  },
+  "logoPixels": {
+    "transparent": 130333,
+    "ink": 35267,
+    "colored": 0
   },
   "reduced": {
     "stripes": "none",
     "diamond": "none",
     "grid": "none"
+  },
+  "upwardMotion": {
+    "dx": 0,
+    "dy": -13.5,
+    "count": 54
+  },
+  "winnerAmbient": {
+    "count": 36,
+    "animation": "ambient-diamond-drift",
+    "showcaseDiamonds": 0
   },
   "playingGeometry": [
     {
@@ -462,5 +477,7 @@
   "mobileNoOverflow": true,
   "matchSessionUnchanged": true,
   "cleanNoManagementRequests": true,
-  "errors": []
+  "errors": [],
+  "showcaseDividerRemoved": true,
+  "playingDividerRetained": true
 }
