@@ -19,9 +19,15 @@ const { stage, scale } = useCanvasFit();
 const poolDraft = ref('');
 const dirty = ref(false);
 const poolFeedback = ref('');
+const stageDraft = ref('');
+const stageDirty = ref(false);
+const stageFeedback = ref('');
 let editRevision = 0;
+let stageRevision = 0;
 let pending: ReturnType<typeof setTimeout>;
+let pendingStage: ReturnType<typeof setTimeout>;
 watch(() => snapshot.value?.poolText, value => { if (!dirty.value && value !== undefined) poolDraft.value = value; }, { immediate: true });
+watch(() => snapshot.value?.stageLabel, value => { if (!stageDirty.value && value !== undefined) stageDraft.value = value; }, { immediate: true });
 const source = computed<MapInfoSource>(() => ({ shared: true, emptyTitle: '等待客户端谱面',
   currentMap: connection.value === 'synced' ? snapshot.value?.currentMap || null : null,
   metadataEnabled: !!snapshot.value?.matchedId,
@@ -50,6 +56,22 @@ function editPool() {
   clearTimeout(pending);
   pending = setTimeout(() => { void syncPool(); }, 450);
 }
+async function syncStage() {
+  clearTimeout(pendingStage);
+  if (!stageDirty.value) return;
+  if (connection.value !== 'synced') { stageFeedback.value = '等待连接恢复后自动同步'; return; }
+  if (busy.value) { pendingStage = setTimeout(() => { void syncStage(); }, 300); return; }
+  const revision = stageRevision;
+  const ok = await command('stage-label', { value: stageDraft.value });
+  if (revision !== stageRevision) { pendingStage = setTimeout(() => { void syncStage(); }, 450); return; }
+  if (ok) { stageDirty.value = false; stageDraft.value = snapshot.value?.stageLabel || ''; stageFeedback.value = 'Stage 已自动同步'; }
+  else stageFeedback.value = 'Stage 未同步，请检查输入或连接';
+}
+function editStage() {
+  stageRevision++; stageDirty.value = true; stageFeedback.value = '停止输入后自动同步'; error.value = '';
+  clearTimeout(pendingStage);
+  pendingStage = setTimeout(() => { void syncStage(); }, 450);
+}
 async function copyLoadedPool() {
   const revision = ++editRevision;
   clearTimeout(pending);
@@ -58,9 +80,13 @@ async function copyLoadedPool() {
     dirty.value = false; poolDraft.value = snapshot.value?.poolText || ''; poolFeedback.value = '已复制到 Showcase 图池';
   }
 }
-watch(connection, value => { if (value === 'synced' && dirty.value) void syncPool(); });
+watch(connection, value => {
+  if (value !== 'synced') return;
+  if (dirty.value) void syncPool();
+  if (stageDirty.value) void syncStage();
+});
 onMounted(() => { document.title = 'OCLR · 图池 Showcase'; document.body.classList.add('is-showcase'); });
-onUnmounted(() => { clearTimeout(pending); document.body.classList.remove('is-showcase'); });
+onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.body.classList.remove('is-showcase'); });
 </script>
 
 <template>
@@ -73,6 +99,10 @@ onUnmounted(() => { clearTimeout(pending); document.body.classList.remove('is-sh
       </header>
       <p class="showcase-status" role="status">{{ playbackStatus }}</p>
       <p v-if="error || snapshot?.error" class="showcase-error" role="alert">{{ error || snapshot?.error }}</p>
+      <label class="showcase-stage-input">当前 Stage
+        <input v-model="stageDraft" type="text" maxlength="80" :disabled="connection !== 'synced'" :aria-invalid="stageDirty && !!error" placeholder="例如：32强、半决赛、决赛" aria-describedby="showcase-stage-feedback" @input="editStage" @blur="syncStage">
+        <span id="showcase-stage-feedback" class="showcase-help" role="status">{{ stageFeedback || '顶部居中显示，留空隐藏' }}</span>
+      </label>
       <section class="showcase-pool-setup" aria-labelledby="showcase-pool-heading">
         <h2 id="showcase-pool-heading">演示图池</h2>
         <p class="showcase-help">先录入列表，再在 osu! 中播放 rep。切换谱面时会自动识别 Slot。</p>
@@ -80,9 +110,9 @@ onUnmounted(() => { clearTimeout(pending); document.body.classList.remove('is-sh
         <label class="showcase-pool-input">每行「Slot 谱面ID或链接 标题（可选）」
           <textarea v-model="poolDraft" rows="7" spellcheck="false" :disabled="connection !== 'synced'" placeholder="NM1 谱面ID
 HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
-            aria-describedby="showcase-pool-feedback" :aria-invalid="!!error" @input="editPool" @blur="syncPool"></textarea>
+            aria-describedby="showcase-pool-feedback" :aria-invalid="dirty && !!error" @input="editPool" @blur="syncPool"></textarea>
         </label>
-        <p id="showcase-pool-feedback" class="showcase-help" role="status">{{ busy ? '正在同步图池…' : error ? '列表未应用，请修改上方提示的行' : poolFeedback || (snapshot?.pool.length ? `已录入 ${snapshot.pool.length} 张谱面` : '列表自动同步，无需逐张切换 Slot') }}</p>
+        <p id="showcase-pool-feedback" class="showcase-help" role="status">{{ busy && dirty ? '正在同步图池…' : error && dirty ? '列表未应用，请修改上方提示的行' : poolFeedback || (snapshot?.pool.length ? `已录入 ${snapshot.pool.length} 张谱面` : '列表自动同步，无需逐张切换 Slot') }}</p>
       </section>
       <ul v-if="snapshot?.pool.length" class="showcase-maps" aria-label="演示图池与当前匹配">
         <li v-for="map in snapshot.pool" :key="map.id" :data-current="connection === 'synced' && snapshot.matchedId === map.id" :aria-current="connection === 'synced' && snapshot.matchedId === map.id ? 'true' : undefined" :title="`${map.label} · ${map.title} [${map.difficulty}]`">
@@ -90,7 +120,7 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
           <span><strong>{{ map.title || `谱面 #${map.beatmapId}` }}</strong><small>{{ map.difficulty || `#${map.beatmapId}` }}</small></span>
         </li>
       </ul>
-      <p class="showcase-help">使用 tosu 读取 osu! 普通客户端的当前谱面。在 OBS 自行添加回放采集源，放到 Showcase 浏览器源上方，并完整缩放到上半区；16:9 画面可使用 1600×900，位置 (160, 0)。</p>
+      <p class="showcase-help">使用 tosu 读取 osu! 普通客户端的当前谱面。在 OBS 自行添加回放采集源，放到 Showcase 浏览器源上方；16:9 画面可使用 1440×810，位置 (240, 90)，为顶部 Stage 留出空间。</p>
       <ShowcaseObsSetup />
     </aside>
     <main class="canvas-stage" ref="stage" aria-label="Showcase 画面预览">
@@ -100,7 +130,12 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
             <SpectrumGrid />
             <ShowcaseAmbient />
           </div>
-          <div class="showcase-game victory-body" data-showcase-capture aria-label="单客户端回放演示区域，游戏采集在 OBS 中叠放到本背景上方"></div>
+          <div class="showcase-game victory-body" aria-hidden="true"></div>
+          <header v-if="snapshot?.stageLabel" class="showcase-stage-title" data-showcase-stage :title="snapshot.stageLabel">
+            <span>STAGE</span>
+            <strong>{{ snapshot.stageLabel }}</strong>
+          </header>
+          <div class="showcase-replay-area" data-showcase-capture aria-label="单客户端回放区域 1440×810，位置 240,90"></div>
           <footer class="showcase-footer">
             <div class="showcase-logo">
               <img :src="seasonLogo" width="690" height="240" alt="OCLR S11 比赛 Logo" decoding="async">

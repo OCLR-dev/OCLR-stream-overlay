@@ -62,8 +62,36 @@ test('the independent pool persists across restart, while current Slot follows t
   session.live.tosu.status = 'disconnected';
   assert.equal(restored.snapshot().currentMap, null, 'the last live Slot is never persisted');
   const saved = JSON.parse(await readFile(file, 'utf8'));
-  assert.deepEqual(Object.keys(saved).sort(), ['pool', 'schema']);
+  assert.deepEqual(Object.keys(saved).sort(), ['pool', 'schema', 'stageLabel']);
   assert.equal(saved.schema, 2);
+});
+
+test('Showcase Stage persists independently and stage/pool edits preserve each other without competition events', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-showcase-stage-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'showcase.json');
+  const { session, showcase } = setup(t, { file });
+  const original = structuredClone(session.state);
+  let events = 0;
+  const stop = session.subscribe(() => events++);
+  assert.equal(showcase.snapshot().stageLabel, '');
+  await Promise.all([
+    showcase.command({ type: 'stage-label', value: '  半决赛  ' }),
+    setPool(showcase, 'NM1 101'),
+  ]);
+  assert.equal(showcase.snapshot().stageLabel, '半决赛');
+  assert.equal(showcase.snapshot().pool.length, 1);
+  const restored = new ShowcaseStore(session, { file });
+  await restored.ready;
+  assert.equal(restored.snapshot().stageLabel, '半决赛');
+  await copyPool(showcase);
+  assert.equal(showcase.snapshot().stageLabel, '半决赛');
+  for (const value of ['A\nB', 'X'.repeat(81), 42]) await assert.rejects(showcase.command({ type: 'stage-label', value }), /Stage/);
+  await showcase.command({ type: 'stage-label', value: '' });
+  assert.equal(showcase.snapshot().stageLabel, '');
+  assert.equal(events, 1);
+  assert.deepEqual(session.state, original);
+  stop();
 });
 
 test('manual pool recording is independent of match progress and later control-pool replacement', async t => {

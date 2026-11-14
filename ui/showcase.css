@@ -10,8 +10,8 @@
 .showcase-controls button:disabled { opacity: .5; cursor: default; }
 .showcase-controls button:hover:not(:disabled) { border-color: var(--purple-light); background: #382055; }
 .showcase-controls :is(button, input, textarea, a):focus-visible { outline: 2px solid #d1baff; outline-offset: 3px; }
-.showcase-pool-input, .showcase-controls .obs-settings label { display: grid; gap: 6px; min-width: 0; }
-.showcase-pool-input textarea, .showcase-controls .obs-settings input { width: 100%; min-width: 0; }
+.showcase-pool-input, .showcase-stage-input, .showcase-controls .obs-settings label { display: grid; gap: 6px; min-width: 0; }
+.showcase-pool-input textarea, .showcase-stage-input input, .showcase-controls .obs-settings input { width: 100%; min-width: 0; }
 .showcase-maps { list-style: none; margin-block: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; max-height: 36vh; overflow-y: auto; padding: 4px; margin-inline: -4px; }
 .showcase-maps li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; border: 1px solid var(--review-line); border-radius: 4px; padding: 8px 10px; }
 .showcase-maps li[data-current='true'] { border-color: var(--purple-light); background: #422363; box-shadow: inset 3px 0 var(--purple-light); }
@@ -43,6 +43,10 @@
 }
 @media (prefers-reduced-motion: reduce) { .showcase-diamond { animation: none; opacity: .26; } }
 .showcase-canvas .showcase-game { position: absolute; inset: 0 0 180px; pointer-events: none; }
+.showcase-stage-title { position: absolute; top: 18px; left: 360px; right: 360px; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; pointer-events: none; }
+.showcase-stage-title > span { color: var(--muted); font: 700 13px/1.2 var(--display); letter-spacing: .2em; }
+.showcase-stage-title > strong { display: block; width: 100%; overflow: hidden; color: var(--ink); font: 700 38px/1.2 var(--display); letter-spacing: .04em; text-overflow: ellipsis; white-space: nowrap; }
+.showcase-replay-area { position: absolute; left: 240px; top: 90px; width: 1440px; height: 810px; pointer-events: none; }
 .showcase-footer { position: absolute; inset: 900px 0 0; overflow: hidden; }
 .showcase-logo { position: absolute; left: 30px; top: 28px; width: 420px; height: 138px; overflow: hidden; border-radius: var(--radius-panel); }
 .showcase-logo img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }

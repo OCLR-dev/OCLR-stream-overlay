@@ -5,6 +5,10 @@ import { tosuRoomTeams } from '../src/tosu.js';
 import { parseShowcasePool, showcasePool, showcasePoolText } from './showcase-pool.js';
 
 const poolToken = pool => createHash('sha256').update(JSON.stringify(pool)).digest('hex');
+const stageLabel = value => {
+  if (typeof value !== 'string' || value.length > 80 || /[\u0000-\u001f\u007f]/.test(value)) throw new Error('Stage 请填写 80 字以内的单行阶段名称。');
+  return value.trim();
+};
 
 // Showcase owns its pool. Live map identity is derived from the ordinary client,
 // never persisted as an operator selection or sent back to competition state.
@@ -12,7 +16,7 @@ export class ShowcaseStore {
   constructor(session, { file = session?.file && join(dirname(session.file), 'showcase.json') } = {}) {
     this.session = session;
     this.file = file;
-    this.state = { schema: 2, pool: [] };
+    this.state = { schema: 2, pool: [], stageLabel: '' };
     this.tail = Promise.resolve();
     this.ready = this.restore();
   }
@@ -29,10 +33,10 @@ export class ShowcaseStore {
     if (!this.file) return;
     try {
       const value = JSON.parse(await readFile(this.file, 'utf8'));
-      if (value.schema === 2) this.state = { schema: 2, pool: showcasePool(value.pool) };
+      if (value.schema === 2) this.state = { schema: 2, pool: showcasePool(value.pool), stageLabel: stageLabel(value.stageLabel ?? '') };
       else if (typeof value.poolToken === 'string' && typeof value.useTosu === 'boolean' && (value.selectedId === null || typeof value.selectedId === 'string')) {
         // Replace the earlier manual-selection contract with an independent pool.
-        this.state = { schema: 2, pool: showcasePool(this.session?.snapshot().session.pool || []) };
+        this.state = { schema: 2, pool: showcasePool(this.session?.snapshot().session.pool || []), stageLabel: '' };
       } else throw new Error();
     } catch (error) {
       if (error.code !== 'ENOENT') this.storageError = 'Showcase 设置无法读取，请维护者检查 showcase.json。';
@@ -58,7 +62,7 @@ export class ShowcaseStore {
       title: matched?.title || map.title || '', artist: matched?.artist || map.artist || '', difficulty: matched?.difficulty || map.difficulty || '',
     } : null;
     const snapshot = {
-      poolToken: poolToken(pool), pool, poolText: showcasePoolText(pool),
+      poolToken: poolToken(pool), pool, poolText: showcasePoolText(pool), stageLabel: this.state.stageLabel,
       loadedPoolCount: loadedPool.length, loadedPoolToken: poolToken(loadedPool),
       matchedId: matched?.id || null, currentMap,
       mapParameters: map ? { id: map.id, stats: map.stats, time: map.time } : null,
@@ -77,16 +81,20 @@ export class ShowcaseStore {
       await this.ready;
       if (this.storageError) throw new Error(this.storageError);
       const current = this.snapshot();
-      if (input.poolToken !== current.poolToken) throw new Error('Showcase 图池已更新，请核对当前列表后重试。');
-      let pool;
-      if (input.type === 'pool-text') pool = parseShowcasePool(input.text, this.state.pool);
-      else if (input.type === 'use-loaded-pool') {
-        const loaded = this.session?.snapshot().session.pool || [];
-        if (!loaded.length) throw new Error('控制台尚未加载图池，请直接录入 Showcase 图池列表。');
-        if (input.loadedPoolToken !== poolToken(loaded)) throw new Error('控制台图池已变化，请重新复制。');
-        pool = showcasePool(loaded);
-      } else throw new Error('Showcase 已改为自动跟随客户端，请刷新页面后录入图池。');
-      const next = { schema: 2, pool };
+      let next;
+      if (input.type === 'stage-label') next = { ...this.state, stageLabel: stageLabel(input.value) };
+      else {
+        if (input.poolToken !== current.poolToken) throw new Error('Showcase 图池已更新，请核对当前列表后重试。');
+        let pool;
+        if (input.type === 'pool-text') pool = parseShowcasePool(input.text, this.state.pool);
+        else if (input.type === 'use-loaded-pool') {
+          const loaded = this.session?.snapshot().session.pool || [];
+          if (!loaded.length) throw new Error('控制台尚未加载图池，请直接录入 Showcase 图池列表。');
+          if (input.loadedPoolToken !== poolToken(loaded)) throw new Error('控制台图池已变化，请重新复制。');
+          pool = showcasePool(loaded);
+        } else throw new Error('Showcase 已改为自动跟随客户端，请刷新页面后录入图池。');
+        next = { ...this.state, pool };
+      }
       if (this.file) {
         try {
           await mkdir(dirname(this.file), { recursive: true, mode: 0o700 });
