@@ -29,12 +29,15 @@
 .showcase-controls .obs-settings summary { cursor: pointer; min-height: 44px; }
 .showcase-controls .obs-settings :is(.setup-meta, .operator-inline) { display: grid; gap: 8px; }
 .showcase-app .canvas-stage { min-width: 0; border: 0; }
-/* The one replay fills the upper 1920×900 area; only the lower 180px draws UI.
-   No background or decorative layer can cover an operator's game capture. */
-.showcase-app .showcase-canvas { background: transparent; }
-.showcase-game { position: absolute; inset: 0 0 180px; background: transparent; pointer-events: none; }
-.showcase-footer { position: absolute; inset: 900px 0 0; overflow: hidden; background: var(--canvas); }
-.showcase-footer .map-row { position: absolute; left: 30px; top: 28px; width: 1430px; margin: 0; }
+/* Use Winner's canvas, grid, ambient diamonds and victory-body stripe motion.
+   OBS places the one replay above this backdrop, confined to the upper area. */
+.showcase-stage-ambient { position: absolute; inset: 0; clip-path: inset(0 0 180px); pointer-events: none; }
+.showcase-canvas .showcase-game { position: absolute; inset: 0 0 180px; pointer-events: none; }
+.showcase-footer { position: absolute; inset: 900px 0 0; overflow: hidden; }
+.showcase-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, var(--team-a) 0 50%, var(--team-b) 50% 100%); pointer-events: none; content: ''; }
+.showcase-logo { position: absolute; left: 30px; top: 28px; width: 420px; height: 138px; overflow: hidden; border-radius: var(--radius-panel); }
+.showcase-logo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.showcase-footer .map-row { position: absolute; left: 460px; top: 28px; width: 1000px; margin: 0; }
 .showcase-footer .chat-box { position: absolute; left: 1470px; top: 28px; width: 420px; height: 138px; }
 .showcase-clean .canvas-stage { padding: 0; background: transparent; }
 body.is-showcase { background: transparent; }

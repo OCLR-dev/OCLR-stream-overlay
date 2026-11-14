@@ -22,6 +22,7 @@ test('built UI serves only generated files and never exposes source, credentials
   await writeFile(join(dist, 'index.html'), '<!doctype html><div id="app"></div>');
   await writeFile(join(dist, 'assets/index-Ab12.js'), 'export const demo = true;');
   await writeFile(join(dist, 'assets/violet-CD34.svg'), '<svg/>');
+  await writeFile(join(dist, 'assets/season-Ab12.webp'), Buffer.from('RIFF-test-logo'));
   const config = { port: 0, mode: 'anonymous' };
   let upstreamRequests = 0;
   const server = createOverlayServer(config, async () => { upstreamRequests += 1; throw new Error('UNEXPECTED_API_CALL'); }, dist);
@@ -40,6 +41,9 @@ test('built UI serves only generated files and never exposes source, credentials
   assert.match(script.headers.get('content-type'), /javascript/);
   assert.match(script.headers.get('cache-control'), /immutable/);
   assert.match(await script.text(), /demo = true/);
+  const logo = await fetch(`${base}/assets/season-Ab12.webp`);
+  assert.equal(logo.status, 200);
+  assert.equal(logo.headers.get('content-type'), 'image/webp');
   for (const path of ['/.env.local', '/assets/%2e%2e%2f.env.local', '/assets/../.env.local', '/assets/missing.js', '/ui/model.ts', '/server/config.js', '/package.json', '/not-a-scene']) {
     const response = await fetch(base + path);
     assert.equal(response.status, 404, path);

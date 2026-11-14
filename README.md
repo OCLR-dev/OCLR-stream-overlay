@@ -55,7 +55,7 @@ npm start
 打开 `/showcase`，先录入演示图池，每行「Slot 谱面ID或链接 标题（可选）」，例如 `NM1 4278199 eclosion`；也可点击「复制控制台已加载图池」。支持 osu! 具体难度链接，图集链接须带 `#osu/难度ID`。输入停顿或离开输入框后自动同步，无需保存。图池单独写入比赛文件同目录的 `showcase.json`，后续控制台换场或改图池不会覆盖它。
 
 让 tosu 读取 osu! 普通客户端，在客户端选择谱面或运行 rep；Showcase 按当前谱面 ID 自动匹配 Slot，并同步曲名、难度、封面及可用参数，不需要手工选图或切 Slot。只有唯一匹配时才显示图池 Slot；池外或同一 ID 对应多个 Slot 时显示 `—`，操作区说明原因。断线、过期、无有效谱面或有效赛事客户端数据不会保留上张图的实时显示。
-在页面的「Showcase 的 OBS 设置」中连接本机 OBS，然后点击「创建 Showcase 场景」。会创建 `OCLR · Showcase` 和 1920×1080 的独立 `/showcase?clean=1` 浏览器源；不会自动切 Program。已有直播身份码时会复用同一弹幕源，也可在 Showcase 设置中粘贴身份码。osu! 普通客户端运行单张谱面的 rep 后，请自行在 OBS 添加游戏／窗口采集源并放到 Showcase 浏览器源下方。上方 1920×900 区域透明，底部只显示 Playing 同款谱面信息与 `STREAM CHAT`。
+在页面的「Showcase 的 OBS 设置」中连接本机 OBS，然后点击「创建 Showcase 场景」。会创建 `OCLR · Showcase` 和 1920×1080 的独立 `/showcase?clean=1` 浏览器源；不会自动切 Program。已有直播身份码时会复用同一弹幕源，也可在 Showcase 设置中粘贴身份码。osu! 普通客户端运行单张谱面的 rep 后，请自行在 OBS 添加回放采集源并放到 Showcase 浏览器源上方；16:9 画面可设为 1600×900、位置 (160,0)，完整放在上半区。上半区复用 Winner 的深紫背景与动态效果；底部按 Playing 排列 S11 官方比赛 Logo、1000×138 谱面卡和 `STREAM CHAT`。
 
 谱面跟随复用服务端当前已连接的 tosu 数据，不另建浏览器直连。Showcase 的图池与自动显示不修改比赛 Ban/Pick、局次、比分、场景或自动化；`/overlay` 继续承担原比赛输出。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
 
