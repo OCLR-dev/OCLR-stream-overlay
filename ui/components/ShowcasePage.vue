@@ -120,7 +120,7 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
           <span><strong>{{ map.title || `谱面 #${map.beatmapId}` }}</strong><small>{{ map.difficulty || `#${map.beatmapId}` }}</small></span>
         </li>
       </ul>
-      <p class="showcase-help">使用 tosu 读取 osu! 普通客户端的当前谱面。在 OBS 自行添加回放采集源，放到 Showcase 浏览器源上方；16:9 画面可使用 1440×810，位置 (240, 90)，为顶部 Stage 留出空间。</p>
+      <p class="showcase-help">Showcase 浏览器源保持 1920×1080 铺满画布，位置 (0,0)、缩放 1。osu! 回放采集自行放在它上方，在中央约 800px 高的区域内保持原比例居中显示。使用 tosu 读取普通客户端的当前谱面。</p>
       <ShowcaseObsSetup />
     </aside>
     <main class="canvas-stage" ref="stage" aria-label="Showcase 画面预览">
@@ -135,7 +135,7 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
             <span>STAGE</span>
             <strong>{{ snapshot.stageLabel }}</strong>
           </header>
-          <div class="showcase-replay-area" data-showcase-capture aria-label="单客户端回放区域 1440×810，位置 240,90"></div>
+          <div class="showcase-replay-area" data-showcase-capture aria-label="中央回放可用区域 1600×800，位置 160,100；osu! 保持原比例居中"></div>
           <footer class="showcase-footer">
             <div class="showcase-logo">
               <img :src="seasonLogo" width="690" height="240" alt="OCLR S11 比赛 Logo" decoding="async">
