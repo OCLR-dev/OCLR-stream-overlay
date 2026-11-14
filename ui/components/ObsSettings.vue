@@ -3,7 +3,7 @@ import { ref, watch } from 'vue';
 import type { ObsControl } from '../obsControl';
 import ControlSelect from './ControlSelect.vue';
 
-const props = defineProps<{ obs: ObsControl }>();
+const props = defineProps<{ obs: ObsControl; showcaseOnly?: boolean }>();
 const port = ref(4455);
 const password = ref<HTMLInputElement>();
 const chatCode = ref('');
@@ -37,7 +37,7 @@ function editChat(event: Event) {
 
 <template>
   <details class="operator-import obs-settings">
-    <summary>OBS 场景联动</summary>
+    <summary>{{ showcaseOnly ? 'Showcase 的 OBS 设置' : 'OBS 场景联动' }}</summary>
     <p role="status">{{ obs.status }}<template v-if="obs.state?.collection"> · 场景集合「{{ obs.state.collection }}」</template></p>
     <p v-if="obs.error || obs.state?.error" class="operator-error" role="alert">{{ obs.error || obs.state?.error }}</p>
     <form v-if="obs.state?.phase !== 'ready'" @submit.prevent="connect">
@@ -50,6 +50,15 @@ function editChat(event: Event) {
       </div>
     </form>
     <template v-else>
+      <template v-if="showcaseOnly">
+        <div class="operator-inline">
+          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 Showcase 场景…' : '创建 Showcase 场景' }}</button>
+          <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
+        </div>
+        <p>创建 1920×1080 的独立 Showcase 浏览器源。请自行添加 osu! 游戏画面并放在它下方，再在 OBS 切到 Showcase 场景。</p>
+        <p v-if="obs.state.showcase" role="status">Showcase 场景已就绪。</p>
+      </template>
+      <template v-else>
       <div class="operator-inline">
         <button class="operator-primary" :disabled="!!obs.pending" @click="obs.act('create')">{{ obs.pending === 'create' ? '正在创建比赛场景…' : '创建比赛场景' }}</button>
         <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
@@ -98,6 +107,7 @@ function editChat(event: Event) {
         <button :disabled="!!obs.pending" @click="obs.act('measure')">{{ obs.pending === 'measure' ? '正在读取…' : '读取两套场景' }}</button>
         <label v-if="obs.measurement">本次 OBS 读数<textarea :value="obs.measurement" readonly rows="6" spellcheck="false"></textarea></label>
       </details>
+      </template>
     </template>
     <section class="obs-stream-chat" aria-labelledby="obs-stream-chat-heading">
       <h3 id="obs-stream-chat-heading">B 站直播间弹幕</h3>
@@ -108,11 +118,15 @@ function editChat(event: Event) {
           aria-describedby="obs-chat-status" :aria-invalid="!!chatHint" :disabled="!!obs.pending"
           @input="editChat" @blur="applyChat()" @keydown.enter.prevent="applyChat()"></label>
         <p v-if="chatHint" role="alert" class="operator-error">{{ chatHint }}</p>
-        <p id="obs-chat-status" role="status">{{ obs.pending === 'stream-chat' ? '正在配置弹幕源…'
+        <p v-if="showcaseOnly" id="obs-chat-status" role="status">{{ obs.pending === 'stream-chat' ? '正在配置弹幕源…'
+          : obs.state.streamChat === 'configured' && obs.state.showcase ? '弹幕源已配置。可在 OBS 的 STREAM CHAT 查看观众消息。'
+          : obs.state.streamChat !== 'off' ? '身份码已保存，创建 Showcase 场景后会加入弹幕。'
+          : '粘贴身份码后自动配置，手动输入可按回车。' }}</p>
+        <p v-else id="obs-chat-status" role="status">{{ obs.pending === 'stream-chat' ? '正在配置弹幕源…'
           : obs.state.streamChat === 'configured' ? '常规与 EX 已共用弹幕源。可在 OBS 右下角 STREAM CHAT 查看观众消息。'
           : obs.state.streamChat === 'pending' ? (obs.state.regular && obs.state.ex ? '身份码已保存，弹幕源待配置。' : '身份码已保存。创建比赛场景，或绑定常规与 EX 两套场景后会自动加入弹幕。')
           : '粘贴后自动配置到常规和 EX 场景的 STREAM CHAT。手动输入可按回车。' }}</p>
-        <button v-if="obs.state.streamChat === 'pending' && obs.state.regular && obs.state.ex" type="button" :disabled="!!obs.pending" @click="applyChat(true)">重试配置弹幕源</button>
+        <button v-if="obs.state.streamChat === 'pending' && ((showcaseOnly && obs.state.showcase) || (obs.state.regular && obs.state.ex))" type="button" :disabled="!!obs.pending" @click="applyChat(true)">重试配置弹幕源</button>
       </template>
       <p v-else>连接本机 OBS 后即可粘贴身份码。</p>
     </section>

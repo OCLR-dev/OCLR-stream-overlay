@@ -29,7 +29,7 @@ test('built UI serves only generated files and never exposes source, credentials
   config.port = server.address().port;
   t.after(async () => { await new Promise(resolve => server.close(resolve)); await rm(fixture, { recursive: true }); });
   const base = `http://127.0.0.1:${config.port}`;
-  for (const path of ['/', '/index.html', '/overlay', '/control']) {
+  for (const path of ['/', '/index.html', '/overlay', '/control', '/showcase', '/showcase?clean=1']) {
     const response = await fetch(base + path);
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type'), /text\/html/);
@@ -49,6 +49,7 @@ test('built UI serves only generated files and never exposes source, credentials
   assert.equal((await fetch(base, { headers: { Origin: 'https://example.org' } })).status, 403);
   const navigation = { 'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document' };
   assert.equal(await statusWithHeaders(base, navigation), 200);
+  assert.equal(await statusWithHeaders(`${base}/showcase`, navigation), 200);
   assert.equal(await statusWithHeaders(`${base}/api/config`, navigation), 403);
   assert.equal(await statusWithHeaders(`${base}/assets/index-Ab12.js`, navigation), 403);
   assert.equal(upstreamRequests, 0);

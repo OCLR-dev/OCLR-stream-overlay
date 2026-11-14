@@ -39,6 +39,7 @@ npm start
 
 - 直播员：[http://localhost:3001/control](http://localhost:3001/control)。按当前画面管理、浏览器预览、现场处理与完整手动调整；设置修改自动同步。
 - OBS：[http://localhost:3001/overlay](http://localhost:3001/overlay)。只读输出，画幅 1920×1080；始终使用同一个浏览器源与这个固定地址。不要固定 `#scene`，旧 hash 也不会覆盖共享会话。
+- 图池 Showcase：[http://localhost:3001/showcase](http://localhost:3001/showcase)。独立选图与播出；OBS 浏览器源使用 `/showcase?clean=1`。
 - 视觉演示：[http://localhost:3001/](http://localhost:3001/)。保留独立演示数据、URL 恢复和原评审控件，不改变正式会话。
 
 控制台与输出是两个独立页面，通过 Node 服务的快照和 SSE 同步。控制台内的只读 iframe 复用父页已收到的快照，减少重复长连接；独立 /overlay 仍直接订阅服务端。关闭或刷新控制台不影响输出；浏览器重新连接会取得统一快照。最终合成可在 OBS 的 Program（实际播出）或录像中检查。
@@ -48,6 +49,18 @@ npm start
 正式与模拟服务共用单实例检查：已有本项目服务时会提示现有地址，不再另起一套。当前保留的本机验证服务为 [3001 控制台](http://127.0.0.1:3001/control) 与同端口 `/overlay`，原有比赛与模拟房间已无损恢复；模拟器为 [24051](http://127.0.0.1:24051/)。记录见 [单实例服务验证](docs/verification/single-runtime/README.md)。
 
 改 Vue/`ui/` 代码时不需要重启或重新构建自定义赛事服务：先启动 `npm run custom`（需模拟信号时加 `-- --simulate`），再另开终端运行 `npm run dev`，打开 [3003 控制台](http://127.0.0.1:3003/control) 或 [3003 输出](http://127.0.0.1:3003/overlay)。Vite 提供热更新，并把 `/api` 默认代理到自定义赛事服务 3011；使用隔离端口时用 `OCLR_DEV_API=http://127.0.0.1:<端口> npm run dev`。Vite 根目录仅为 `ui/`，不加载凭证。只改 `server/` 或 `tools/` 下的 Node 代码才需要重启对应服务；完整流程仍用构建后的 `npm run custom` 验收。
+
+## 图池 Showcase
+
+打开 `/showcase`，从控制台已加载的本场图池中点选谱面，或使用上一张／下一张。选图立即同步到独立 OBS 浏览器源，刷新及重启保留；更换本场或图池后需重新选择。无图池时先在 `/control` 加载本场图池。Showcase 的展示选择独立保存到比赛文件同目录的 `showcase.json`，不写 Ban/Pick、局次、比分或比赛场景。
+
+在页面的「Showcase 的 OBS 设置」中连接本机 OBS，然后点击「创建 Showcase 场景」。会创建 `OCLR · Showcase` 和 1920×1080 的独立 `/showcase?clean=1` 浏览器源；不会自动切 Program。已有直播身份码时会复用同一弹幕源，也可在 Showcase 设置中粘贴身份码。osu! 普通客户端运行单张谱面的 rep 后，请自行在 OBS 添加游戏／窗口采集源并放到 Showcase 浏览器源下方。上方 1920×900 区域透明，底部只显示 Playing 同款谱面信息与 `STREAM CHAT`。
+
+「补充普通客户端的 tosu 谱面参数」为可选项，复用服务端当前已连接的 tosu 数据，不另建游戏连接。只在普通客户端、来源新鲜且谱面 ID 与展示选图一致时显示参数；不会跟随客户端换图、读赛事客户端参数或将缺失值补成零。曲名、难度与封面沿用已加载图池和现有谱面元数据／图片服务。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
+
+## 贡献者实机测试数据
+
+UI 贡献者与 code agent 可使用[匿名化 Windows tosu 采样与回放说明](test-data/tosu/windows-2026-10-31/README.md)：3921 帧、10 分钟，包含已知异常输入、数据限制和隔离 UI 回放命令。它不是完整比赛或完整 WebSocket 原包。
 
 ## 没有 tosu 的本机模拟测试
 

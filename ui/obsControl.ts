@@ -5,6 +5,7 @@ interface ObsStatus {
   collection: string | null; program: string | null; scenes: string[]; regular: string; ex: string;
   follow: boolean; target: 'regular' | 'ex' | null; managed: boolean; lineup: string[]; error: string;
   streamChat: 'off' | 'pending' | 'configured';
+  showcase: boolean;
   windows: { value: string; label: string }[];
   rows: { slot: string; input: string; value: string; status: string }[];
 }
