@@ -41,8 +41,12 @@ test('OBS reconnect migrates original chat CSS once and preserves custom CSS and
   assert.deepEqual(Object.keys(writes()[0].inputSettings), ['css']);
   await reconnect();
   assert.equal(writes().length, 1);
+  input.inputSettings.css = css.slice(0, css.indexOf('\nyt-live-chat-text-message-renderer { background:'));
+  await reconnect();
+  assert.equal(input.inputSettings.css, css);
+  assert.equal(writes().length, 2);
   input.inputSettings.css = 'body { color: pink; }';
   await reconnect();
   assert.equal(input.inputSettings.css, 'body { color: pink; }');
-  assert.equal(writes().length, 1);
+  assert.equal(writes().length, 2);
 });
