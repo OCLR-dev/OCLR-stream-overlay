@@ -5,13 +5,18 @@ const sourceName = 'OCLR · 直播间弹幕';
 const width = 398;
 const height = 112;
 const transform = { alignment: 5, positionX: 1481, positionY: 950, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' };
-const css = `html, body, #app, yt-live-chat-renderer { background: transparent !important; margin: 0; overflow: hidden; }
+const legacyCss = `html, body, #app, yt-live-chat-renderer { background: transparent !important; margin: 0; overflow: hidden; }
 yt-live-chat-renderer { --yt-live-chat-background-color: transparent; }
 yt-live-chat-ticker-renderer, #author-photo { display: none !important; }
 yt-live-chat-text-message-renderer { padding: 0 2px !important; }
 #author-name, #message { font: 600 16px/21px sans-serif !important; text-shadow: 0 1px 2px #140c24; }
 #author-name { color: #dac1ff !important; }
 #message { color: #faf6ff !important; font-weight: 400 !important; }`;
+// Hide the inner scroller's native track without disabling automatic message scrolling.
+const css = `${legacyCss}
+yt-live-chat-renderer { --scrollbar-width: 0px !important; }
+#item-scroller { scrollbar-width: none !important; padding-right: 0 !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }`;
 
 export function chatIdentityCode(value) {
   const code = typeof value === 'string' ? value.trim() : '';
@@ -54,11 +59,15 @@ export async function ensureStreamChat(call, profile, save) {
     const { inputSettings } = await call('GetInputSettings', { inputName: name });
     // Without an OBS UUID, verify the saved source (including creation whose reply was lost).
     const knownItem = scenes.some(({ scene, item }) => item && chat.items[scene]?.id === item.sceneItemId);
-    const hasPresetSettings = inputSettings.css === css && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
+    const hasPresetSettings = [css, legacyCss].includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
     if (!chat.uuid && !knownItem && !hasPresetSettings) {
       throw new ObsError('原直播间弹幕来源已被替换，请在 OBS 核对来源名称后重试。');
     }
-    if (inputSettings.url !== url) await call('SetInputSettings', { inputName: name, inputSettings: { url }, overlay: true });
+    const updates = {};
+    if (inputSettings.url !== url) updates.url = url;
+    // Upgrade only our original preset; retain CSS customized by the operator.
+    if (inputSettings.css === legacyCss) updates.css = css;
+    if (Object.keys(updates).length) await call('SetInputSettings', { inputName: name, inputSettings: updates, overlay: true });
   } else {
     const { groups } = await call('GetGroupList');
     const { scenes: allScenes } = await call('GetSceneList');

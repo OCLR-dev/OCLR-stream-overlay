@@ -182,7 +182,7 @@ export class ObsController {
       this.phase = 'ready';
       this.error = '';
       const profile = this.profile;
-      if (profile.streamChat?.pending && profile.regular && profile.ex && !this.missing(profile)) {
+      if (profile.streamChat?.code && profile.regular && profile.ex && !this.missing(profile)) {
         try { await this.placeStreamChat(call); }
         catch (error) { this.guard(epoch); this.error = safeMessage(error); }
       }
