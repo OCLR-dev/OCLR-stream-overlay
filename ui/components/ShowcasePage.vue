@@ -9,8 +9,8 @@ import MapInfoCard from './MapInfoCard.vue';
 import ChatBox from './ChatBox.vue';
 import ObsSettings from './ObsSettings.vue';
 import SpectrumGrid from './SpectrumGrid.vue';
-import BroadcastAmbient from './BroadcastAmbient.vue';
-import seasonLogo from '../assets/oclr-s11-logo.webp';
+import ShowcaseAmbient from './ShowcaseAmbient.vue';
+import seasonLogo from '../assets/oclr-s11-logo-white.svg';
 import '../showcase.css';
 
 const clean = new URLSearchParams(location.search).get('clean') === '1';
@@ -98,12 +98,12 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
         <div class="broadcast-canvas showcase-canvas" :style="{ transform: `scale(${scale})` }" aria-label="1920×1080 图池 Showcase 播出画布" data-showcase-canvas>
           <div class="showcase-stage-ambient" aria-hidden="true">
             <SpectrumGrid />
-            <BroadcastAmbient />
+            <ShowcaseAmbient />
           </div>
           <div class="showcase-game victory-body" data-showcase-capture aria-label="单客户端回放演示区域，游戏采集在 OBS 中叠放到本背景上方"></div>
           <footer class="showcase-footer">
             <div class="showcase-logo">
-              <img :src="seasonLogo" width="1200" height="1200" alt="OCLR S11 比赛 Logo" decoding="async">
+              <img :src="seasonLogo" width="690" height="240" alt="OCLR S11 比赛 Logo" decoding="async">
             </div>
             <MapInfoCard :source="source" />
             <ChatBox source="stream" compact />
