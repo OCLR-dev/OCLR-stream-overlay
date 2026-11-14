@@ -2,15 +2,26 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tosuRoomTeams } from '../src/tosu.js';
+import { parseShowcasePool, showcasePool, showcasePoolText } from './showcase-pool.js';
 
-// This store only reads the loaded pool and optional ordinary-client metadata.
-// It never sends a match command or observes gameplay for competition purposes.
+const poolToken = pool => createHash('sha256').update(JSON.stringify(pool)).digest('hex');
+
+// Showcase owns its pool. Live map identity is derived from the ordinary client,
+// never persisted as an operator selection or sent back to competition state.
 export class ShowcaseStore {
   constructor(session, { file = session?.file && join(dirname(session.file), 'showcase.json') } = {}) {
     this.session = session;
     this.file = file;
-    this.state = { poolToken: '', selectedId: null, useTosu: false };
+    this.state = { schema: 2, pool: [] };
     this.tail = Promise.resolve();
+    this.ready = this.restore();
+  }
+
+  attachSession(session) {
+    // Portable startup binds HTTP before restoring its competition session.
+    if (this.session || !session) return;
+    this.session = session;
+    this.file ||= session.file && join(dirname(session.file), 'showcase.json');
     this.ready = this.restore();
   }
 
@@ -18,37 +29,40 @@ export class ShowcaseStore {
     if (!this.file) return;
     try {
       const value = JSON.parse(await readFile(this.file, 'utf8'));
-      if (typeof value.poolToken !== 'string' || !(value.selectedId === null || typeof value.selectedId === 'string') || typeof value.useTosu !== 'boolean') throw new Error();
-      this.state = value;
+      if (value.schema === 2) this.state = { schema: 2, pool: showcasePool(value.pool) };
+      else if (typeof value.poolToken === 'string' && typeof value.useTosu === 'boolean' && (value.selectedId === null || typeof value.selectedId === 'string')) {
+        // Replace the earlier manual-selection contract with an independent pool.
+        this.state = { schema: 2, pool: showcasePool(this.session?.snapshot().session.pool || []) };
+      } else throw new Error();
     } catch (error) {
       if (error.code !== 'ENOENT') this.storageError = 'Showcase 设置无法读取，请维护者检查 showcase.json。';
     }
   }
 
   snapshot(envelope = this.session?.snapshot()) {
-    const session = envelope?.session;
-    const pool = (session?.pool || []).map(({ id, beatmapId, setId, mod, label, title, artist, difficulty }) =>
-      ({ id, beatmapId, setId, mod, label, title, artist, difficulty }));
-    const poolToken = createHash('sha256').update(JSON.stringify([session?.id, session?.match.poolId, session?.match.edition, pool])).digest('hex');
-    const selected = this.state.poolToken === poolToken && pool.find(entry => entry.id === this.state.selectedId) || null;
+    const pool = this.state.pool.map(entry => ({ ...entry }));
+    const loadedPool = envelope?.session?.pool || [];
     const source = envelope?.live?.tosu;
     const data = source?.data;
-    const fresh = source?.status === 'live' && Date.now() - Date.parse(source.updatedAt) >= 0 && Date.now() - Date.parse(source.updatedAt) < 5000;
-    // A replay never changes the explicit pool selection. Tourney samples and
-    // stale/wrong-map data cannot fill parameters on the Showcase card.
+    const age = Date.now() - Date.parse(source?.updatedAt);
+    const fresh = source?.status === 'live' && age >= 0 && age < 5000;
     // v2 may include an empty tourney structure even for a normal client.
-    // Reject real room/roster evidence, not zero-valued placeholder clients.
     const tourneyEvidence = tosuRoomTeams(data) || Object.values(data?.tourney?.teams || {}).some(name => typeof name === 'string' && name.trim()) ||
       data?.tourney?.players?.some(player => player.osuId > 0 || player.name?.trim());
-    const ordinary = fresh && data && !tourneyEvidence;
-    const map = this.state.useTosu && ordinary && selected?.beatmapId > 0 && data.beatmap?.id === selected.beatmapId ? data.beatmap : null;
+    const map = fresh && data && !tourneyEvidence && Number.isSafeInteger(data.beatmap?.id) && data.beatmap.id > 0 ? data.beatmap : null;
+    const candidates = map ? pool.filter(entry => entry.beatmapId === map.id) : [];
+    const matched = candidates.length === 1 ? candidates[0] : null;
+    const currentMap = map ? {
+      id: matched?.id || `live:${map.id}`, beatmapId: map.id, setId: matched?.setId || map.setId,
+      label: matched?.label || '—', mod: matched?.mod || '',
+      title: matched?.title || map.title || '', artist: matched?.artist || map.artist || '', difficulty: matched?.difficulty || map.difficulty || '',
+    } : null;
     const snapshot = {
-      poolToken, pool, selectedId: selected?.id || null,
-      currentMap: selected && { ...selected, title: selected.title || map?.title || '', difficulty: selected.difficulty || map?.difficulty || '' },
-      useTosu: this.state.useTosu,
+      poolToken: poolToken(pool), pool, poolText: showcasePoolText(pool),
+      loadedPoolCount: loadedPool.length, loadedPoolToken: poolToken(loadedPool),
+      matchedId: matched?.id || null, currentMap,
       mapParameters: map ? { id: map.id, stats: map.stats, time: map.time } : null,
-      sourceStatus: !this.state.useTosu ? 'off' : !fresh ? 'unavailable' : !ordinary ? 'tourney' : !map ? 'different-map' : 'matched',
-      edition: session?.match.edition || null,
+      sourceStatus: !fresh ? 'unavailable' : tourneyEvidence ? 'tourney' : !map ? 'no-map' : !pool.length ? 'no-pool' : candidates.length > 1 ? 'ambiguous' : matched ? 'matched' : 'unmatched',
       error: this.storageError || '', persistence: this.file ? 'ready' : 'memory',
     };
     const serialized = JSON.stringify(snapshot);
@@ -63,10 +77,16 @@ export class ShowcaseStore {
       await this.ready;
       if (this.storageError) throw new Error(this.storageError);
       const current = this.snapshot();
-      if (input.poolToken !== current.poolToken) throw new Error('图池已更新，请重新选择展示谱面。');
-      if (!(input.selectedId === null || current.pool.some(entry => entry.id === input.selectedId))) throw new Error('请从已加载的图池选择谱面。');
-      if (typeof input.useTosu !== 'boolean') throw new Error('请核对 Showcase 数据选项。');
-      const next = { poolToken: current.poolToken, selectedId: input.selectedId, useTosu: input.useTosu };
+      if (input.poolToken !== current.poolToken) throw new Error('Showcase 图池已更新，请核对当前列表后重试。');
+      let pool;
+      if (input.type === 'pool-text') pool = parseShowcasePool(input.text, this.state.pool);
+      else if (input.type === 'use-loaded-pool') {
+        const loaded = this.session?.snapshot().session.pool || [];
+        if (!loaded.length) throw new Error('控制台尚未加载图池，请直接录入 Showcase 图池列表。');
+        if (input.loadedPoolToken !== poolToken(loaded)) throw new Error('控制台图池已变化，请重新复制。');
+        pool = showcasePool(loaded);
+      } else throw new Error('Showcase 已改为自动跟随客户端，请刷新页面后录入图池。');
+      const next = { schema: 2, pool };
       if (this.file) {
         try {
           await mkdir(dirname(this.file), { recursive: true, mode: 0o700 });
@@ -130,7 +150,7 @@ export async function showcaseHttp(req, res, url, store) {
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 8192) return send(413, { error: { code: 'REQUEST_TOO_LARGE' } });
+    if (size > 256 * 1024) return send(413, { error: { code: 'REQUEST_TOO_LARGE' } });
     chunks.push(chunk);
   }
   let input;

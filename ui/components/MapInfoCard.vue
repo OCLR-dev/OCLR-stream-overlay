@@ -23,9 +23,9 @@ const mapDifficulty = computed(() => {
   const map = view.value.currentMap;
   return map?.difficulty || metadata.value?.difficulty || map?.artist || metadata.value?.artist || '—';
 });
-watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod], ([id, mod], _, cleanup) => {
+watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod, () => view.value.metadataEnabled], ([id, mod, enabled], _, cleanup) => {
   metadata.value = null;
-  if (!view.value.shared || !id) return;
+  if (!view.value.shared || !id || enabled === false) return;
   let active = true;
   let retry: ReturnType<typeof setTimeout> | undefined;
   cleanup(() => { active = false; clearTimeout(retry); });

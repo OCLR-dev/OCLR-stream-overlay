@@ -397,10 +397,10 @@ Mappool 红蓝双方的 Ban/Pick 确认均从左向右展开，队色、1600ms �
 
 ### 独立图池 Showcase（2026-11-14，Issue #32）
 
-按 [Issue #32](https://github.com/OCLR-dev/OCLR-stream-overlay/issues/32) 于 `2026-11-14T07:47:07Z` 更新的正文实现。`/showcase` 提供已加载本场图池的选图、查找、前后切图和 OBS 设置，`/showcase?clean=1` 为独立 OBS 浏览器源。它不在比赛场景枚举或 `/control` 场景切换中，`/overlay` 继续承担比赛输出。
+`/showcase` 先录入演示图池，再自动跟随普通 osu! 客户端经 tosu 提供的当前谱面，`/showcase?clean=1` 为独立 OBS 浏览器源。Slot 由谱面 ID 唯一匹配，不提供手工切 Slot、上一张／下一张或可选的谱面跟随开关。录入支持 Slot + 谱面 ID／具体难度链接 + 可选标题，也可显式复制控制台已加载图池；输入停顿／失焦自动同步。图池独立保存在 `showcase.json`，后续比赛换场或控制台图池调整不覆盖演示图池。
 
-1920×1080 上方 1920×900 保持透明，供直播员自行配置普通 osu! 客户端的单 rep 捕获；底部 180px 内仅保留谱面信息与 Stream Chat。谱面卡从 Playing 拆出为共用 `MapInfoCard`，保留字号、背景图、星数、参数和完整图池槽位样式；Showcase 使用 x=30、y=928、1430×138 的宽卡，Stream Chat 仍为 x=1470、y=928、420×138。无队名、系列分、分差、Match Chat 或自动比赛切换。
+1920×1080 上方 1920×900 保持透明，供直播员自行配置普通 osu! 客户端的单 rep 捕获；底部 180px 内仅保留谱面信息与 Stream Chat。Playing 与 Showcase 共用 `MapInfoCard`，保留字号、背景图、星数、参数和完整图池槽位样式；Showcase 使用 x=30、y=928、1430×138 的宽卡，Stream Chat 仍为 x=1470、y=928、420×138。
 
-Showcase 通过专用 API／SSE 同步，选图与可选参数设置保存在独立 `showcase.json`。图池只读取本场已加载条目，不改比赛会话；本场或图池变化使旧选择失效。可选参数读取现有 tosu 连接的普通客户端快照，只接受新鲜且 ID 匹配的数据；赛事数据、错图、断线或过期时参数未知。此数据不驱动选图或比赛自动化。
+专用 API／SSE 同步独立图池和当前客户端显示，不发送比赛命令。普通客户端数据必须新鲜且有有效谱面 ID；唯一匹配显示 Slot，池外或重复 ID 显示真实客户端谱面信息但 Slot 为 `—`，操作区说明原因。断线、过期、空谱面或有效赛事房间／选手数据清除实时显示，不沿用旧 Slot 或参数。空 tourney 占位字段不视为有效赛事数据。独立图池可读取现有封面／元数据服务；未匹配条目不请求池内计算参数。
 
-OBS 通过独立创建操作生成 `OCLR · Showcase`，仅添加其浏览器源，并在配置了身份码时复用直播间弹幕源。保留常规／EX 预设、人工捕获摆位和 Program；重复创建保留人工调整，中断后可重试。验证与实机边界见 [Showcase 验证](docs/verification/showcase/README.md)。
+OBS 独立创建 `OCLR · Showcase`，只添加其浏览器源，并在配置身份码时复用直播间弹幕。保留常规／EX 预设、人工捕获摆位和 Program；重复创建保留人工调整，中断后可重试。`/overlay` 用途和比赛自动化保持；验证与实机边界见 [Showcase 验证](docs/verification/showcase/README.md)。

@@ -39,7 +39,7 @@ npm start
 
 - 直播员：[http://localhost:3001/control](http://localhost:3001/control)。按当前画面管理、浏览器预览、现场处理与完整手动调整；设置修改自动同步。
 - OBS：[http://localhost:3001/overlay](http://localhost:3001/overlay)。只读输出，画幅 1920×1080；始终使用同一个浏览器源与这个固定地址。不要固定 `#scene`，旧 hash 也不会覆盖共享会话。
-- 图池 Showcase：[http://localhost:3001/showcase](http://localhost:3001/showcase)。独立选图与播出；OBS 浏览器源使用 `/showcase?clean=1`。
+- 图池 Showcase：[http://localhost:3001/showcase](http://localhost:3001/showcase)。录入演示图池后自动跟随普通客户端谱面；OBS 浏览器源使用 `/showcase?clean=1`。
 - 视觉演示：[http://localhost:3001/](http://localhost:3001/)。保留独立演示数据、URL 恢复和原评审控件，不改变正式会话。
 
 控制台与输出是两个独立页面，通过 Node 服务的快照和 SSE 同步。控制台内的只读 iframe 复用父页已收到的快照，减少重复长连接；独立 /overlay 仍直接订阅服务端。关闭或刷新控制台不影响输出；浏览器重新连接会取得统一快照。最终合成可在 OBS 的 Program（实际播出）或录像中检查。
@@ -52,11 +52,12 @@ npm start
 
 ## 图池 Showcase
 
-打开 `/showcase`，从控制台已加载的本场图池中点选谱面，或使用上一张／下一张。选图立即同步到独立 OBS 浏览器源，刷新及重启保留；更换本场或图池后需重新选择。无图池时先在 `/control` 加载本场图池。Showcase 的展示选择独立保存到比赛文件同目录的 `showcase.json`，不写 Ban/Pick、局次、比分或比赛场景。
+打开 `/showcase`，先录入演示图池，每行「Slot 谱面ID或链接 标题（可选）」，例如 `NM1 4278199 eclosion`；也可点击「复制控制台已加载图池」。支持 osu! 具体难度链接，图集链接须带 `#osu/难度ID`。输入停顿或离开输入框后自动同步，无需保存。图池单独写入比赛文件同目录的 `showcase.json`，后续控制台换场或改图池不会覆盖它。
 
+让 tosu 读取 osu! 普通客户端，在客户端选择谱面或运行 rep；Showcase 按当前谱面 ID 自动匹配 Slot，并同步曲名、难度、封面及可用参数，不需要手工选图或切 Slot。只有唯一匹配时才显示图池 Slot；池外或同一 ID 对应多个 Slot 时显示 `—`，操作区说明原因。断线、过期、无有效谱面或有效赛事客户端数据不会保留上张图的实时显示。
 在页面的「Showcase 的 OBS 设置」中连接本机 OBS，然后点击「创建 Showcase 场景」。会创建 `OCLR · Showcase` 和 1920×1080 的独立 `/showcase?clean=1` 浏览器源；不会自动切 Program。已有直播身份码时会复用同一弹幕源，也可在 Showcase 设置中粘贴身份码。osu! 普通客户端运行单张谱面的 rep 后，请自行在 OBS 添加游戏／窗口采集源并放到 Showcase 浏览器源下方。上方 1920×900 区域透明，底部只显示 Playing 同款谱面信息与 `STREAM CHAT`。
 
-「补充普通客户端的 tosu 谱面参数」为可选项，复用服务端当前已连接的 tosu 数据，不另建游戏连接。只在普通客户端、来源新鲜且谱面 ID 与展示选图一致时显示参数；不会跟随客户端换图、读赛事客户端参数或将缺失值补成零。曲名、难度与封面沿用已加载图池和现有谱面元数据／图片服务。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
+谱面跟随复用服务端当前已连接的 tosu 数据，不另建浏览器直连。Showcase 的图池与自动显示不修改比赛 Ban/Pick、局次、比分、场景或自动化；`/overlay` 继续承担原比赛输出。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
 
 ## 贡献者实机测试数据
 

@@ -5,26 +5,26 @@
 .showcase-heading > span { color: var(--purple-light); font: 700 12px/1.4 var(--mono); letter-spacing: .12em; }
 .showcase-controls a { color: #d1baff; text-underline-offset: 3px; }
 .showcase-controls p { overflow-wrap: anywhere; }
-.showcase-controls button, .showcase-controls input { min-height: 44px; border: 1px solid var(--review-line); border-radius: 4px; background: #211139; color: var(--ink); padding: 8px 10px; font: inherit; }
+.showcase-controls button, .showcase-controls input, .showcase-controls textarea { min-height: 44px; border: 1px solid var(--review-line); border-radius: 4px; background: #211139; color: var(--ink); padding: 8px 10px; font: inherit; }
 .showcase-controls button { cursor: pointer; }
 .showcase-controls button:disabled { opacity: .5; cursor: default; }
 .showcase-controls button:hover:not(:disabled) { border-color: var(--purple-light); background: #382055; }
-.showcase-controls :is(button, input, a):focus-visible { outline: 2px solid #d1baff; outline-offset: 3px; }
-.showcase-navigation { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.showcase-navigation span { color: var(--muted); font-family: var(--mono); }
-.showcase-search, .showcase-controls .obs-settings label { display: grid; gap: 6px; min-width: 0; }
-.showcase-search input, .showcase-controls .obs-settings input { width: 100%; min-width: 0; }
-.showcase-maps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; max-height: 36vh; overflow-y: auto; padding: 4px; margin-inline: -4px; }
-.showcase-maps button { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; }
-.showcase-maps button[aria-pressed='true'] { border-color: var(--purple-light); background: #422363; box-shadow: inset 3px 0 var(--purple-light); }
+.showcase-controls :is(button, input, textarea, a):focus-visible { outline: 2px solid #d1baff; outline-offset: 3px; }
+.showcase-pool-input, .showcase-controls .obs-settings label { display: grid; gap: 6px; min-width: 0; }
+.showcase-pool-input textarea, .showcase-controls .obs-settings input { width: 100%; min-width: 0; }
+.showcase-maps { list-style: none; margin-block: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; max-height: 36vh; overflow-y: auto; padding: 4px; margin-inline: -4px; }
+.showcase-maps li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; border: 1px solid var(--review-line); border-radius: 4px; padding: 8px 10px; }
+.showcase-maps li[data-current='true'] { border-color: var(--purple-light); background: #422363; box-shadow: inset 3px 0 var(--purple-light); }
 .showcase-maps b { padding: 5px; border-radius: 3px; background: var(--mod-bg); color: var(--mod-ink); text-align: center; }
 .showcase-maps span { min-width: 0; }
 .showcase-maps strong, .showcase-maps small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .showcase-maps small, .showcase-help { color: var(--muted); }
 .showcase-status { min-height: 42px; }
 .showcase-error { color: #ffabc1; }
-.showcase-check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
-.showcase-check input { flex: 0 0 20px; width: 20px; accent-color: var(--purple); }
+.showcase-pool-setup { display: grid; gap: 12px; }
+.showcase-pool-setup h2, .showcase-pool-setup p { margin: 0; }
+.showcase-pool-setup h2 { font-size: 17px; }
+.showcase-pool-input textarea { resize: vertical; min-height: 160px; font: 13px/1.6 var(--mono); }
 .showcase-controls .obs-settings { border-top: 1px solid var(--review-line); padding-top: 16px; }
 .showcase-controls .obs-settings summary { cursor: pointer; min-height: 44px; }
 .showcase-controls .obs-settings :is(.setup-meta, .operator-inline) { display: grid; gap: 8px; }
@@ -39,7 +39,7 @@
 .showcase-clean .canvas-stage { padding: 0; background: transparent; }
 body.is-showcase { background: transparent; }
 @media (max-width: 800px) {
-  .showcase-app:not(.showcase-clean) { flex-direction: column-reverse; overflow-y: auto; }
+  .showcase-app:not(.showcase-clean) { flex-direction: column; overflow-y: auto; }
   .showcase-controls { flex-basis: auto; overflow: visible; border-right: 0; }
-  .showcase-app:not(.showcase-clean) .canvas-stage { flex: 0 0 240px; }
+  .showcase-app:not(.showcase-clean) .canvas-stage { order: -1; flex: 0 0 240px; }
 }

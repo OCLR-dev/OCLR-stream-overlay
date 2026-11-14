@@ -433,9 +433,13 @@
       }
     }
   ],
-  "mapSelectionSync": true,
-  "refreshRestores": true,
-  "search": true,
+  "automaticSlotFollow": true,
+  "poolTextAutosaves": true,
+  "invalidDraftRetained": true,
+  "outsidePoolUnknown": true,
+  "duplicateIdUnknown": true,
+  "disconnectClears": true,
+  "refreshFollowsLive": true,
   "mobileNoOverflow": true,
   "matchSessionUnchanged": true,
   "cleanNoManagementRequests": true,

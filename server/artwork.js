@@ -23,14 +23,14 @@ function matchingLive(snapshot, id) {
   return live.sources?.tosu !== 'simulated' && live.tosu.status === 'live' && data?.beatmap.id === id ? data.beatmap : null;
 }
 
-export function createArtworkHandler(config, fetchImpl, store) {
+export function createArtworkHandler(config, fetchImpl, store, showcase = null) {
   const resolveMetadata = createBeatmapMetadataResolver(fetchImpl);
   // Thumbnails need this match and telemetry, not a copy of the potentially
   // large historical catalogue for every image request.
   const snapshot = () => {
     // Portable startup binds the server before it restores the session.
     const current = config.session || store;
-    return current ? { session: current.state, live: current.live } : null;
+    return current ? { session: { pool: [...current.state.pool, ...(showcase?.state.pool || [])] }, live: current.live } : null;
   };
   const backgrounds = new Map(); const pending = new Map();
   return async (req, res, url) => {

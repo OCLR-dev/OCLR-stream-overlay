@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ShowcaseStore } from '../server/showcase.js';
+import { parseShowcasePool } from '../server/showcase-pool.js';
 import { SessionStore } from '../server/session/store.js';
 import { createOverlayServer } from '../server/app.js';
 import { simulationSession } from '../tools/tosu-simulator/fixture.js';
@@ -13,9 +14,31 @@ function setup(t, options) {
   t.after(() => session.close());
   return { session, showcase: new ShowcaseStore(session, options) };
 }
-const choose = (showcase, index = 0, useTosu = false) => showcase.command({ poolToken: showcase.snapshot().poolToken, selectedId: showcase.snapshot().pool[index]?.id ?? null, useTosu });
+const copyPool = showcase => showcase.command({ type: 'use-loaded-pool', poolToken: showcase.snapshot().poolToken, loadedPoolToken: showcase.snapshot().loadedPoolToken });
+const setPool = (showcase, text) => showcase.command({ type: 'pool-text', text, poolToken: showcase.snapshot().poolToken });
+function frame(session, entry, extra = {}) {
+  const beatmap = { id: entry.beatmapId, title: entry.title || 'Client title', difficulty: 'Client difficulty', stats: { stars: { total: 0 }, cs: { converted: 0 } }, time: { lastObject: 0 } };
+  session.live.tosu = { status: 'live', updatedAt: new Date().toISOString(), data: { beatmap, tourney: null, ...extra } };
+  session.emit();
+}
 
-test('Showcase selection persists separately and never changes competition state or its subscribers', async t => {
+test('pool input accepts IDs and exact difficulty URLs, retains same-map metadata and rejects incomplete/invalid lists', () => {
+  const previous = [{ id: 'old', label: 'NM1', beatmapId: 101, title: 'Old title', setId: 42, difficulty: 'Old difficulty', artist: 'Artist' }];
+  const pool = parseShowcasePool('NM1 101 Title\nHD2 https://osu.ppy.sh/beatmaps/102\nHR1 https://osu.ppy.sh/beatmapsets/42#osu/103\nTB https://osu.ppy.sh/b/104', previous);
+  assert.deepEqual(pool.map(entry => [entry.label, entry.beatmapId]), [['NM1', 101], ['HD2', 102], ['HR1', 103], ['TB', 104]]);
+  assert.equal(pool[0].setId, 42);
+  assert.equal(pool[0].difficulty, 'Old difficulty');
+  const changed = parseShowcasePool('NM1 105', previous)[0];
+  assert.equal(changed.setId, undefined);
+  assert.equal(changed.difficulty, '');
+  for (const text of ['NM1 0', 'NM1 1.5', 'NM1 9007199254740992', 'NM1 https://osu.ppy.sh/beatmapsets/42', 'NM1 https://example.org/beatmaps/101', 'NM1 101\nNM1 102', 'HD0 101', 'NM1 101\ninvalid']) {
+    assert.throws(() => parseShowcasePool(text), /图池|Slot/);
+  }
+  assert.throws(() => parseShowcasePool(Array.from({ length: 121 }, (_, i) => `NM${i + 1} ${i + 1}`).join('\n')), /120/);
+  assert.deepEqual(parseShowcasePool('  \n'), []);
+});
+
+test('the independent pool persists across restart, while current Slot follows the latest ordinary-client map without manual selection', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'oclr-showcase-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const file = join(dir, 'showcase.json');
@@ -23,70 +46,103 @@ test('Showcase selection persists separately and never changes competition state
   const original = structuredClone(session.state);
   let matchEvents = 0;
   const stop = session.subscribe(() => matchEvents++);
-  await choose(showcase, 0);
-  assert.equal(showcase.snapshot().currentMap.id, session.state.pool[0].id);
-  await choose(showcase, 1, true);
+  await copyPool(showcase);
+  assert.equal(matchEvents, 1, 'pool import does not emit a competition event');
+  assert.equal(showcase.snapshot().currentMap, null);
+  for (const entry of session.state.pool.slice(0, 3)) {
+    frame(session, entry);
+    assert.equal(showcase.snapshot().matchedId, entry.id);
+    assert.equal(showcase.snapshot().currentMap.label, entry.label);
+  }
   assert.deepEqual(session.state, original);
-  assert.equal(matchEvents, 1);
   stop();
   const restored = new ShowcaseStore(session, { file });
   await restored.ready;
-  assert.equal(restored.snapshot().selectedId, session.state.pool[1].id);
-  assert.equal(restored.snapshot().useTosu, true);
-  const bytes = JSON.parse(await readFile(file, 'utf8'));
-  assert.deepEqual(Object.keys(bytes).sort(), ['poolToken', 'selectedId', 'useTosu']);
+  assert.equal(restored.snapshot().matchedId, session.state.pool[2].id);
+  session.live.tosu.status = 'disconnected';
+  assert.equal(restored.snapshot().currentMap, null, 'the last live Slot is never persisted');
+  const saved = JSON.parse(await readFile(file, 'utf8'));
+  assert.deepEqual(Object.keys(saved).sort(), ['pool', 'schema']);
+  assert.equal(saved.schema, 2);
 });
 
-test('live match progress cannot replace the selected map; replacing or clearing a pool invalidates it', async t => {
+test('manual pool recording is independent of match progress and later control-pool replacement', async t => {
   const { session, showcase } = setup(t);
-  await choose(showcase);
-  const first = showcase.snapshot();
+  await setPool(showcase, 'HD2 101 Showcase title');
+  const pool = showcase.snapshot().pool;
   session.state.scene = 'playing';
   session.state.seriesAdjustment.a = 2;
-  session.state.poolMarks = [{ entryId: first.selectedId, status: 'banned', team: 'a' }];
-  session.emit();
-  assert.equal(showcase.snapshot().selectedId, first.selectedId);
-  assert.equal(showcase.snapshot().poolToken, first.poolToken);
-  session.state.pool = [session.state.pool[1]];
-  assert.equal(showcase.snapshot().currentMap, null);
-  await assert.rejects(showcase.command({ poolToken: first.poolToken, selectedId: first.selectedId, useTosu: false }), /图池已更新/);
-  await assert.rejects(showcase.command({ poolToken: showcase.snapshot().poolToken, selectedId: 'outside-pool', useTosu: false }), /已加载/);
   session.state.pool = [];
-  assert.equal(showcase.snapshot().currentMap, null);
-  assert.deepEqual(showcase.snapshot().pool, []);
+  session.emit();
+  frame(session, pool[0]);
+  assert.equal(showcase.snapshot().currentMap.label, 'HD2');
+  assert.deepEqual(showcase.snapshot().pool, pool);
+  await setPool(showcase, 'HR1 101 New Slot');
+  assert.equal(showcase.snapshot().currentMap.label, 'HR1', 'editing the mapping updates the current Slot immediately');
+  const before = showcase.snapshot().pool;
+  await assert.rejects(setPool(showcase, 'HD1 101\nnot an entry'), /第 2 行/);
+  assert.deepEqual(showcase.snapshot().pool, before, 'a malformed line cannot partially replace the pool');
 });
 
-test('optional ordinary-client parameters require matching selection and freshness; never use tourney ranges or change selection', async t => {
+test('outside-pool and duplicate-ID maps show real client metadata with an unknown Slot; old Slots cannot leak', async t => {
   const { session, showcase } = setup(t);
-  await choose(showcase, 0, true);
-  const selected = showcase.snapshot().currentMap;
-  const beatmap = { id: selected.beatmapId, stats: { stars: { total: 0 }, cs: { converted: 0 } }, time: { lastObject: 0 } };
-  session.live.tosu = { status: 'live', updatedAt: new Date().toISOString(), data: { beatmap, tourney: null } };
+  await setPool(showcase, 'NM1 101\nHD2 102');
+  frame(session, { beatmapId: 101 });
+  assert.equal(showcase.snapshot().currentMap.label, 'NM1');
+  frame(session, { beatmapId: 999 });
+  assert.equal(showcase.snapshot().sourceStatus, 'unmatched');
+  assert.equal(showcase.snapshot().currentMap.label, '—');
+  assert.equal(showcase.snapshot().currentMap.title, 'Client title');
+  assert.equal(showcase.snapshot().matchedId, null);
+  await setPool(showcase, 'NM1 999\nHD2 999');
+  assert.equal(showcase.snapshot().sourceStatus, 'ambiguous');
+  assert.equal(showcase.snapshot().currentMap.label, '—');
+  await setPool(showcase, '');
+  assert.equal(showcase.snapshot().sourceStatus, 'no-pool');
+  assert.equal(showcase.snapshot().currentMap.label, '—');
+});
+
+test('fresh ordinary-client identity is mandatory; empty tourney placeholders and true zero parameters are supported', async t => {
+  const { session, showcase } = setup(t);
+  await copyPool(showcase);
+  frame(session, session.state.pool[0]);
   assert.equal(showcase.snapshot().mapParameters.stats.stars.total, 0);
-  assert.equal(showcase.snapshot().sourceStatus, 'matched');
   session.live.tosu.data.tourney = { ipcState: 1, teams: { left: '', right: '' }, players: [{ osuId: 0, name: '' }, { osuId: 0, name: '' }] };
-  assert.equal(showcase.snapshot().sourceStatus, 'matched', 'ordinary v2 frames can contain empty tournament placeholders');
+  assert.equal(showcase.snapshot().sourceStatus, 'matched');
   for (const status of ['stale', 'disconnected', 'invalid-data']) {
     session.live.tosu.status = status;
+    assert.equal(showcase.snapshot().currentMap, null);
     assert.equal(showcase.snapshot().mapParameters, null);
   }
   session.live.tosu.status = 'live';
   session.live.tosu.updatedAt = new Date(Date.now() - 6000).toISOString();
-  assert.equal(showcase.snapshot().mapParameters, null);
+  assert.equal(showcase.snapshot().currentMap, null);
   session.live.tosu.updatedAt = new Date().toISOString();
-  session.live.tosu.data.tourney = { ipcState: 3, teams: { left: 'A', right: 'B' }, players: [] };
-  assert.equal(showcase.snapshot().mapParameters, null);
-  session.live.tosu.data.tourney = { players: [{ osuId: 123 }] };
-  assert.equal(showcase.snapshot().mapParameters, null);
+  for (const tourney of [{ ipcState: 3, teams: { left: 'A', right: 'B' } }, { players: [{ osuId: 123 }] }, { teams: { left: 'A', right: '' } }]) {
+    session.live.tosu.data.tourney = tourney;
+    assert.equal(showcase.snapshot().sourceStatus, 'tourney');
+    assert.equal(showcase.snapshot().currentMap, null);
+  }
   session.live.tosu.data.tourney = null;
-  session.live.tosu.data.beatmap = { ...beatmap, id: selected.beatmapId + 1 };
-  assert.equal(showcase.snapshot().mapParameters, null);
-  assert.equal(showcase.snapshot().selectedId, selected.id);
-  await choose(showcase, 0, false);
-  assert.equal(showcase.snapshot().sourceStatus, 'off');
+  session.live.tosu.data.beatmap.id = 0;
+  assert.equal(showcase.snapshot().sourceStatus, 'no-map');
+  assert.equal(showcase.snapshot().currentMap, null);
 });
 
-test('unreadable Showcase settings are retained, and rejected writes leave both stores intact', async t => {
+test('old manual-selection settings migrate to a pool and ignore the selected Slot', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-showcase-migrate-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'showcase.json');
+  await writeFile(file, JSON.stringify({ poolToken: 'previous', selectedId: 'old-selection', useTosu: false }));
+  const { session, showcase } = setup(t, { file });
+  await showcase.ready;
+  assert.deepEqual(showcase.snapshot().pool, session.state.pool);
+  assert.equal(showcase.snapshot().currentMap, null);
+  frame(session, session.state.pool[1]);
+  assert.equal(showcase.snapshot().matchedId, session.state.pool[1].id);
+});
+
+test('bad settings, stale pool imports and conflicting pool edits do not overwrite either store', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'oclr-showcase-bad-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const file = join(dir, 'showcase.json');
@@ -94,41 +150,71 @@ test('unreadable Showcase settings are retained, and rejected writes leave both 
   const { session, showcase } = setup(t, { file });
   const original = structuredClone(session.state);
   await showcase.ready;
-  assert.match(showcase.snapshot().error, /无法读取/);
-  await assert.rejects(choose(showcase), /无法读取/);
+  await assert.rejects(copyPool(showcase), /无法读取/);
   assert.equal(await readFile(file, 'utf8'), 'broken original');
   assert.deepEqual(session.state, original);
+  const separate = new ShowcaseStore(session);
+  const initial = separate.snapshot();
+  await setPool(separate, 'NM1 101');
+  await assert.rejects(separate.command({ type: 'pool-text', text: '', poolToken: initial.poolToken }), /已更新/);
+  const last = separate.snapshot();
+  session.state.pool = [];
+  await assert.rejects(separate.command({ type: 'use-loaded-pool', poolToken: last.poolToken, loadedPoolToken: last.loadedPoolToken }), /尚未加载/);
+  assert.equal(separate.snapshot().pool.length, 1);
 });
 
-test('standalone output SSE shares selections, reconnects and enforces same-origin bounded writes', async t => {
+test('separate SSE outputs follow source map changes, pool writes stay same-origin and media is scoped to recorded maps', async t => {
   const { session } = setup(t);
+  session.state.pool[0].setId = 42;
   const config = { port: 0 };
-  const server = createOverlayServer(config, undefined, undefined, session);
+  const server = createOverlayServer(config, async () => { throw new Error('No network in regression'); }, undefined, session);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   config.port = server.address().port;
-  t.after(() => new Promise(resolve => server.close(resolve)));
   const base = `http://127.0.0.1:${config.port}`;
   const abort = new AbortController();
-  t.after(() => abort.abort());
+  t.after(() => { abort.abort(); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
   const streams = await Promise.all([0, 1].map(() => fetch(base + '/api/showcase/events', { signal: abort.signal })));
   const readers = streams.map(response => response.body.getReader());
   await Promise.all(readers.map(reader => reader.read()));
   const original = structuredClone(session.state);
   const initial = await fetch(base + '/api/showcase').then(r => r.json());
-  const input = { poolToken: initial.poolToken, selectedId: initial.pool[1].id, useTosu: false };
+  const input = { type: 'use-loaded-pool', poolToken: initial.poolToken, loadedPoolToken: initial.loadedPoolToken };
   const post = (body, headers = {}) => fetch(base + '/api/showcase', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json', ...headers }, body });
   assert.equal((await post(JSON.stringify(input), { Origin: 'https://example.org' })).status, 403);
-  assert.equal((await post('x'.repeat(8193))).status, 413);
+  assert.equal((await post('x'.repeat(256 * 1024 + 1))).status, 413);
   assert.equal((await post('{')).status, 400);
   assert.equal((await post(JSON.stringify(input))).status, 200);
-  for (const reader of readers) {
-    const message = new TextDecoder().decode((await reader.read()).value);
-    assert.match(message, new RegExp(`"selectedId":"${input.selectedId}"`));
+  await Promise.all(readers.map(reader => reader.read()));
+  for (const entry of session.state.pool.slice(0, 2)) {
+    frame(session, entry);
+    for (const reader of readers) {
+      const message = new TextDecoder().decode((await reader.read()).value);
+      assert.match(message, new RegExp(`"matchedId":"${entry.id}"`));
+    }
   }
-  abort.abort();
-  const reconnect = await fetch(base + '/api/showcase').then(r => r.json());
-  assert.equal(reconnect.selectedId, input.selectedId);
+  assert.deepEqual(session.state, original);
   assert.equal((await fetch(base + '/api/showcase?token=x')).status, 400);
   assert.equal((await fetch(base + '/api/showcase', { method: 'DELETE' })).status, 405);
-  assert.deepEqual(session.state, original);
+  session.state.pool = [];
+  const snapshot = await fetch(base + '/api/showcase').then(r => r.json());
+  assert.ok(snapshot.pool.length > 0, 'copying the pool detaches it from competition state');
+  const cover = await fetch(base + `/api/beatmaps/${snapshot.pool[0].beatmapId}/cover`, { redirect: 'manual' });
+  assert.equal(cover.status, 302, 'the recorded Showcase pool keeps its verified cover access');
+  assert.equal((await fetch(base + '/api/beatmaps/99999999/cover')).status, 404);
+  abort.abort();
+});
+
+test('Showcase attaches to the session restored after the portable HTTP server has bound', async t => {
+  const { session } = setup(t);
+  const config = { port: 0 };
+  const server = createOverlayServer(config);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  config.port = server.address().port;
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${config.port}/api/showcase`;
+  assert.equal((await fetch(url)).status, 503);
+  config.session = session;
+  const response = await fetch(url);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).loadedPoolCount, session.state.pool.length);
 });

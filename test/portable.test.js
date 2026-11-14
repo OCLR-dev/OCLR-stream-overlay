@@ -59,6 +59,8 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     const initial = JSON.parse(await readFile(join(data, 'session.json'), 'utf8'));
     assert.equal((await fetch(`${base}/control`)).status, 200);
     assert.equal((await fetch(`${base}/overlay`)).status, 200);
+    assert.equal((await fetch(`${base}/showcase`)).status, 200);
+    assert.equal((await fetch(`${base}/api/showcase`)).status, 200, 'Showcase sees the session restored after HTTP startup');
     const controlAbort = new AbortController();
     const outputAbort = new AbortController();
     const [control, output] = await Promise.all([controlAbort, outputAbort].map(controller => fetch(`${base}/api/session/events`, { signal: controller.signal })));

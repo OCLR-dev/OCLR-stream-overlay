@@ -103,7 +103,7 @@ export async function readBoundedJson(response) {
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
   const showcase = new ShowcaseStore(config.session || session);
-  const artwork = createArtworkHandler(config, fetchImpl, config.session || session);
+  const artwork = createArtworkHandler(config, fetchImpl, config.session || session, showcase);
   const playerArt = createPlayerArtHandler(fetchImpl);
   const streaming = config.customMatch ? null : new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
     const store = config.session || session;
@@ -135,6 +135,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
     if (config.customMatch && (url.pathname.startsWith('/api/oclr/') || url.pathname === '/api/streaming')) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
+    showcase.attachSession(activeSession);
     if (await obsHttp(req, res, url, config.obs)) return;
     if (await showcaseHttp(req, res, url, showcase)) return;
     if (streaming && await streamingHttp(req, res, url, streaming, activeSession)) return;
