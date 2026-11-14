@@ -6,12 +6,13 @@ export interface ShowcaseSnapshot {
   revision: number;
   poolToken: string;
   pool: PoolEntry[];
-  selectedId: string | null;
+  poolText: string;
+  loadedPoolCount: number;
+  loadedPoolToken: string;
+  matchedId: string | null;
   currentMap: PoolEntry | null;
   mapParameters: MapInfoSource['mapParameters'];
-  useTosu: boolean;
-  sourceStatus: 'off' | 'unavailable' | 'tourney' | 'different-map' | 'matched';
-  edition: string | null;
+  sourceStatus: 'unavailable' | 'tourney' | 'no-map' | 'no-pool' | 'ambiguous' | 'matched' | 'unmatched';
   error: string;
 }
 
@@ -41,19 +42,21 @@ export function useShowcase() {
     watchdog = setInterval(() => { if (Date.now() - lastReceived > 10000) connection.value = 'disconnected'; }, 1500);
   });
   onUnmounted(() => { disposed = true; events?.close(); clearInterval(watchdog); });
-  const select = async (selectedId: string | null, useTosu = snapshot.value?.useTosu || false) => {
-    if (busy.value || !snapshot.value || connection.value !== 'synced') return;
+  const command = async (type: 'pool-text' | 'use-loaded-pool', fields: Record<string, unknown> = {}) => {
+    if (busy.value || !snapshot.value || connection.value !== 'synced') return false;
     busy.value = true; error.value = '';
     try {
       const response = await fetch('/api/showcase', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ poolToken: snapshot.value.poolToken, selectedId, useTosu }), signal: AbortSignal.timeout(10000) });
+        body: JSON.stringify({ poolToken: snapshot.value.poolToken, type, ...fields }), signal: AbortSignal.timeout(10000) });
       const value = await response.json();
       if (value.snapshot) apply(value.snapshot);
-      if (!response.ok) throw new Error(value.error?.message || '展示谱面未更新，请重试。');
+      if (!response.ok) throw new Error(value.error?.message || '图池未更新，请重试。');
       apply(value);
+      return true;
     } catch (reason) {
-      error.value = reason instanceof Error && /[\u3400-\u9fff]/.test(reason.message) ? reason.message : '连接中断，请核对当前展示谱面后重试。';
+      error.value = reason instanceof Error && /[\u3400-\u9fff]/.test(reason.message) ? reason.message : '连接中断，请核对图池列表后重试。';
+      return false;
     } finally { busy.value = false; }
   };
-  return { snapshot, connection, busy, error, select };
+  return { snapshot, connection, busy, error, command };
 }
