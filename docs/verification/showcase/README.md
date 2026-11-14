@@ -1,5 +1,13 @@
 # 独立图池 Showcase 验证
 
+## 自定义测试版同步（2026-11-14）
+
+在独立工作树 `overlay-showcase-custom-sync`，从 `test/custom-match` 的 `9cc8df5` 同步主线 `d3648fa` 至 `ce01cda` 的通用 OBS 与 Showcase 提交。保留自定义赛事入口、阶段／BO／BP、CA、七秒 Pick、独立会话及 OCLR 接口禁用；自定义启动入口增加本地 OBS 控制器，支持同端口的 Showcase 场景创建。图片服务合并 Showcase 图池时保留自定义来源地址所需的会话字段。
+
+主线构建及 529 项回归通过，自定义版构建及 574 项回归通过；两版各另有 2 项便携服务生命周期测试通过。便携测试仅在临时副本中将固定 3001 替换为空闲端口，原 3001 服务和用户会话保持。自定义运行时测试确认 `/api/obs` 与 `/api/showcase` 可用，OCLR 接口仍返回 403；既有自定义背景换源、CA 和比赛恢复回归通过。
+
+以下为此前独立 Showcase 实现的浏览器和数据边界验收记录；Windows 原生 osu!／tosu／OBS 合成仍需实机确认。
+
 日期：2026-11-14（America/New_York）。隔离工作树 `overlay-issue-32`，分支 `codex/issue-32-showcase`。原工作区的 README、OBS 预设和测试未提交修改保留，原 3001 服务、比赛文件、OBS 和发布分支未改动。
 
 ## 当前行为与边界

@@ -4,6 +4,7 @@ import { newCustomSession } from './session/model.js';
 import { createOverlayServer } from './app.js';
 import { TosuClient } from '../src/index.js';
 import { acquireRuntime } from './runtime.js';
+import { attachObs } from './obs/controller.js';
 
 // Deliberately does not load config.js, env files, credentials or OCLR clients.
 export async function startCustomMatch({ port = 3011, sessionFile = fileURLToPath(new URL('../.local/custom-match/session.json', import.meta.url)),
@@ -47,6 +48,7 @@ export async function startCustomMatch({ port = 3011, sessionFile = fileURLToPat
     server = createOverlayServer(config, fetch, undefined, store);
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
     config.port = server.address().port;
+    await attachObs(config, store);
     const appUrl = `http://127.0.0.1:${config.port}`;
     if (simulator) simulator.appUrl = appUrl;
     let stopped = false;

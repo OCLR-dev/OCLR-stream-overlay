@@ -121,6 +121,10 @@ test('custom HTTP rejects all OCLR entry points and reports the current source w
   const dir = await mkdtemp(join(tmpdir(), 'oclr-custom-source-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const app = await startCustomMatch({ port: 0, guard: false, sessionFile: join(dir, 'session.json') }); t.after(() => app.stop());
   for (const path of ['/api/oclr/tournaments', '/api/streaming']) assert.equal((await fetch(app.appUrl + path)).status, 403);
+  const obs = await fetch(app.appUrl + '/api/obs');
+  assert.equal(obs.status, 200, 'custom startup attaches its local OBS controller');
+  assert.equal((await obs.json()).phase, 'off');
+  assert.equal((await fetch(app.appUrl + '/api/showcase')).status, 200);
   await app.store.command({ id: crypto.randomUUID(), version: app.store.state.version, type: 'auto', payload: { ...app.store.state.auto, wsUrl: 'ws://127.0.0.1:1/websocket/v2' } });
   const config = await (await fetch(app.appUrl + '/api/config')).json(); assert.equal(config.authMode, 'custom');
   assert.equal(config.tosuWsUrl, app.store.state.auto.wsUrl);

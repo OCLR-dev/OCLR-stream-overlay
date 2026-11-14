@@ -1,5 +1,7 @@
 # 自定义赛事本地测试分支
 
+本轮同步主线截至 `ce01cda` 的通用 OBS 与 Showcase 改动。自定义入口的 Showcase 为 `http://127.0.0.1:3011/showcase`，OBS 使用同端口 `/showcase?clean=1`；本机 OBS 设置和 Showcase 图池／Stage 分别保存在自定义会话目录的 `obs-settings.json`、`showcase.json`。自定义赛制、CA、七秒 Pick 与独立会话保留。
+
 控制台通用修复同步自主线 `532676a`。此前本分支已合入主线 `ecaeb16` 的通用实现：比赛记录与自动化恢复、BP 修正、暂停倒计时、EX 次数结算、实时队分、聊天和谱面图像，以及 Windows 启动器。保留自定义赛事标题、阶段/BO/BP、CA 分类、七秒 Pick 与独立会话，不接入 OCLR 登录任务。同步范围、行为调整和本次验证见 [main → custom-match 同步记录](docs/verification/main-custom-sync/README.md)。已有 Windows ZIP 未重新打包，不能代表此源码版本。
 
 正式 `/overlay` 的 Playing 游戏区域保持透明，OBS 旧色值键/色度键应停用；捕获坐标与尺寸不变。根路径演示仍以绿色标记捕获区域。此前 Windows R5 包包含 Warm-up、背景条带与图池角标更新，尚不包含本次通用实现同步；之前的 UI 验证见 [UI 同步记录](docs/verification/pr10-ui-sync/README.md)。

@@ -30,7 +30,8 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
   const snapshot = () => {
     // Portable startup binds the server before it restores the session.
     const current = config.session || store;
-    return current ? { session: { pool: [...current.state.pool, ...(showcase?.state.pool || [])] }, live: current.live } : null;
+    return current ? { session: { pool: [...current.state.pool, ...(showcase?.state.pool || [])],
+      match: current.state.match, auto: current.state.auto }, live: current.live } : null;
   };
   const backgrounds = new Map(); const pending = new Map();
   return async (req, res, url) => {
