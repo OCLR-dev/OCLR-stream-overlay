@@ -7,6 +7,7 @@ export interface ShowcaseSnapshot {
   poolToken: string;
   pool: PoolEntry[];
   poolText: string;
+  stageLabel: string;
   loadedPoolCount: number;
   loadedPoolToken: string;
   matchedId: string | null;
@@ -42,7 +43,7 @@ export function useShowcase() {
     watchdog = setInterval(() => { if (Date.now() - lastReceived > 10000) connection.value = 'disconnected'; }, 1500);
   });
   onUnmounted(() => { disposed = true; events?.close(); clearInterval(watchdog); });
-  const command = async (type: 'pool-text' | 'use-loaded-pool', fields: Record<string, unknown> = {}) => {
+  const command = async (type: 'pool-text' | 'use-loaded-pool' | 'stage-label', fields: Record<string, unknown> = {}) => {
     if (busy.value || !snapshot.value || connection.value !== 'synced') return false;
     busy.value = true; error.value = '';
     try {

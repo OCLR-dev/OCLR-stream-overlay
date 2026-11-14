@@ -7,10 +7,10 @@
       "height": 1080
     },
     "game": {
-      "x": 0,
-      "y": 0,
-      "width": 1920,
-      "height": 900
+      "x": 240,
+      "y": 90,
+      "width": 1440,
+      "height": 810
     },
     "map": {
       "x": 460,
@@ -36,6 +36,12 @@
     "background": "rgb(18, 10, 38)",
     "label": "NM1",
     "title": "eclosion"
+  },
+  "stageHeader": {
+    "text": "阶段预览",
+    "center": 960,
+    "top": 18,
+    "bottom": 82.1875
   },
   "backdrop": {
     "stripes": "victory-stripes-drift",
@@ -477,7 +483,5 @@
   "mobileNoOverflow": true,
   "matchSessionUnchanged": true,
   "cleanNoManagementRequests": true,
-  "errors": [],
-  "showcaseDividerRemoved": true,
-  "playingDividerRetained": true
+  "errors": []
 }

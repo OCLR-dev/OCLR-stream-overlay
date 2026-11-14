@@ -55,7 +55,7 @@ function editChat(event: Event) {
           <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 Showcase 场景…' : '创建 Showcase 场景' }}</button>
           <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
         </div>
-        <p>创建 1920×1080 的独立 Showcase 背景浏览器源。请自行添加 osu! 回放采集并放在它上方，完整缩放到上半区，再在 OBS 切到 Showcase 场景。</p>
+        <p>创建 1920×1080 的独立 Showcase 背景浏览器源。请自行添加 osu! 回放采集并放在它上方，完整缩放到顶部 Stage 下方的回放区域，再在 OBS 切到 Showcase 场景。</p>
         <p v-if="obs.state.showcase" role="status">Showcase 场景已就绪。</p>
       </template>
       <template v-else>
