@@ -60,6 +60,7 @@ test('401/403 clear source, stop polling and never fall back; 429 and 503 back o
     assert.equal(s.state.data, null);
     if (status < 429) assert.equal(jobs.length, 0);
     else assert.ok(jobs[0].ms >= (status === 429 ? 75000 : 30000));
+    assert.equal(s.authorizedEdition(), null);
   }
 });
 
@@ -207,15 +208,21 @@ test('local credential endpoint enforces same-origin JSON, redacts upstream erro
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); config.port = server.address().port;
   t.after(() => new Promise(resolve => server.close(resolve)));
   const base = `http://127.0.0.1:${config.port}`;
+  const getHealth = () => fetch(base + '/api/health').then(result => result.json());
   const post = (body, origin = base) => fetch(`${base}/api/streaming`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  assert.equal((await getHealth()).authorizedEdition, null);
   assert.equal((await post({ action: 'connect', edition: 's11', token }, 'https://evil.example')).status, 403);
-  assert.equal((await post({ action: 'connect', edition: 's11', token })).status, 200);
-  for (const path of ['/api/session', '/api/config', '/api/streaming']) assert.ok(!(await (await fetch(base + path)).text()).includes(token));
+  assert.equal((await post({ action: 'connect', edition: 's12', token })).status, 200);
+  assert.equal((await getHealth()).authorizedEdition, 's12');
+  assert.equal((await post({ action: 'connect', edition: 's13', token })).status, 200);
+  assert.equal((await getHealth()).authorizedEdition, 's13');
+  for (const path of ['/api/session', '/api/config', '/api/streaming', '/api/health']) assert.ok(!(await (await fetch(base + path)).text()).includes(token));
   assert.ok(!JSON.stringify(store.state).includes(token));
   assert.equal((await post({ action: 'import', id: 'http-import', version: 0, fixtureId: id(1) })).status, 200);
   assert.equal(store.state.match.fixtureId, id(1));
   assert.equal((await fetch(`${base}/api/streaming?token=x`)).status, 400);
   assert.equal((await post({ action: 'disconnect' })).status, 200);
+  assert.equal((await getHealth()).authorizedEdition, null);
   assert.equal(store.state.match.fixtureId, id(1));
 });
 
@@ -235,6 +242,7 @@ test('import checks current version and refuses stale or changed assignment', as
   const { s } = source(async url => response(new URL(url).search ? empty() : fixture())); await s.connect({ edition: 's11', token });
   assert.throws(() => s.importCommand({ fixtureId: id(99) }), /有效/);
   s.state.updatedAt = new Date(Date.now() - 31000).toISOString();
+  assert.equal(s.authorizedEdition(), null);
   assert.throws(() => s.importCommand({ fixtureId: id(1) }), /有效/);
 });
 

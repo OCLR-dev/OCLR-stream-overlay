@@ -1,6 +1,6 @@
 # Windows 便携版使用说明
 
-适用：Windows 10 / 11，Intel 或 AMD 64 位（x64）。无需安装 Node.js、Git，不用输入命令。tosu、osu!tourney、OBS 由你自行安装运行，不包含在本包中。
+适用：Windows 10 / 11，Intel 或 AMD 64 位（x64）。无需安装 Node.js、Git，不用输入命令。tosu、osu!stable、OBS 需自行安装。
 
 > Pre-release 是通过 CI 打包与 Windows 原生启动检查的预览版本。开播前请核对该版本的实际 tosu／OBS 接线与播出效果。
 
@@ -16,13 +16,17 @@
 
 历史资料只带入对阵和图池，**不带历史比分**；新测试从 **0:0** 开始。核对阶段、人数与上场名单。已有练习比赛需要清空时再点“初始化”：会先存档，误操作可撤销。中途重新开始可保留自动读取的房间连接，继续显示 Playing 与实时队分；不补记之前的赛果。
 
-## 3. 连接 tosu
+## 3. 连接 tosu 与 osu!Tourney
 
 在启动窗口点击「选择 tosu…」，选取本机已解压的 tosu `.exe`，再点击「打开 tosu」。所选路径会记住，下次打开 OCLR 时可直接使用。移动或更新 tosu 后若原路径失效，重新选择新版程序即可。
 
 启动窗口按所选 `.exe` 的完整路径检查程序是否运行，运行时会停用「打开 tosu」以避免重复启动。`127.0.0.1:24050` 单独显示端口连通状态。游戏数据是否就绪可在直播控制台查看。
 
-在同一台电脑启动 osu!tourney，让 tosu 读取实际测试房间。控制台默认连接 `ws://127.0.0.1:24050/websocket/v2`。tosu 由自己的窗口管理，退出 OCLR 后可继续运行。
+1. 在直播控制台连接 OCLR 授权赛季，等到连接成功。即使没有待播任务，仍可使用已授权的赛季。若连接中断，等恢复后再操作。
+2. 在启动窗口点「选择 osu!.exe…」，选取本机已安装并登录的 osu!stable。建议为直播使用独立的 osu!stable 安装目录。[osu! 官方设置说明](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney/Setup)
+3. 关闭所选安装正在运行的 osu!，点「生成 tournament.cfg」可只写入设置。点「打开 osu!Tourney」会先写入设置，再从同一目录打开 osu!。设置写在所选程序旁，采用 4 人每队和高度 1080，`acronym` 自动填写当前授权赛季，例如授权 S12 时填 `OCLR S12`。如果替换了不同内容的旧设置，上一份文件会保存在同一目录的 `tournament.cfg.oclr.bak`。
+
+在同一台电脑运行 osu!Tourney 和 tosu，让 tosu 读取实际测试房间。控制台默认连接 `ws://127.0.0.1:24050/websocket/v2`。退出 OCLR 后，已打开的 osu! 和 tosu 可继续运行。
 
 在「比赛现场」看 **Now Playing**。它随客户端换图，显示曲名和难度，能确定图池槽位时也会显示编号。直接播放热身图即可看到它，无需先做 Ban 或 Pick。
 
@@ -82,7 +86,7 @@
 
 更新时先退出旧版，再把新版解压到另一个目录，双击新版 OCLR.exe。**比赛数据在 `%LOCALAPPDATA%\OCLR\StreamOverlay`，不在程序目录里**；替换或移动程序不会清空数据。找数据时按 Win + R，粘贴这个路径并回车。备份前先退出直播服务，再复制整个数据文件夹，包含 session.json、archive 和 backups。
 
-tosu 路径独立保存在 `%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\settings.json`，更换便携包后仍可读取。
+tosu 和 osu! 路径保存在 `%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\settings.json`，更换便携包后仍可读取。
 
 从旧 Node 版本迁移：先正常退出旧服务，把旧项目的 `.local` 文件夹复制到新包的 `OCLR.exe` 旁边，再首次启动。程序先备份旧记录，再迁移；原文件保留。已有新数据时以用户数据目录为准，不自动覆盖。旧比赛若原本用其他地址，首次转用本便携版需要把 OBS 源改为上面的固定地址，以后不再更换。
 

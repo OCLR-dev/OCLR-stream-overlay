@@ -12,7 +12,7 @@ func TestTosuProcessMatchesFullPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := findTosu(current); got != tosuRunning {
+	if got := findExecutableProcess(current); got != processRunning {
 		image, imageErr := processImage(uint32(os.Getpid()))
 		t.Fatalf("running executable %q was not detected: %d (process image %q, %v)", current, got, image, imageErr)
 	}
@@ -23,7 +23,7 @@ func TestTosuProcessMatchesFullPath(t *testing.T) {
 	if err := os.WriteFile(other, []byte("fixture"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := findTosu(other); got != tosuStopped {
+	if got := findExecutableProcess(other); got != processStopped {
 		t.Fatalf("same name in another directory was mistaken for the selected program: %d", got)
 	}
 }
@@ -46,7 +46,7 @@ func TestTosuPortCheck(t *testing.T) {
 	}
 }
 
-func TestTosuPreferenceSurvivesReloadAndInvalidSelection(t *testing.T) {
+func TestLauncherPreferencesSurviveReloadAndOldSettings(t *testing.T) {
 	local := t.TempDir()
 	t.Setenv("LOCALAPPDATA", local)
 	settingsFile, err := launcherSettingsPath()
@@ -62,26 +62,28 @@ func TestTosuPreferenceSurvivesReloadAndInvalidSelection(t *testing.T) {
 	}
 	first := filepath.Join(bin, "tosu.exe")
 	second := filepath.Join(bin, "tosu 新版.EXE")
-	for _, path := range []string{first, second} {
+	osu := filepath.Join(bin, "osu!.exe")
+	for _, path := range []string{first, second, osu} {
 		if err := os.WriteFile(path, []byte("fixture"), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if err := saveTosuPath(settingsFile, path); err != nil {
+	}
+	for _, want := range []launcherSettings{{TosuPath: first}, {TosuPath: first, OsuPath: osu}, {TosuPath: second, OsuPath: osu}} {
+		if err := saveLauncherSettings(settingsFile, want); err != nil {
 			t.Fatal(err)
 		}
 		settings, err := loadLauncherSettings(settingsFile)
-		if err != nil || settings.TosuPath != path {
+		if err != nil || settings != want {
 			t.Fatalf("saved selection did not reload: %+v, %v", settings, err)
 		}
 	}
-	for _, path := range []string{"tosu.exe", bin, filepath.Join(bin, "missing.exe")} {
-		if err := saveTosuPath(settingsFile, path); err == nil {
-			t.Fatalf("saved invalid executable %q", path)
+	for _, path := range []string{"osu!.exe", bin, second, filepath.Join(local, "osu!.exe")} {
+		if isOsuExecutable(path) {
+			t.Fatalf("accepted invalid osu! executable %q", path)
 		}
 	}
-	settings, err := loadLauncherSettings(settingsFile)
-	if err != nil || settings.TosuPath != second {
-		t.Fatalf("invalid selection replaced a valid preference: %+v, %v", settings, err)
+	if !isOsuExecutable(osu) {
+		t.Fatal("a valid osu!.exe was rejected")
 	}
 	if _, err := os.Stat(filepath.Join(local, "OCLR", "StreamOverlay")); !os.IsNotExist(err) {
 		t.Fatalf("launcher preferences must not initialize the match directory: %v", err)

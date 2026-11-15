@@ -6,20 +6,24 @@ import (
 )
 
 const (
-	buttonControl = 101
-	buttonCopyOBS = 102
-	buttonExit    = 103
-	buttonChoose  = 104
-	buttonTosu    = 105
+	buttonControl         = 101
+	buttonCopyOBS         = 102
+	buttonExit            = 103
+	buttonChoose          = 104
+	buttonTosu            = 105
+	buttonChooseOsu       = 107
+	buttonGenerateTourney = 108
+	buttonOpenTourney     = 109
 
-	msgServiceStarted = 0x8001
-	msgServiceStopped = 0x8002
-	msgTosuExited     = 0x8003
-	msgTosuChecked    = 0x8004
-	tosuTimer         = 1
+	msgServiceStarted  = 0x8001
+	msgServiceStopped  = 0x8002
+	msgTosuExited      = 0x8003
+	msgTosuChecked     = 0x8004
+	msgTourneyFinished = 0x8005
+	tosuTimer          = 1
 
 	launcherWidth  = 640
-	launcherHeight = 430
+	launcherHeight = 552
 )
 
 type rect struct{ Left, Top, Right, Bottom int32 }
@@ -54,6 +58,7 @@ var (
 	controlColors                          = map[uintptr]textColors{}
 	serviceStatus, tosuField, tosuFeedback uintptr
 	tosuProcessStatus, tosuPortStatus      uintptr
+	osuField, tourneyFeedback              uintptr
 )
 
 func px(n int) uintptr { return uintptr((n*windowScale + 48) / 96) }
@@ -78,7 +83,8 @@ func paintLauncher(dc uintptr) {
 	fill(dc, area(0, 0, launcherWidth, 70), headerColor)
 	fill(dc, area(0, 70, launcherWidth, 3), accentColor)
 	fill(dc, area(24, 87, 592, 136), cardColor)
-	fill(dc, area(24, 237, 592, 173), cardColor)
+	fill(dc, area(24, 237, 592, 152), cardColor)
+	fill(dc, area(24, 403, 592, 132), cardColor)
 }
 
 func paintStatic(dc, child uintptr) uintptr {
@@ -97,7 +103,7 @@ func paintButton(item *drawItem) bool {
 	}
 	background, pressed, foreground := rgb(234, 228, 247), rgb(216, 205, 241), inkColor
 	switch item.ControlID {
-	case buttonControl, buttonTosu:
+	case buttonControl, buttonTosu, buttonOpenTourney:
 		background, pressed, foreground = accentColor, rgb(82, 42, 154), cardColor
 	case buttonExit:
 		background, pressed, foreground = rgb(249, 235, 240), rgb(241, 214, 225), rgb(128, 39, 72)
@@ -139,21 +145,51 @@ func showTosu(note string) {
 	setText(tosuFeedback, note)
 }
 
-func showTosuProcess(status tosuProcess) {
+func showTourney(note string) {
+	path := osuPath
+	if path == "" {
+		path = "尚未选择 osu!.exe"
+	}
+	if note == "" {
+		switch {
+		case osuPath == "":
+			note = "请选择 osu!stable 的 osu!.exe。"
+		case !isOsuExecutable(osuPath):
+			note = "找不到保存的文件，请重新选择。"
+		default:
+			note = "请先在直播控制台连接授权赛季。"
+		}
+	}
+	setText(osuField, path)
+	setText(tourneyFeedback, note)
+	var choose, actions uintptr
+	if !tourneyBusy {
+		choose = 1
+		if isOsuExecutable(osuPath) {
+			actions = 1
+		}
+	}
+	call(user, "EnableWindow", call(user, "GetDlgItem", window, buttonChooseOsu), choose)
+	for _, id := range []uintptr{buttonGenerateTourney, buttonOpenTourney} {
+		call(user, "EnableWindow", call(user, "GetDlgItem", window, id), actions)
+	}
+}
+
+func showTosuProcess(status processStatus) {
 	label, fg := "正在检查…", mutedColor
 	switch status {
-	case tosuMissing:
+	case processMissing:
 		label = "未选有效文件"
-	case tosuStopped:
+	case processStopped:
 		label = "未运行"
-	case tosuRunning:
+	case processRunning:
 		label, fg = "运行中", readyColor
-	case tosuUnknown:
+	case processUnknown:
 		label, fg = "无法确认", waitColor
 	}
 	setStatus(tosuProcessStatus, "所选程序 · "+label, fg)
 	var enabled uintptr
-	if status == tosuStopped {
+	if status == processStopped {
 		enabled = 1
 	}
 	call(user, "EnableWindow", call(user, "GetDlgItem", window, buttonTosu), enabled)
@@ -243,13 +279,20 @@ func runWindow() {
 	static("tosu 应用程序", 42, 247, 555, 22, headingFont, inkColor, cardColor)
 	tosuField = add("EDIT", "", 42, 274, 556, 25, 106, 0x810880, bodyFont) // Border, tab stop, read-only, horizontal scroll.
 	controlColors[tosuField] = textColors{inkColor, cardColor}
-	button("选择 tosu…", 42, 317, 148, buttonChoose)
-	button("打开 tosu", 202, 317, 148, buttonTosu)
-	tosuFeedback = static("", 364, 326, 234, 22, captionFont, mutedColor, cardColor)
-	tosuProcessStatus = static("", 42, 369, 229, 23, bodyFont, mutedColor, cardColor)
-	tosuPortStatus = static("端口 "+tosuAddress+" · 正在检查…", 287, 369, 311, 23, bodyFont, mutedColor, cardColor)
-	loadTosuPreference()
-	showTosuProcess(tosuChecking)
+	button("选择 tosu…", 42, 307, 148, buttonChoose)
+	button("打开 tosu", 202, 307, 148, buttonTosu)
+	tosuFeedback = static("", 364, 316, 234, 22, captionFont, mutedColor, cardColor)
+	tosuProcessStatus = static("", 42, 352, 229, 23, bodyFont, mutedColor, cardColor)
+	tosuPortStatus = static("端口 "+tosuAddress+" · 正在检查…", 287, 352, 311, 23, bodyFont, mutedColor, cardColor)
+	static("osu!Tourney", 42, 413, 554, 22, headingFont, inkColor, cardColor)
+	osuField = add("EDIT", "", 42, 439, 556, 25, 110, 0x810880, bodyFont)
+	controlColors[osuField] = textColors{inkColor, cardColor}
+	button("选择 osu!.exe…", 42, 473, 172, buttonChooseOsu)
+	button("生成 tournament.cfg", 234, 473, 172, buttonGenerateTourney)
+	button("打开 osu!Tourney", 426, 473, 172, buttonOpenTourney)
+	tourneyFeedback = static("", 42, 513, 556, 19, captionFont, mutedColor, cardColor)
+	loadLauncherPreferences()
+	showTosuProcess(processChecking)
 	checkTosu(window)
 	call(user, "SetTimer", window, tosuTimer, 2000, 0)
 	call(user, "ShowWindow", window, 1)

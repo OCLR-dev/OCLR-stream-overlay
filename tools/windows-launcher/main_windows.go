@@ -58,11 +58,12 @@ func open(s string) {
 var client = &http.Client{Timeout: time.Second}
 
 type health struct {
-	Project string
-	Build   string
-	Ready   bool
-	Session bool
-	PID     int
+	Project           string
+	Build             string
+	Ready             bool
+	Session           bool
+	PID               int
+	AuthorizedEdition string
 }
 
 func getHealth() (health, error) {
@@ -275,6 +276,10 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	case msgTosuChecked:
 		applyTosuCheck(h)
 		return 0
+	case msgTourneyFinished:
+		tourneyBusy = false
+		showTourney(<-tourneyResults)
+		return 0
 	case 0x0113: // WM_TIMER
 		if w == tosuTimer {
 			checkTosu(h)
@@ -292,6 +297,12 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			chooseTosu(h)
 		case buttonTosu:
 			openTosu(h)
+		case buttonChooseOsu:
+			chooseOsu(h)
+		case buttonGenerateTourney:
+			runTourney(h, false)
+		case buttonOpenTourney:
+			runTourney(h, true)
 		}
 		return 0
 	case 0x10:
