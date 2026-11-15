@@ -275,7 +275,7 @@ test('chat can target bound scenes and resume an interrupted placement after a r
   assert.doesNotMatch(JSON.stringify(resumed.snapshot()), /TESTONLY/);
 });
 
-test('chat rejects invalid identity codes and leaves a foreign same-name input untouched', async t => {
+test('chat rejects invalid identity codes and creates a distinct input when its name is occupied', async t => {
   const { obs, studio } = await setup(t); await ready(obs); await obs.command({ action: 'create' });
   for (const code of ['1234', 'TOOSHORT', 'https://blive.chat/room/123', 'A/B?CDEFGHIJ', '']) {
     await assert.rejects(obs.command({ action: 'stream-chat', code }), /身份码/);
@@ -283,10 +283,87 @@ test('chat rejects invalid identity codes and leaves a foreign same-name input u
   assert.equal(obs.snapshot().streamChat, 'off');
   await studio.request('CreateInput', { sceneName: '休息', inputName: chatSource, inputKind: 'browser_source',
     inputSettings: { url: 'about:blank' }, sceneItemEnabled: true });
+  const foreign = structuredClone(studio.inputs.get(chatSource));
   const before = writes(studio).length;
-  await assert.rejects(obs.command({ action: 'stream-chat', code: testIdentity }), /名称已被占用/);
-  assert.equal(writes(studio).length, before);
+  assert.equal((await obs.command({ action: 'stream-chat', code: testIdentity })).streamChat, 'configured');
+  assert.deepEqual(studio.inputs.get(chatSource), foreign);
+  assert.equal(obs.profile.streamChat.name, chatSource + ' (2)');
+  assert.equal(studio.inputs.get(chatSource + ' (2)').inputSettings.url, `https://blive.chat/room/${testIdentity}?roomKeyType=2`);
+  assert.equal(writes(studio).slice(before).some(call => call.type === 'SetInputSettings' && call.inputName === chatSource), false);
+  const done = writes(studio).length;
+  await obs.command({ action: 'stream-chat', code: testIdentity });
+  assert.equal(writes(studio).length, done);
   assert.equal(studio.inputs.get(chatSource).inputSettings.url, 'about:blank');
+});
+
+test('independent controllers in one collection reuse a matching chat source for Showcase', async t => {
+  const { obs: owner, studio, store } = await setup(t);
+  studio.useUuids = true;
+  await ready(owner); await owner.command({ action: 'create' });
+  await owner.command({ action: 'stream-chat', code: testIdentity });
+  const source = studio.inputs.get(chatSource);
+  source.inputSettings.css = '/* operator chat style */';
+  const settings = structuredClone(source.inputSettings);
+  const originalScenes = [regular, ex].map(name => structuredClone(studio.scenes.get(name)));
+  const match = structuredClone(store.state);
+  const { obs } = await setup(t, { studio });
+  await ready(obs); await obs.command({ action: 'create-showcase' });
+  const before = writes(studio).length;
+  await obs.command({ action: 'stream-chat', code: testIdentity });
+  assert.equal(obs.snapshot().streamChat, 'configured');
+  assert.equal(obs.profile.streamChat.uuid, source.inputUuid);
+  assert.deepEqual(source.inputSettings, settings);
+  assert.equal(writes(studio).slice(before).some(call => ['CreateInput', 'SetInputSettings'].includes(call.type)), false);
+  assert.equal(studio.scenes.get('OCLR · Showcase').at(-1).sourceUuid, source.inputUuid);
+  assert.deepEqual([regular, ex].map(name => studio.scenes.get(name)), originalScenes);
+  assert.deepEqual(store.state, match);
+  assert.equal(studio.program, '休息');
+  const done = writes(studio).length;
+  await obs.command({ action: 'stream-chat', code: testIdentity });
+  assert.equal(writes(studio).length, done);
+});
+
+test('chat discovers matching renamed inputs despite stale saved IDs and avoids scene/group names', async t => {
+  const { obs, studio } = await setup(t); studio.useUuids = true;
+  await ready(obs); await obs.command({ action: 'create-showcase' });
+  await studio.request('CreateInput', { sceneName: '休息', inputName: '导播弹幕', inputKind: 'browser_source',
+    inputSettings: { url: `https://blive.chat/room/${testIdentity}?roomKeyType=2`, css: 'custom' }, sceneItemEnabled: true });
+  await obs.saveProfile({ ...obs.profile, streamChat: { code: testIdentity, name: chatSource, uuid: 'removed-input', items: {} } });
+  await obs.command({ action: 'stream-chat', code: testIdentity });
+  assert.equal(obs.profile.streamChat.name, '导播弹幕');
+  assert.equal(obs.profile.streamChat.uuid, studio.inputs.get('导播弹幕').inputUuid);
+  assert.equal(studio.inputs.has(chatSource), false);
+  // The active collection has a same-name scene and group, but no chat for this identity.
+  studio.scenes.set(chatSource, []);
+  studio.scenes.set('八路', []); studio.scenes.set('六路', []);
+  const request = studio.request.bind(studio);
+  studio.request = (type, args) => type === 'GetGroupList' ? Promise.resolve({ groups: [chatSource + ' (2)'] }) : request(type, args);
+  const { obs: other } = await setup(t, { studio }); await ready(other);
+  await other.command({ action: 'bind', layout: 'regular', name: '八路' });
+  await other.command({ action: 'bind', layout: 'ex', name: '六路' });
+  await other.command({ action: 'stream-chat', code: 'TESTONLY000002' });
+  assert.equal(other.profile.streamChat.name, chatSource + ' (3)');
+  assert.equal(studio.inputs.get('导播弹幕').inputSettings.url, `https://blive.chat/room/${testIdentity}?roomKeyType=2`);
+});
+
+test('chat discovery stays within the active collection and saves independent bindings', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-chat-collections-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'obs-settings.json');
+  const { obs: first, studio: a } = await setup(t, { file }); a.useUuids = true;
+  await ready(first); await first.command({ action: 'create-showcase' });
+  await first.command({ action: 'stream-chat', code: testIdentity });
+  const firstSource = structuredClone(a.inputs.get(chatSource));
+  first.close();
+  const b = new Studio(); b.useUuids = true; b.collection = '另一集合';
+  const { obs: second } = await setup(t, { studio: b, file });
+  await until(() => second.phase === 'ready');
+  await second.command({ action: 'create-showcase' });
+  await second.command({ action: 'stream-chat', code: testIdentity });
+  assert.notEqual(b.inputs.get(chatSource).inputUuid, firstSource.inputUuid);
+  assert.deepEqual(a.inputs.get(chatSource), firstSource);
+  assert.equal(second.settings.profiles.find(p => p.name === a.collection).streamChat.uuid, firstSource.inputUuid);
+  assert.equal(second.settings.profiles.find(p => p.name === b.collection).streamChat.uuid, b.inputs.get(chatSource).inputUuid);
 });
 
 test('rescanning binds padded osu!tourney titles by client number and writes their exact OBS identifiers', async t => {

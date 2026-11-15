@@ -1,0 +1,10 @@
+{
+  "phase": "ready",
+  "streamChat": "configured",
+  "sameSourceInShowcase": true,
+  "noNewInputs": true,
+  "sourceSettingsUnchanged": true,
+  "matchScenesUnchanged": true,
+  "programUnchanged": true,
+  "showcaseSettingsUnchanged": true
+}

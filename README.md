@@ -61,6 +61,8 @@ npm run watch
 
 谱面跟随复用服务端当前已连接的 tosu 数据，不另建浏览器直连。Showcase 的图池与自动显示不修改比赛 Ban/Pick、局次、比分、场景或自动化；`/overlay` 继续承担原比赛输出。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
 
+连接 OBS 后，弹幕配置会在当前场景集合中查找相同弹幕地址的浏览器源，找到就复用；没有匹配来源才新建。同名来源内容不同则自动使用带编号的名称，保留原来源；切换场景集合后分别检测和保存。
+
 ## 贡献者实机测试数据
 
 UI 贡献者与 code agent 可使用[匿名化 Windows tosu 采样与回放说明](test-data/tosu/windows-2026-10-31/README.md)：3921 帧、10 分钟，包含已知异常输入、数据限制和隔离 UI 回放命令。它不是完整比赛或完整 WebSocket 原包。
