@@ -46,7 +46,7 @@ func TestTosuProbeReadsPortFromSelectedDirectoryOnEveryCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	probe := probeTosu(exe, 2)
-	if !errors.Is(probe.portErr, os.ErrNotExist) || probe.portAddress != "" || probe.portOpen {
+	if !errors.Is(probe.portErr, os.ErrNotExist) || probe.port != "" || probe.portOpen {
 		t.Fatalf("missing tosu.env should leave the port unknown: %+v", probe)
 	}
 	env := filepath.Join(dir, "tosu.env")
@@ -54,21 +54,21 @@ func TestTosuProbeReadsPortFromSelectedDirectoryOnEveryCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	probe = probeTosu(exe, 2)
-	if probe.portErr != nil || probe.portAddress != address || !probe.portOpen || probe.selection != 2 {
+	if probe.portErr != nil || probe.address() != address || !probe.portOpen || probe.selection != 2 {
 		t.Fatalf("expected the configured endpoint to be reachable: %+v", probe)
 	}
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
 	probe = probeTosu(exe, 2)
-	if probe.portErr != nil || probe.portAddress != address || probe.portOpen {
+	if probe.portErr != nil || probe.address() != address || probe.portOpen {
 		t.Fatalf("closed port reported reachable: %+v", probe)
 	}
 	if err := os.WriteFile(env, []byte("SERVER_PORT=65536"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	probe = probeTosu(exe, 2)
-	if !errors.Is(probe.portErr, errTosuPortInvalid) || probe.portAddress != "" || probe.portOpen {
+	if !errors.Is(probe.portErr, errTosuPortInvalid) || probe.port != "" || probe.portOpen {
 		t.Fatalf("invalid edited config should clear the old port: %+v", probe)
 	}
 }

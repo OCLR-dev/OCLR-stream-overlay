@@ -9,6 +9,7 @@ import { once } from 'node:events';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { preparePortableData } from '../server/portable-data.js';
 import { simulationSession } from '../tools/tosu-simulator/fixture.js';
+import { TosuSimulator } from '../tools/tosu-simulator/server.js';
 import { calculationFixture } from './calculation-fixture.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -39,7 +40,7 @@ async function ready(build) {
   throw new Error('Portable server did not become ready');
 }
 
-test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async () => {
+test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'OCLR 中文 空格 '));
   const data = join(directory, '用户 数据');
   const app = join(directory, '第一版 程序/app');
@@ -55,7 +56,7 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     const health = await ready(build);
     assert.equal(health.session, true);
     assert.equal(health.portable, true);
-    assert.equal((await fetch(`${base}/api/config`).then(r => r.json())).tosuWsUrl, 'ws://127.0.0.1:24050/websocket/v2');
+    assert.equal((await fetch(`${base}/api/config`).then(r => r.json())).tosuWsUrl, null);
     const initial = JSON.parse(await readFile(join(data, 'session.json'), 'utf8'));
     assert.equal((await fetch(`${base}/control`)).status, 200);
     assert.equal((await fetch(`${base}/overlay`)).status, 200);
@@ -110,6 +111,7 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
       body: JSON.stringify({ id: crypto.randomUUID(), version: initialized.session.version, type: 'undo' }) });
     assert.equal(undo.status, 200);
     assert.equal((await fetch(`${base}/api/beatmaps/101/cover`, { redirect: 'manual' })).status, 302);
+    await t.test('switches tosu ports and disconnects when the launcher clears the setting', () => checkTosuPorts(running));
     await running.stop(); running = null;
     // Occupied output port must fail without creating data or moving to another port.
     const occupied = createServer((req, res) => res.end('unrelated service'));
@@ -133,6 +135,38 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+async function checkTosuPorts(running) {
+  const first = new TosuSimulator({ port: 0 });
+  const second = new TosuSimulator({ port: 0 });
+  try {
+    await first.start();
+    await second.start();
+    first.set({ mapId: 710001 });
+    second.set({ mapId: 710002 });
+    const configUrl = async () => (await fetch(`${base}/api/config`).then(r => r.json())).tosuWsUrl;
+    const live = async () => (await fetch(`${base}/api/session`).then(r => r.json())).live.tosu;
+    async function until(check, message) {
+      const deadline = Date.now() + 4000;
+      while (Date.now() < deadline) { if (await check()) return; await pause(40); }
+      assert.fail(message);
+    }
+    const select = port => running.child.stdin.write(`tosu-port ${port}\n`);
+    assert.equal(await configUrl(), null);
+    select(first.port);
+    await until(async () => (await live()).data?.beatmap.id === 710001, 'first tosu port never supplied game data');
+    assert.equal(await configUrl(), first.wsUrl);
+    select(second.port);
+    await until(async () => (await live()).data?.beatmap.id === 710002 && first.clients.size === 0, 'did not retire the first socket and receive data at the new port');
+    assert.equal(await configUrl(), second.wsUrl);
+    select(0);
+    await until(async () => (await live()).status === 'idle' && second.clients.size === 0, 'clearing the port did not end the connection');
+    assert.equal(await configUrl(), null);
+    assert.equal((await live()).data, null);
+  } finally {
+    for (const simulator of [first, second]) if (simulator.server.listening) await simulator.stop();
+  }
+}
 
 test('legacy migration backs up complete state/archive, survives replacement and refuses invalid/conflicting data', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'oclr-migration-'));

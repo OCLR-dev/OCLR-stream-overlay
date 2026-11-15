@@ -245,11 +245,15 @@ func readTosuPort(exe string) (string, error) {
 }
 
 type tosuProbe struct {
-	selection   uintptr
-	process     processStatus
-	portAddress string
-	portOpen    bool
-	portErr     error
+	selection uintptr
+	process   processStatus
+	port      string
+	portOpen  bool
+	portErr   error
+}
+
+func (probe tosuProbe) address() string {
+	return net.JoinHostPort("127.0.0.1", probe.port)
 }
 
 var tosuPath, settingsFile string
@@ -262,11 +266,9 @@ func probeTosu(path string, selection uintptr) tosuProbe {
 	if probe.process == processMissing {
 		return probe
 	}
-	port, err := readTosuPort(path)
-	probe.portErr = err
-	if err == nil {
-		probe.portAddress = net.JoinHostPort("127.0.0.1", port)
-		probe.portOpen = tosuPortOpen(probe.portAddress)
+	probe.port, probe.portErr = readTosuPort(path)
+	if probe.portErr == nil {
+		probe.portOpen = tosuPortOpen(probe.address())
 	}
 	return probe
 }
@@ -292,6 +294,22 @@ func applyTosuCheck(owner uintptr) {
 	}
 	showTosuProcess(probe.process)
 	showTosuPort(probe)
+	if service != nil {
+		service.setTosuPort(probe.port)
+	}
+}
+
+func savedTosuPort() string {
+	path, err := launcherSettingsPath()
+	if err != nil {
+		return ""
+	}
+	settings, err := loadLauncherSettings(path)
+	if err != nil || !isExecutable(settings.TosuPath) {
+		return ""
+	}
+	port, _ := readTosuPort(settings.TosuPath)
+	return port
 }
 
 func loadLauncherPreferences() {
@@ -337,6 +355,9 @@ func chooseTosu(owner uintptr) {
 	if settingsFile == "" || saveLauncherSettings(settingsFile, launcherSettings{TosuPath: path, OsuPath: osuPath}) != nil {
 		showTosu("无法保存路径，请检查设置目录权限。")
 		return
+	}
+	if service != nil && path != tosuPath {
+		service.setTosuPort("")
 	}
 	tosuPath = path
 	tosuSelection++

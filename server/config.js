@@ -24,11 +24,13 @@ export function loadConfig(env = process.env) {
   if (!['http:', 'https:'].includes(origin.protocol) || origin.href !== `${origin.origin}/`) {
     throw new Error('INVALID_API_ORIGIN');
   }
-  const wsUrl = new URL(values.TOSU_WS_URL || 'ws://127.0.0.1:24050/websocket/v2');
-  if (!['ws:', 'wss:'].includes(wsUrl.protocol) || wsUrl.username || wsUrl.password) {
-    throw new Error('INVALID_TOSU_URL');
+  let wsUrl = null;
+  if (values.TOSU_WS_URL !== null) {
+    const url = new URL(values.TOSU_WS_URL || 'ws://127.0.0.1:24050/websocket/v2');
+    if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password) throw new Error('INVALID_TOSU_URL');
+    wsUrl = url.href;
   }
   const port = Number(values.PORT || 3001);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('INVALID_PORT');
-  return { backend: backend.origin, origin: origin.origin, key: mode === 'bearer' ? key : '', mode, port, wsUrl: wsUrl.href };
+  return { backend: backend.origin, origin: origin.origin, key: mode === 'bearer' ? key : '', mode, port, wsUrl };
 }

@@ -131,6 +131,31 @@ try {
   await check('bundled runtime and native smoke-test exit cleanly', async () => {
     const smoke = launch(first, ['--smoke-test']); assert.equal(await smoke.done, 0, smoke.error());
   });
+  await check('native launcher reads the saved executable directory and supplies the backend port', async () => {
+    const fixture = createServer();
+    fixture.on('upgrade', (_req, socket) => socket.destroy());
+    await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
+    try {
+      const port = fixture.address().port;
+      const tosuDir = join(temp, 'tosu 测试');
+      const tosuPath = join(tosuDir, 'tosu.exe');
+      await mkdir(tosuDir);
+      await writeFile(tosuPath, 'fixture');
+      await writeFile(join(tosuDir, 'tosu.env'), `SERVER_IP=127.0.0.1\r\nSERVER_PORT=${port}\r\n`);
+      const preferences = join(local, 'OCLR/StreamOverlayLauncher');
+      await mkdir(preferences, { recursive: true });
+      await writeFile(join(preferences, 'settings.json'), JSON.stringify({ tosuPath }));
+      running = launch(first);
+      await ready();
+      const url = `ws://127.0.0.1:${port}/websocket/v2`;
+      for (let i = 0; i < 25; i++) {
+        if ((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl === url) break;
+        await delay(100);
+      }
+      assert.equal((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl, url);
+      await running.stop(); running = null;
+    } finally { await new Promise(resolve => fixture.close(resolve)); }
+  });
   report.passed = true;
   report.guiCommand = `LOCALAPPDATA=${local}; ${join(first, 'OCLR.exe')}`;
   if (process.argv.includes('--gui')) {

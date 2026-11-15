@@ -26,7 +26,7 @@
 2. 在启动窗口点「选择 osu!.exe…」，选取本机已安装并登录的 osu!stable。建议为直播使用独立的 osu!stable 安装目录。[osu! 官方设置说明](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney/Setup)
 3. 关闭所选安装正在运行的 osu!，点「生成 tournament.cfg」可只写入设置。点「打开 osu!Tourney」会先写入设置，再从同一目录打开 osu!。设置写在所选程序旁，采用 4 人每队和高度 1080，`acronym` 自动填写当前授权赛季，例如授权 S12 时填 `OCLR S12`。如果替换了不同内容的旧设置，上一份文件会保存在同一目录的 `tournament.cfg.oclr.bak`。
 
-在同一台电脑运行 osu!Tourney 和 tosu，让 tosu 读取实际测试房间。Windows 便携版的游戏数据连接使用 `ws://127.0.0.1:24050/websocket/v2`。退出 OCLR 后，已打开的 osu! 和 tosu 可继续运行。
+在同一台电脑运行 osu!Tourney 和 tosu，让 tosu 读取实际测试房间。直播控制台使用启动窗口显示的本机端口接收游戏数据。重新选择 tosu 或修改 `SERVER_PORT` 后，控制台自动切换端口。如果没有有效端口，控制台会等待设置恢复。退出 OCLR 后，已打开的 osu! 和 tosu 可继续运行。
 
 在「比赛现场」看 **Now Playing**。它随客户端换图，显示曲名和难度，能确定图池槽位时也会显示编号。直接播放热身图即可看到它，无需先做 Ban 或 Pick。
 

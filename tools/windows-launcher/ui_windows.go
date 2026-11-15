@@ -200,9 +200,9 @@ func showTosuProcess(status processStatus) {
 func showTosuPort(probe tosuProbe) {
 	switch {
 	case probe.portOpen:
-		setStatus(tosuPortStatus, "端口 "+probe.portAddress+" · 可连通", readyColor)
-	case probe.portAddress != "":
-		setStatus(tosuPortStatus, "端口 "+probe.portAddress+" · 未连通", mutedColor)
+		setStatus(tosuPortStatus, "端口 "+probe.address()+" · 可连通", readyColor)
+	case probe.port != "":
+		setStatus(tosuPortStatus, "端口 "+probe.address()+" · 未连通", mutedColor)
 	case errors.Is(probe.portErr, os.ErrNotExist):
 		setStatus(tosuPortStatus, "端口 · 未找到 tosu.env", waitColor)
 	case errors.Is(probe.portErr, errTosuPortMissing):

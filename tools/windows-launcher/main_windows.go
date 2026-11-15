@@ -108,10 +108,11 @@ func (b *lockedBuffer) Write(p []byte) (int, error) { b.Lock(); defer b.Unlock()
 func (b *lockedBuffer) String() string              { b.Lock(); defer b.Unlock(); return b.b.String() }
 
 type backend struct {
-	cmd   *exec.Cmd
-	input io.WriteCloser
-	done  chan error
-	log   lockedBuffer
+	cmd      *exec.Cmd
+	input    io.WriteCloser
+	done     chan error
+	log      lockedBuffer
+	tosuPort string
 }
 
 func start() (*backend, error) {
@@ -170,6 +171,19 @@ func (b *backend) stop() {
 	case <-time.After(15 * time.Second):
 		message("服务还在保存比赛，请稍候。关闭此提示后会继续等待，不会强制结束服务。")
 		<-b.done
+	}
+}
+
+func (b *backend) setTosuPort(port string) {
+	if port == b.tosuPort {
+		return
+	}
+	value := port
+	if value == "" {
+		value = "0"
+	}
+	if _, err := io.WriteString(b.input, "tosu-port "+value+"\n"); err == nil {
+		b.tosuPort = port
 	}
 }
 
@@ -249,6 +263,7 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			message(r.err.Error())
 			call(user, "DestroyWindow", h)
 		} else {
+			checkTosu(h)
 			setStatus(serviceStatus, "● 服务已就绪", readyColor)
 			text("比赛保存在本机。关闭控制台网页后，OBS 输出仍会继续。")
 			for _, id := range []uintptr{buttonControl, buttonCopyOBS} {
@@ -352,6 +367,7 @@ func main() {
 			os.Exit(1)
 		}
 		if os.Args[1] == "--headless" {
+			b.setTosuPort(savedTosuPort())
 			io.Copy(io.Discard, os.Stdin)
 		}
 		b.stop()

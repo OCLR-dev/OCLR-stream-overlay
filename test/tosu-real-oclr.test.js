@@ -93,6 +93,7 @@ test('imported historical pool drives simulated maps and new game results, witho
 test('resetting only tosu preserves imported match, room team configuration and all competition records', async t => {
   const stack = await boot(t); await importHistory(stack);
   await room(stack, { leftName: 'Room left', rightName: 'Room right', mapId: 991001 });
+  await until(() => stack.store.state.auto.left === 'Room left' && stack.store.state.auto.right === 'Room right');
   const before = structuredClone(stack.store.state);
   await room(stack, {}, 'reset');
   assert.deepEqual(stack.store.state, before);
