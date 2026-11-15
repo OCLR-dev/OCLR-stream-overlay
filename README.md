@@ -56,6 +56,13 @@ npm run watch
 
 ## 图池 Showcase
 
+Windows PowerShell 5.1 可使用 `tools/apply-issue-32-showcase.ps1 -Destination "C:\OCLR Showcase"`
+在全新目录取得固定版本并验证。需先安装 Git 与 Node.js 22.13+；脚本执行
+`npm ci`、类型检查、构建和完整测试，任一步失败立即停止，并保留新目录供排查。
+已有目标目录会被拒绝；脚本结束会恢复原工作目录，不自动启动服务。
+Showcase 已在上游实现，因此脚本不再应用旧的 overlay 场景补丁，也不重设分支、提交或推送。
+固定来源为 `f668ec3262ffdbefb6c879e0c3ebe8e42ae52bbb`；升级该值前应重新验证。
+
 打开 `/showcase`，先录入演示图池，每行「Slot 谱面ID或链接 标题（可选）」，例如 `NM1 4278199 eclosion`；也可点击「复制控制台已加载图池」。支持 osu! 具体难度链接，图集链接须带 `#osu/难度ID`。输入停顿或离开输入框后自动同步，无需保存。图池与 Stage 单独写入比赛文件同目录的 `showcase.json`，后续控制台换场或改图池不会覆盖它们。
 
 左侧「当前 Stage」可独立填写本次图池的阶段名称，输入后自动同步到画面最上方中央，留空隐藏。它不跟随控制台默认比赛阶段；复制图池也保留已填写的名称。
