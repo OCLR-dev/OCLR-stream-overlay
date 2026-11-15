@@ -14,8 +14,36 @@ import { TosuSimulator } from '../tools/tosu-simulator/server.js';
 import { calculationFixture } from './calculation-fixture.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const base = 'http://127.0.0.1:3001';
+const portProbe = createServer();
+await new Promise(resolve => portProbe.listen(0, '127.0.0.1', resolve));
+const testPort = portProbe.address().port;
+await new Promise(resolve => portProbe.close(resolve));
+const base = `http://127.0.0.1:${testPort}`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+test('portable custom port binds the selected address and refuses occupied ports without touching data', async () => {
+  const temp = await mkdtemp(join(tmpdir(), 'oclr-custom-port-'));
+  const app = join(temp, 'app');
+  const build = 'c'.repeat(64);
+  await packageAt(app, build);
+  const dataDir = await fixtureDataDir(temp, 'data');
+  const occupied = createServer((req, res) => res.end('other service'));
+  await new Promise(resolve => occupied.listen(0, '127.0.0.1', resolve));
+  const port = occupied.address().port;
+  try {
+    const blocked = launch(app, dataDir, port);
+    assert.equal((await blocked.done)[0], 1);
+    assert.match(blocked.error(), /端口.*占用/);
+    await assert.rejects(access(join(dataDir, 'session.json')));
+    assert.equal(await (await fetch(`http://127.0.0.1:${port}`)).text(), 'other service');
+  } finally { await new Promise(resolve => occupied.close(resolve)); }
+  for (let i = 0; i < 2; i++) {
+    const running = launch(app, dataDir, port);
+    try {
+      await ready(running, build, `http://127.0.0.1:${port}`);
+      for (const path of ['/control', '/overlay', '/showcase']) assert.equal((await fetch(`http://127.0.0.1:${port}${path}`)).status, 200);
+    } finally { await running.stop(); }
+  }
+});
 async function packageAt(dir, build) {
   await mkdir(dir, { recursive: true });
   for (const name of ['server', 'src', 'dist']) await cp(join(root, name), join(dir, name), { recursive: true });
@@ -23,9 +51,9 @@ async function packageAt(dir, build) {
   await writeFile(join(dir, 'package.json'), '{"type":"module"}');
   await writeFile(join(dir, 'portable-build.json'), JSON.stringify({ build }));
 }
-function launch(app, dataDir) {
+function launch(app, dataDir, port = testPort) {
   const child = spawn(process.execPath, [join(app, 'server/portable.js')], {
-    cwd: tmpdir(), env: { ...process.env, OCLR_DATA_DIR: dataDir }, stdio: ['pipe', 'pipe', 'pipe'],
+    cwd: tmpdir(), env: { ...process.env, OCLR_DATA_DIR: dataDir, OCLR_APP_PORT: String(port) }, stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stderr = '';
   child.stderr.on('data', chunk => { stderr += chunk; });
@@ -35,14 +63,14 @@ function launch(app, dataDir) {
     return done;
   } };
 }
-async function ready(running, build) {
+async function ready(running, build, address = base) {
   const { child, done, error } = running;
   for (const deadline = Date.now() + 10_000; Date.now() < deadline;) {
     if (child.exitCode !== null || child.signalCode !== null) {
       const [code, signal] = await done;
       throw new Error(`Portable server exited before readiness (${signal ?? code}): ${error().trim() || 'no stderr'}`);
     }
-    const value = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1000) }).then(r => r.json()).catch(() => null);
+    const value = await fetch(`${address}/api/health`, { signal: AbortSignal.timeout(1000) }).then(r => r.json()).catch(() => null);
     if (value?.ready && value.build === build && value.pid === child.pid) return value;
     await pause(100);
   }
@@ -69,7 +97,7 @@ async function fixtureDataDir(directory, name) {
   throw new Error('No available portable test lease port');
 }
 
-test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async t => {
+test('portable lifecycle: selected address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'OCLR 中文 空格 '));
   const app = join(directory, '第一版 程序/app');
   const next = join(directory, '更新版 程序/app');
@@ -144,12 +172,12 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     await running.stop(); running = null;
     // Occupied output port must fail without creating data or moving to another port.
     const occupied = createServer((req, res) => res.end('unrelated service'));
-    await new Promise((resolve, reject) => { occupied.once('error', reject); occupied.listen(3001, '127.0.0.1', resolve); });
+    await new Promise((resolve, reject) => { occupied.once('error', reject); occupied.listen(testPort, '127.0.0.1', resolve); });
     try {
       const blockedData = await fixtureDataDir(directory, '不能创建');
       const blocked = launch(app, blockedData);
       assert.equal((await blocked.done)[0], 1);
-      assert.match(blocked.error(), /3001/);
+      assert.match(blocked.error(), /端口.*占用/);
       await assert.rejects(access(blockedData));
       assert.equal(await fetch(base).then(r => r.text()), 'unrelated service');
     } finally { await new Promise(resolve => occupied.close(resolve)); }

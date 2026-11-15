@@ -14,7 +14,7 @@ import (
 
 var buildID string
 
-const base = "http://127.0.0.1:3001"
+var base = "http://127.0.0.1:3001"
 
 var user = syscall.NewLazyDLL("user32.dll")
 var kernel = syscall.NewLazyDLL("kernel32.dll")
@@ -108,8 +108,9 @@ func showServiceReady() {
 	setStatus(serviceStatus, "● 服务已就绪", readyColor)
 	text("比赛保存在本机。关闭控制台网页后，OBS 输出仍会继续。")
 }
-func copyOBS() {
-	value := syscall.StringToUTF16(base + "/overlay")
+func copyOBS() { copyAddress(base + "/overlay") }
+func copyAddress(address string) {
+	value := syscall.StringToUTF16(address)
 	if call(user, "OpenClipboard", window) == 0 {
 		message("剪贴板正忙，请重试。OBS 地址：" + base + "/overlay")
 		return
@@ -132,7 +133,7 @@ func copyOBS() {
 		message("复制失败，请重试。")
 		return
 	}
-	text("OBS 地址已复制。")
+	text("地址已复制。")
 }
 func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	switch m {
@@ -150,23 +151,24 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	case msgServiceStarted:
 		r := <-result
 		starting = false
+		call(user, "EnableWindow", call(user, "GetDlgItem", h, buttonRestart), 1)
 		service = r.b
 		if r.err != nil {
 			setStatus(serviceStatus, "● 启动失败", errorColor)
-			text("启动失败。可打开本机日志查看原因。")
+			text("启动失败。可修改服务端口后重试，或打开本机日志。")
 			message(r.err.Error() + "\n可打开本机日志查看详情。")
 		} else {
 			checkTosu(h)
 			showServiceReady()
 			enableServiceButtons(h, 1)
 			go r.b.watch(r.b.probe, 3*time.Second, func(state serviceState) {
-				call(user, "PostMessageW", h, msgServiceState, uintptr(state), 0)
+				call(user, "PostMessageW", h, msgServiceState, uintptr(state), uintptr(r.b.pid))
 			})
 			open(base + "/control")
 		}
 		return 0
 	case msgServiceState:
-		if !exiting {
+		if !exiting && service != nil && uintptr(service.pid) == l {
 			switch serviceState(w) {
 			case serviceWaiting:
 				setStatus(serviceStatus, "● 等待服务响应", waitColor)
@@ -205,6 +207,10 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 		return 0
 	case 0x111:
 		switch w & 0xffff {
+		case buttonCopyAddresses:
+			copyAddress(base + "/control\r\n" + base + "/overlay\r\n" + base + "/showcase?clean=1")
+		case buttonRestart:
+			restartOnPort(h)
 		case buttonControl:
 			open(base + "/control")
 		case buttonCopyOBS:
@@ -257,6 +263,7 @@ func main() {
 }
 
 func runLauncher() int {
+	loadServicePort()
 	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr("Local\\OCLR.StreamOverlay.Portable"))
 	if mutex == 0 {
 		message("无法建立本机启动保护，请重新登录 Windows 后重试。")
