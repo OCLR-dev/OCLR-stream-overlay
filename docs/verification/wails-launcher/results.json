@@ -1,0 +1,138 @@
+{
+  "date": "2026-11-15",
+  "scope": "synthetic; unmodified package before the frontend polling optimization",
+  "build": "0f12d813cd1fa12e77ee4ec4769d893514a263edb976f0f869b97dfc14bc5d7a",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v22.23.4",
+  "passed": true,
+  "results": [
+    {
+      "name": "bundled WASM HR calculation works offline from a Unicode path",
+      "passed": true
+    },
+    {
+      "name": "native x64 first start from Chinese/spaced path; ready before control/overlay",
+      "passed": true
+    },
+    {
+      "name": "repeated native launch reuses one server without changing match",
+      "passed": true
+    },
+    {
+      "name": "controller and independent output SSE synchronize; closing controller leaves output alive",
+      "passed": true
+    },
+    {
+      "name": "portable artwork survives pool setup, initialization and undo without stopping the native service",
+      "passed": true
+    },
+    {
+      "name": "normal native exit releases service and fixed port",
+      "passed": true
+    },
+    {
+      "name": "restart from replacement program directory retains complete session and undo",
+      "passed": true
+    },
+    {
+      "name": "occupied port refuses start; other program remains alive",
+      "passed": true
+    },
+    {
+      "name": "old backend is not silently reused",
+      "passed": true
+    },
+    {
+      "name": "corrupt data refuses startup and preserves original bytes",
+      "passed": true
+    },
+    {
+      "name": "bundled runtime and native smoke-test exit cleanly",
+      "passed": true
+    },
+    {
+      "name": "native launcher reads the saved executable directory and supplies the backend port",
+      "passed": true
+    },
+    {
+      "name": "native launcher keeps the same backend through timeouts and logs its eventual exit",
+      "passed": true
+    }
+  ],
+  "nodeRegression": {
+    "passed": 545,
+    "failed": 0
+  },
+  "gui": {
+    "scope": "same Wails UI, isolated mutex and browser auto-open suppressed at link time",
+    "checked": [
+      "overview, settings, logs, about",
+      "invalid port rejected without stopping service",
+      "native restart confirmation and child exit 0",
+      "new backend ready after restart",
+      "exit confirmation and child exit 0"
+    ],
+    "note": "UI was inspected before startup polling changed to 100 ms; latency after that change is not remeasured after user stopped Computer Use."
+  },
+  "final": {
+    "build": "d8b1085a981bf97d5ffd312b1c7f2f78a289b7972d0838c706d10ef0ce22363e",
+    "node": "v22.23.4",
+    "passed": true,
+    "scope": "final source with link-time isolated mutex; headless only; production mutex was held by user running legacy launcher",
+    "results": [
+      {
+        "name": "bundled WASM HR calculation works offline from a Unicode path",
+        "passed": true
+      },
+      {
+        "name": "native x64 first start from Chinese/spaced path; ready before control/overlay",
+        "passed": true
+      },
+      {
+        "name": "repeated native launch reuses one server without changing match",
+        "passed": true
+      },
+      {
+        "name": "controller and independent output SSE synchronize; closing controller leaves output alive",
+        "passed": true
+      },
+      {
+        "name": "portable artwork survives pool setup, initialization and undo without stopping the native service",
+        "passed": true
+      },
+      {
+        "name": "normal native exit releases service and fixed port",
+        "passed": true
+      },
+      {
+        "name": "restart from replacement program directory retains complete session and undo",
+        "passed": true
+      },
+      {
+        "name": "occupied port refuses start; other program remains alive",
+        "passed": true
+      },
+      {
+        "name": "old backend is not silently reused",
+        "passed": true
+      },
+      {
+        "name": "corrupt data refuses startup and preserves original bytes",
+        "passed": true
+      },
+      {
+        "name": "bundled runtime and native smoke-test exit cleanly",
+        "passed": true
+      },
+      {
+        "name": "native launcher reads the saved executable directory and supplies the backend port",
+        "passed": true
+      },
+      {
+        "name": "native launcher keeps the same backend through timeouts and logs its eventual exit",
+        "passed": true
+      }
+    ]
+  }
+}

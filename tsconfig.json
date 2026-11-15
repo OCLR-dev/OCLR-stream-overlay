@@ -13,5 +13,11 @@
     "skipLibCheck": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["ui/**/*.ts", "ui/**/*.vue", "vite.config.ts"]
+  "include": [
+    "ui/**/*.ts",
+    "ui/**/*.vue",
+    "vite.config.ts",
+    "tools/windows-launcher/frontend/**/*.ts",
+    "tools/windows-launcher/frontend/**/*.vue"
+  ]
 }

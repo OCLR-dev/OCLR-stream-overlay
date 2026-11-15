@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
-	"unsafe"
 )
 
 var servicePort = "3001"
@@ -41,51 +39,4 @@ func loadServicePort() {
 		}
 	}
 	base = "http://127.0.0.1:" + servicePort
-}
-
-func restartOnPort(h uintptr) {
-	if starting || exiting || tourneyBusy {
-		return
-	}
-	var value [64]uint16
-	call(user, "GetWindowTextW", portField, uintptr(unsafe.Pointer(&value[0])), uintptr(len(value)))
-	port := syscall.UTF16ToString(value[:])
-	if !validServicePort(port) {
-		message("请输入 1–65535 的整数端口。")
-		return
-	}
-	n, _ := strconv.Atoi(port)
-	port = strconv.Itoa(n)
-	if service != nil && !service.exited() {
-		if call(user, "MessageBoxW", h, ptr("重新启动会暂时中断 OBS 输出与 OCLR 连接，比赛记录会保留。继续？"), ptr("重新启动服务"), 0x124) != 6 {
-			return
-		}
-	}
-	p := portSettingsPath()
-	if p == "" || os.MkdirAll(filepath.Dir(p), 0700) != nil {
-		message("无法保存端口设置。")
-		return
-	}
-	// Persist before stopping; a failed write must leave the live service intact.
-	if err := replaceFile(p, []byte(port)); err != nil {
-		message("无法保存端口设置。")
-		return
-	}
-	starting = true
-	call(user, "EnableWindow", call(user, "GetDlgItem", h, buttonRestart), 0)
-	enableServiceButtons(h, 0)
-	if service != nil {
-		service.stop("operator port restart")
-	}
-	service = nil
-	servicePort = port
-	base = "http://127.0.0.1:" + port
-	setText(addressLabel, base+"/overlay")
-	setStatus(serviceStatus, "● 正在启动", waitColor)
-	text("正在重新启动；连接 OBS 后自动同步画面地址。")
-	go func() {
-		b, e := start(localLog)
-		result <- started{b, e}
-		call(user, "PostMessageW", h, msgServiceStarted, 0, 0)
-	}()
 }

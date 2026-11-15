@@ -2,6 +2,8 @@
 
 Vue 3 / Vite / TypeScript 的 Neon Broadcast 直播界面，配套独立直播员控制台与本机共享会话。沿用现有深紫 UI、红蓝横幅、系列菱形和稳定游戏窗口。
 
+Windows 启动窗口已改为 Wails + Vue，提供概览、设置、日志和关于页面。现有 Node 服务、比赛记录与浏览器控制台保持原有流程；启动界面内嵌在 exe 中，服务启动失败时仍可查看提示并重试。Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
+
 自动化核心、schema 2 迁移与本轮验证见 [自动化状态机重构实现记录](docs/verification/automation-state-machine-refactor/README.md)。
 
 后续改进范围与 TB 待办见 [后续改进与待处理事项](docs/design/backlog.md)。

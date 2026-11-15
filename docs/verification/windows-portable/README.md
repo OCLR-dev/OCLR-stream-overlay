@@ -1,5 +1,7 @@
 # Windows 便携版交付与验证
 
+> 2026-11-15 更新：启动器已迁移为 Wails + Vue，Node 服务和浏览器控制台保留。当前实现、Windows 实机界面检查与 synthetic 验证见 [Wails 启动器](../wails-launcher/README.md)。下文为早期 Win32 交付记录，其旧窗口和虚拟机限制不代表本轮结果。Windows 现在需要 WebView2 Runtime。
+
 日期：2026-10-29（America/New_York）。实现验收时未提交、推送或发布 Release；后续提交与推送不代表 Windows 验收通过。
 
 ## 当前结论

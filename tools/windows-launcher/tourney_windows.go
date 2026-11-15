@@ -13,33 +13,9 @@ import (
 const tournamentConfig = "tournament.cfg"
 
 var editionSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-var osuPath string
-var tourneyBusy bool
-var tourneyResults = make(chan string, 1)
 
 func isOsuExecutable(path string) bool {
 	return strings.EqualFold(filepath.Base(path), "osu!.exe") && isExecutable(path)
-}
-
-func chooseOsu(owner uintptr) {
-	path, err := pickExecutable(owner, osuPath, "选择 osu!stable 的 osu!.exe")
-	if err != nil {
-		showTourney("无法打开文件选择窗口，请重试。")
-		return
-	}
-	if path == "" {
-		return
-	}
-	if !isOsuExecutable(path) {
-		showTourney("请选择 osu!stable 的 osu!.exe。")
-		return
-	}
-	if settingsFile == "" || saveLauncherSettings(settingsFile, launcherSettings{TosuPath: tosuPath, OsuPath: path}) != nil {
-		showTourney("无法保存路径，请检查设置目录权限。")
-		return
-	}
-	osuPath = path
-	showTourney("已保存 osu! 路径。生成或打开时会读取当前授权赛季。")
 }
 
 func writeTournamentConfig(dir, edition string) error {
@@ -78,23 +54,6 @@ func writeTournamentConfig(dir, edition string) error {
 		return err
 	}
 	return replaceFile(path, content)
-}
-
-func runTourney(owner uintptr, launch bool) {
-	if tourneyBusy {
-		return
-	}
-	if service == nil {
-		showTourney("请等直播服务就绪后重试。")
-		return
-	}
-	tourneyBusy = true
-	showTourney("正在读取授权赛季并检查 osu!…")
-	path, pid := osuPath, service.pid
-	go func() {
-		tourneyResults <- prepareTourney(path, pid, launch)
-		call(user, "PostMessageW", owner, msgTourneyFinished, 0, 0)
-	}()
 }
 
 func prepareTourney(path string, pid int, launch bool) string {

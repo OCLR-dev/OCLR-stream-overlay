@@ -1,0 +1,143 @@
+{
+  "date": "2026-11-15",
+  "baseline": "d6f9df4",
+  "build": "0f12d813cd1fa12e77ee4ec4769d893514a263edb976f0f869b97dfc14bc5d7a",
+  "method": "Preliminary full-GUI measurements, 7 alternating warm samples, same Node/service/frontend payload. Temporary readiness log markers. Win32 browser opens only after ready marker; Wails auto-open disabled. Not a strictly controlled browser workload.",
+  "firstProfile": {
+    "win32": {
+      "healthMs": 961,
+      "frameMs": 348,
+      "readyMs": 1035
+    },
+    "wails": {
+      "healthMs": 789,
+      "frameMs": 425,
+      "readyMs": 1412
+    }
+  },
+  "samples": {
+    "win32": [
+      {
+        "healthMs": 253,
+        "frameMs": 102,
+        "readyMs": 267
+      },
+      {
+        "healthMs": 254,
+        "frameMs": 100,
+        "readyMs": 268
+      },
+      {
+        "healthMs": 248,
+        "frameMs": 102,
+        "readyMs": 268
+      },
+      {
+        "healthMs": 223,
+        "frameMs": 97,
+        "readyMs": 263
+      },
+      {
+        "healthMs": 222,
+        "frameMs": 97,
+        "readyMs": 264
+      },
+      {
+        "healthMs": 253,
+        "frameMs": 106,
+        "readyMs": 272
+      },
+      {
+        "healthMs": 223,
+        "frameMs": 94,
+        "readyMs": 261
+      }
+    ],
+    "wails": [
+      {
+        "healthMs": 377,
+        "frameMs": 371,
+        "readyMs": 1353
+      },
+      {
+        "healthMs": 377,
+        "frameMs": 385,
+        "readyMs": 1368
+      },
+      {
+        "healthMs": 377,
+        "frameMs": 368,
+        "readyMs": 1338
+      },
+      {
+        "healthMs": 437,
+        "frameMs": 402,
+        "readyMs": 1368
+      },
+      {
+        "healthMs": 407,
+        "frameMs": 377,
+        "readyMs": 1353
+      },
+      {
+        "healthMs": 404,
+        "frameMs": 368,
+        "readyMs": 1352
+      },
+      {
+        "healthMs": 420,
+        "frameMs": 394,
+        "readyMs": 1365
+      }
+    ]
+  },
+  "summary": {
+    "win32": {
+      "healthMs": {
+        "min": 222,
+        "median": 248,
+        "max": 254
+      },
+      "frameMs": {
+        "min": 94,
+        "median": 100,
+        "max": 106
+      },
+      "readyMs": {
+        "min": 261,
+        "median": 267,
+        "max": 272
+      }
+    },
+    "wails": {
+      "healthMs": {
+        "min": 377,
+        "median": 404,
+        "max": 437
+      },
+      "frameMs": {
+        "min": 368,
+        "median": 377,
+        "max": 402
+      },
+      "readyMs": {
+        "min": 1338,
+        "median": 1353,
+        "max": 1368
+      }
+    }
+  },
+  "sizes": {
+    "win32ExeBytes": 7020032,
+    "wailsExeBytes": 11605504,
+    "wailsZipBytes": 38752271,
+    "win32SamePayloadZipBytes": 37048548
+  },
+  "passed": true,
+  "environment": {
+    "cpu": "AMD Ryzen 9 7950X",
+    "os": "Windows 11 Pro for Workstations 10.0.26300",
+    "go": "1.26.5"
+  },
+  "followup": "Startup polling changed from 1000 ms to 100 ms. Post-change GUI measurements not run after user stopped Computer Use."
+}

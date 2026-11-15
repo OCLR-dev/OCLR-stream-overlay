@@ -1,30 +1,40 @@
-// The launcher is a small Win32 GUI. No shell, browser engine or external modules.
+// Wails hosts the launcher; the bundled Node service owns the match.
 package main
 
 import (
+	"embed"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
+//go:embed all:frontend/dist
+var frontend embed.FS
 var buildID string
 
+// Link-time overrides are used only by isolated verification builds, never by
+// renderer input or runtime environment variables. Release defaults stay fixed.
+var instanceMutex = "Local\\OCLR.StreamOverlay.Portable"
+var autoOpenControl = "true"
 var base = "http://127.0.0.1:3001"
-
 var user = syscall.NewLazyDLL("user32.dll")
 var kernel = syscall.NewLazyDLL("kernel32.dll")
 var shell = syscall.NewLazyDLL("shell32.dll")
-var gdi = syscall.NewLazyDLL("gdi32.dll")
 
-// Keep UTF-16 buffers alive across indirect Win32 calls (including callbacks).
 var wideMu sync.Mutex
 var wideStrings = map[string]*uint16{}
 
+// Keep buffers alive across the indirect Win32 calls.
 func ptr(s string) uintptr {
 	wideMu.Lock()
 	defer wideMu.Unlock()
@@ -41,240 +51,16 @@ func call(d *syscall.LazyDLL, n string, args ...uintptr) uintptr {
 	v, _, _ := d.NewProc(n).Call(args...)
 	return v
 }
-func message(s string) { call(user, "MessageBoxW", 0, ptr(s), ptr("OCLR 直播控制台"), 0x10) }
+func message(s string) { call(user, "MessageBoxW", 0, ptr(s), ptr("OCLR 直播服务"), 0x10) }
 func open(s string) {
 	if call(shell, "ShellExecuteW", 0, ptr("open"), ptr(s), 0, 0, 1) <= 32 {
-		message("无法打开默认浏览器。请在浏览器中输入：" + s)
+		message("无法打开，请重试：" + s)
 	}
 }
-
-type point struct{ X, Y int32 }
-type msg struct {
-	H       uintptr
-	M       uint32
-	W, L    uintptr
-	T       uint32
-	P       point
-	Private uint32
-}
-type wc struct {
-	Size, Style                   uint32
-	Proc                          uintptr
-	Cls, Wnd                      int32
-	Instance, Icon, Cursor, Brush uintptr
-	Menu, Name                    *uint16
-	Small                         uintptr
-}
-
-var (
-	window, label uintptr
-	service       *backend
-	localLog      *diagnostics
-	starting      = true
-	exiting       bool
-)
-
-type started struct {
-	b   *backend
-	err error
-}
-
-var result = make(chan started, 1)
-
-func text(s string) {
-	setText(label, s)
-	setText(settingsStatus, s)
-}
-func openLocalLog() {
-	path := localLog.path
-	if path == "" {
-		message("找不到本机日志目录。")
-		return
-	}
-	if _, err := os.Stat(path); err == nil {
-		if call(shell, "ShellExecuteW", window, ptr("open"), ptr(path), 0, 0, 1) > 32 {
-			return
-		}
-		notepad := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
-		if filepath.IsAbs(notepad) && call(shell, "ShellExecuteW", window, ptr("open"), ptr(`"`+path+`"`), 0, 0, 1) > 32 {
-			return
-		}
-	}
-	message("无法打开本机日志。\n" + path)
-}
-func enableServiceButtons(h, enabled uintptr) {
-	for _, id := range []uintptr{buttonControl, buttonCopyOBS} {
-		call(user, "EnableWindow", call(user, "GetDlgItem", h, id), enabled)
-	}
-}
-func showServiceReady() {
-	setStatus(serviceStatus, "● 服务已就绪", readyColor)
-	text("比赛保存在本机。关闭控制台网页后，OBS 输出仍会继续。")
-}
-func copyOBS() { copyAddress(base + "/overlay") }
-func copyAddress(address string) {
-	value := syscall.StringToUTF16(address)
-	if call(user, "OpenClipboard", window) == 0 {
-		message("剪贴板正忙，请重试。OBS 地址：" + base + "/overlay")
-		return
-	}
-	defer call(user, "CloseClipboard")
-	mem := call(kernel, "GlobalAlloc", 2, uintptr(len(value)*2))
-	if mem == 0 {
-		return
-	}
-	p := call(kernel, "GlobalLock", mem)
-	if p == 0 {
-		call(kernel, "GlobalFree", mem)
-		return
-	}
-	call(kernel, "RtlMoveMemory", p, uintptr(unsafe.Pointer(&value[0])), uintptr(len(value)*2))
-	call(kernel, "GlobalUnlock", mem)
-	call(user, "EmptyClipboard")
-	if call(user, "SetClipboardData", 13, mem) == 0 {
-		call(kernel, "GlobalFree", mem)
-		message("复制失败，请重试。")
-		return
-	}
-	text("地址已复制。")
-}
-func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
-	switch m {
-	case 0x0014: // WM_ERASEBKGND
-		paintLauncher(w)
-		return 1
-	case 0x002B: // WM_DRAWITEM
-		if l != 0 && paintButton((*drawItem)(unsafe.Pointer(l))) {
-			return 1
-		}
-	case 0x0138: // WM_CTLCOLORSTATIC, including the read-only path field
-		if background := paintStatic(w, l); background != 0 {
-			return background
-		}
-	case msgServiceStarted:
-		r := <-result
-		starting = false
-		call(user, "EnableWindow", call(user, "GetDlgItem", h, buttonRestart), 1)
-		service = r.b
-		if r.err != nil {
-			setStatus(serviceStatus, "● 启动失败", errorColor)
-			text("到「设置」修改端口后重试，或到「日志」查看原因。")
-			message(r.err.Error() + "\n可在侧栏「日志」查看详情。")
-		} else {
-			checkTosu(h)
-			showServiceReady()
-			enableServiceButtons(h, 1)
-			go r.b.watch(r.b.probe, 3*time.Second, func(state serviceState) {
-				call(user, "PostMessageW", h, msgServiceState, uintptr(state), uintptr(r.b.pid))
-			})
-			open(base + "/control")
-		}
-		return 0
-	case msgServiceState:
-		if !exiting && service != nil && uintptr(service.pid) == l {
-			switch serviceState(w) {
-			case serviceWaiting:
-				setStatus(serviceStatus, "● 等待服务响应", waitColor)
-				text("本机服务暂时没有响应，正在重试。")
-			case serviceReady:
-				showServiceReady()
-			case serviceExited:
-				setStatus(serviceStatus, "● 服务已停止", errorColor)
-				enableServiceButtons(h, 0)
-				text("到「日志」查看原因，可在「设置」重启服务并恢复比赛。")
-			}
-		}
-		return 0
-	case msgTosuExited:
-		if l == tosuSelection {
-			tosuSelection++
-			if w != 0 {
-				showTosu("tosu 异常退出，请检查后重试。")
-			} else {
-				showTosu("tosu 已关闭。")
-			}
-			checkTosu(h)
-		}
-		return 0
-	case msgTosuChecked:
-		applyTosuCheck(h)
-		return 0
-	case msgTourneyFinished:
-		tourneyBusy = false
-		showTourney(<-tourneyResults)
-		return 0
-	case 0x0113: // WM_TIMER
-		if w == tosuTimer {
-			checkTosu(h)
-			if currentPage == pageLogs {
-				refreshLogPreview()
-			}
-		}
-		return 0
-	case 0x111:
-		switch w & 0xffff {
-		case buttonOverview, buttonSettings, buttonLogs, buttonAbout:
-			showLauncherPage(launcherPage((w & 0xffff) - buttonOverview))
-		case buttonProject:
-			open("https://github.com/OCLR-dev/OCLR-stream-overlay")
-		case buttonCopyAddresses:
-			copyAddress(base + "/control\r\n" + base + "/overlay\r\n" + base + "/showcase?clean=1")
-		case buttonRestart:
-			restartOnPort(h)
-		case buttonControl:
-			open(base + "/control")
-		case buttonCopyOBS:
-			copyOBS()
-		case buttonOpenLog:
-			openLocalLog()
-		case buttonExit:
-			call(user, "SendMessageW", h, 0x10, 0, 0)
-		case buttonChoose:
-			chooseTosu(h)
-		case buttonTosu:
-			openTosu(h)
-		case buttonChooseOsu:
-			chooseOsu(h)
-		case buttonGenerateTourney:
-			runTourney(h, false)
-		case buttonOpenTourney:
-			runTourney(h, true)
-		}
-		return 0
-	case 0x10:
-		if exiting {
-			return 0
-		}
-		if starting {
-			message("正在准备服务，请稍候完成后再退出。")
-			return 0
-		}
-		if service == nil || service.exited() {
-			call(user, "DestroyWindow", h)
-			return 0
-		}
-		if call(user, "MessageBoxW", h, ptr("退出会停止 OBS 网页输出。比赛已保存，下次启动会恢复。确定结束本次直播服务？"), ptr("退出 OCLR"), 0x124) == 6 {
-			exiting = true
-			text("正在保存并退出，请稍候…")
-			service.stop("operator")
-			call(user, "DestroyWindow", h)
-		}
-		return 0
-	case 2:
-		exiting = true
-		call(user, "PostQuitMessage", 0)
-		return 0
-	}
-	return call(user, "DefWindowProcW", h, uintptr(m), w, l)
-}
-func main() {
-	runtime.LockOSThread()
-	os.Exit(runLauncher())
-}
-
+func main() { os.Exit(runLauncher()) }
 func runLauncher() int {
 	loadServicePort()
-	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr("Local\\OCLR.StreamOverlay.Portable"))
+	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr(instanceMutex))
 	if mutex == 0 {
 		message("无法建立本机启动保护，请重新登录 Windows 后重试。")
 		return 1
@@ -293,10 +79,10 @@ func runLauncher() int {
 		}
 		return 0
 	}
-	localLog = launcherDiagnostics()
-	localLog.record("launcher started pid=%d build=%s", os.Getpid(), buildID)
+	log := launcherDiagnostics()
+	log.record("launcher started pid=%d build=%s", os.Getpid(), buildID)
 	if headless {
-		b, e := start(localLog)
+		b, e := start(log)
 		if e != nil {
 			os.Stderr.WriteString(e.Error())
 			return 1
@@ -304,14 +90,11 @@ func runLauncher() int {
 		if os.Args[1] == "--headless" {
 			b.setTosuPort(savedTosuPort())
 			go b.watch(b.probe, 3*time.Second, func(serviceState) {})
-			stdinClosed := make(chan struct{})
-			go func() {
-				io.Copy(io.Discard, os.Stdin)
-				close(stdinClosed)
-			}()
+			closed := make(chan struct{})
+			go func() { io.Copy(io.Discard, os.Stdin); close(closed) }()
 			select {
 			case <-b.done:
-			case <-stdinClosed:
+			case <-closed:
 				b.stop("launcher stdin closed")
 			}
 		} else {
@@ -319,6 +102,36 @@ func runLauncher() int {
 		}
 		return b.exitCode
 	}
-	runWindow()
+	assets, e := fs.Sub(frontend, "frontend/dist")
+	if e != nil {
+		message("无法加载启动界面。")
+		return 1
+	}
+	prefs, e := launcherSettingsPath()
+	if e != nil {
+		message("无法找到本机设置目录。")
+		return 1
+	}
+	app := newLauncher(log)
+	messages := windows.DefaultMessages()
+	messages.InstallationRequired = "需要 Microsoft Edge WebView2"
+	messages.UpdateRequired = "需要更新 Microsoft Edge WebView2"
+	messages.MissingRequirements = "启动界面需要 WebView2。请安装后重新打开 OCLR。"
+	messages.Webview2NotInstalled = "未找到 Microsoft Edge WebView2 Runtime。"
+	messages.DownloadPage = "即将打开 Microsoft 官方下载页面。"
+	e = wails.Run(&options.App{
+		Title: "OCLR 直播服务", Width: 940, Height: 680, MinWidth: 760, MinHeight: 560,
+		BackgroundColour: options.NewRGB(18, 16, 29), AssetServer: &assetserver.Options{Assets: assets},
+		EnableFraudulentWebsiteDetection: true,
+		DragAndDrop:                      &options.DragAndDrop{DisableWebViewDrop: true},
+		OnStartup:                        app.startup, OnBeforeClose: app.beforeClose, OnShutdown: app.shutdown, Bind: []interface{}{app},
+		Windows: &windows.Options{Theme: windows.Dark, WebviewUserDataPath: filepath.Join(filepath.Dir(prefs), "WebView2"),
+			Messages: messages},
+	})
+	if e != nil {
+		log.record("launcher window failed: %v", e)
+		message("无法打开启动界面，请检查 WebView2 安装并重试。")
+		return 1
+	}
 	return 0
 }
