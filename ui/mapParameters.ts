@@ -1,6 +1,10 @@
 import type { BeatmapRange, BeatmapRanges } from './session';
 
 export const testModForCategory = (mod: string | null) => ['NM', 'HD', 'HR', 'DT'].includes(mod || '') ? mod! : 'NM';
+export type ParameterMode = 'tosu' | 'official-test' | 'official-preview';
+export function mapParameterMode(simulated: boolean, ipc: number | null | undefined, category: string | null | undefined): ParameterMode {
+  return simulated ? 'official-test' : [1, 2].includes(ipc ?? -1) && ['NM', 'HD', 'HR', 'DT'].includes(category || '') ? 'official-preview' : 'tosu';
+}
 export interface TestMapMetadata {
   beatmapId: number;
   source: 'osu-file';
@@ -46,18 +50,20 @@ const playbackDuration = (time: number | null | undefined, rate: number | null |
   return typeof speed === 'number' && Number.isFinite(speed) && speed > 0 ? duration(time / speed) : '—';
 };
 
-export function mapParameterDisplay(id: number | null, mode: 'tosu' | 'official-test', live: LiveMapParameters | null, metadata: TestMapMetadata | null, category: string | null) {
+export function mapParameterDisplay(id: number | null, mode: ParameterMode, live: LiveMapParameters | null, metadata: TestMapMetadata | null, category: string | null) {
   const selected = Number.isSafeInteger(id) && id! > 0;
   const map = selected && mode === 'tosu' && live?.id === id ? live : null;
   const timing = selected && live?.id === id ? live.time?.lastObject : null;
   const clientRanges = ['FM', 'CA'].includes(category || '') ? map?.stats?.ranges : null;
   const actual = (key: keyof BeatmapRanges, value: number | null | undefined) => clientRanges ? numericRange(clientRanges[key]) : numeric(value);
-  const calculated = selected && mode === 'official-test' && metadata?.beatmapId === id && metadata.source === 'osu-file' && metadata.calculation?.mod === testModForCategory(category) ? metadata.calculation : null;
+  const calculationMod = mode === 'official-test' ? testModForCategory(category) : ['NM', 'HD', 'HR', 'DT'].includes(category || '') ? category : null;
+  const calculated = selected && mode !== 'tosu' && calculationMod && metadata?.beatmapId === id && metadata.source === 'osu-file' && metadata.calculation?.mod === calculationMod ? metadata.calculation : null;
   const range = calculated?.bpm;
   const min = numeric(range?.min); const max = numeric(range?.max);
-  // Formal output uses only the matched tosu frame. Simulation uses a complete
-  // calculation for this map and mod, never NM values relabelled as HR/DT.
-  return { source: map ? 'tosu' : calculated ? 'official-test' : 'none', mod: calculated?.mod, rangeMode: !!clientRanges, rows: [
+  // Ready-room previews use the known fixed slot mod. Actual play uses only
+  // matched client telemetry; a download cannot fill a missing live sample.
+  return { source: map ? 'tosu' : calculated ? mode : 'none', mod: calculated?.mod,
+    stars: calculated ? calculated.stars : map?.stats?.stars?.total ?? null, rangeMode: !!clientRanges, rows: [
     { label: '★', value: calculated ? numeric(calculated.stars) : actual('stars', map?.stats?.stars?.total) },
     { label: 'CS', value: calculated ? numeric(calculated.cs) : actual('cs', map?.stats?.cs?.converted) },
     { label: 'AR', value: calculated ? numeric(calculated.ar) : actual('ar', map?.stats?.ar?.converted) },

@@ -33,10 +33,14 @@ export class RoomAutomation {
   constructor() { this.reset(); }
   checkpoint() { return structuredClone({ ...this }); }
   restoreEvidence(checkpoint) { Object.assign(this, checkpoint); }
-  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; this.confirmedPlayers = null; this.preparedStart = null; }
+  reset() { this.sourceRoom = null; this.presentation = null; this.baseline = null; this.pending = null; this.ranking = null; this.observedRun = null; this.lastAt = null; this.notice = null; this.playEdge = null; this.endRun = null; this.scoreCandidate = null; this.runPlayers = null; this.confirmedPlayers = null; this.preparedStart = null; this.initialPick = null; }
+
+  armInitialPick(state) {
+    this.initialPick = { sessionId: state.id, actionId: state.action.id };
+  }
 
   invalidate({ action = false, result = false } = {}) {
-    if (action) this.pending = null;
+    if (action) { this.pending = null; this.initialPick = null; }
     if (result) { this.endRun = null; this.scoreCandidate = null; }
   }
 
@@ -86,7 +90,11 @@ export class RoomAutomation {
       const changedRoom = this.sourceRoom && (this.sourceRoom.left !== teams.left || this.sourceRoom.right !== teams.right);
       if (changedRoom) state = this.hold(state, 'tosu 房间已变化，原局观战连续性中断；新房间队名已自动读取').state;
       state = observedTransition(state, observation(state, 'bind-room', teams), `自动读取 tosu 房间与播出队名：${teams.left} / ${teams.right}`, randomUUID(), { undo: false });
-      if (bindingChanged) this.reset();
+      if (bindingChanged) {
+        const initialPick = this.initialPick;
+        this.reset();
+        if (!changedRoom) this.initialPick = initialPick;
+      }
     }
     this.sourceRoom = teams;
     // Presentation can join a live room mid-map. It never creates a round,
@@ -141,10 +149,12 @@ export class RoomAutomation {
     const valid = validRoom(state, frame);
     if (!valid) {
       const preparedStart = this.preparedStart;
+      const initialPick = this.initialPick;
       const held = this.hold(state, '房间或观战客户端资料不完整，不能据此判断 abort、选手掉线或 Panic');
       // Loading can temporarily clear player IDs after a known ready room.
       // Keep only that prepared start intent, never a previous run or finish.
       if (preparedStart?.key === preparedContext(held.state, frame)) this.preparedStart = preparedStart;
+      if ([0, 1, 2].includes(room?.ipcState)) this.initialPick = initialPick;
       return held;
     }
     const ipc = room.ipcState;
@@ -173,10 +183,22 @@ export class RoomAutomation {
       this.reset();
       return { state: next, note: '成绩仍在变化，暂不加分。全部结束后请选择正确胜方' };
     }
+    if (this.initialPick && ipc !== 0) {
+      const intent = this.initialPick;
+      this.initialPick = null;
+      // A newly confirmed Roll supplies the first Pick's owner even when the
+      // room selected its map earlier. Observe it afresh, never replay a saved
+      // action at startup or use Playing/Ranking as a selection event.
+      if (intent.sessionId === state.id && intent.actionId === state.action?.id &&
+        config.bp && [1, 2].includes(ipc) && state.action?.kind === 'pick' &&
+        !state.rounds.length && !state.bpHistory?.length) {
+        this.pending = { mapId, at: now, frames: 0, actionId: state.action.id, roundId: null, initial: true, eventId: randomUUID() };
+      }
+    }
     if (!this.baseline) {
       this.baseline = { mapId, ipc };
       if (ipc === 3 && this.preparedStart?.key === preparedContext(state, frame)) this.playEdge = mapId;
-      else return { state, note: '已建立房间基线，等待新的换图 / Playing 转换' };
+      else if (!this.pending) return { state, note: '已建立房间基线，等待新的换图 / Playing 转换' };
     }
     const leaving = currentRound(state);
     if (leaving?.status === 'playing' && this.observedRun === leaving.runId && this.ranking?.runId === leaving.runId &&
@@ -206,7 +228,10 @@ export class RoomAutomation {
     } else if (this.pending) {
       const pending = this.pending;
       pending.frames++;
-      if (now - pending.at >= config.mapDebounceMs && pending.frames >= 2) {
+      if (pending.initial && ![1, 2].includes(ipc)) {
+        this.pending = null;
+        note = '首图尚未确认选图就已离开准备状态，请核对本图';
+      } else if (now - pending.at >= config.mapDebounceMs && pending.frames >= 2) {
         this.pending = null; // Consume even rejected events; a later BP action cannot reuse this snapshot.
         const candidates = state.pool.filter(e => e.beatmapId === mapId);
         const entry = candidates.length === 1 ? candidates[0] : null;

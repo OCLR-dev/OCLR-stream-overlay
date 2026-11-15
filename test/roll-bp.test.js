@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { bpProgress, currentRound, newSession, seriesOf, transition } from '../server/session/model.js';
+import { bpProgress, currentRound, newCustomSession, newSession, seriesOf, transition } from '../server/session/model.js';
 import { SessionStore } from '../server/session/store.js';
 
 const pool = [...Array.from({ length: 32 }, (_, i) => ({ id: `m${i}`, label: `FM${i + 1}`, mod: 'FM', beatmapId: 810000 + i })),
@@ -595,4 +595,87 @@ test('a previously played room map directs the operator to corrections without r
   assert.equal(review.unavailableReason, '已用于其他局');
   assert.equal(currentRound(h.s).entryId, 'm2');
   assert.deepEqual(seriesOf(h.s), { a: 1, b: 0 });
+});
+
+test('confirming exhibition first Pick consumes an already selected Ready map after fresh debounce without a map click', async t => {
+  for (const connectFirst of [true, false]) {
+    const h = harness(exhibitionSetup()); t.after(() => h.store.close());
+    if (connectFirst) { await h.frame(810000); await h.frame(810000); }
+    await h.cmd('set-roll', { pickFirst: 'a' });
+    assert.equal(h.s.action.kind, 'pick');
+    await h.frame(810000);
+    assert.equal(currentRound(h.s), null, 'Roll alone never prepares a stale snapshot');
+    await h.frame(810000);
+    assert.equal(currentRound(h.s).entryId, 'm0');
+    assert.equal(currentRound(h.s).pickedBy, 'a');
+    const count = h.s.bpHistory.length;
+    await h.frame(810000); await h.frame(810000);
+    assert.equal(h.s.bpHistory.length, count);
+    await h.end(0);
+    await h.change(1);
+    assert.equal(currentRound(h.s).entryId, 'm1');
+    assert.equal(currentRound(h.s).pickedBy, 'b');
+  }
+});
+
+test('first Pick intent never consumes old Playing/Ranking, a restored session, ambiguous maps or a changed action', async t => {
+  for (const ipc of [3, 4]) {
+    const h = harness(exhibitionSetup()); t.after(() => h.store.close());
+    await h.cmd('set-roll', { pickFirst: 'a' });
+    await h.frame(810000, ipc); await h.frame(810000, ipc);
+    assert.equal(currentRound(h.s), null);
+    assert.deepEqual(seriesOf(h.s), { a: 0, b: 0 });
+  }
+  const restored = harness(cmd(exhibitionSetup(), 'set-roll', { pickFirst: 'a' }));
+  t.after(() => restored.store.close());
+  await restored.frame(810000); await restored.frame(810000);
+  assert.equal(currentRound(restored.s), null, 'process restart cannot replay first Pick intent');
+  const h = harness(exhibitionSetup()); t.after(() => h.store.close());
+  await h.frame(810000);
+  await h.cmd('set-roll', { pickFirst: 'a' });
+  await h.frame(810000);
+  await h.cmd('set-action', { action: { kind: 'pick', team: 'b' } });
+  await h.frame(810000); await h.frame(810000);
+  assert.equal(currentRound(h.s), null);
+  const ambiguous = exhibitionSetup(); ambiguous.pool.push({ ...ambiguous.pool[0], id: 'duplicate' });
+  const a = harness(ambiguous); t.after(() => a.store.close());
+  await a.cmd('set-roll', { pickFirst: 'a' });
+  await a.frame(810000); await a.frame(810000);
+  assert.equal(currentRound(a.s), null);
+});
+
+test('first Pick waits through an empty initial room but cannot finish its Ready debounce after play begins', async t => {
+  const h = harness(exhibitionSetup()); t.after(() => h.store.close());
+  await h.frame(810000);
+  await h.cmd('set-roll', { pickFirst: 'a' });
+  await h.frame(0, 0);
+  await h.frame(810000, 0);
+  await h.frame(810000, 1);
+  assert.equal(currentRound(h.s), null);
+  await h.frame(810000, 3); await h.frame(810000, 3);
+  assert.equal(currentRound(h.s), null);
+  const ready = harness(exhibitionSetup()); t.after(() => ready.store.close());
+  await ready.cmd('set-roll', { pickFirst: 'a' });
+  await ready.frame(0, 0);
+  await ready.frame(810000, 0);
+  await ready.frame(810000, 1); await ready.frame(810000, 1);
+  assert.equal(currentRound(ready.s).entryId, 'm0');
+});
+
+test('confirming first Pick applies the Ready map for a custom rule that starts with Picks', async t => {
+  const configured = cmd(cmd(cmd(newCustomSession(), 'setting', { field: 'bestOf', value: 9 }),
+    'setting', { field: 'pool', value: pool }), 'set-bp-rule', { value: 'alternate pick-first' });
+  const h = harness(configured); t.after(() => h.store.close());
+  await h.frame(810000);
+  await h.cmd('set-roll', { pickFirst: 'b' });
+  assert.equal(h.s.bpFlow.mode, 'rule');
+  await h.frame(810000);
+  assert.equal(currentRound(h.s), null);
+  await h.frame(810000);
+  assert.equal(currentRound(h.s).entryId, 'm0');
+  assert.equal(currentRound(h.s).pickedBy, 'b');
+  await h.end(0);
+  await h.change(1);
+  assert.equal(currentRound(h.s).entryId, 'm1');
+  assert.equal(currentRound(h.s).pickedBy, 'a');
 });

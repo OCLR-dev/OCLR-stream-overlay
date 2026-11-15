@@ -194,6 +194,7 @@ export class SessionApplication {
         const reset = continuity(next) !== continuity(this.state);
         const changedAction = next.action?.id !== this.state.action?.id || next.auto.bp !== this.state.auto.bp;
         const changedResults = next.auto.results !== this.state.auto.results;
+        const changedPickFirst = next.roll.pickFirst !== this.state.roll.pickFirst;
         await this.save(next, { allowPickScene: !['undo', 'replay', 'referee-replay', 'resume', 'resolve-incident'].includes(command.type) });
         if (command.type === 'next-match') this.startupChoice = null;
         if (command.type === 'set-series' && !next.incident && !next.paused && currentRound(next)?.resultSource === 'series-correction') {
@@ -208,6 +209,13 @@ export class SessionApplication {
           } else this.automation.reset();
         }
         else if (changedAction) this.automation.invalidate({ action: true });
+        const firstPickFlow = next.bpFlow?.mode === 'roll' ||
+          (next.match.custom && next.bpFlow?.mode === 'rule' && next.roll.pickFirst && changedPickFirst);
+        if (['set-roll', 'roll'].includes(command.type) && changedAction && next.auto.bp &&
+          firstPickFlow && next.action?.kind === 'pick' &&
+          !next.rounds.length && !next.bpHistory?.length && !next.paused && !next.incident) {
+          this.automation.armInitialPick(next);
+        }
         if (changedResults) this.automation.invalidate({ result: true });
         if (command.type === 'set-series' && currentRound(next)?.status === 'ranking') this.automation.invalidate({ result: true });
         this.emit();

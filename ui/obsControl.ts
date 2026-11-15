@@ -14,6 +14,7 @@ interface ObsStatus {
   showcase: boolean;
   windows: { value: string; label: string }[];
   rows: { slot: string; input: string; value: string; status: string }[];
+  audio?: { mode: 'application' | 'desktop'; input?: string; window: string | null; bound: boolean; status: string; globalDesktop: boolean } | null;
 }
 
 export function useObsControl() {
