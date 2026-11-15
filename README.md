@@ -14,6 +14,8 @@ OCLR 直播任务的登录与断开共用一个按钮，随连接状态切换操
 
 ## Windows 便携版
 
+启动窗口提供「服务端口」，默认 3001。输入 1–65535 后点「重新启动 / 重试」，成功保存后下次沿用；已有直播服务会先提示确认中断输出。端口冲突时可直接改端口重试，比赛记录保留。「复制全部地址」提供控制台、Overlay 与 Showcase 地址。换端口后需更新已有 OBS 浏览器源并重新连接 OCLR，详见使用说明。
+
 需要 Windows 包时，将已确认的提交推进到专用 `release/windows` 分支；该分支最新提交通过 Windows 验证后，会在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 自动发布 Windows x64 Pre-release。日常推送 `main` 不自动发布；重构版从 `v0.1.0` 开始。操作步骤见 [Windows 发布分支](docs/windows-release.md)。下载 `OCLR-Windows-x64.zip` 并全部解压后双击 `OCLR.exe`。包内包含构建好的前端、服务端、Windows x64 Node 运行时和原生启动器，无需安装开发工具。OBS 输出地址为 `http://127.0.0.1:3001/overlay`，比赛保存在 `%LOCALAPPDATA%\OCLR\StreamOverlay`。退出时使用启动窗口按钮。
 
 启动窗口可记住 tosu 和 osu!stable 的执行文件路径。直播控制台连接授权赛季后，可生成该赛季的 `tournament.cfg`，也可一键生成并打开 osu!Tourney。[启动与设置步骤](docs/windows-portable.md#3-连接-tosu-与-osutourney)

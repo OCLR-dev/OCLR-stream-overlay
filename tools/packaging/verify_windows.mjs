@@ -17,7 +17,9 @@ const second = join(temp, '更新 程序');
 const local = join(temp, '用户 数据');
 const data = join(local, 'OCLR/StreamOverlay/session.json');
 const launcherLog = join(local, 'OCLR/StreamOverlayLauncher/launcher.log');
-const base = 'http://127.0.0.1:3001';
+const appPort = Number(process.env.OCLR_VERIFY_PORT || 3001);
+assert.ok(Number.isInteger(appPort) && appPort > 0 && appPort <= 65535);
+const base = `http://127.0.0.1:${appPort}`;
 const results = [];
 const children = new Set();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -51,6 +53,11 @@ let running;
 try {
   await cp(packageRoot, first, { recursive: true });
   await cp(packageRoot, second, { recursive: true });
+  if (appPort !== 3001) {
+    const prefs = join(local, 'OCLR/StreamOverlayLauncher');
+    await mkdir(prefs, { recursive: true });
+    await writeFile(join(prefs, 'service-port.txt'), String(appPort));
+  }
   await check('bundled WASM HR calculation works offline from a Unicode path', async () => {
     const { calculateBeatmap } = await import(pathToFileURL(join(first, 'app/server/beatmap-calculation.js')));
     const body = 'osu file format v14\n[General]\nMode:0\n[Difficulty]\nHPDrainRate:5\nCircleSize:4\nOverallDifficulty:9\nApproachRate:9\nSliderMultiplier:1.4\nSliderTickRate:1\n[TimingPoints]\n0,500,4,0,0,100,1,0\n[HitObjects]\n' +
@@ -120,7 +127,7 @@ try {
   });
   await check('occupied port refuses start; other program remains alive', async () => {
     const server = createServer((req, res) => res.end('unrelated'));
-    await new Promise(resolve => server.listen(3001, '127.0.0.1', resolve));
+    await new Promise(resolve => server.listen(appPort, '127.0.0.1', resolve));
     try {
       const blocked = launch(first);
       assert.equal(await blocked.done, 1);
@@ -130,7 +137,7 @@ try {
   });
   await check('old backend is not silently reused', async () => {
     const server = createServer((req, res) => { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ project:'oclr-stream-overlay', ready:true, session:true, build:'old-version' })); });
-    await new Promise(resolve => server.listen(3001, '127.0.0.1', resolve));
+    await new Promise(resolve => server.listen(appPort, '127.0.0.1', resolve));
     try { const blocked = launch(first); assert.equal(await blocked.done, 1); assert.equal((await fetch(base).then(r=>r.json())).build, 'old-version'); }
     finally { await new Promise(resolve => server.close(resolve)); }
   });
@@ -190,7 +197,7 @@ try {
       "  if (mode === 'exit') return process.stderr.write('synthetic final backend error', () => process.exit(23));",
       "  response.end(JSON.stringify({ project: 'oclr-stream-overlay', build, ready: true, session: true, pid: process.pid }));",
       "});",
-      "server.listen(3001, '127.0.0.1');",
+      `server.listen(${appPort}, '127.0.0.1');`,
       "const input = createInterface({ input: process.stdin });",
       "input.on('close', () => { server.closeAllConnections(); server.close(); });",
     ].join('\n'));
