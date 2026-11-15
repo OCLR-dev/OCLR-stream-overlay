@@ -265,7 +265,7 @@ func showTourney(note string) {
 	}
 }
 
-func showTosuProcess(status processStatus) {
+func tosuProcessDisplay(status processStatus) (string, color) {
 	label, fg := "正在检查…", mutedColor
 	switch status {
 	case processMissing:
@@ -277,6 +277,11 @@ func showTosuProcess(status processStatus) {
 	case processUnknown:
 		label, fg = "无法确认", waitColor
 	}
+	return label, fg
+}
+
+func showTosuProcess(status processStatus) {
+	label, fg := tosuProcessDisplay(status)
 	setStatus(tosuProcessStatus, "所选程序 · "+label, fg)
 	var enabled uintptr
 	if status == processStopped {
@@ -285,25 +290,29 @@ func showTosuProcess(status processStatus) {
 	call(user, "EnableWindow", call(user, "GetDlgItem", window, buttonTosu), enabled)
 }
 
-func showTosuPort(probe tosuProbe) {
+func tosuPortDisplay(probe tosuProbe) (string, color) {
 	switch {
 	case probe.portOpen:
-		setStatus(tosuPortStatus, "端口 "+probe.address()+" · 可连通", readyColor)
+		return "端口 " + probe.address() + " · 可连通", readyColor
 	case probe.port != "":
-		setStatus(tosuPortStatus, "端口 "+probe.address()+" · 未连通", mutedColor)
+		return "端口 " + probe.address() + " · 未连通", mutedColor
 	case errors.Is(probe.portErr, os.ErrNotExist):
-		setStatus(tosuPortStatus, "端口 · 未找到 tosu.env", waitColor)
+		return "端口 · 未找到 tosu.env", waitColor
 	case errors.Is(probe.portErr, errTosuPortMissing):
-		setStatus(tosuPortStatus, "端口 · tosu.env 未设置 SERVER_PORT", waitColor)
+		return "端口 · tosu.env 未设置 SERVER_PORT", waitColor
 	case errors.Is(probe.portErr, errTosuPortInvalid):
-		setStatus(tosuPortStatus, "端口 · SERVER_PORT 无效", waitColor)
+		return "端口 · SERVER_PORT 无效", waitColor
 	case probe.portErr != nil:
-		setStatus(tosuPortStatus, "端口 · 无法读取 tosu.env", waitColor)
+		return "端口 · 无法读取 tosu.env", waitColor
 	default:
-		setStatus(tosuPortStatus, "端口 · 请先选择 tosu", mutedColor)
+		return "端口 · 请先选择 tosu", mutedColor
 	}
 }
 
+func showTosuPort(probe tosuProbe) {
+	label, fg := tosuPortDisplay(probe)
+	setStatus(tosuPortStatus, label, fg)
+}
 func setStatus(control uintptr, text string, foreground color) {
 	controlColors[control] = textColors{foreground, cardColor}
 	setText(control, text)

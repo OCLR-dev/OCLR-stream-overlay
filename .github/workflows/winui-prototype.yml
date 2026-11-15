@@ -1,0 +1,63 @@
+name: WinUI portable prototype
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/winui-launcher/**'
+      - 'tools/windows-launcher/**'
+      - 'tools/packaging/**'
+      - '.github/workflows/winui-prototype.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prototype:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.23.4'
+          cache: npm
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.404'
+      - run: npm ci
+      - name: Build Win32 and WinUI portable packages
+        shell: pwsh
+        run: |
+          python tools/packaging/build_windows.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/packaging/build_windows.py --winui-prototype
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify extracted packages with external traffic blocked
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP 'WinUI prototype comparison'
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          foreach ($name in @('OCLR-Windows-x64','OCLR-WinUI-Prototype-Windows-x64')) {
+            $zip = "release/$name.zip"
+            $expected = (Get-Content -LiteralPath "$zip.sha256").Split(' ')[0]
+            if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne $expected) { throw "Checksum mismatch: $name" }
+            Copy-Item -LiteralPath $zip -Destination $stage
+            Expand-Archive -LiteralPath $zip -DestinationPath $stage
+          }
+          tools/packaging/verify_winui_offline.ps1 -Packages $stage -Report 'release/winui-comparison.json'
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: OCLR-WinUI-Prototype-Windows-x64
+          path: |
+            release/OCLR-WinUI-Prototype-Windows-x64.zip
+            release/OCLR-WinUI-Prototype-Windows-x64.zip.sha256
+            release/winui-comparison.json
+          if-no-files-found: error

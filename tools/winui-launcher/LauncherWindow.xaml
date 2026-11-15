@@ -1,0 +1,155 @@
+<Window
+    x:Class="Oclr.WinUI.LauncherWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="OCLR 直播服务">
+    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <SolidColorBrush x:Key="CardSurface" Color="#FFFFFF" />
+                        <SolidColorBrush x:Key="CardOutline" Color="#E4DCED" />
+                        <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#EEE8F6" />
+                        <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="#E4D8F5" />
+                        <SolidColorBrush x:Key="SelectionIndicatorForeground" Color="#6C40BE" />
+                        <Color x:Key="SystemAccentColor">#6C40BE</Color>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <SolidColorBrush x:Key="CardSurface" Color="#271E34" />
+                        <SolidColorBrush x:Key="CardOutline" Color="#483B59" />
+                        <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#21182E" />
+                        <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="#41305B" />
+                        <SolidColorBrush x:Key="SelectionIndicatorForeground" Color="#CBA8FF" />
+                        <Color x:Key="SystemAccentColor">#AA83EE</Color>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <SolidColorBrush x:Key="CardSurface" Color="{ThemeResource SystemColorWindowColor}" />
+                        <SolidColorBrush x:Key="CardOutline" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+                <Style x:Key="Card" TargetType="Border">
+                    <Setter Property="Background" Value="{ThemeResource CardSurface}" />
+                    <Setter Property="BorderBrush" Value="{ThemeResource CardOutline}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="CornerRadius" Value="8" />
+                    <Setter Property="Padding" Value="16" />
+                </Style>
+                <Style x:Key="PageTitle" TargetType="TextBlock">
+                    <Setter Property="FontSize" Value="26" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Style>
+                <Style x:Key="CardTitle" TargetType="TextBlock">
+                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Style>
+            </ResourceDictionary>
+        </Grid.Resources>
+        <NavigationView x:Name="Sidebar" PaneDisplayMode="Left" OpenPaneLength="152"
+                        IsBackButtonVisible="Collapsed" IsSettingsVisible="False" IsPaneToggleButtonVisible="False"
+                        SelectionChanged="SelectPage">
+            <NavigationView.MenuItems>
+                <NavigationViewItem x:Name="OverviewItem" Content="概览" Tag="overview" Icon="Home" />
+                <NavigationViewItem Content="设置" Tag="settings" Icon="Setting" />
+                <NavigationViewItem Content="日志" Tag="logs" Icon="Document" />
+                <NavigationViewItem Content="关于" Tag="about" Icon="Help" />
+            </NavigationView.MenuItems>
+            <NavigationView.PaneFooter>
+                <Button Content="退出直播服务" HorizontalAlignment="Stretch" Margin="8,8,8,16" Click="ExitClicked" />
+            </NavigationView.PaneFooter>
+            <ScrollViewer HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Grid Padding="24" MinWidth="480">
+                    <StackPanel x:Name="Overview" Spacing="12">
+                        <TextBlock Style="{StaticResource PageTitle}" Text="概览" />
+                        <TextBlock Text="直播服务状态与常用操作" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="直播服务" />
+                                    <TextBlock x:Name="ServiceStatus" Grid.Column="1" Text="正在准备本机服务…" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <TextBox x:Name="ObsAddress" Header="OBS 浏览器源地址" IsReadOnly="True" />
+                                    <Button x:Name="CopyObsButton" Grid.Column="1" VerticalAlignment="Bottom" Content="复制 OBS 地址" Click="CopyObs" />
+                                </Grid>
+                                <Button x:Name="ConsoleButton" Style="{StaticResource AccentButtonStyle}" Content="打开控制台" Click="OpenConsole" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Card}">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="tosu" />
+                                    <TextBlock x:Name="TosuState" TextWrapping="Wrap" />
+                                    <Button x:Name="TosuButton" Content="打开 tosu" Tag="open-tosu" Click="RunAction" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="osu!Tourney" />
+                                    <TextBlock x:Name="TourneyState" Text="请在控制台连接授权赛季" TextWrapping="Wrap" />
+                                    <Button x:Name="TourneyButton" Content="打开 osu!Tourney" Tag="open-tourney" Click="RunAction" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <TextBlock x:Name="Feedback" AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel x:Name="Settings" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource PageTitle}" Text="设置" />
+                        <TextBlock Text="管理服务端口和直播工具路径" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource CardTitle}" Text="直播服务" />
+                                <Grid ColumnDefinitions="110,Auto,Auto" ColumnSpacing="10">
+                                    <TextBox x:Name="PortBox" Header="服务端口" MaxLength="5" InputScope="Number" />
+                                    <Button x:Name="RestartButton" Grid.Column="1" VerticalAlignment="Bottom" Style="{StaticResource AccentButtonStyle}" Content="重新启动 / 重试" Click="Restart" />
+                                    <Button Grid.Column="2" VerticalAlignment="Bottom" Content="复制全部地址" Click="CopyAddresses" />
+                                </Grid>
+                                <TextBlock Text="端口变更在服务重启后生效。连接 OBS 后可同步画面地址。" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource CardTitle}" Text="应用程序" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <TextBox x:Name="TosuPath" Header="tosu 应用程序" IsReadOnly="True" />
+                                    <Button Grid.Column="1" Content="选择 tosu.exe…" VerticalAlignment="Bottom" Tag="select-tosu" Click="PickExecutable" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <TextBox x:Name="OsuPath" Header="osu!Tourney" IsReadOnly="True" />
+                                    <Button Grid.Column="1" Content="选择 osu!.exe…" VerticalAlignment="Bottom" Tag="select-osu" Click="PickExecutable" />
+                                </Grid>
+                                <Button x:Name="GenerateButton" Content="生成 tournament.cfg" Tag="generate-config" Click="RunAction" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="SettingsFeedback" AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel x:Name="Logs" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource PageTitle}" Text="日志" />
+                        <TextBlock Text="查看本机启动器与直播服务的记录" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="启动器日志" />
+                                    <Button Grid.Column="1" Content="打开本机日志" Click="OpenLog" />
+                                </Grid>
+                                <TextBlock x:Name="LogPath" TextWrapping="Wrap" />
+                                <TextBox x:Name="LogPreview" Header="最近记录" FontFamily="Consolas" AcceptsReturn="True" IsReadOnly="True"
+                                         TextWrapping="Wrap" MinHeight="230" MaxHeight="290" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel x:Name="About" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource PageTitle}" Text="关于" />
+                        <TextBlock Text="OCLR 直播服务启动器" />
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Style="{StaticResource CardTitle}" Text="OCLR Stream Overlay" />
+                                <TextBlock Text="Windows x64 便携版 · WinUI 3 原型" />
+                                <TextBlock x:Name="BuildLabel" />
+                                <HyperlinkButton Content="打开项目主页" NavigateUri="https://github.com/OCLR-dev/OCLR-stream-overlay" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</Window>

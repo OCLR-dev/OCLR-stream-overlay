@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import urllib.request
 import zipfile
 
@@ -19,10 +20,30 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def copy_winui_licenses(ui, dotnet, destination):
+    runtime = Path(shutil.which(dotnet)).parent
+    for name in ['LICENSE.txt', 'ThirdPartyNotices.txt']:
+        shutil.copyfile(runtime / name, destination / f'dotnet-{name}')
+    assets = json.loads((ui / 'obj/project.assets.json').read_text(encoding='utf-8'))
+    for name, library in assets['libraries'].items():
+        if not name.lower().startswith(('microsoft.windowsappsdk', 'microsoft.web.webview2')):
+            continue
+        for root in assets['packageFolders']:
+            folder = Path(root) / library['path']
+            if not folder.is_dir():
+                continue
+            for path in folder.iterdir():
+                if path.name.lower() in ('license.txt', 'thirdpartynotices.txt'):
+                    shutil.copyfile(path, destination / (name.replace('/', '-') + '-' + path.name))
+            break
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--node-archive', type=Path)
     parser.add_argument('--go', default='go')
+    parser.add_argument('--winui-prototype', action='store_true')
+    parser.add_argument('--dotnet', default='dotnet')
     args = parser.parse_args()
     subprocess.run(['npm.cmd' if os.name == 'nt' else 'npm', 'run', 'build'], cwd=ROOT, check=True)
     out = ROOT / 'release'
@@ -32,7 +53,8 @@ def main():
         urllib.request.urlretrieve(NODE_URL, archive)
     if sha(archive) != NODE_SHA256:
         raise RuntimeError('Official Windows Node archive SHA256 mismatch')
-    stage = out / 'OCLR-Windows-x64'
+    package_name = 'OCLR-WinUI-Prototype-Windows-x64' if args.winui_prototype else 'OCLR-Windows-x64'
+    stage = out / package_name
     if stage.exists():
         shutil.rmtree(stage)
     app = stage / 'app'
@@ -45,6 +67,10 @@ def main():
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
     inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.go'))
     inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.syso'))
+    if args.winui_prototype:
+        ui = ROOT / 'tools/winui-launcher'
+        inputs += sorted(path for path in ui.iterdir() if path.is_file() and not path.name.startswith('.'))
+        digest.update(subprocess.check_output([args.dotnet, '--version'], cwd=ui).strip())
     for path in inputs:
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
@@ -59,14 +85,22 @@ def main():
             (runtime / name).write_bytes(source.read(prefix + name))
     env = dict(os.environ, GOOS='windows', GOARCH='amd64', CGO_ENABLED='0')
     env.setdefault('GOCACHE', str(out / '.go-cache'))
+    launcher = 'OCLR-core.exe' if args.winui_prototype else 'OCLR.exe'
     subprocess.run([args.go, 'build', '-trimpath', '-ldflags', f'-H=windowsgui -s -w -X main.buildID={build}',
-                    '-o', str(stage / 'OCLR.exe'), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
+                    '-o', str(stage / launcher), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
+    if args.winui_prototype:
+        with tempfile.TemporaryDirectory(dir=out) as output:
+            subprocess.run([args.dotnet, 'publish', str(ui / 'OCLR.WinUI.csproj'), '-c', 'Release',
+                            '-o', output], cwd=ui, check=True)
+            shutil.copytree(output, stage, dirs_exist_ok=True, ignore=shutil.ignore_patterns('*.pdb'))
     shutil.copyfile(ROOT / 'docs/windows-portable.md', stage / '使用说明.txt')
     shutil.copyfile(ROOT / 'docs/verification/windows-portable/README.md', stage / '验证状态.txt')
     license_dir = stage / 'licenses'
     license_dir.mkdir()
     for path in (ROOT / 'tools/packaging/licenses').glob('*'):
         shutil.copyfile(path, license_dir / path.name)
+    if args.winui_prototype:
+        copy_winui_licenses(ui, args.dotnet, license_dir)
     shutil.copyfile(ROOT / 'node_modules/vue/LICENSE', license_dir / 'Vue-LICENSE')
     shutil.copyfile(ROOT / 'node_modules/rosu-pp-js/LICENSE', license_dir / 'rosu-pp-js-LICENSE')
     # The Go runtime is statically linked; include its redistribution license.
@@ -74,12 +108,12 @@ def main():
     shutil.copyfile(Path(goroot) / 'LICENSE', license_dir / 'Go-LICENSE')
     manifest = {str(p.relative_to(stage)).replace('\\', '/'): sha(p) for p in sorted(stage.rglob('*')) if p.is_file()}
     (stage / 'SHA256SUMS.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
-    result = out / 'OCLR-Windows-x64.zip'
+    result = out / f'{package_name}.zip'
     with zipfile.ZipFile(result, 'w', zipfile.ZIP_DEFLATED) as target:
         for path in sorted(stage.rglob('*')):
             if path.is_file():
                 target.write(path, str(path.relative_to(out)))
-    (out / 'OCLR-Windows-x64.zip.sha256').write_text(f'{sha(result)}  {result.name}\n')
+    (out / f'{result.name}.sha256').write_text(f'{sha(result)}  {result.name}\n')
     print(json.dumps({'zip': str(result), 'bytes': result.stat().st_size, 'sha256': sha(result), 'build': build}, indent=2))
 
 

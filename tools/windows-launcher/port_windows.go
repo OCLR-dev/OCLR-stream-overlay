@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -43,6 +44,19 @@ func loadServicePort() {
 	base = "http://127.0.0.1:" + servicePort
 }
 
+func saveServicePort(value string) (string, error) {
+	if !validServicePort(value) {
+		return "", errors.New("请输入 1–65535 的整数端口。")
+	}
+	number, _ := strconv.Atoi(value)
+	port := strconv.Itoa(number)
+	path := portSettingsPath()
+	if path == "" || os.MkdirAll(filepath.Dir(path), 0700) != nil || replaceFile(path, []byte(port)) != nil {
+		return "", errors.New("无法保存端口设置。")
+	}
+	return port, nil
+}
+
 func restartOnPort(h uintptr) {
 	if starting || exiting || tourneyBusy {
 		return
@@ -54,21 +68,15 @@ func restartOnPort(h uintptr) {
 		message("请输入 1–65535 的整数端口。")
 		return
 	}
-	n, _ := strconv.Atoi(port)
-	port = strconv.Itoa(n)
 	if service != nil && !service.exited() {
 		if call(user, "MessageBoxW", h, ptr("重新启动会暂时中断 OBS 输出与 OCLR 连接，比赛记录会保留。继续？"), ptr("重新启动服务"), 0x124) != 6 {
 			return
 		}
 	}
-	p := portSettingsPath()
-	if p == "" || os.MkdirAll(filepath.Dir(p), 0700) != nil {
-		message("无法保存端口设置。")
-		return
-	}
 	// Persist before stopping; a failed write must leave the live service intact.
-	if err := replaceFile(p, []byte(port)); err != nil {
-		message("无法保存端口设置。")
+	port, err := saveServicePort(port)
+	if err != nil {
+		message(err.Error())
 		return
 	}
 	starting = true

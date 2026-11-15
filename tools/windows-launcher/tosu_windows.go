@@ -380,9 +380,8 @@ func openTosu(owner uintptr) {
 		showTosu("暂时无法确认运行状态，请稍后重试。")
 		return
 	}
-	cmd := exec.Command(tosuPath)
-	cmd.Dir = filepath.Dir(tosuPath)
-	if err := cmd.Start(); err != nil {
+	cmd, err := startTosu(tosuPath)
+	if err != nil {
 		showTosu("无法启动 tosu，请检查所选程序。")
 		return
 	}
@@ -397,4 +396,10 @@ func openTosu(owner uintptr) {
 		}
 		call(user, "PostMessageW", owner, msgTosuExited, failed, selection)
 	}()
+}
+
+func startTosu(path string) (*exec.Cmd, error) {
+	cmd := exec.Command(path)
+	cmd.Dir = filepath.Dir(path)
+	return cmd, cmd.Start()
 }

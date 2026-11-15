@@ -280,8 +280,12 @@ func runLauncher() int {
 		return 1
 	}
 	defer syscall.CloseHandle(syscall.Handle(mutex))
-	headless := len(os.Args) > 1 && (os.Args[1] == "--smoke-test" || os.Args[1] == "--headless")
+	wire := len(os.Args) > 1 && os.Args[1] == "--winui-host"
+	headless := wire || len(os.Args) > 1 && (os.Args[1] == "--smoke-test" || os.Args[1] == "--headless")
 	if err == syscall.Errno(183) {
+		if wire {
+			return reuseWinUIHost()
+		}
 		if e := reuse(); e != nil {
 			if !headless {
 				message(e.Error())
@@ -295,6 +299,9 @@ func runLauncher() int {
 	}
 	localLog = launcherDiagnostics()
 	localLog.record("launcher started pid=%d build=%s", os.Getpid(), buildID)
+	if wire {
+		return runWinUIHost()
+	}
 	if headless {
 		b, e := start(localLog)
 		if e != nil {
