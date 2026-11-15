@@ -667,7 +667,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <button :disabled="disabled || !s.canUndo" :data-unavailable="connection !== 'synced' || !s.canUndo" @click="run('undo')">撤销上一项</button>
         <button v-if="round && !s.warmup" @click="showIncidents()">处理异常</button><button v-if="!s.warmup" @click="showAdjustments">比赛纠错</button>
       </section>
-      <div class="operator-notice" aria-label="操作反馈" :aria-busy="busy">
+      <div class="operator-notice" :class="{ 'operator-notice--setup': settings }" aria-label="操作反馈" :aria-busy="busy">
           <p v-show="error || localError" role="alert" class="operator-error">{{ localError || error }}</p>
           <p v-show="!error && !localError" class="operator-feedback" :class="{ 'operator-feedback--undo': feedbackKind === 'undo' }" role="status">{{ feedback }}</p>
       </div>
