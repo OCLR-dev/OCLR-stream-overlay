@@ -4,7 +4,7 @@ import { useSession, type BpPhase, type PoolEntry, type Round } from '../session
 import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type Team } from '../model';
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
-import { CalendarCheck, Gamepad2, Monitor, Settings2, ArrowRight, TriangleAlert, Unplug } from '@lucide/vue';
+import { CalendarCheck, Gamepad2, Monitor, Settings2, ArrowRight, TriangleAlert, Wifi, WifiOff, ListFilter, Trophy } from '@lucide/vue';
 import ObsSettings from './ObsSettings.vue';
 import { useObsControl } from '../obsControl';
 import MapActionPopover from './MapActionPopover.vue';
@@ -605,6 +605,18 @@ const enabledFollows = computed(() => [s.value?.auto.bp, s.value?.auto.scenes, s
 const setupSource = computed(() => ({ 'oclr-streaming': 'OCLR 直播任务', 'oclr': 'OCLR 已发布资料', 'oclr-archive': 'OCLR 历史资料', 'manual': '人工资料' }[s.value?.match.provenance || ''] || '本场已载入资料'));
 const setupGameStatus = computed(() => connection.value !== 'synced' ? '控制台连接中断 · 等待更新' :
   live.value?.tosu.status === 'live' && !setupRoom.value ? '已连接 · 等待有效比赛房间' : gameStatus.value);
+const setupGameHint = computed(() => {
+  if (connection.value !== 'synced') return '控制台恢复连接后会自动更新状态。';
+  if (setupRoom.value) return '';
+  if (live.value?.tosu.status === 'live') return '请在 osu!Tourney 进入比赛房间。';
+  if (live.value?.tosu.status === 'stale' || live.value?.tosu.status === 'invalid-data') return '请检查 tosu 与 osu!Tourney 是否正常运行。';
+  return '打开 tosu 与 osu!Tourney，进入比赛房间后会自动连接。';
+});
+const followOptions = [
+  { key: 'bp', label: '自动 Ban / Pick', description: '按当前 BP 动作跟随换图', icon: ListFilter },
+  { key: 'scenes', label: '自动切换画面', description: '跟随换图、开打与结算', icon: Monitor },
+  { key: 'results', label: '自动计胜', description: '正常结算后按最终队分加赢图', icon: Trophy },
+] as const;
 const setupAttention = computed(() => {
   const items: string[] = [];
   if (connection.value !== 'synced') items.push('控制台连接中断，等待重新同步');
@@ -696,16 +708,24 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         </details>
             </section>
             <section id="setup-game" class="setup-panel" aria-label="游戏连接">
-              <div class="operator-section-head"><h3><Gamepad2 aria-hidden="true" />游戏连接</h3><span class="setup-badge">{{ enabledFollows ? '自动跟随已开启' : '自动跟随已关闭' }}</span></div>
-              <p role="status">{{ setupGameStatus }}</p>
-              <div v-if="setupRoom" class="setup-room"><span>房间左队<strong>{{ setupRoom.teams.left || '—' }}</strong></span><span>房间右队<strong>{{ setupRoom.teams.right || '—' }}</strong></span></div>
-              <p v-else class="setup-callout"><Unplug aria-hidden="true" />打开 tosu 与 osu!Tourney 并进入比赛房间，收到有效数据后按已开启的选项跟随。</p>
-          <details class="operator-follow"><summary>自动跟随选项 <span>{{ enabledFollows }} 项已开启</span></summary>
-            <p>房间左右队名直接读取 tosu，收到有效赛事数据后自动跟随，无需手动填写或确认。</p>
-            <label class="operator-check"><input v-model="autoForm.bp" type="checkbox" @change="scheduleSetting('auto', true)">按当前 BP 动作自动 Ban / Pick</label>
-            <label class="operator-check"><input v-model="autoForm.scenes" type="checkbox" @change="scheduleSetting('auto', true)">换图 / 比赛开始 / 结算时自动切换画面</label>
-            <label class="operator-check"><input v-model="autoForm.results" type="checkbox" @change="scheduleSetting('auto', true)">正常结算按最终队分自动加赢图</label><p role="status">{{ settingMessages.auto || '自动化默认开启；资料不足时等待，恢复后自动建立基线。明确暂停保留，普通人工修正立即生效。' }}</p>
-          </details>
+              <div class="operator-section-head"><h3><Gamepad2 aria-hidden="true" />游戏连接</h3><span class="setup-badge">{{ live?.sources?.tosu === 'simulated' ? '模拟信号' : 'tosu' }}</span></div>
+              <div class="setup-game-connection" role="status">
+                <Wifi v-if="connection === 'synced' && live?.tosu.status === 'live'" :size="18" aria-hidden="true" /><WifiOff v-else :size="18" aria-hidden="true" />
+                <div><strong>{{ setupGameStatus }}</strong>
+                  <p v-if="setupRoom" class="setup-room"><span>左队 · <b>{{ setupRoom.teams.left }}</b></span><span>右队 · <b>{{ setupRoom.teams.right }}</b></span></p>
+                  <p v-else>{{ setupGameHint }}</p>
+                </div>
+              </div>
+              <div class="setup-follow-head"><h4><Settings2 :size="17" aria-hidden="true" />自动跟随</h4><span>{{ enabledFollows ? `${enabledFollows} / 3 已开启` : '全部关闭' }}</span></div>
+              <div class="setup-follow-options" role="group" aria-label="自动跟随">
+                <label v-for="option in followOptions" :key="option.key" class="setup-follow-option">
+                  <component :is="option.icon" :size="18" aria-hidden="true" />
+                  <span><strong>{{ option.label }}</strong><small :id="`follow-${option.key}-description`">{{ option.description }}</small></span>
+                  <input v-model="autoForm[option.key]" type="checkbox" role="switch" :aria-label="option.label" :aria-describedby="`follow-${option.key}-description`" @change="scheduleSetting('auto', true)">
+                </label>
+              </div>
+              <p v-if="s.paused || s.incident" class="setup-follow-notice" role="status"><TriangleAlert :size="16" aria-hidden="true" />{{ s.paused ? '播出已暂停，请到比赛现场结束暂停。' : '本局等待核对，请到比赛现场处理。' }}</p>
+              <p v-if="settingMessages.auto" class="operator-hint setup-follow-feedback" role="status">{{ settingMessages.auto }}</p>
             </section>
             <section id="setup-obs" class="setup-panel" aria-label="OBS 与播出画面">
               <div class="operator-section-head"><h3><Monitor aria-hidden="true" />OBS 与播出画面</h3><span class="setup-badge">{{ obs.unreachable ? '状态待更新' : obs.state?.phase === 'ready' ? '已连接' : '待连接' }}</span></div>
