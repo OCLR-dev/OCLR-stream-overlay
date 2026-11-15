@@ -22,11 +22,12 @@ var client = &http.Client{
 }
 
 type health struct {
-	Project string
-	Build   string
-	Ready   bool
-	Session bool
-	PID     int
+	Project           string
+	Build             string
+	Ready             bool
+	Session           bool
+	PID               int
+	AuthorizedEdition string
 }
 
 func getHealth() (health, error) {
@@ -97,6 +98,7 @@ type backend struct {
 	done     chan struct{}
 	exitCode int // Written before done closes.
 	log      *diagnostics
+	tosuPort string
 }
 
 func launchBackend(cmd *exec.Cmd, log *diagnostics) (*backend, error) {
@@ -189,6 +191,19 @@ func (b *backend) exited() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (b *backend) setTosuPort(port string) {
+	if port == b.tosuPort || b.exited() {
+		return
+	}
+	value := port
+	if value == "" {
+		value = "0"
+	}
+	if _, err := io.WriteString(b.input, "tosu-port "+value+"\n"); err == nil {
+		b.tosuPort = port
 	}
 }
 

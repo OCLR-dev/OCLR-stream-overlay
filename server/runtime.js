@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const guardPort = 40000 + createHash('sha256').update(root).digest().readUInt16BE() % 10000;
 
+export function portableGuardPort(dataDir) {
+  return 40000 + createHash('sha256').update(dataDir.toLowerCase()).digest().readUInt16BE() % 10000;
+}
+
 async function runningService(port) {
   return new Promise(resolve => {
     const socket = createConnection({ host: '127.0.0.1', port });

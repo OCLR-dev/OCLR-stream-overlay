@@ -154,6 +154,7 @@ export class TosuClient {
 
   connect() {
     if (!this.running) return;
+    if (!this.url) { this.onStatus('idle'); return; }
     this.onStatus('connecting');
     let socket;
     try { socket = new this.WebSocketImpl(this.url); }
@@ -186,6 +187,17 @@ export class TosuClient {
     this.watchForStale();
   }
 
+  setUrl(url) {
+    if (url === this.url) return;
+    const replacing = Boolean(this.url);
+    this.url = url;
+    this.resetConnection();
+    if (this.running) {
+      if (replacing) this.onStatus('disconnected');
+      this.connect();
+    }
+  }
+
   watchForStale() {
     clearTimeout(this.staleTimer);
     this.staleTimer = setTimeout(() => {
@@ -213,11 +225,15 @@ export class TosuClient {
     }
   }
 
-  stop() {
-    this.running = false;
+  resetConnection() {
     clearTimeout(this.staleTimer);
     clearTimeout(this.retryTimer);
     this.releaseSocket();
+  }
+
+  stop() {
+    this.running = false;
+    this.resetConnection();
     this.onStatus('stopped');
   }
 }

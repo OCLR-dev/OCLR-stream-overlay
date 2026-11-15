@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -17,10 +19,12 @@ import (
 var commonDialog = syscall.NewLazyDLL("comdlg32.dll")
 var queryProcessImage = kernel.NewProc("QueryFullProcessImageNameW")
 
-const tosuAddress = "127.0.0.1:24050"
+var errTosuPortMissing = errors.New("SERVER_PORT is missing")
+var errTosuPortInvalid = errors.New("SERVER_PORT must be between 1 and 65535")
 
 type launcherSettings struct {
-	TosuPath string `json:"tosuPath"`
+	TosuPath string `json:"tosuPath,omitempty"`
+	OsuPath  string `json:"osuPath,omitempty"`
 }
 
 func launcherSettingsPath() (string, error) {
@@ -53,19 +57,19 @@ func isExecutable(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
-func saveTosuPath(path, exe string) error {
-	if !isExecutable(exe) {
-		return errors.New("tosu path is not an executable file")
-	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+func saveLauncherSettings(path string, settings launcherSettings) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
-	data, err := json.Marshal(launcherSettings{TosuPath: exe})
+	data, err := json.Marshal(settings)
 	if err != nil {
 		return err
 	}
-	staged, err := os.CreateTemp(dir, "launcher-*.tmp")
+	return replaceFile(path, data)
+}
+
+func replaceFile(path string, data []byte) error {
+	staged, err := os.CreateTemp(filepath.Dir(path), ".oclr-*.tmp")
 	if err != nil {
 		return err
 	}
@@ -97,10 +101,10 @@ type openFileName struct {
 	reservedWord, flagsEx uint32
 }
 
-func pickTosu(owner uintptr, previous string) (string, error) {
+func pickExecutable(owner uintptr, previous, caption string) (string, error) {
 	buffer := make([]uint16, 32768)
 	filter := utf16.Encode([]rune("Windows 应用程序 (*.exe)\x00*.exe\x00\x00"))
-	title := syscall.StringToUTF16Ptr("选择 tosu 应用程序")
+	title := syscall.StringToUTF16Ptr(caption)
 	dialog := openFileName{
 		owner: owner, filter: &filter[0], index: 1, file: &buffer[0], maxFile: uint32(len(buffer)), title: title,
 		flags: 0x00080000 | 0x00001000 | 0x00000800 | 0x00000008 | 0x02000000, // Explorer, existing file/path, keep cwd and recent files.
@@ -121,14 +125,14 @@ func pickTosu(owner uintptr, previous string) (string, error) {
 	return "", nil
 }
 
-type tosuProcess uint8
+type processStatus uint8
 
 const (
-	tosuChecking tosuProcess = iota
-	tosuMissing
-	tosuStopped
-	tosuRunning
-	tosuUnknown
+	processChecking processStatus = iota
+	processMissing
+	processStopped
+	processRunning
+	processUnknown
 )
 
 func processImage(pid uint32) (string, error) {
@@ -157,21 +161,21 @@ func sameExecutable(selected, image string) bool {
 	return wantErr == nil && gotErr == nil && os.SameFile(want, got)
 }
 
-func findTosu(path string) tosuProcess {
+func findExecutableProcess(path string) processStatus {
 	if !isExecutable(path) {
-		return tosuMissing
+		return processMissing
 	}
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return tosuUnknown
+		return processUnknown
 	}
 	snapshot, err := syscall.CreateToolhelp32Snapshot(syscall.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
-		return tosuUnknown
+		return processUnknown
 	}
 	defer syscall.CloseHandle(snapshot)
 	entry := syscall.ProcessEntry32{Size: uint32(unsafe.Sizeof(syscall.ProcessEntry32{}))}
-	status := tosuStopped
+	status := processStopped
 	name := filepath.Base(resolved)
 	err = syscall.Process32First(snapshot, &entry)
 	for ; err == nil; err = syscall.Process32Next(snapshot, &entry) {
@@ -184,16 +188,16 @@ func findTosu(path string) tosuProcess {
 		image, queryErr := processImage(entry.ProcessID)
 		if queryErr != nil {
 			if matchingName {
-				status = tosuUnknown
+				status = processUnknown
 			}
 			continue
 		}
 		if sameExecutable(resolved, image) {
-			return tosuRunning
+			return processRunning
 		}
 	}
 	if !errors.Is(err, syscall.ERROR_NO_MORE_FILES) {
-		return tosuUnknown
+		return processUnknown
 	}
 	return status
 }
@@ -207,16 +211,67 @@ func tosuPortOpen(address string) bool {
 	return true
 }
 
+func readTosuPort(exe string) (string, error) {
+	file, err := os.Open(filepath.Join(filepath.Dir(exe), "tosu.env"))
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	var value string
+	var found bool
+	lines := bufio.NewScanner(file)
+	for lines.Scan() {
+		line, _, _ := strings.Cut(strings.TrimPrefix(lines.Text(), "\uFEFF"), "#")
+		key, raw, ok := strings.Cut(line, "=")
+		if ok && strings.TrimSpace(key) == "SERVER_PORT" {
+			value, found = strings.TrimSpace(raw), true
+		}
+	}
+	if err := lines.Err(); err != nil {
+		return "", err
+	}
+	if !found {
+		return "", errTosuPortMissing
+	}
+	if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') && value[len(value)-1] == value[0] {
+		value = strings.TrimSpace(value[1 : len(value)-1])
+	}
+	port, err := strconv.ParseUint(value, 10, 16)
+	if err != nil || port == 0 {
+		return "", errTosuPortInvalid
+	}
+	return strconv.FormatUint(port, 10), nil
+}
+
 type tosuProbe struct {
 	selection uintptr
-	process   tosuProcess
+	process   processStatus
+	port      string
 	portOpen  bool
+	portErr   error
+}
+
+func (probe tosuProbe) address() string {
+	return net.JoinHostPort("127.0.0.1", probe.port)
 }
 
 var tosuPath, settingsFile string
 var tosuSelection uintptr
 var tosuPending bool
 var tosuResults = make(chan tosuProbe, 1)
+
+func probeTosu(path string, selection uintptr) tosuProbe {
+	probe := tosuProbe{selection: selection, process: findExecutableProcess(path)}
+	if probe.process == processMissing {
+		return probe
+	}
+	probe.port, probe.portErr = readTosuPort(path)
+	if probe.portErr == nil {
+		probe.portOpen = tosuPortOpen(probe.address())
+	}
+	return probe
+}
 
 func checkTosu(owner uintptr) {
 	if tosuPending {
@@ -225,7 +280,7 @@ func checkTosu(owner uintptr) {
 	tosuPending = true
 	path, selection := tosuPath, tosuSelection
 	go func() {
-		tosuResults <- tosuProbe{selection, findTosu(path), tosuPortOpen(tosuAddress)}
+		tosuResults <- probeTosu(path, selection)
 		call(user, "PostMessageW", owner, msgTosuChecked, 0, 0)
 	}()
 }
@@ -238,22 +293,42 @@ func applyTosuCheck(owner uintptr) {
 		return
 	}
 	showTosuProcess(probe.process)
-	showTosuPort(probe.portOpen)
+	showTosuPort(probe)
+	if service != nil {
+		service.setTosuPort(probe.port)
+	}
 }
 
-func loadTosuPreference() {
+func savedTosuPort() string {
+	path, err := launcherSettingsPath()
+	if err != nil {
+		return ""
+	}
+	settings, err := loadLauncherSettings(path)
+	if err != nil || !isExecutable(settings.TosuPath) {
+		return ""
+	}
+	port, _ := readTosuPort(settings.TosuPath)
+	return port
+}
+
+func loadLauncherPreferences() {
 	path, err := launcherSettingsPath()
 	if err != nil {
 		showTosu("无法找到本机设置目录。")
+		showTourney("无法找到本机设置目录。")
 		return
 	}
 	settingsFile = path
 	settings, err := loadLauncherSettings(path)
 	if err != nil {
 		showTosu("无法读取保存的路径，请重新选择。")
+		showTourney("无法读取保存的路径，请重新选择。")
 		return
 	}
 	tosuPath = settings.TosuPath
+	osuPath = settings.OsuPath
+	showTourney("")
 	switch {
 	case tosuPath == "":
 		showTosu("选择一次，下次可直接打开。")
@@ -265,7 +340,7 @@ func loadTosuPreference() {
 }
 
 func chooseTosu(owner uintptr) {
-	path, err := pickTosu(owner, tosuPath)
+	path, err := pickExecutable(owner, tosuPath, "选择 tosu 应用程序")
 	if err != nil {
 		showTosu("无法打开文件选择窗口，请重试。")
 		return
@@ -277,27 +352,31 @@ func chooseTosu(owner uintptr) {
 		showTosu("请选择实际的 tosu .exe 文件。")
 		return
 	}
-	if settingsFile == "" || saveTosuPath(settingsFile, path) != nil {
+	if settingsFile == "" || saveLauncherSettings(settingsFile, launcherSettings{TosuPath: path, OsuPath: osuPath}) != nil {
 		showTosu("无法保存路径，请检查设置目录权限。")
 		return
+	}
+	if service != nil && path != tosuPath {
+		service.setTosuPort("")
 	}
 	tosuPath = path
 	tosuSelection++
 	showTosu("已保存 tosu 路径。")
-	showTosuProcess(tosuChecking)
+	showTosuProcess(processChecking)
+	setStatus(tosuPortStatus, "端口 · 正在检查…", mutedColor)
 	checkTosu(owner)
 }
 
 func openTosu(owner uintptr) {
-	status := findTosu(tosuPath)
+	status := findExecutableProcess(tosuPath)
 	showTosuProcess(status)
 	switch status {
-	case tosuRunning:
+	case processRunning:
 		return
-	case tosuMissing:
+	case processMissing:
 		showTosu("找不到保存的文件，请重新选择。")
 		return
-	case tosuUnknown:
+	case processUnknown:
 		showTosu("暂时无法确认运行状态，请稍后重试。")
 		return
 	}
@@ -309,7 +388,7 @@ func openTosu(owner uintptr) {
 	}
 	tosuSelection++
 	selection := tosuSelection
-	showTosuProcess(tosuRunning)
+	showTosuProcess(processRunning)
 	showTosu("tosu 已启动。")
 	go func() {
 		var failed uintptr

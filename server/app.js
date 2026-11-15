@@ -143,7 +143,8 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     if (await artwork(req, res, url)) return;
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     if (url.pathname === '/api/health') {
-      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(activeSession), ...(config.runtime || {}) });
+      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(activeSession),
+        ...(config.runtime || {}), authorizedEdition: streaming.authorizedEdition() });
     }
     if (await serveUi(url.pathname, res, uiRoot)) return;
     if (url.pathname === '/api/config') {

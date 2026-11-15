@@ -156,6 +156,7 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			text("启动失败。可打开本机日志查看原因。")
 			message(r.err.Error() + "\n可打开本机日志查看详情。")
 		} else {
+			checkTosu(h)
 			showServiceReady()
 			enableServiceButtons(h, 1)
 			go r.b.watch(r.b.probe, 3*time.Second, func(state serviceState) {
@@ -193,6 +194,10 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	case msgTosuChecked:
 		applyTosuCheck(h)
 		return 0
+	case msgTourneyFinished:
+		tourneyBusy = false
+		showTourney(<-tourneyResults)
+		return 0
 	case 0x0113: // WM_TIMER
 		if w == tosuTimer {
 			checkTosu(h)
@@ -212,6 +217,12 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			chooseTosu(h)
 		case buttonTosu:
 			openTosu(h)
+		case buttonChooseOsu:
+			chooseOsu(h)
+		case buttonGenerateTourney:
+			runTourney(h, false)
+		case buttonOpenTourney:
+			runTourney(h, true)
 		}
 		return 0
 	case 0x10:
@@ -274,6 +285,7 @@ func runLauncher() int {
 			return 1
 		}
 		if os.Args[1] == "--headless" {
+			b.setTosuPort(savedTosuPort())
 			go b.watch(b.probe, 3*time.Second, func(serviceState) {})
 			stdinClosed := make(chan struct{})
 			go func() {

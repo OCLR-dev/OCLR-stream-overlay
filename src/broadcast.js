@@ -58,6 +58,13 @@ export class BroadcastData {
       ? findPoolEntry(this.state.oclr.data, this.state.selection, this.state.tosu.data?.beatmap.id) : null;
   }
 
+  setTosuUrl(url) {
+    if (url === this.tosu.url) return;
+    // Discard old telemetry but keep frame numbering monotonic for subscribers.
+    this.state.tosu = { ...source(), frameSeq: this.state.tosu.frameSeq };
+    this.tosu.setUrl(url);
+  }
+
   selectEdition(edition) {
     if (typeof edition !== 'string' || edition.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(edition)) throw new Error('INVALID_EDITION');
     this.request?.abort();
