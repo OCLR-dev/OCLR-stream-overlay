@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ScoreCounter, parseCounterScore, formatCounterScore } from '../ui/scoreCounter.ts';
+import { ScoreCounter, parseCounterScore } from '../ui/scoreCounter.ts';
+import { formatCounterScore } from '../ui/scoreFormat.ts';
 
 test('scores interpolate through successive display frames and land exactly on the received target', () => {
   const c = new ScoreCounter(); c.update(1000,0,false); c.update(2200,100,true);
@@ -24,10 +25,9 @@ test('Ranking, reduced motion, new context, corrections, unknown and resets snap
   c.update(1800,30,true); assert.equal(c.value,1800,'any downward target correction is exact, even if above the interpolated value');
   c.update(null,40,true);c.update(3000,50,true);assert.equal(c.value,3000,'rejoining unknown is a silent baseline');
 });
-test('preserves exact zero, unknown, safe integers and each branch grouping convention', () => {
-  assert.equal(parseCounterScore('0'),0);assert.equal(parseCounterScore('105,0000'),1050000);
-  for(const text of ['—','-1','NaN','1.5','9007199254740992'])assert.equal(parseCounterScore(text),null);
-  assert.equal(formatCounterScore(1050123.8,'105,9999'),'105,0123');
-  assert.equal(formatCounterScore(1050123.8,'1,059,999'),'1,050,123');
-  assert.equal(formatCounterScore(9999,'1,0000'),'9999');
+test('preserves exact zero, unknown, safe integers and three-digit apostrophe grouping', () => {
+  assert.equal(parseCounterScore('0'),0);assert.equal(parseCounterScore("1'050'000"),1050000);
+  for(const text of ['—','-1','NaN','1.5','9007199254740992',"105'0000"])assert.equal(parseCounterScore(text),null);
+  assert.equal(formatCounterScore(1050123.8),"1'050'123");
+  assert.equal(formatCounterScore(9999),"9'999");
 });

@@ -563,6 +563,19 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-index { position: absolute; right: 8px; bottom: 8px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
+/* Title and meta viewports clip to the space left of the #N reserve; long text
+   scrolls there instead of running under the card number. Keep the 40px gap in
+   sync with MapCardMarquee.vue's GAP. */
+.map-card-marquee-viewport { display: block; overflow: hidden; white-space: nowrap; }
+.map-card-marquee-track { display: inline-flex; white-space: nowrap; }
+.map-card-marquee-copy { display: inline-block; flex: none; }
+.map-card-marquee-viewport.is-scrolling .map-card-marquee-copy { padding-right: 40px; }
+.map-card-marquee-viewport.is-scrolling .map-card-marquee-track { will-change: transform; }
+/* Soften the cut edge while the text moves; the left edge stays sharp so the
+   beginning remains fully readable during the hold. */
+.map-card-marquee-viewport.is-scrolling {
+  mask-image: linear-gradient(90deg, #000, #000 calc(100% - 14px), transparent);
+}
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
 /* Ban darkens the artwork; its title and corner badge remain legible. */
@@ -662,7 +675,13 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .chat-box-header strong { color: var(--muted); font-size: 12px; font-weight: 600; line-height: 16px; }
 .chat-box-header span { color: var(--muted); font-family: var(--display); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .chat-box-content { display: flex; flex: 1; flex-direction: column; align-items: stretch; justify-content: center; min-height: 0; overflow: hidden; padding: 4px 10px; }
+.chat-lines { display: flex; flex: 1 1 auto; flex-direction: column; justify-content: flex-end; min-height: 0; }
 .chat-box-content .match-chat-line { flex: 0 0 auto; margin: 0; line-height: 20px; }
+/* New messages take their place immediately; TransitionGroup's FLIP move
+   carries every older line up while the entering line fades in from below. */
+.chat-line-enter-active { transition: opacity 280ms cubic-bezier(.2, .7, .3, 1), transform 280ms cubic-bezier(.2, .7, .3, 1); }
+.chat-line-enter-from { opacity: 0; transform: translateY(8px); }
+.chat-line-move { transition: transform 280ms cubic-bezier(.2, .7, .3, 1); }
 .chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
 .chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
 .chat-box--compact .chat-box-content { height: 100%; justify-content: flex-end; padding-top: 4px; }
