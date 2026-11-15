@@ -2,7 +2,7 @@
 
 日期：2026-10-29（America/New_York）。实现验收时未提交、推送或发布 Release；后续提交与推送不代表 Windows 验收通过。
 
-## 当前结论
+## 早期 macOS 验证结论
 
 - **便携 ZIP 已实际生成**：`release/OCLR-Windows-x64.zip`，入口 `OCLR.exe`，目标 Windows 10 / 11 x64（Intel / AMD）。不是 Electron，不需要 Node / Git / npm；附带 Node 22.23.4、已构建前端和服务端。尚未做代码签名。
 - **Windows 原生启动验收未完成**。已检查并启动本机 Parallels 的 Windows 11；`prlctl start/exec` 受 Pro / Business 版本限制。图形方式可启动 Windows，但 Computer Use 无法操作虚拟机内容区，出现 `noWindowsAvailable` / `cannotClickOffscreenElement`，键盘输入无法落入 Windows。没有运行成功的 `.exe` 或 Windows 验收报告，不能把启动虚拟机视为启动应用通过。
@@ -10,7 +10,7 @@
 
 ## 实现
 
-`tools/windows-launcher` 用 Go 标准库调用 Win32：等待后端就绪及完整会话恢复，核对构建标识和子进程 PID 后才打开默认浏览器。原生窗口包含状态、打开控制台、复制 OBS 地址、退出。关闭窗口先确认停止输出；关闭浏览器不关服务。重复双击通过 Windows 命名互斥量复用同版本实例；旧版本或未知占用明确提示，不杀其他进程。
+`tools/windows-launcher` 使用 Windigo 建立原生窗口和控件，由 Go 管理后端进程。启动器等待后端就绪及完整会话恢复，核对构建标识和子进程 PID 后才打开默认浏览器。关闭窗口先确认停止输出；关闭浏览器不关服务。重复双击通过 Windows 命名互斥量复用同版本实例；旧版本或未知占用明确提示，不杀其他进程。
 
 原生侧栏包含「概览」「设置」「日志」「关于」。原生测试确认控件随页面切换、切换保留尚未应用的端口输入，并从隔离的本机日志显示最近记录。日志预览仅读取当前文件末尾 48 KiB，打开完整日志沿用原生文件关联。
 
@@ -24,11 +24,17 @@
 
 数据路径 `%LOCALAPPDATA%\OCLR\StreamOverlay` 不依赖程序位置或工作目录。启动占位以稳定数据目录计算，多个解压目录不能同时写同一比赛。会话 schema 1 不转换，全部字段、撤销、存档保留；每个新构建首次打开已有会话前保存原始字节到 `backups/<build>/session.json`。旧包旁 `.local` 首次迁移先复制完整会话与 archive 到独立备份，再在目标旁暂存核验、原子改名；损坏/冲突/权限失败保留原记录。已有稳定数据时不被旧副本覆盖。
 
-分发内容采用目录白名单；没有 `.env.local`、凭证、本机比赛、node_modules、模拟器或其他项目内容。附 Node、Go、Vue 和字体许可，逐文件 SHA256 清单及 ZIP 校验值。构建标识覆盖前端、服务端、来源层、启动器及固定 Node 校验值。更新应先退出旧版，再解压至新目录，不要在运行中覆盖旧程序。
+分发内容采用目录白名单；没有 `.env.local`、凭证、本机比赛、通用 node_modules、模拟器或其他项目内容。附 Node、Go、Windigo、Vue 和字体许可，逐文件 SHA256 清单及 ZIP 校验值。构建标识覆盖前端、服务端、来源层、启动器源码、Go 依赖版本和固定 Node 校验值。更新应先退出旧版，再解压至新目录，不要在运行中覆盖旧程序。
 
 本轮没有改动比赛模型或前端操作行为：图池标记独立、Playing/结算、自动生效、异常核对/重赛/纠错/撤销、初始化存档，以及深紫左红右蓝均沿用原实现。
 
-## 已执行验证（macOS，不能替代 Windows）
+## Windigo Windows 验证
+
+Windows launcher comparison 工作流在同一台 Windows x64 runner 用相同版本的 Go、Node 与 Python 构建两版 ZIP。旧版采用直接调用 Win32 的基准提交 `d6f9df4`。校验并解压 ZIP 后，工作流用防火墙阻挡解压出来的 `OCLR.exe` 和 `runtime/node.exe` 对外连接，先验证 TCP 探测确实被阻挡，再测试两个包。
+
+比较报告记录两个 ZIP 的字节数。启动时间从进程创建计至本机健康检查返回就绪。无窗口和无参数图形启动分别交错测量，每版五次，取中位数。图形流程确认主窗口可见、四页可切换，并读取旧格式保存的服务端口、tosu 与 osu! 路径。测试从设置页改端口，确认 Go 启动新 PID、旧端口关闭、旧程序路径和比赛记录字节保持一致，再从侧栏退出并确认新端口关闭。本机已从两份实际 ZIP 通过同一图形流程。真实 osu!stable、tosu 及 OBS 的联调仍待独立验证。
+
+## 已执行验证（早期 macOS 实验）
 
 `npm run build` 含类型检查通过；`npm test` 97 项通过。新增两组集成测试覆盖以下情况：
 

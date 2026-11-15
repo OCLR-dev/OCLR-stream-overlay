@@ -7,26 +7,37 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 	"unsafe"
 )
 
 func TestLauncherSidebarShowsPageControlsAndPreservesSettings(t *testing.T) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
 	previousLog := localLog
 	localLog = &diagnostics{path: filepath.Join(t.TempDir(), "launcher.log")}
 	defer func() { localLog = previousLog }()
 	localLog.record("launcher ready")
 
-	cleanup := createLauncherWindow()
-	if cleanup == nil {
-		t.Fatal("failed to create the native window")
+	created, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		defer close(done)
+		wnd, cleanup := newLauncherWindow(func() { close(created) })
+		defer cleanup()
+		wnd.RunAsMain()
+	}()
+	select {
+	case <-created:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Windigo did not create the native window")
 	}
 	defer func() {
-		call(user, "DestroyWindow", window)
-		var pending msg
-		call(user, "PeekMessageW", uintptr(unsafe.Pointer(&pending)), 0, 0x0012, 0x0012, 1) // Remove WM_QUIT from this test.
-		cleanup()
+		call(user, "PostMessageW", window, 0x0010, 0, 0) // WM_CLOSE
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Error("Windigo did not close the native window")
+		}
 	}()
 	visible := func(id uintptr) bool {
 		control := call(user, "GetDlgItem", window, id)
@@ -62,7 +73,8 @@ func TestLauncherSidebarShowsPageControlsAndPreservesSettings(t *testing.T) {
 		}
 	}
 	navigate := func(id uintptr) {
-		call(user, "SendMessageW", window, 0x0111, id, 0) // WM_COMMAND
+		control := call(user, "GetDlgItem", window, id)
+		call(user, "SendMessageW", control, 0x00F5, 0, 0) // BM_CLICK
 	}
 
 	assertPage(pageOverview)
@@ -90,6 +102,8 @@ func TestLauncherSidebarShowsPageControlsAndPreservesSettings(t *testing.T) {
 
 func assertSidebarFocusPaint(t *testing.T) {
 	t.Helper()
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	screen := call(user, "GetDC", window)
 	if screen == 0 {
 		t.Fatal("could not get a launcher drawing context")
@@ -107,14 +121,14 @@ func assertSidebarFocusPaint(t *testing.T) {
 
 	item := drawItem{ControlType: 4, ControlID: buttonSettings, DC: dc,
 		Item: call(user, "GetDlgItem", window, buttonSettings), Bounds: area(0, 0, 128, 36)}
-	item.State = 0x0010 | 0x0200 // Focus without a visible cue.
-	paintButton(&item)
+	item.State = 0x0010 | 0x0200                                                               // Focus without a visible cue.
+	call(user, "SendMessageW", window, 0x002B, buttonSettings, uintptr(unsafe.Pointer(&item))) // WM_DRAWITEM
 	if got := color(call(gdi, "GetPixel", dc, px(5), px(18))); got != activeColor {
 		t.Errorf("hidden focus changed the page highlight: %#x", got)
 	}
 
 	item.State = 0x0010 // Visible keyboard focus.
-	paintButton(&item)
+	call(user, "SendMessageW", window, 0x002B, buttonSettings, uintptr(unsafe.Pointer(&item)))
 	if got := color(call(gdi, "GetPixel", dc, px(5), px(18))); got != accentColor {
 		t.Errorf("keyboard focus mark was not drawn: %#x", got)
 	}
