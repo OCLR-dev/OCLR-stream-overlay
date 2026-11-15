@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { preparePortableData } from '../server/portable-data.js';
+import { portableGuardPort } from '../server/runtime.js';
 import { simulationSession } from '../tools/tosu-simulator/fixture.js';
 import { TosuSimulator } from '../tools/tosu-simulator/server.js';
 import { calculationFixture } from './calculation-fixture.js';
@@ -28,32 +29,60 @@ function launch(app, dataDir) {
   });
   let stderr = '';
   child.stderr.on('data', chunk => { stderr += chunk; });
-  const done = once(child, 'exit');
-  return { child, done, error: () => stderr, async stop() { child.stdin.end('shutdown\n'); return done; } };
+  const done = once(child, 'close');
+  return { child, done, error: () => stderr, async stop() {
+    if (!child.stdin.destroyed && child.exitCode === null && child.signalCode === null) child.stdin.end('shutdown\n');
+    return done;
+  } };
 }
-async function ready(build) {
-  for (let n = 0; n < 100; n += 1) {
-    const value = await fetch(`${base}/api/health`).then(r => r.json()).catch(() => null);
-    if (value?.ready && value.build === build) return value;
+async function ready(running, build) {
+  const { child, done, error } = running;
+  for (const deadline = Date.now() + 10_000; Date.now() < deadline;) {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      const [code, signal] = await done;
+      throw new Error(`Portable server exited before readiness (${signal ?? code}): ${error().trim() || 'no stderr'}`);
+    }
+    const value = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1000) }).then(r => r.json()).catch(() => null);
+    if (value?.ready && value.build === build && value.pid === child.pid) return value;
     await pause(100);
   }
-  throw new Error('Portable server did not become ready');
+  throw new Error(`Portable server did not become ready (pid ${child.pid}): ${error().trim() || 'no stderr'}`);
+}
+
+async function fixtureDataDir(directory, name) {
+  // Keep the test's hashed lease outside the default Windows dynamic range
+  // used by concurrent loopback fixtures and clients elsewhere in the suite.
+  for (let i = 0; i < 64; i++) {
+    const path = join(directory, i === 0 ? name : `${name} ${i}`);
+    const port = portableGuardPort(path);
+    if (process.platform === 'win32' && port >= 49152) continue;
+    const probe = createServer();
+    try {
+      await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(port, '127.0.0.1', resolve); });
+    } catch (error) {
+      if (['EADDRINUSE', 'EACCES'].includes(error.code)) continue;
+      throw error;
+    }
+    await new Promise(resolve => probe.close(resolve));
+    return path;
+  }
+  throw new Error('No available portable test lease port');
 }
 
 test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'OCLR 中文 空格 '));
-  const data = join(directory, '用户 数据');
   const app = join(directory, '第一版 程序/app');
   const next = join(directory, '更新版 程序/app');
   const build = 'a'.repeat(64), nextBuild = 'b'.repeat(64);
   let running;
   try {
+    const data = await fixtureDataDir(directory, '用户 数据');
     await packageAt(app, build);
     const calculator = await import(pathToFileURL(join(app, 'server/beatmap-calculation.js')));
     const calculated = await calculator.calculateBeatmap(calculationFixture(), 'HR');
     assert.ok(calculated.stars > 0); assert.ok(Math.abs(calculated.cs - 5.2) < .001);
     running = launch(app, data);
-    const health = await ready(build);
+    const health = await ready(running, build);
     assert.equal(health.session, true);
     assert.equal(health.portable, true);
     assert.equal((await fetch(`${base}/api/config`).then(r => r.json())).tosuWsUrl, null);
@@ -89,11 +118,11 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     const saved = await readFile(join(data, 'session.json'), 'utf8');
     outputAbort.abort();
     assert.equal((await running.stop())[0], 0); running = null;
-    running = launch(app, data); await ready(build);
+    running = launch(app, data); await ready(running, build);
     assert.equal(await readFile(join(data, 'session.json'), 'utf8'), saved);
     await running.stop(); running = null;
     await packageAt(next, nextBuild);
-    running = launch(next, data); await ready(nextBuild);
+    running = launch(next, data); await ready(running, nextBuild);
     assert.equal(await readFile(join(data, 'session.json'), 'utf8'), saved);
     assert.equal(await readFile(join(data, 'backups', nextBuild, 'session.json'), 'utf8'), saved);
     const recovered = await fetch(`${base}/api/session`).then(r => r.json());
@@ -117,7 +146,7 @@ test('portable lifecycle: fixed address, Unicode paths, SSE, repeated launch, re
     const occupied = createServer((req, res) => res.end('unrelated service'));
     await new Promise((resolve, reject) => { occupied.once('error', reject); occupied.listen(3001, '127.0.0.1', resolve); });
     try {
-      const blockedData = join(directory, '不能创建');
+      const blockedData = await fixtureDataDir(directory, '不能创建');
       const blocked = launch(app, blockedData);
       assert.equal((await blocked.done)[0], 1);
       assert.match(blocked.error(), /3001/);

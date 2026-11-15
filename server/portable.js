@@ -1,10 +1,9 @@
 import { readFile, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { loadConfig } from './config.js';
-import { acquireRuntime } from './runtime.js';
+import { acquireRuntime, portableGuardPort } from './runtime.js';
 import { createOverlayServer } from './app.js';
 import { SessionStore } from './session/store.js';
 import { attachBroadcast } from './session/data.js';
@@ -34,8 +33,7 @@ try {
   // The launcher supplies the selected tosu port over its private stdin pipe.
   const config = loadConfig({ PORT: '3001', TOSU_WS_URL: null, OCLR_AUTH_MODE: 'anonymous' });
   config.runtime = { build: manifest.build, ready: false, portable: true, pid: process.pid };
-  const guardPort = 40000 + createHash('sha256').update(dataDir.toLowerCase()).digest().readUInt16BE() % 10000;
-  lease = await acquireRuntime({ appPort: config.port, mode: 'portable', guardPort });
+  lease = await acquireRuntime({ appPort: config.port, mode: 'portable', guardPort: portableGuardPort(dataDir) });
   await access(join(root, 'dist/index.html'));
   // Bind the fixed output address before touching match data. Never move ports.
   server = createOverlayServer(config, fetch, undefined, null);
