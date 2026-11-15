@@ -36,6 +36,11 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (panel === 'victory') return '核对最终比分与胜方，确认后展示 Winner 或初始化下一场。';
   if (round?.status === 'playing') return panel === 'mappool' ? '本图仍在比赛，可切到 Playing 查看队分，结束后再继续 Ban／Pick。' : '本图正在比赛，等待结束；需要等待或重赛时使用「处理异常」。';
   if (round?.status === 'ranking' && round.resultSource !== 'series-correction') {
+    const score = round.finalScore;
+    if (score && typeof score.a === 'number' && Number.isSafeInteger(score.a) && score.a >= 0 && score.a === score.b) {
+      if (s.match.exhibition?.tiedMapPolicy === 'count_as_draw') return '本图队分相同，本场允许逐图平局。请与裁判核对后，在 Playing 点击「记录本图平局」。';
+      return '本图队分相同，暂不计胜。裁判确认重赛后，请先点击「处理异常 → 裁判已要求重赛本图」，再等待客户端重新开打。';
+    }
     if (s.match.exhibition && !s.match.exhibition.autoResults) return '本图已结束，请在 Playing 核对后记录赛果或校正系列比分。';
     return s.auto.results ? '本图已结束，等待成绩确认；需要修正时在 Playing 直接校正系列比分。'
       : '本图已结束，自动计胜已关闭，请在 Playing 核对后记胜或校正系列比分。';
