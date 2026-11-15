@@ -4,6 +4,10 @@
 .showcase-controls h1 { margin: 4px 0 12px; font-size: 28px; line-height: 1.2; }
 .showcase-heading > span { color: var(--purple-light); font: 700 12px/1.4 var(--mono); letter-spacing: .12em; }
 .showcase-controls a { color: #d1baff; text-underline-offset: 3px; }
+.showcase-navigation { display: flex; flex-wrap: wrap; gap: 8px; }
+.showcase-navigation a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 10px; border: 1px solid var(--review-line); border-radius: 4px; background: #211139; text-decoration: none; }
+.showcase-navigation a:hover { border-color: var(--purple-light); background: #382055; }
+.showcase-obs-setup > h2 { margin: 0 0 10px; font-size: 16px; }
 .showcase-controls p { overflow-wrap: anywhere; }
 .showcase-controls button, .showcase-controls input, .showcase-controls textarea { min-height: 44px; border: 1px solid var(--review-line); border-radius: 4px; background: #211139; color: var(--ink); padding: 8px 10px; font: inherit; }
 .showcase-controls button { cursor: pointer; }

@@ -4,7 +4,7 @@ import { useSession, type BpPhase, type PoolEntry, type Round } from '../session
 import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type Team } from '../model';
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
-import { CalendarCheck, Gamepad2, Monitor, Settings2, ArrowRight, TriangleAlert, Wifi, WifiOff, ListFilter, Trophy } from '@lucide/vue';
+import { CalendarCheck, Gamepad2, Monitor, Settings2, ArrowRight, ArrowUpRight, PanelsTopLeft, TriangleAlert, Wifi, WifiOff, ListFilter, Trophy } from '@lucide/vue';
 import ObsSettings from './ObsSettings.vue';
 import { useObsControl } from '../obsControl';
 import MapActionPopover from './MapActionPopover.vue';
@@ -648,10 +648,14 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       <div class="operator-edition">{{ s?.match.title }}<br>{{ stageSummary }}</div>
     </header>
     <nav class="operator-tabs" aria-label="控制台页面">
-      <button :aria-pressed="!settings && !diagnostics" @click="settings = false; diagnostics = false">比赛现场</button>
-      <button :aria-pressed="settings" @click="settings = true; diagnostics = false">开播前设置</button>
-
-      <a href="/overlay" target="_blank" rel="noopener">打开观众画面 ↗</a>
+      <div class="operator-page-tabs">
+        <button :aria-pressed="!settings && !diagnostics" @click="settings = false; diagnostics = false">比赛现场</button>
+        <button :aria-pressed="settings" @click="settings = true; diagnostics = false">开播前设置</button>
+      </div>
+      <div class="operator-page-links">
+        <a class="operator-showcase-link" href="/showcase"><PanelsTopLeft :size="17" aria-hidden="true" /><span>Showcase · 图池演示</span><ArrowRight :size="16" aria-hidden="true" /></a>
+        <a class="operator-output-link" href="/overlay" target="_blank" rel="noopener"><Monitor :size="17" aria-hidden="true" /><span>观众画面</span><ArrowUpRight :size="16" aria-hidden="true" /></a>
+      </div>
     </nav>
     <p v-if="!s" class="operator-empty">正在连接本场比赛。连接恢复后会自动显示原有记录。</p>
     <template v-if="s">

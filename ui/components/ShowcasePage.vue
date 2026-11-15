@@ -109,9 +109,16 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
       <header class="showcase-heading">
         <span>OCLR / SHOWCASE</span>
         <h1>图池演示</h1>
-        <a href="/showcase?clean=1" target="_blank" rel="noopener">打开播出画面 ↗</a>
+        <nav class="showcase-navigation" aria-label="Showcase 页面切换">
+          <a href="/control">返回直播控制台</a>
+          <a href="/showcase?clean=1" target="_blank" rel="noopener">打开播出画面 ↗</a>
+        </nav>
       </header>
       <p v-if="error || snapshot?.error" class="showcase-error" role="alert">{{ error || snapshot?.error }}</p>
+      <section class="showcase-obs-setup" aria-labelledby="showcase-obs-heading">
+        <h2 id="showcase-obs-heading">OBS 场景</h2>
+        <ShowcaseObsSetup />
+      </section>
       <label class="showcase-stage-input">当前 Stage
         <input v-model="stageDraft" type="text" maxlength="80" :disabled="connection !== 'synced'" :aria-invalid="stageDirty && !!error" placeholder="例如：32强、半决赛、决赛" aria-describedby="showcase-stage-feedback" @input="editStage" @blur="syncStage">
         <span id="showcase-stage-feedback" class="showcase-help" role="status">{{ stageFeedback || '顶部居中显示，留空隐藏' }}</span>
@@ -134,7 +141,6 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
         </li>
       </ul>
       <p class="showcase-help">Showcase 浏览器源保持 1920×1080 铺满画布，位置 (0,0)、缩放 1。osu! 回放采集自行放在它上方，在中央约 800px 高的区域内保持原比例居中显示。使用 tosu 读取普通客户端的当前谱面。</p>
-      <ShowcaseObsSetup />
     </aside>
     <main class="canvas-stage" ref="stage" aria-label="Showcase 画面预览">
       <p v-if="!clean" class="showcase-preview-status showcase-status" :data-state="connection === 'synced' ? snapshot?.sourceStatus : 'connecting'" :title="playbackStatus" role="status">{{ playbackStatus }}</p>
@@ -168,6 +174,6 @@ import { defineComponent, h } from 'vue';
 // The clean OBS output never opens an OBS management connection.
 const ShowcaseObsSetup = defineComponent({ setup() {
   const obs = useObsControl();
-  return () => h(ObsSettings, { obs, showcaseOnly: true });
+  return () => h(ObsSettings, { obs, showcaseOnly: true, embedded: true });
 } });
 </script>
