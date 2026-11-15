@@ -271,7 +271,10 @@
 .setup-source-row .operator-hint { grid-column: 1 / -1; }
 .setup-source-row .operator-hint:empty { display: none; }
 .setup-title { margin-top: 0; }
-.operator:has(.operator-setup:not([style*="display: none"])) .operator-notice:not(:has(.operator-error:not([style*="display: none"]))) { height: 26px; }
+/* Setup messages grow with their text; an empty status region leaves only spacing. */
+.operator-notice.operator-notice--setup { height: auto; margin: 16px 0; }
+.operator-notice--setup > p { position: static; max-height: none; overflow: visible; }
+.operator-notice--setup .operator-feedback:empty { display: none; }
 @media (max-width: 1000px) {
   .setup-workspace { grid-template-columns: minmax(0, 1fr); }
   .setup-summary { position: static; }
