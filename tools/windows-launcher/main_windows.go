@@ -2,18 +2,11 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"io"
-	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 	"unsafe"
@@ -55,123 +48,6 @@ func open(s string) {
 	}
 }
 
-var client = &http.Client{Timeout: time.Second}
-
-type health struct {
-	Project string
-	Build   string
-	Ready   bool
-	Session bool
-	PID     int
-}
-
-func getHealth() (health, error) {
-	var h health
-	r, e := client.Get(base + "/api/health")
-	if e != nil {
-		return h, e
-	}
-	defer r.Body.Close()
-	if r.StatusCode != 200 {
-		return h, errors.New("address occupied")
-	}
-	e = json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&h)
-	return h, e
-}
-func compatible(h health) bool {
-	return h.Project == "oclr-stream-overlay" && h.Build == buildID && h.Ready && h.Session
-}
-func reuse() error {
-	for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); {
-		h, e := getHealth()
-		if e == nil {
-			if compatible(h) {
-				return nil
-			}
-			if h.Project != "oclr-stream-overlay" || h.Build != buildID {
-				return errors.New("另一个版本或其他程序正在使用固定地址。请先在原启动窗口退出，再启动本版本。比赛记录会保留，不会自动结束任何程序。")
-			}
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	return errors.New("已有启动窗口，但服务尚未就绪。请查看原窗口的提示，退出后重试。")
-}
-
-// stderr may be written while the GUI reads it after a failed start.
-type lockedBuffer struct {
-	sync.Mutex
-	b bytes.Buffer
-}
-
-func (b *lockedBuffer) Write(p []byte) (int, error) { b.Lock(); defer b.Unlock(); return b.b.Write(p) }
-func (b *lockedBuffer) String() string              { b.Lock(); defer b.Unlock(); return b.b.String() }
-
-type backend struct {
-	cmd   *exec.Cmd
-	input io.WriteCloser
-	done  chan error
-	log   lockedBuffer
-}
-
-func start() (*backend, error) {
-	if _, e := getHealth(); e == nil {
-		return nil, errors.New("固定地址已有服务，但未找到对应启动窗口。请先退出原版本服务，再启动本版本；不会结束其他程序。")
-	}
-	exe, e := os.Executable()
-	if e != nil {
-		return nil, e
-	}
-	root := filepath.Dir(exe)
-	b := &backend{done: make(chan error, 1)}
-	b.cmd = exec.Command(filepath.Join(root, "runtime", "node.exe"), filepath.Join(root, "app", "server", "portable.js"))
-	b.cmd.Dir = root
-	// Fixed production data location; development/test overrides do not leak in.
-	for _, v := range os.Environ() {
-		if !strings.HasPrefix(strings.ToUpper(v), "OCLR_DATA_DIR=") && !strings.HasPrefix(strings.ToUpper(v), "NODE_OPTIONS=") {
-			b.cmd.Env = append(b.cmd.Env, v)
-		}
-	}
-	b.cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	b.cmd.Stderr = &b.log
-	b.input, e = b.cmd.StdinPipe()
-	if e != nil {
-		return nil, e
-	}
-	if e = b.cmd.Start(); e != nil {
-		return nil, errors.New("无法运行随包附带的服务。请完整解压压缩包，确认 runtime 文件夹仍在。")
-	}
-	go func() { b.done <- b.cmd.Wait() }()
-	for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); {
-		select {
-		case <-b.done:
-			return nil, errors.New("服务未能启动。\n" + b.log.String())
-		default:
-		}
-		h, e := getHealth()
-		if e == nil && compatible(h) && h.PID == b.cmd.Process.Pid {
-			return b, nil
-		}
-		if e == nil && (h.Project != "oclr-stream-overlay" || h.Build != buildID) {
-			b.stop()
-			return nil, errors.New("固定地址已被其他版本或程序占用。请退出原服务后重试；不会自动换地址。")
-		}
-		time.Sleep(150 * time.Millisecond)
-	}
-	b.stop()
-	return nil, errors.New("服务启动超时。请检查磁盘空间、文件权限，并确认压缩包已完整解压。\n" + b.log.String())
-}
-func (b *backend) stop() {
-	// Only our own child receives shutdown. No process-name/PID sweeping.
-	io.WriteString(b.input, "shutdown\n")
-	b.input.Close()
-	select {
-	case <-b.done:
-	case <-time.After(15 * time.Second):
-		message("服务还在保存比赛，请稍候。关闭此提示后会继续等待，不会强制结束服务。")
-		<-b.done
-	}
-}
-
 type point struct{ X, Y int32 }
 type msg struct {
 	H       uintptr
@@ -190,8 +66,13 @@ type wc struct {
 	Small                         uintptr
 }
 
-var window, label uintptr
-var service *backend
+var (
+	window, label uintptr
+	service       *backend
+	localLog      *diagnostics
+	starting      = true
+	exiting       bool
+)
 
 type started struct {
 	b   *backend
@@ -199,9 +80,34 @@ type started struct {
 }
 
 var result = make(chan started, 1)
-var exiting atomic.Bool
 
 func text(s string) { setText(label, s) }
+func openLocalLog() {
+	path := localLog.path
+	if path == "" {
+		message("找不到本机日志目录。")
+		return
+	}
+	if _, err := os.Stat(path); err == nil {
+		if call(shell, "ShellExecuteW", window, ptr("open"), ptr(path), 0, 0, 1) > 32 {
+			return
+		}
+		notepad := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+		if filepath.IsAbs(notepad) && call(shell, "ShellExecuteW", window, ptr("open"), ptr(`"`+path+`"`), 0, 0, 1) > 32 {
+			return
+		}
+	}
+	message("无法打开本机日志。\n" + path)
+}
+func enableServiceButtons(h, enabled uintptr) {
+	for _, id := range []uintptr{buttonControl, buttonCopyOBS} {
+		call(user, "EnableWindow", call(user, "GetDlgItem", h, id), enabled)
+	}
+}
+func showServiceReady() {
+	setStatus(serviceStatus, "● 服务已就绪", readyColor)
+	text("比赛保存在本机。关闭控制台网页后，OBS 输出仍会继续。")
+}
 func copyOBS() {
 	value := syscall.StringToUTF16(base + "/overlay")
 	if call(user, "OpenClipboard", window) == 0 {
@@ -226,7 +132,7 @@ func copyOBS() {
 		message("复制失败，请重试。")
 		return
 	}
-	text("OBS 地址已复制。服务仍在运行；关闭网页不会中断输出。")
+	text("OBS 地址已复制。")
 }
 func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	switch m {
@@ -243,23 +149,35 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 		}
 	case msgServiceStarted:
 		r := <-result
+		starting = false
 		service = r.b
 		if r.err != nil {
-			message(r.err.Error())
-			call(user, "DestroyWindow", h)
+			setStatus(serviceStatus, "● 启动失败", errorColor)
+			text("启动失败。可打开本机日志查看原因。")
+			message(r.err.Error() + "\n可打开本机日志查看详情。")
 		} else {
-			setStatus(serviceStatus, "● 服务已就绪", readyColor)
-			text("比赛保存在本机。关闭控制台网页后，OBS 输出仍会继续。")
-			for _, id := range []uintptr{buttonControl, buttonCopyOBS} {
-				call(user, "EnableWindow", call(user, "GetDlgItem", h, id), 1)
-			}
+			showServiceReady()
+			enableServiceButtons(h, 1)
+			go r.b.watch(r.b.probe, 3*time.Second, func(state serviceState) {
+				call(user, "PostMessageW", h, msgServiceState, uintptr(state), 0)
+			})
 			open(base + "/control")
-			go watchService()
 		}
 		return 0
-	case msgServiceStopped:
-		message("本机服务已停止，OBS 输出暂时不可用。请退出此窗口后重新启动；已保存的比赛会恢复。")
-		call(user, "DestroyWindow", h)
+	case msgServiceState:
+		if !exiting {
+			switch serviceState(w) {
+			case serviceWaiting:
+				setStatus(serviceStatus, "● 等待服务响应", waitColor)
+				text("本机服务暂时没有响应，正在重试。")
+			case serviceReady:
+				showServiceReady()
+			case serviceExited:
+				setStatus(serviceStatus, "● 服务已停止", errorColor)
+				enableServiceButtons(h, 0)
+				text("可打开本机日志查看原因。退出后重新启动可恢复已保存的比赛。")
+			}
+		}
 		return 0
 	case msgTosuExited:
 		if l == tosuSelection {
@@ -286,6 +204,8 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			open(base + "/control")
 		case buttonCopyOBS:
 			copyOBS()
+		case buttonOpenLog:
+			openLocalLog()
 		case buttonExit:
 			call(user, "SendMessageW", h, 0x10, 0, 0)
 		case buttonChoose:
@@ -295,18 +215,26 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 		}
 		return 0
 	case 0x10:
-		if service == nil {
+		if exiting {
+			return 0
+		}
+		if starting {
 			message("正在准备服务，请稍候完成后再退出。")
 			return 0
 		}
+		if service == nil || service.exited() {
+			call(user, "DestroyWindow", h)
+			return 0
+		}
 		if call(user, "MessageBoxW", h, ptr("退出会停止 OBS 网页输出。比赛已保存，下次启动会恢复。确定结束本次直播服务？"), ptr("退出 OCLR"), 0x124) == 6 {
-			exiting.Store(true)
+			exiting = true
 			text("正在保存并退出，请稍候…")
-			service.stop()
+			service.stop("operator")
 			call(user, "DestroyWindow", h)
 		}
 		return 0
 	case 2:
+		exiting = true
 		call(user, "PostQuitMessage", 0)
 		return 0
 	}
@@ -314,10 +242,14 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 }
 func main() {
 	runtime.LockOSThread()
+	os.Exit(runLauncher())
+}
+
+func runLauncher() int {
 	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr("Local\\OCLR.StreamOverlay.Portable"))
 	if mutex == 0 {
 		message("无法建立本机启动保护，请重新登录 Windows 后重试。")
-		os.Exit(1)
+		return 1
 	}
 	defer syscall.CloseHandle(syscall.Handle(mutex))
 	headless := len(os.Args) > 1 && (os.Args[1] == "--smoke-test" || os.Args[1] == "--headless")
@@ -326,44 +258,38 @@ func main() {
 			if !headless {
 				message(e.Error())
 			}
-			os.Exit(1)
+			return 1
 		}
 		if !headless {
 			open(base + "/control")
-			go watchService()
 		}
-		return
+		return 0
 	}
+	localLog = launcherDiagnostics()
+	localLog.record("launcher started pid=%d build=%s", os.Getpid(), buildID)
 	if headless {
-		b, e := start()
+		b, e := start(localLog)
 		if e != nil {
 			os.Stderr.WriteString(e.Error())
-			os.Exit(1)
+			return 1
 		}
 		if os.Args[1] == "--headless" {
-			io.Copy(io.Discard, os.Stdin)
+			go b.watch(b.probe, 3*time.Second, func(serviceState) {})
+			stdinClosed := make(chan struct{})
+			go func() {
+				io.Copy(io.Discard, os.Stdin)
+				close(stdinClosed)
+			}()
+			select {
+			case <-b.done:
+			case <-stdinClosed:
+				b.stop("launcher stdin closed")
+			}
+		} else {
+			b.stop("smoke test")
 		}
-		b.stop()
-		return
+		return b.exitCode
 	}
 	runWindow()
-}
-
-func watchService() {
-	for {
-		time.Sleep(3 * time.Second)
-		if exiting.Load() {
-			return
-		}
-		if h, e := getHealth(); e != nil || !compatible(h) {
-			// A second check avoids treating one slow local request as a crashed service.
-			time.Sleep(time.Second)
-			if h, e = getHealth(); e != nil || !compatible(h) {
-				if !exiting.Load() {
-					call(user, "PostMessageW", window, msgServiceStopped, 0, 0)
-				}
-				return
-			}
-		}
-	}
+	return 0
 }
