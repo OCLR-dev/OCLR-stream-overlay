@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -28,21 +29,74 @@ func TestTosuProcessMatchesFullPath(t *testing.T) {
 	}
 }
 
-func TestTosuPortCheck(t *testing.T) {
+func TestTosuProbeReadsPortFromSelectedDirectoryOnEveryCheck(t *testing.T) {
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer listener.Close()
 	address := listener.Addr().String()
-	if !tosuPortOpen(address) {
-		t.Fatal("expected the loopback port to be reachable")
+	_, port, err := net.SplitHostPort(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "tosu.exe")
+	if err := os.WriteFile(exe, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe := probeTosu(exe, 2)
+	if !errors.Is(probe.portErr, os.ErrNotExist) || probe.portAddress != "" || probe.portOpen {
+		t.Fatalf("missing tosu.env should leave the port unknown: %+v", probe)
+	}
+	env := filepath.Join(dir, "tosu.env")
+	if err := os.WriteFile(env, []byte("SERVER_IP=127.0.0.1\r\nSERVER_PORT="+port+"\r\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe = probeTosu(exe, 2)
+	if probe.portErr != nil || probe.portAddress != address || !probe.portOpen || probe.selection != 2 {
+		t.Fatalf("expected the configured endpoint to be reachable: %+v", probe)
 	}
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if tosuPortOpen(address) {
-		t.Fatal("closed loopback port reported reachable")
+	probe = probeTosu(exe, 2)
+	if probe.portErr != nil || probe.portAddress != address || probe.portOpen {
+		t.Fatalf("closed port reported reachable: %+v", probe)
+	}
+	if err := os.WriteFile(env, []byte("SERVER_PORT=65536"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe = probeTosu(exe, 2)
+	if !errors.Is(probe.portErr, errTosuPortInvalid) || probe.portAddress != "" || probe.portOpen {
+		t.Fatalf("invalid edited config should clear the old port: %+v", probe)
+	}
+}
+
+func TestReadTosuPort(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		name, content, port string
+		err                 error
+	}{
+		{name: "provided format", content: "DEBUG_LOG=false\n\nSERVER_IP=127.0.0.1\nSERVER_PORT=24050\nALLOWED_IPS=127.0.0.1,localhost,absolute", port: "24050"},
+		{name: "BOM and Windows lines", content: "\uFEFF SERVER_PORT = \"25678\" # local\r\n", port: "25678"},
+		{name: "last assignment and highest port", content: "SERVER_PORT=24050\nSERVER_PORT='65535'\n", port: "65535"},
+		{name: "commented out", content: "# SERVER_PORT=24050\nOTHER_SERVER_PORT=26300", err: errTosuPortMissing},
+		{name: "empty", content: "SERVER_PORT= # missing value", err: errTosuPortInvalid},
+		{name: "non-numeric", content: "SERVER_PORT=localhost:24050", err: errTosuPortInvalid},
+		{name: "unmatched quote", content: "SERVER_PORT=\"24050", err: errTosuPortInvalid},
+		{name: "zero", content: "SERVER_PORT=0", err: errTosuPortInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(filepath.Join(dir, "tosu.env"), []byte(tc.content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			port, err := readTosuPort(filepath.Join(dir, "tosu.exe"))
+			if port != tc.port || !errors.Is(err, tc.err) {
+				t.Fatalf("got port %q, error %v; want %q, %v", port, err, tc.port, tc.err)
+			}
+		})
 	}
 }
 

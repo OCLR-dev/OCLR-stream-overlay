@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -17,7 +19,8 @@ import (
 var commonDialog = syscall.NewLazyDLL("comdlg32.dll")
 var queryProcessImage = kernel.NewProc("QueryFullProcessImageNameW")
 
-const tosuAddress = "127.0.0.1:24050"
+var errTosuPortMissing = errors.New("SERVER_PORT is missing")
+var errTosuPortInvalid = errors.New("SERVER_PORT must be between 1 and 65535")
 
 type launcherSettings struct {
 	TosuPath string `json:"tosuPath,omitempty"`
@@ -208,16 +211,65 @@ func tosuPortOpen(address string) bool {
 	return true
 }
 
+func readTosuPort(exe string) (string, error) {
+	file, err := os.Open(filepath.Join(filepath.Dir(exe), "tosu.env"))
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	var value string
+	var found bool
+	lines := bufio.NewScanner(file)
+	for lines.Scan() {
+		line, _, _ := strings.Cut(strings.TrimPrefix(lines.Text(), "\uFEFF"), "#")
+		key, raw, ok := strings.Cut(line, "=")
+		if ok && strings.TrimSpace(key) == "SERVER_PORT" {
+			value, found = strings.TrimSpace(raw), true
+		}
+	}
+	if err := lines.Err(); err != nil {
+		return "", err
+	}
+	if !found {
+		return "", errTosuPortMissing
+	}
+	if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') && value[len(value)-1] == value[0] {
+		value = strings.TrimSpace(value[1 : len(value)-1])
+	}
+	port, err := strconv.ParseUint(value, 10, 16)
+	if err != nil || port == 0 {
+		return "", errTosuPortInvalid
+	}
+	return strconv.FormatUint(port, 10), nil
+}
+
 type tosuProbe struct {
-	selection uintptr
-	process   processStatus
-	portOpen  bool
+	selection   uintptr
+	process     processStatus
+	portAddress string
+	portOpen    bool
+	portErr     error
 }
 
 var tosuPath, settingsFile string
 var tosuSelection uintptr
 var tosuPending bool
 var tosuResults = make(chan tosuProbe, 1)
+
+func probeTosu(path string, selection uintptr) tosuProbe {
+	probe := tosuProbe{selection: selection, process: findExecutableProcess(path)}
+	if probe.process == processMissing {
+		return probe
+	}
+	port, err := readTosuPort(path)
+	probe.portErr = err
+	if err == nil {
+		probe.portAddress = net.JoinHostPort("127.0.0.1", port)
+		probe.portOpen = tosuPortOpen(probe.portAddress)
+	}
+	return probe
+}
 
 func checkTosu(owner uintptr) {
 	if tosuPending {
@@ -226,7 +278,7 @@ func checkTosu(owner uintptr) {
 	tosuPending = true
 	path, selection := tosuPath, tosuSelection
 	go func() {
-		tosuResults <- tosuProbe{selection, findExecutableProcess(path), tosuPortOpen(tosuAddress)}
+		tosuResults <- probeTosu(path, selection)
 		call(user, "PostMessageW", owner, msgTosuChecked, 0, 0)
 	}()
 }
@@ -239,7 +291,7 @@ func applyTosuCheck(owner uintptr) {
 		return
 	}
 	showTosuProcess(probe.process)
-	showTosuPort(probe.portOpen)
+	showTosuPort(probe)
 }
 
 func loadLauncherPreferences() {
@@ -290,6 +342,7 @@ func chooseTosu(owner uintptr) {
 	tosuSelection++
 	showTosu("已保存 tosu 路径。")
 	showTosuProcess(processChecking)
+	setStatus(tosuPortStatus, "端口 · 正在检查…", mutedColor)
 	checkTosu(owner)
 }
 

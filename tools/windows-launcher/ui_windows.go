@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"os"
 	"syscall"
 	"unsafe"
 )
@@ -195,12 +197,23 @@ func showTosuProcess(status processStatus) {
 	call(user, "EnableWindow", call(user, "GetDlgItem", window, buttonTosu), enabled)
 }
 
-func showTosuPort(open bool) {
-	label, fg := "未连通", mutedColor
-	if open {
-		label, fg = "可连通", readyColor
+func showTosuPort(probe tosuProbe) {
+	switch {
+	case probe.portOpen:
+		setStatus(tosuPortStatus, "端口 "+probe.portAddress+" · 可连通", readyColor)
+	case probe.portAddress != "":
+		setStatus(tosuPortStatus, "端口 "+probe.portAddress+" · 未连通", mutedColor)
+	case errors.Is(probe.portErr, os.ErrNotExist):
+		setStatus(tosuPortStatus, "端口 · 未找到 tosu.env", waitColor)
+	case errors.Is(probe.portErr, errTosuPortMissing):
+		setStatus(tosuPortStatus, "端口 · tosu.env 未设置 SERVER_PORT", waitColor)
+	case errors.Is(probe.portErr, errTosuPortInvalid):
+		setStatus(tosuPortStatus, "端口 · SERVER_PORT 无效", waitColor)
+	case probe.portErr != nil:
+		setStatus(tosuPortStatus, "端口 · 无法读取 tosu.env", waitColor)
+	default:
+		setStatus(tosuPortStatus, "端口 · 请先选择 tosu", mutedColor)
 	}
-	setStatus(tosuPortStatus, "端口 "+tosuAddress+" · "+label, fg)
 }
 
 func setStatus(control uintptr, text string, foreground color) {
@@ -283,7 +296,7 @@ func runWindow() {
 	button("打开 tosu", 202, 307, 148, buttonTosu)
 	tosuFeedback = static("", 364, 316, 234, 22, captionFont, mutedColor, cardColor)
 	tosuProcessStatus = static("", 42, 352, 229, 23, bodyFont, mutedColor, cardColor)
-	tosuPortStatus = static("端口 "+tosuAddress+" · 正在检查…", 287, 352, 311, 23, bodyFont, mutedColor, cardColor)
+	tosuPortStatus = static("端口 · 正在检查…", 287, 352, 311, 23, bodyFont, mutedColor, cardColor)
 	static("osu!Tourney", 42, 413, 554, 22, headingFont, inkColor, cardColor)
 	osuField = add("EDIT", "", 42, 439, 556, 25, 110, 0x810880, bodyFont)
 	controlColors[osuField] = textColors{inkColor, cardColor}
