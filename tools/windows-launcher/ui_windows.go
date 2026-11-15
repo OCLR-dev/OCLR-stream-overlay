@@ -213,6 +213,13 @@ func paintButton(item *drawItem) bool {
 	call(user, "DrawTextW", item.DC, uintptr(unsafe.Pointer(&caption[0])), ^uintptr(0), uintptr(unsafe.Pointer(&bounds)), format)
 	call(gdi, "SelectObject", item.DC, oldFont)
 	if item.State&0x0010 != 0 && item.State&0x0200 == 0 { // ODS_FOCUS, ODS_NOFOCUSRECT
+		bounds := item.Bounds
+		if icon != "" {
+			// Sidebar buttons use a focus mark beside the icon, separate from the active page highlight.
+			fill(item.DC, rect{bounds.Left + int32(px(4)), bounds.Top + int32(px(9)),
+				bounds.Left + int32(px(6)), bounds.Bottom - int32(px(9))}, foreground)
+			return true
+		}
 		margin := int32(px(4))
 		bounds = rect{bounds.Left + margin, bounds.Top + margin, bounds.Right - margin, bounds.Bottom - margin}
 		call(user, "DrawFocusRect", item.DC, uintptr(unsafe.Pointer(&bounds)))

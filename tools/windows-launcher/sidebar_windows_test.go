@@ -68,6 +68,7 @@ func TestLauncherSidebarShowsPageControlsAndPreservesSettings(t *testing.T) {
 	assertPage(pageOverview)
 	navigate(buttonSettings)
 	assertPage(pageSettings)
+	assertSidebarFocusPaint(t)
 	setText(portField, "3456")
 	navigate(buttonLogs)
 	assertPage(pageLogs)
@@ -84,6 +85,44 @@ func TestLauncherSidebarShowsPageControlsAndPreservesSettings(t *testing.T) {
 	navigate(buttonLogs)
 	if got := readControl(logPreview); !strings.Contains(got, "service ready on new port") {
 		t.Fatalf("reopening logs did not show the latest entry: %q", got)
+	}
+}
+
+func assertSidebarFocusPaint(t *testing.T) {
+	t.Helper()
+	screen := call(user, "GetDC", window)
+	if screen == 0 {
+		t.Fatal("could not get a launcher drawing context")
+	}
+	defer call(user, "ReleaseDC", window, screen)
+	dc := call(gdi, "CreateCompatibleDC", screen)
+	bitmap := call(gdi, "CreateCompatibleBitmap", screen, px(128), px(36))
+	if dc == 0 || bitmap == 0 {
+		t.Fatal("could not create a sidebar test surface")
+	}
+	defer call(gdi, "DeleteDC", dc)
+	defer call(gdi, "DeleteObject", bitmap)
+	previous := call(gdi, "SelectObject", dc, bitmap)
+	defer call(gdi, "SelectObject", dc, previous)
+
+	item := drawItem{ControlType: 4, ControlID: buttonSettings, DC: dc,
+		Item: call(user, "GetDlgItem", window, buttonSettings), Bounds: area(0, 0, 128, 36)}
+	item.State = 0x0010 | 0x0200 // Focus without a visible cue.
+	paintButton(&item)
+	if got := color(call(gdi, "GetPixel", dc, px(5), px(18))); got != activeColor {
+		t.Errorf("hidden focus changed the page highlight: %#x", got)
+	}
+
+	item.State = 0x0010 // Visible keyboard focus.
+	paintButton(&item)
+	if got := color(call(gdi, "GetPixel", dc, px(5), px(18))); got != accentColor {
+		t.Errorf("keyboard focus mark was not drawn: %#x", got)
+	}
+	for x := px(40); x < px(120); x++ {
+		if got := color(call(gdi, "GetPixel", dc, x, px(4))); got != activeColor {
+			t.Errorf("sidebar focus painted a box over the label at pixel %d: %#x", x, got)
+			break
+		}
 	}
 }
 
