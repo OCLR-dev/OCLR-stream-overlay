@@ -674,3 +674,30 @@ test('OBS controls accept same-origin JSON only and never return the configured 
   assert.equal(response.status, 200); assert.doesNotMatch(await response.text(), /test-only-password/);
   assert.doesNotMatch(await (await fetch(url)).text(), /test-only-password/);
 });
+
+test('OBS reconnect and collection switches synchronize old ports without changing Program or scene layout', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-port-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'obs-settings.json');
+  const studio = new Studio();
+  const store = new SessionStore();
+  const add = url => studio.inputs.set('manual', { inputName: 'manual', inputKind: 'browser_source', inputSettings: { url, width: 1920 } });
+  add('http://localhost:3001/overlay?custom=1');
+  let obs = await new ObsController({ file, overlayUrl: () => 'http://127.0.0.1:3011/overlay', Socket: studio.Socket, retryMs: 10 }).start(store);
+  t.after(() => { obs.close(); store.close(); });
+  await ready(obs);
+  assert.equal(studio.inputs.get('manual').inputSettings.url, 'http://localhost:3011/overlay?custom=1');
+  obs.close();
+  obs = await new ObsController({ file, overlayUrl: () => 'http://127.0.0.1:3022/overlay', Socket: studio.Socket, retryMs: 10 }).start(store);
+  await until(() => obs.phase === 'ready');
+  assert.equal(studio.inputs.get('manual').inputSettings.url, 'http://localhost:3022/overlay?custom=1');
+  studio.event('CurrentSceneCollectionChanging', {});
+  studio.collection = 'another';
+  add('http://127.0.0.1:3011/showcase?clean=1');
+  studio.event('CurrentSceneCollectionChanged', {});
+  await until(() => obs.phase === 'ready');
+  assert.equal(studio.inputs.get('manual').inputSettings.url, 'http://127.0.0.1:3022/showcase?clean=1');
+  assert.equal(studio.program, '休息');
+  assert.ok(writes(studio).every(x => x.type === 'SetInputSettings'));
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')).overlayPorts, ['3011', '3022']);
+});

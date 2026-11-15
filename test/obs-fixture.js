@@ -107,8 +107,8 @@ export class Studio {
         sceneItems.splice(sceneItems.indexOf(item), 1); sceneItems.splice(args.sceneItemIndex, 0, item); break;
       case 'GetSceneItemTransform': return { sceneItemTransform: { sourceWidth: 320, sourceHeight: 240, ...item.transform } };
       case 'GetInputPropertiesListPropertyItems': return { propertyItems: this.windows };
-      case 'GetInputSettings': return structuredClone(this.inputs.get(args.inputName));
-      case 'SetInputSettings': Object.assign(this.inputs.get(args.inputName).inputSettings, args.inputSettings); break;
+      case 'GetInputSettings': return structuredClone(args.inputUuid ? [...this.inputs.values()].find(i => i.inputUuid === args.inputUuid) : this.inputs.get(args.inputName));
+      case 'SetInputSettings': Object.assign((args.inputUuid ? [...this.inputs.values()].find(i => i.inputUuid === args.inputUuid) : this.inputs.get(args.inputName)).inputSettings, args.inputSettings); break;
       default: assert.fail('Unexpected OBS request ' + type);
     }
     return {};

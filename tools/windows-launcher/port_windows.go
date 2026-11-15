@@ -82,7 +82,7 @@ func restartOnPort(h uintptr) {
 	base = "http://127.0.0.1:" + port
 	setText(addressLabel, "OBS 地址  "+base+"/overlay")
 	setStatus(serviceStatus, "● 正在启动", waitColor)
-	text("正在重新启动；请更新已有 OBS 浏览器源地址。")
+	text("正在重新启动；连接 OBS 后自动同步画面地址。")
 	go func() {
 		b, e := start(localLog)
 		result <- started{b, e}
