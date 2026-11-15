@@ -46,7 +46,7 @@ function connect() {
         <button class="operator-primary" :disabled="!!obs.pending" @click="obs.act('create')">{{ obs.pending === 'create' ? '正在创建比赛场景…' : '创建比赛场景' }}</button>
         <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
       </div>
-      <p>常规八路和 EX 六路共用观众画面和桌面音频。旧预设可再点一次「创建比赛场景」补上声音。自建场景可直接在下方选择。</p>
+      <p>常规八路和 EX 六路共用观众画面。Windows 游戏音频自动绑定 osu!tourney Client 0，EX 换人仍使用同一音源。自建场景可直接在下方选择。</p>
       <div class="setup-meta">
         <label v-for="layout in layouts" :key="layout.key">{{ layout.label }} 场景
           <ControlSelect :value="obs.state[layout.key]" :disabled="!!obs.pending" :aria-label="layout.label + ' 场景'" @change="obs.act('bind', { layout: layout.key, name: $event })">
@@ -62,6 +62,7 @@ function connect() {
       </div>
       <p v-if="!obs.state.target">这套预设用于正赛 4v4。请核对本场人数和阶段。</p>
       <template v-if="obs.state.managed">
+        <p v-if="obs.state.audio" role="status">游戏音频：{{ obs.state.audio.status }}<template v-if="obs.state.audio.globalDesktop">。OBS 全局桌面音频仍已开启，请核对混音器，避免重复收音。</template></p>
         <h3>核对捕获窗口</h3>
         <p>启动 osu!tourney，核对 A 为左侧红队、B 为右侧蓝队。窗口缺失或重名时，在对应槽位补选。</p>
         <button :disabled="!!obs.pending" @click="obs.act('scan')">{{ obs.pending === 'scan' ? '正在识别…' : '重新识别窗口' }}</button>
