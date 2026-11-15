@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { pathToFileURL } from 'node:url';
+import { availableLoopbackPort, fixtureDataDir } from './portable-fixture.mjs';
 
 if (process.platform !== 'win32') throw new Error('Windows execution required');
 const packageRoot = resolve(process.argv[2]);
@@ -14,31 +15,38 @@ const reportFile = resolve(process.argv[3]);
 const temp = await mkdtemp(join(tmpdir(), 'OCLR 中文 空格 '));
 const first = join(temp, '第一版 程序');
 const second = join(temp, '更新 程序');
-const local = join(temp, '用户 数据');
+const local = await fixtureDataDir(temp, '用户 数据', 'OCLR/StreamOverlay');
 const data = join(local, 'OCLR/StreamOverlay/session.json');
 const launcherLog = join(local, 'OCLR/StreamOverlayLauncher/launcher.log');
-const appPort = Number(process.env.OCLR_VERIFY_PORT || 3001);
+const appPort = process.env.OCLR_VERIFY_PORT
+  ? Number(process.env.OCLR_VERIFY_PORT)
+  : await availableLoopbackPort(3001) ?? await availableLoopbackPort(0);
 assert.ok(Number.isInteger(appPort) && appPort > 0 && appPort <= 65535);
 const base = `http://127.0.0.1:${appPort}`;
 const results = [];
 const children = new Set();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const report = { platform: process.platform, arch: process.arch, node: process.version, temp, results };
+const report = { platform: process.platform, arch: process.arch, node: process.version, temp, appPort, results };
 function launch(folder, args = ['--headless']) {
   const child = spawn(join(folder, 'OCLR.exe'), args, { cwd: tmpdir(), env: { ...process.env, LOCALAPPDATA: local }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   let error = '';
   child.stderr.on('data', chunk => { error += chunk; });
-  const done = once(child, 'exit').then(([code]) => { children.delete(child); return code; });
+  const done = once(child, 'close').then(([code]) => { children.delete(child); return code; });
   children.add(child);
   return { child, done, error: () => error, async stop() { child.stdin.end(); assert.equal(await done, 0, error); } };
 }
-async function ready() {
-  for (let i = 0; i < 150; i++) {
-    const h = await fetch(`${base}/api/health`).then(r => r.json()).catch(() => null);
+async function ready(launcher = running) {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    if (launcher.child.exitCode !== null || launcher.child.signalCode !== null) {
+      const code = await launcher.done;
+      throw new Error(`Launcher exited before readiness (${launcher.child.signalCode ?? code}): ${launcher.error().trim() || 'no stderr'}`);
+    }
+    const h = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(1000) }).then(r => r.json()).catch(() => null);
     if (h?.ready) return h;
     await delay(200);
   }
-  throw new Error('readiness timeout');
+  throw new Error(`Launcher readiness timed out on port ${appPort}`);
 }
 async function check(name, fn) { await fn(); results.push({ name, passed: true }); await writeFile(reportFile, JSON.stringify(report, null, 2)); }
 async function waitForLog(pattern) {
@@ -202,14 +210,14 @@ try {
       "input.on('close', () => { server.closeAllConnections(); server.close(); });",
     ].join('\n'));
     const monitored = launch(second);
-    const { pid } = await ready();
+    const { pid } = await ready(monitored);
     await waitForLog(new RegExp('backend ready pid=' + pid + '\\b'));
     await writeFile(marker, 'timeout');
     await waitForLog(new RegExp('health failed pid=' + pid + ' consecutive=3 .*reason=.*(?:Timeout|timeout)'));
     assert.equal(monitored.child.exitCode, null);
     await writeFile(marker, 'ready');
     await waitForLog(new RegExp('health recovered pid=' + pid + ' failures=3'));
-    assert.equal((await ready()).pid, pid);
+    assert.equal((await ready(monitored)).pid, pid);
     await writeFile(marker, 'exit');
     const code = monitored.child.exitCode ?? (await once(monitored.child, 'exit', { signal: AbortSignal.timeout(10_000) }))[0];
     assert.equal(code, 23, monitored.error());
@@ -225,6 +233,8 @@ try {
   }
 } catch (error) {
   report.passed = false; report.error = error.stack;
+  const log = await readFile(launcherLog, 'utf8').catch(() => '');
+  if (log) report.launcherLogTail = log.trimEnd().split(/\r?\n/).slice(-8);
   process.exitCode = 1;
 } finally {
   for (const child of children) child.stdin.end();

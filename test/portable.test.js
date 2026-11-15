@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { preparePortableData } from '../server/portable-data.js';
-import { portableGuardPort } from '../server/runtime.js';
+import { fixtureDataDir } from '../tools/packaging/portable-fixture.mjs';
 import { simulationSession } from '../tools/tosu-simulator/fixture.js';
 import { TosuSimulator } from '../tools/tosu-simulator/server.js';
 import { calculationFixture } from './calculation-fixture.js';
@@ -75,26 +75,6 @@ async function ready(running, build, address = base) {
     await pause(100);
   }
   throw new Error(`Portable server did not become ready (pid ${child.pid}): ${error().trim() || 'no stderr'}`);
-}
-
-async function fixtureDataDir(directory, name) {
-  // Keep the test's hashed lease outside the default Windows dynamic range
-  // used by concurrent loopback fixtures and clients elsewhere in the suite.
-  for (let i = 0; i < 64; i++) {
-    const path = join(directory, i === 0 ? name : `${name} ${i}`);
-    const port = portableGuardPort(path);
-    if (process.platform === 'win32' && port >= 49152) continue;
-    const probe = createServer();
-    try {
-      await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(port, '127.0.0.1', resolve); });
-    } catch (error) {
-      if (['EADDRINUSE', 'EACCES'].includes(error.code)) continue;
-      throw error;
-    }
-    await new Promise(resolve => probe.close(resolve));
-    return path;
-  }
-  throw new Error('No available portable test lease port');
 }
 
 test('portable lifecycle: selected address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async t => {
