@@ -84,7 +84,7 @@ func reuse() error {
 				return nil
 			}
 			if h.Project != "oclr-stream-overlay" || h.Build != buildID {
-				return errors.New("另一个版本或其他程序正在使用固定地址。请先在原启动窗口退出，再启动本版本。比赛记录会保留，不会自动结束任何程序。")
+				return errors.New("另一个版本或其他程序正在使用所选地址。请先在原启动窗口退出，再启动本版本。比赛记录会保留，不会自动结束任何程序。")
 			}
 		}
 		time.Sleep(200 * time.Millisecond)
@@ -93,6 +93,7 @@ func reuse() error {
 }
 
 type backend struct {
+	endpoint string
 	pid      int
 	input    io.WriteCloser
 	done     chan struct{}
@@ -112,7 +113,7 @@ func launchBackend(cmd *exec.Cmd, log *diagnostics) (*backend, error) {
 		input.Close()
 		return nil, err
 	}
-	b := &backend{pid: cmd.Process.Pid, input: input, done: make(chan struct{}), log: log}
+	b := &backend{endpoint: base, pid: cmd.Process.Pid, input: input, done: make(chan struct{}), log: log}
 	log.record("backend started pid=%d", b.pid)
 	go func() {
 		err := cmd.Wait()
@@ -135,7 +136,7 @@ func start(log *diagnostics) (_ *backend, err error) {
 		}
 	}()
 	if _, err := getHealth(); err == nil {
-		return nil, errors.New("固定地址已有服务，但未找到对应启动窗口。请先退出原版本服务，再启动本版本；不会结束其他程序。")
+		return nil, errors.New("所选地址已有服务，但未找到对应启动窗口。请先退出原版本服务，再启动本版本；不会结束其他程序。")
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -146,10 +147,11 @@ func start(log *diagnostics) (_ *backend, err error) {
 	cmd.Dir = root
 	// Fixed production data location; development/test overrides do not leak in.
 	for _, v := range os.Environ() {
-		if !strings.HasPrefix(strings.ToUpper(v), "OCLR_DATA_DIR=") && !strings.HasPrefix(strings.ToUpper(v), "NODE_OPTIONS=") {
+		if !strings.HasPrefix(strings.ToUpper(v), "OCLR_DATA_DIR=") && !strings.HasPrefix(strings.ToUpper(v), "NODE_OPTIONS=") && !strings.HasPrefix(strings.ToUpper(v), "OCLR_APP_PORT=") {
 			cmd.Env = append(cmd.Env, v)
 		}
 	}
+	cmd.Env = append(cmd.Env, "OCLR_APP_PORT="+servicePort)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	b, err := launchBackend(cmd, log)
 	if err != nil {
@@ -177,7 +179,7 @@ func start(log *diagnostics) (_ *backend, err error) {
 		}
 		if answerReceived && (h.Project != "oclr-stream-overlay" || h.Build != buildID) {
 			b.stop("startup address occupied")
-			return nil, errors.New("固定地址已被其他版本或程序占用。请退出原服务后重试；不会自动换地址。")
+			return nil, errors.New("所选地址已被其他版本或程序占用。请退出原服务后重试；不会自动换地址。")
 		}
 		time.Sleep(150 * time.Millisecond)
 	}
@@ -232,7 +234,7 @@ const (
 )
 
 func (b *backend) probe() error {
-	h, err := getHealth()
+	h, err := readHealth(client, b.endpoint+"/api/health")
 	if err != nil {
 		return err
 	}
