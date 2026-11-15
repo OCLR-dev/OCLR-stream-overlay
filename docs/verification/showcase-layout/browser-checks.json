@@ -41,7 +41,24 @@
       "background": "linear-gradient(90deg, rgba(185, 155, 229, 0), rgba(185, 155, 229, 0.42) 18%, rgba(185, 155, 229, 0.42) 82%, rgba(185, 155, 229, 0))"
     },
     "background": "radial-gradient(900px 500px at 50% -10%, rgba(76, 29, 149, 0.667), rgba(0, 0, 0, 0) 70%), radial-gradient(700px 500px at 0% 100%, rgba(109, 40, 217, 0.18), rgba(0, 0, 0, 0) 70%), radial-gradient(700px 500px at 100% 100%, rgba(109, 40, 217, 0.18), rgba(0, 0, 0, 0) 70%), repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.024) 0px, rgba(255, 255, 255, 0.024) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 48px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.024) 0px, rgba(255, 255, 255, 0.024) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 48px), none",
-    "statusInClean": false
+    "statusInClean": false,
+    "stage": {
+      "center": 960,
+      "bottom": 82.1875,
+      "rules": [
+        {
+          "width": "132px",
+          "height": "1px",
+          "background": "linear-gradient(90deg, rgba(185, 155, 229, 0), rgba(185, 155, 229, 0.7))"
+        },
+        {
+          "width": "132px",
+          "height": "1px",
+          "background": "linear-gradient(270deg, rgba(185, 155, 229, 0), rgba(185, 155, 229, 0.7))"
+        }
+      ],
+      "shadow": "rgba(139, 92, 246, 0.45) 0px 0px 26px, rgba(18, 8, 36, 0.5) 0px 2px 0px"
+    }
   },
   "ui": {
     "rowHeight": 38,
