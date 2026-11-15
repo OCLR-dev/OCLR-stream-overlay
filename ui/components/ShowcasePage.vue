@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useCanvasFit } from '../useOverlay';
 import { useShowcase } from '../showcase';
 import { useObsControl } from '../obsControl';
@@ -16,6 +16,7 @@ import '../showcase.css';
 const clean = new URLSearchParams(location.search).get('clean') === '1';
 const { snapshot, connection, busy, error, command } = useShowcase();
 const { stage, scale } = useCanvasFit();
+const poolList = ref<HTMLElement | null>(null);
 const poolDraft = ref('');
 const dirty = ref(false);
 const poolFeedback = ref('');
@@ -80,6 +81,19 @@ async function copyLoadedPool() {
     dirty.value = false; poolDraft.value = snapshot.value?.poolText || ''; poolFeedback.value = '已复制到 Showcase 图池';
   }
 }
+watch([() => connection.value === 'synced' ? snapshot.value?.matchedId : null,
+  () => snapshot.value?.pool.map(map => map.id).join(',')], async ([id]) => {
+  if (clean || !id) return;
+  await nextTick();
+  const list = poolList.value;
+  const item = list?.querySelector<HTMLElement>('li[aria-current="true"]');
+  if (!list || !item) return;
+  // Move only this scroll container; keep the page, input focus and caret still.
+  const top = item.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop - list.clientTop;
+  const bottom = top + item.offsetHeight;
+  if (top < list.scrollTop) list.scrollTop = Math.max(0, top - 4);
+  else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight + 4;
+});
 watch(connection, value => {
   if (value !== 'synced') return;
   if (dirty.value) void syncPool();
@@ -97,7 +111,6 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
         <h1>图池演示</h1>
         <a href="/showcase?clean=1" target="_blank" rel="noopener">打开播出画面 ↗</a>
       </header>
-      <p class="showcase-status" role="status">{{ playbackStatus }}</p>
       <p v-if="error || snapshot?.error" class="showcase-error" role="alert">{{ error || snapshot?.error }}</p>
       <label class="showcase-stage-input">当前 Stage
         <input v-model="stageDraft" type="text" maxlength="80" :disabled="connection !== 'synced'" :aria-invalid="stageDirty && !!error" placeholder="例如：32强、半决赛、决赛" aria-describedby="showcase-stage-feedback" @input="editStage" @blur="syncStage">
@@ -114,7 +127,7 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
         </label>
         <p id="showcase-pool-feedback" class="showcase-help" role="status">{{ busy && dirty ? '正在同步图池…' : error && dirty ? '列表未应用，请修改上方提示的行' : poolFeedback || (snapshot?.pool.length ? `已录入 ${snapshot.pool.length} 张谱面` : '列表自动同步，无需逐张切换 Slot') }}</p>
       </section>
-      <ul v-if="snapshot?.pool.length" class="showcase-maps" aria-label="演示图池与当前匹配">
+      <ul v-if="snapshot?.pool.length" ref="poolList" class="showcase-maps" aria-label="演示图池与当前匹配">
         <li v-for="map in snapshot.pool" :key="map.id" :data-current="connection === 'synced' && snapshot.matchedId === map.id" :aria-current="connection === 'synced' && snapshot.matchedId === map.id ? 'true' : undefined" :title="`${map.label} · ${map.title} [${map.difficulty}]`">
           <b :style="modColorStyle(map.mod)">{{ map.label }}</b>
           <span><strong>{{ map.title || `谱面 #${map.beatmapId}` }}</strong><small>{{ map.difficulty || `#${map.beatmapId}` }}</small></span>
@@ -124,6 +137,7 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
       <ShowcaseObsSetup />
     </aside>
     <main class="canvas-stage" ref="stage" aria-label="Showcase 画面预览">
+      <p v-if="!clean" class="showcase-preview-status showcase-status" :data-state="connection === 'synced' ? snapshot?.sourceStatus : 'connecting'" :title="playbackStatus" role="status">{{ playbackStatus }}</p>
       <div class="canvas-sizer" :style="{ width: `${1920 * scale}px`, height: `${1080 * scale}px` }">
         <div class="broadcast-canvas showcase-canvas" :style="{ transform: `scale(${scale})` }" aria-label="1920×1080 图池 Showcase 播出画布" data-showcase-canvas>
           <div class="showcase-stage-ambient" aria-hidden="true">

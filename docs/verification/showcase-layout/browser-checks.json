@@ -1,0 +1,74 @@
+{
+  "geometry": {
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "replay": {
+      "x": 160,
+      "y": 100,
+      "width": 1600,
+      "height": 800
+    },
+    "logo": {
+      "x": 30,
+      "y": 928,
+      "width": 420,
+      "height": 138
+    },
+    "map": {
+      "x": 460,
+      "y": 928,
+      "width": 1000,
+      "height": 138
+    },
+    "chat": {
+      "x": 1470,
+      "y": 928,
+      "width": 420,
+      "height": 138
+    },
+    "logoOpacity": "0.9",
+    "logoFilter": "drop-shadow(rgba(139, 92, 246, 0.25) 0px 0px 14px)",
+    "logoPadding": "10px 16px",
+    "line": {
+      "height": "1px",
+      "top": "16px",
+      "left": "30px",
+      "right": "30px",
+      "background": "linear-gradient(90deg, rgba(185, 155, 229, 0), rgba(185, 155, 229, 0.42) 18%, rgba(185, 155, 229, 0.42) 82%, rgba(185, 155, 229, 0))"
+    },
+    "background": "radial-gradient(900px 500px at 50% -10%, rgba(76, 29, 149, 0.667), rgba(0, 0, 0, 0) 70%), radial-gradient(700px 500px at 0% 100%, rgba(109, 40, 217, 0.18), rgba(0, 0, 0, 0) 70%), radial-gradient(700px 500px at 100% 100%, rgba(109, 40, 217, 0.18), rgba(0, 0, 0, 0) 70%), repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.024) 0px, rgba(255, 255, 255, 0.024) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 48px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.024) 0px, rgba(255, 255, 255, 0.024) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 48px), none",
+    "statusInClean": false
+  },
+  "ui": {
+    "rowHeight": 38,
+    "rowDisplay": "flex",
+    "wrap": "nowrap",
+    "previewTop": 72,
+    "statusBottom": 58,
+    "status": "正在演示 NM1 · eclosion",
+    "overflow": false
+  },
+  "scrollChecks": [
+    {
+      "name": "desktop",
+      "outerScrollAndCaretPreserved": true,
+      "activeRowVisible": true,
+      "listScrollTop": 362,
+      "manualScrollPreserved": true
+    },
+    {
+      "name": "mobile",
+      "outerScrollAndCaretPreserved": true,
+      "activeRowVisible": true,
+      "listScrollTop": 431,
+      "manualScrollPreserved": true
+    }
+  ],
+  "winnerBackgroundUnchanged": true,
+  "originalMatchUnchanged": true,
+  "errors": []
+}
