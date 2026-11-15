@@ -1,10 +1,12 @@
 # Showcase 底栏与操作页调整
 
-2026-11-14，独立工作树 `overlay-showcase-layout-polish`，分支 `codex/showcase-layout-polish`。从已有未提交的 `preview/showcase-polish` 预览中提取用户选定的四项调整，应用到最新主线；原预览工作区及原工作区未提交的 OBS 改动保持。
+2026-11-14，独立工作树 `overlay-showcase-layout-polish`，分支 `codex/showcase-layout-polish`。从已有未提交的 `preview/showcase-polish` 预览中提取用户选定的四项调整，并加入后续补充的 Stage 标题装饰，应用到最新主线；原预览工作区及原工作区未提交的 OBS 改动保持。
 
 ## 当前行为
 
 底部三块上方增加 y=916、1px、两端渐隐的紫色细线。Logo 保持原外框与透明 SVG，增加 10px／16px 内边距，图形不透明度 90%，带轻柔紫色光晕。Showcase 左右下角采用同尺寸、同色紫光；原 Playing／Winner 背景保持。
+
+顶部「STAGE」左右分别使用 132×1px、向外渐隐的细线；阶段名称增加柔和紫色光晕。标题仍居中于 x=960，底边不超过 y=100，保持在回放区域外。
 
 操作页预览靠上排列，当前演示状态移到预览上方，长标题单行省略并提供完整提示。图池每张一行、38px 高，标题与难度同行；匹配行高亮。匹配或图池次序变化时按元素与列表的相对位置调整 `scrollTop`，只滚列表；同图持续帧不重新滚动，直播员仍可手动查看其他条目。
 
