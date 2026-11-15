@@ -43,8 +43,10 @@ def main():
     (app / 'package.json').write_text('{"type":"module","private":true}\n', encoding='utf-8')
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
-    inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.go'))
-    inputs += sorted((ROOT / 'tools/windows-launcher').glob('*.syso'))
+    launcher_dir = ROOT / 'tools/windows-launcher'
+    inputs += sorted(launcher_dir.glob('*.go'))
+    inputs += sorted(launcher_dir.glob('*.syso'))
+    inputs += [launcher_dir / 'go.mod', launcher_dir / 'go.sum']
     for path in inputs:
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
@@ -59,8 +61,8 @@ def main():
             (runtime / name).write_bytes(source.read(prefix + name))
     env = dict(os.environ, GOOS='windows', GOARCH='amd64', CGO_ENABLED='0')
     env.setdefault('GOCACHE', str(out / '.go-cache'))
-    subprocess.run([args.go, 'build', '-trimpath', '-ldflags', f'-H=windowsgui -s -w -X main.buildID={build}',
-                    '-o', str(stage / 'OCLR.exe'), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
+    subprocess.run([args.go, 'build', '-mod=readonly', '-trimpath', '-ldflags', f'-H=windowsgui -s -w -X main.buildID={build}',
+                    '-o', str(stage / 'OCLR.exe'), '.'], cwd=launcher_dir, env=env, check=True)
     shutil.copyfile(ROOT / 'docs/windows-portable.md', stage / '使用说明.txt')
     shutil.copyfile(ROOT / 'docs/verification/windows-portable/README.md', stage / '验证状态.txt')
     license_dir = stage / 'licenses'
@@ -72,6 +74,11 @@ def main():
     # The Go runtime is statically linked; include its redistribution license.
     goroot = subprocess.check_output([args.go, 'env', 'GOROOT'], text=True).strip()
     shutil.copyfile(Path(goroot) / 'LICENSE', license_dir / 'Go-LICENSE')
+    windigo = subprocess.check_output(
+        [args.go, 'list', '-m', '-mod=readonly', '-f', '{{.Dir}}', 'github.com/rodrigocfd/windigo'],
+        cwd=launcher_dir, env=env, text=True,
+    ).strip()
+    shutil.copyfile(Path(windigo) / 'LICENSE.md', license_dir / 'Windigo-LICENSE')
     manifest = {str(p.relative_to(stage)).replace('\\', '/'): sha(p) for p in sorted(stage.rglob('*')) if p.is_file()}
     (stage / 'SHA256SUMS.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
     result = out / 'OCLR-Windows-x64.zip'

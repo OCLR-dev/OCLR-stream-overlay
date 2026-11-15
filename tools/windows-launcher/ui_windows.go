@@ -3,8 +3,11 @@ package main
 import (
 	"errors"
 	"os"
-	"syscall"
 	"unsafe"
+
+	"github.com/rodrigocfd/windigo/co"
+	"github.com/rodrigocfd/windigo/ui"
+	"github.com/rodrigocfd/windigo/win"
 )
 
 const (
@@ -320,42 +323,15 @@ func launcherFont(size, weight int, face string) uintptr {
 	return call(gdi, "CreateFontW", 0-px(size), 0, 0, 0, uintptr(weight), 0, 0, 0, 1, 0, 0, 5, 0, ptr(face))
 }
 
-func createLauncherWindow() func() {
-	call(user, "SetProcessDPIAware")
-	dc := call(user, "GetDC", 0)
-	if dc != 0 {
-		if dpi := call(gdi, "GetDeviceCaps", dc, 88); dpi > 0 { // LOGPIXELSX
-			windowScale = int(dpi)
-		}
-		call(user, "ReleaseDC", 0, dc)
-	}
-	instance := call(kernel, "GetModuleHandleW", 0)
-	const appIcon = 1 // ID in assets/winres.json.
-	largeIcon := call(user, "LoadIconW", instance, appIcon)
-	smallIcon := call(user, "LoadImageW", instance, appIcon, 1, px(16), px(16), 0) // IMAGE_ICON
-	class := wc{Proc: syscall.NewCallback(wndProc), Instance: instance, Cursor: call(user, "LoadCursorW", 0, 32512),
-		Icon: largeIcon, Small: smallIcon, Name: syscall.StringToUTF16Ptr("OCLRPortableWindow")}
-	class.Size = uint32(unsafe.Sizeof(class))
-	if call(user, "RegisterClassExW", uintptr(unsafe.Pointer(&class))) == 0 {
-		if smallIcon != 0 {
-			call(user, "DestroyIcon", smallIcon)
-		}
-		message("无法创建启动窗口。")
-		return nil
-	}
-	const windowStyle = 0x02CA0000 // Includes WS_CLIPCHILDREN for switching pages.
-	bounds := area(0, 0, launcherWidth, launcherHeight)
-	call(user, "AdjustWindowRectEx", uintptr(unsafe.Pointer(&bounds)), windowStyle, 0, 0)
-	window = call(user, "CreateWindowExW", 0, ptr("OCLRPortableWindow"), ptr("OCLR 直播服务"), windowStyle,
-		0x80000000, 0x80000000, uintptr(bounds.Right-bounds.Left), uintptr(bounds.Bottom-bounds.Top), 0, 0, instance, 0)
-	if window == 0 {
-		call(user, "UnregisterClassW", ptr("OCLRPortableWindow"), instance)
-		if smallIcon != 0 {
-			call(user, "DestroyIcon", smallIcon)
-		}
-		message("无法创建启动窗口。")
-		return nil
-	}
+func newLauncherWindow(onCreate func()) (*ui.Main, func()) {
+	windowScale = ui.DpiX(96)
+	wnd := ui.NewMain(ui.OptsMain().
+		Title("OCLR 直播服务").
+		Center(true).
+		Size(int(px(launcherWidth)), int(px(launcherHeight))).
+		Style(co.WS_CAPTION | co.WS_SYSMENU | co.WS_MINIMIZEBOX | co.WS_CLIPCHILDREN).
+		ClassIconId(1)) // ID in assets/winres.json.
+
 	titleFont := launcherFont(26, 600, "Segoe UI")
 	headingFont := launcherFont(16, 600, "Segoe UI")
 	bodyFont := launcherFont(14, 400, "Segoe UI")
@@ -372,35 +348,57 @@ func createLauncherWindow() func() {
 		clear(brushes)
 		clear(controlColors)
 		pageControls = [pageCount][]uintptr{}
+		currentPage = pageOverview
 		logPreviewText = ""
-		call(user, "UnregisterClassW", ptr("OCLRPortableWindow"), instance)
-		if smallIcon != 0 {
-			call(user, "DestroyIcon", smallIcon)
-		}
 	}
+
 	buildingPage := pageCount
-	add := func(kind, title string, x, y, width, height int, id, style, font uintptr) uintptr {
-		const wsChild, wsVisible = 0x40000000, 0x10000000
-		style |= wsChild
+	var bindControls []func()
+	attach := func(control ui.Window, target *uintptr, font uintptr, colors *textColors) {
+		page := buildingPage
+		// Windigo creates the native child HWNDs before the window's WmCreate handler.
+		bindControls = append(bindControls, func() {
+			h := uintptr(control.Hwnd())
+			if target != nil {
+				*target = h
+			}
+			control.Hwnd().SendMessage(co.WM_SETFONT, win.WPARAM(font), 1)
+			if page < pageCount {
+				pageControls[page] = append(pageControls[page], h)
+			}
+			if colors != nil {
+				controlColors[h] = *colors
+			}
+		})
+	}
+	static := func(target *uintptr, value string, x, y, width, height int, font uintptr, fg, bg color) {
+		control := ui.NewStatic(wnd, ui.OptsStatic().Text(value).
+			Position(int(px(x)), int(px(y))).Size(int(px(width)), int(px(height))).
+			WndStyle(co.WS_CHILD))
+		attach(control, target, font, &textColors{fg, bg})
+	}
+	button := func(value string, x, y, width int, id uintptr) {
+		style := co.WS_CHILD | co.WS_TABSTOP
 		if buildingPage == pageCount {
-			style |= wsVisible
+			style |= co.WS_VISIBLE
 		}
-		h := call(user, "CreateWindowExW", 0, ptr(kind), ptr(title), style,
-			px(x), px(y), px(width), px(height), window, id, instance, 0)
-		call(user, "SendMessageW", h, 0x30, font, 1) // WM_SETFONT
-		if buildingPage < pageCount {
-			pageControls[buildingPage] = append(pageControls[buildingPage], h)
-		}
-		return h
+		control := ui.NewButton(wnd, ui.OptsButton().Text(value).CtrlId(uint16(id)).
+			Position(int(px(x)), int(px(y))).Width(int(px(width))).Height(int(px(36))).
+			WndStyle(style).CtrlStyle(co.BS_OWNERDRAW))
+		control.On().BnClicked(func() { launcherAction(id) })
+		attach(control, nil, bodyFont, nil)
 	}
-	static := func(value string, x, y, width, height int, font uintptr, fg, bg color) uintptr {
-		h := add("STATIC", value, x, y, width, height, 0, 0, font)
-		controlColors[h] = textColors{fg, bg}
-		return h
+	edit := func(target *uintptr, value string, x, y, width, height int, id uint16, style co.WS, flags co.ES, font uintptr, colors *textColors) {
+		control := ui.NewEdit(wnd, ui.OptsEdit().Text(value).CtrlId(id).
+			Position(int(px(x)), int(px(y))).Width(int(px(width))).Height(int(px(height))).
+			WndStyle(co.WS_CHILD|co.WS_TABSTOP|style).WndExStyle(0).CtrlStyle(flags))
+		attach(control, target, font, colors)
 	}
-	button := func(value string, x, y, width int, id uintptr) uintptr {
-		return add("BUTTON", value, x, y, width, 36, id, 0x1000B, bodyFont) // WS_TABSTOP | BS_OWNERDRAW
+	readonly := func(target *uintptr, value string, x, y, width int, id uint16) {
+		edit(target, value, x, y, width, 30, id, co.WS_BORDER,
+			co.ES_READONLY|co.ES_AUTOHSCROLL, bodyFont, &textColors{inkColor, canvasColor})
 	}
+
 	for i, name := range [...]string{"概览", "设置", "日志", "关于"} {
 		button(name, 12, 24+i*45, sidebarWidth-24, uintptr(buttonOverview+i))
 	}
@@ -410,112 +408,136 @@ func createLauncherWindow() func() {
 	const inside = pageWidth - 32
 	const right = x + inside - 148
 	heading := func(title, subtitle string) {
-		static(title, pageLeft, 24, pageWidth, 34, titleFont, inkColor, canvasColor)
-		static(subtitle, pageLeft, 60, pageWidth, 18, captionFont, mutedColor, canvasColor)
+		static(nil, title, pageLeft, 24, pageWidth, 34, titleFont, inkColor, canvasColor)
+		static(nil, subtitle, pageLeft, 60, pageWidth, 18, captionFont, mutedColor, canvasColor)
 	}
 	title := func(value string, x, y, width int) {
-		static(value, x, y, width, 23, headingFont, inkColor, cardColor)
+		static(nil, value, x, y, width, 23, headingFont, inkColor, cardColor)
 	}
-	detail := func(value string, x, y, width, height int) uintptr {
-		return static(value, x, y, width, height, captionFont, mutedColor, cardColor)
-	}
-	readonly := func(value string, x, y, width int, id uintptr) uintptr {
-		h := add("EDIT", value, x, y, width, 30, id, 0x810880, bodyFont) // Border, tab stop, read-only, horizontal scroll.
-		controlColors[h] = textColors{inkColor, canvasColor}
-		return h
+	detail := func(target *uintptr, value string, x, y, width, height int) {
+		static(target, value, x, y, width, height, captionFont, mutedColor, cardColor)
 	}
 
 	buildingPage = pageOverview
 	heading("概览", "直播服务状态与常用操作")
 	title("直播服务", x, 100, 235)
-	serviceStatus = static("● 正在启动", right, 102, 148, 22, bodyFont, waitColor, cardColor)
-	detail("OBS 浏览器源地址", x, 132, inside, 17)
-	addressLabel = readonly(base+"/overlay", x, 153, right-x-12, 121)
-	call(user, "EnableWindow", button("复制 OBS 地址", right, 150, 148, buttonCopyOBS), 0)
-	call(user, "EnableWindow", button("打开控制台", x, 194, 142, buttonControl), 0)
-	label = detail("正在准备本机服务，请稍候…", x+156, 195, inside-156, 40)
+	static(&serviceStatus, "● 正在启动", right, 102, 148, 22, bodyFont, waitColor, cardColor)
+	detail(nil, "OBS 浏览器源地址", x, 132, inside, 17)
+	readonly(&addressLabel, base+"/overlay", x, 153, right-x-12, 121)
+	button("复制 OBS 地址", right, 150, 148, buttonCopyOBS)
+	button("打开控制台", x, 194, 142, buttonControl)
+	detail(&label, "正在准备本机服务，请稍候…", x+156, 195, inside-156, 40)
 
 	otherTool := pageLeft + pageWidth/2 + 16
 	toolWidth := pageWidth/2 - 32
 	title("tosu", x, 271, toolWidth)
-	tosuProcessStatus = detail("", x, 301, toolWidth, 17)
-	tosuPortStatus = detail("端口 · 正在检查…", x, 321, toolWidth, 18)
+	detail(&tosuProcessStatus, "", x, 301, toolWidth, 17)
+	detail(&tosuPortStatus, "端口 · 正在检查…", x, 321, toolWidth, 18)
 	button("打开 tosu", x, 348, 142, buttonTosu)
-	tosuFeedback = detail("", x, 391, toolWidth, 26)
+	detail(&tosuFeedback, "", x, 391, toolWidth, 26)
 	title("osu!Tourney", otherTool, 271, toolWidth)
-	tourneyFeedback = detail("", otherTool, 301, toolWidth, 38)
+	detail(&tourneyFeedback, "", otherTool, 301, toolWidth, 38)
 	button("打开 osu!Tourney", otherTool, 348, 159, buttonOpenTourney)
 
 	buildingPage = pageSettings
 	heading("设置", "管理服务端口和直播工具路径")
 	title("直播服务", x, 100, inside)
-	detail("服务端口", x, 131, 120, 17)
-	portField = add("EDIT", servicePort, x, 150, 115, 30, editServicePort, 0x810080, bodyFont)
-	call(user, "EnableWindow", button("重新启动 / 重试", x+130, 147, 150, buttonRestart), 0)
+	detail(nil, "服务端口", x, 131, 120, 17)
+	edit(&portField, servicePort, x, 150, 115, 30, editServicePort, co.WS_BORDER, co.ES_AUTOHSCROLL, bodyFont, nil)
+	button("重新启动 / 重试", x+130, 147, 150, buttonRestart)
 	button("复制全部地址", x+292, 147, 145, buttonCopyAddresses)
-	detail("端口变更在服务重启后生效。连接 OBS 后可同步画面地址。", x, 190, inside, 19)
-	settingsStatus = detail("正在准备本机服务，请稍候…", x, 211, inside, 19)
+	detail(nil, "端口变更在服务重启后生效。连接 OBS 后可同步画面地址。", x, 190, inside, 19)
+	detail(&settingsStatus, "正在准备本机服务，请稍候…", x, 211, inside, 19)
 
 	title("应用程序", x, 261, inside)
-	detail("tosu 应用程序", x, 289, inside, 17)
-	tosuField = readonly("", x, 309, right-x-12, 106)
+	detail(nil, "tosu 应用程序", x, 289, inside, 17)
+	readonly(&tosuField, "", x, 309, right-x-12, 106)
 	button("选择 tosu.exe…", right, 306, 148, buttonChoose)
-	tosuSettingsFeedback = detail("", x, 347, inside, 18)
-	detail("osu!Tourney", x, 369, inside, 17)
-	osuField = readonly("", x, 389, right-x-12, 111)
+	detail(&tosuSettingsFeedback, "", x, 347, inside, 18)
+	detail(nil, "osu!Tourney", x, 369, inside, 17)
+	readonly(&osuField, "", x, 389, right-x-12, 111)
 	button("选择 osu!.exe…", right, 386, 148, buttonChooseOsu)
 	button("生成 tournament.cfg", x, 431, 176, buttonGenerateTourney)
-	tourneySettingsFeedback = detail("", x+190, 434, inside-190, 38)
+	detail(&tourneySettingsFeedback, "", x+190, 434, inside-190, 38)
 
 	buildingPage = pageLogs
 	heading("日志", "查看本机启动器与直播服务的记录")
 	title("启动器日志", x, 106, 210)
 	button("打开本机日志", right, 101, 148, buttonOpenLog)
-	detail(`%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\launcher.log`, x, 145, inside, 20)
-	detail("最近记录", x, 180, inside, 18)
-	logPreview = add("EDIT", "", x, 204, inside, 249, editLogPreview, 0xA10844, logFont)
-	controlColors[logPreview] = textColors{inkColor, canvasColor}
+	detail(nil, `%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\launcher.log`, x, 145, inside, 20)
+	detail(nil, "最近记录", x, 180, inside, 18)
+	edit(&logPreview, "", x, 204, inside, 249, editLogPreview, co.WS_BORDER|co.WS_VSCROLL, co.ES_MULTILINE|co.ES_AUTOVSCROLL|co.ES_READONLY, logFont, &textColors{inkColor, canvasColor})
 
 	buildingPage = pageAbout
 	heading("关于", "OCLR 直播服务启动器")
 	title("OCLR Stream Overlay", x, 101, inside)
-	detail("Windows x64 便携版 · 直播控制台与 OBS 浏览器源", x, 133, inside, 20)
+	detail(nil, "Windows x64 便携版 · 直播控制台与 OBS 浏览器源", x, 133, inside, 20)
 	build := buildID
 	if build == "" {
 		build = "开发构建"
 	} else if len(build) > 12 {
 		build = build[:12]
 	}
-	detail("构建标识  "+build, x, 162, inside, 19)
+	detail(nil, "构建标识  "+build, x, 162, inside, 19)
 	button("打开项目主页", x, 193, 148, buttonProject)
 
-	showLauncherPage(pageOverview)
-	return cleanup
+	wnd.On().WmCreate(func(ui.WmCreate) int {
+		window = uintptr(wnd.Hwnd())
+		for _, bind := range bindControls {
+			bind()
+		}
+		enableServiceButtons(window, 0)
+		call(user, "EnableWindow", call(user, "GetDlgItem", window, buttonRestart), 0)
+		showLauncherPage(pageOverview)
+		onCreate()
+		return 0
+	})
+	wnd.On().WmEraseBkgnd(func(p ui.WmEraseBkgnd) int {
+		paintLauncher(uintptr(p.Hdc()))
+		return 1
+	})
+	wnd.On().Wm(co.WM_DRAWITEM, func(p ui.Wm) uintptr {
+		if p.LParam != 0 && paintButton((*drawItem)(unsafe.Pointer(p.LParam))) {
+			return 1
+		}
+		return wnd.Hwnd().DefWindowProc(p.Msg, p.WParam, p.LParam)
+	})
+	wnd.On().Wm(co.WM_CTLCOLORSTATIC, func(p ui.Wm) uintptr {
+		if background := paintStatic(uintptr(p.WParam), uintptr(p.LParam)); background != 0 {
+			return background
+		}
+		return wnd.Hwnd().DefWindowProc(p.Msg, p.WParam, p.LParam)
+	})
+	return wnd, cleanup
 }
 
-func runWindow() {
-	cleanup := createLauncherWindow()
-	if cleanup == nil {
-		return
-	}
+func runWindow() int {
+	wnd, cleanup := newLauncherWindow(func() {
+		loadLauncherPreferences()
+		showTosuProcess(processChecking)
+		checkTosu(window)
+		call(user, "SetTimer", window, tosuTimer, 2000, 0)
+		owner := window
+		go func() {
+			b, e := start(localLog)
+			result <- started{b, e}
+			call(user, "PostMessageW", owner, msgServiceStarted, 0, 0)
+		}()
+	})
 	defer cleanup()
-	loadLauncherPreferences()
-	showTosuProcess(processChecking)
-	checkTosu(window)
-	call(user, "SetTimer", window, tosuTimer, 2000, 0)
-	call(user, "ShowWindow", window, 1)
-	call(user, "UpdateWindow", window)
-	go func() {
-		b, e := start(localLog)
-		result <- started{b, e}
-		call(user, "PostMessageW", window, msgServiceStarted, 0, 0)
-	}()
-	var m msg
-	for int32(call(user, "GetMessageW", uintptr(unsafe.Pointer(&m)), 0, 0, 0)) > 0 {
-		if call(user, "IsDialogMessageW", window, uintptr(unsafe.Pointer(&m))) == 0 {
-			call(user, "TranslateMessage", uintptr(unsafe.Pointer(&m)))
-			call(user, "DispatchMessageW", uintptr(unsafe.Pointer(&m)))
-		}
+	for _, id := range []co.WM{msgServiceStarted, msgServiceState, msgTosuExited, msgTosuChecked, msgTourneyFinished} {
+		wnd.On().Wm(id, func(p ui.Wm) uintptr {
+			launcherEvent(window, p.Msg, uintptr(p.WParam), uintptr(p.LParam))
+			return 0
+		})
 	}
+	wnd.On().WmTimer(tosuTimer, func() {
+		checkTosu(window)
+		if currentPage == pageLogs {
+			refreshLogPreview()
+		}
+	})
+	wnd.On().WmClose(closeLauncher)
 	// On launcher crash/exit the child's stdin closes; the backend drains and stops.
+	return wnd.RunAsMain()
 }

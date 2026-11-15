@@ -1,4 +1,4 @@
-// The launcher is a small Win32 GUI. No shell, browser engine or external modules.
+// The launcher uses native Windows controls and manages the bundled Node service.
 package main
 
 import (
@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/rodrigocfd/windigo/co"
 )
 
 var buildID string
@@ -46,24 +48,6 @@ func open(s string) {
 	if call(shell, "ShellExecuteW", 0, ptr("open"), ptr(s), 0, 0, 1) <= 32 {
 		message("无法打开默认浏览器。请在浏览器中输入：" + s)
 	}
-}
-
-type point struct{ X, Y int32 }
-type msg struct {
-	H       uintptr
-	M       uint32
-	W, L    uintptr
-	T       uint32
-	P       point
-	Private uint32
-}
-type wc struct {
-	Size, Style                   uint32
-	Proc                          uintptr
-	Cls, Wnd                      int32
-	Instance, Icon, Cursor, Brush uintptr
-	Menu, Name                    *uint16
-	Small                         uintptr
 }
 
 var (
@@ -138,19 +122,8 @@ func copyAddress(address string) {
 	}
 	text("地址已复制。")
 }
-func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
-	switch m {
-	case 0x0014: // WM_ERASEBKGND
-		paintLauncher(w)
-		return 1
-	case 0x002B: // WM_DRAWITEM
-		if l != 0 && paintButton((*drawItem)(unsafe.Pointer(l))) {
-			return 1
-		}
-	case 0x0138: // WM_CTLCOLORSTATIC, including the read-only path field
-		if background := paintStatic(w, l); background != 0 {
-			return background
-		}
+func launcherEvent(h uintptr, messageID co.WM, w, l uintptr) {
+	switch messageID {
 	case msgServiceStarted:
 		r := <-result
 		starting = false
@@ -169,7 +142,6 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			})
 			open(base + "/control")
 		}
-		return 0
 	case msgServiceState:
 		if !exiting && service != nil && uintptr(service.pid) == l {
 			switch serviceState(w) {
@@ -184,7 +156,6 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 				text("到「日志」查看原因，可在「设置」重启服务并恢复比赛。")
 			}
 		}
-		return 0
 	case msgTosuExited:
 		if l == tosuSelection {
 			tosuSelection++
@@ -195,78 +166,65 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			}
 			checkTosu(h)
 		}
-		return 0
 	case msgTosuChecked:
 		applyTosuCheck(h)
-		return 0
 	case msgTourneyFinished:
 		tourneyBusy = false
 		showTourney(<-tourneyResults)
-		return 0
-	case 0x0113: // WM_TIMER
-		if w == tosuTimer {
-			checkTosu(h)
-			if currentPage == pageLogs {
-				refreshLogPreview()
-			}
-		}
-		return 0
-	case 0x111:
-		switch w & 0xffff {
-		case buttonOverview, buttonSettings, buttonLogs, buttonAbout:
-			showLauncherPage(launcherPage((w & 0xffff) - buttonOverview))
-		case buttonProject:
-			open("https://github.com/OCLR-dev/OCLR-stream-overlay")
-		case buttonCopyAddresses:
-			copyAddress(base + "/control\r\n" + base + "/overlay\r\n" + base + "/showcase?clean=1")
-		case buttonRestart:
-			restartOnPort(h)
-		case buttonControl:
-			open(base + "/control")
-		case buttonCopyOBS:
-			copyOBS()
-		case buttonOpenLog:
-			openLocalLog()
-		case buttonExit:
-			call(user, "SendMessageW", h, 0x10, 0, 0)
-		case buttonChoose:
-			chooseTosu(h)
-		case buttonTosu:
-			openTosu(h)
-		case buttonChooseOsu:
-			chooseOsu(h)
-		case buttonGenerateTourney:
-			runTourney(h, false)
-		case buttonOpenTourney:
-			runTourney(h, true)
-		}
-		return 0
-	case 0x10:
-		if exiting {
-			return 0
-		}
-		if starting {
-			message("正在准备服务，请稍候完成后再退出。")
-			return 0
-		}
-		if service == nil || service.exited() {
-			call(user, "DestroyWindow", h)
-			return 0
-		}
-		if call(user, "MessageBoxW", h, ptr("退出会停止 OBS 网页输出。比赛已保存，下次启动会恢复。确定结束本次直播服务？"), ptr("退出 OCLR"), 0x124) == 6 {
-			exiting = true
-			text("正在保存并退出，请稍候…")
-			service.stop("operator")
-			call(user, "DestroyWindow", h)
-		}
-		return 0
-	case 2:
-		exiting = true
-		call(user, "PostQuitMessage", 0)
-		return 0
 	}
-	return call(user, "DefWindowProcW", h, uintptr(m), w, l)
 }
+
+func launcherAction(id uintptr) {
+	switch id {
+	case buttonOverview, buttonSettings, buttonLogs, buttonAbout:
+		showLauncherPage(launcherPage(id - buttonOverview))
+	case buttonProject:
+		open("https://github.com/OCLR-dev/OCLR-stream-overlay")
+	case buttonCopyAddresses:
+		copyAddress(base + "/control\r\n" + base + "/overlay\r\n" + base + "/showcase?clean=1")
+	case buttonRestart:
+		restartOnPort(window)
+	case buttonControl:
+		open(base + "/control")
+	case buttonCopyOBS:
+		copyOBS()
+	case buttonOpenLog:
+		openLocalLog()
+	case buttonExit:
+		call(user, "SendMessageW", window, 0x10, 0, 0)
+	case buttonChoose:
+		chooseTosu(window)
+	case buttonTosu:
+		openTosu(window)
+	case buttonChooseOsu:
+		chooseOsu(window)
+	case buttonGenerateTourney:
+		runTourney(window, false)
+	case buttonOpenTourney:
+		runTourney(window, true)
+	}
+}
+
+func closeLauncher() {
+	if exiting {
+		return
+	}
+	if starting {
+		message("正在准备服务，请稍候完成后再退出。")
+		return
+	}
+	if service == nil || service.exited() {
+		call(user, "DestroyWindow", window)
+		return
+	}
+	if call(user, "MessageBoxW", window, ptr("退出会停止 OBS 网页输出。比赛已保存，下次启动会恢复。确定结束本次直播服务？"), ptr("退出 OCLR"), 0x124) == 6 {
+		exiting = true
+		text("正在保存并退出，请稍候…")
+		service.stop("operator")
+		call(user, "DestroyWindow", window)
+	}
+}
+
 func main() {
 	runtime.LockOSThread()
 	os.Exit(runLauncher())
@@ -319,6 +277,5 @@ func runLauncher() int {
 		}
 		return b.exitCode
 	}
-	runWindow()
-	return 0
+	return runWindow()
 }
