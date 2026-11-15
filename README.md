@@ -221,3 +221,7 @@ Mappool 支持先点击队伍 Ban / Pick 按钮，无需先选谱面；服务器
 模拟器持续加分改为双方追分与交替领先：两队总分只增不减，约每数秒变换优势，分差通常在 ±11 万内拉扯。仅影响模拟 tosu Playing 的增长信号；手动输入分数、空值、停止增长及明确 Ranking 结果保持原职责，不写网站赛果。
 
 FM 中的 EZ 额外计分由直播项目补入：客户端选手分数 ×1.5，逐人四舍五入后汇总；实时队分、分差、结算与计胜共用同一口径。NM／TB 等其他分组不补偿。详见 [FM EZ 计分补偿](docs/verification/fm-ez-scoring/README.md)。
+
+## 许可证
+
+本项目自有代码与文档采用 [MIT License](LICENSE)。第三方依赖、字体与素材保留各自许可证，见 [第三方声明](THIRD_PARTY_NOTICES.md) 与 [素材许可证](tools/packaging/licenses/)。Windows 便携包包含项目 `LICENSE`、`THIRD_PARTY_NOTICES.md` 及 `licenses/` 中的第三方许可证。
