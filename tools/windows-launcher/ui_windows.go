@@ -8,6 +8,8 @@ import (
 )
 
 const (
+	buttonCopyAddresses   = 114
+	buttonRestart         = 112
 	buttonControl         = 101
 	buttonCopyOBS         = 102
 	buttonExit            = 103
@@ -26,7 +28,7 @@ const (
 	tosuTimer          = 1
 
 	launcherWidth  = 640
-	launcherHeight = 552
+	launcherHeight = 660
 )
 
 type rect struct{ Left, Top, Right, Bottom int32 }
@@ -286,7 +288,7 @@ func runWindow() {
 	static("直播控制台与 OBS 浏览器源", 25, 47, 589, 18, captionFont, rgb(214, 199, 242), headerColor)
 	static("直播服务", 42, 97, 200, 24, headingFont, inkColor, cardColor)
 	serviceStatus = static("● 正在启动", 440, 100, 156, 21, bodyFont, waitColor, cardColor)
-	static("OBS 地址  "+base+"/overlay", 42, 127, 554, 20, bodyFont, mutedColor, cardColor)
+	addressLabel = static("OBS 地址  "+base+"/overlay", 42, 127, 554, 20, bodyFont, mutedColor, cardColor)
 	call(user, "EnableWindow", button("打开控制台", 42, 152, 130, buttonControl), 0)
 	call(user, "EnableWindow", button("复制 OBS 地址", 184, 152, 130, buttonCopyOBS), 0)
 	button("打开本机日志", 326, 152, 130, buttonOpenLog)
@@ -307,6 +309,11 @@ func runWindow() {
 	button("生成 tournament.cfg", 234, 473, 172, buttonGenerateTourney)
 	button("打开 osu!Tourney", 426, 473, 172, buttonOpenTourney)
 	tourneyFeedback = static("", 42, 513, 556, 19, captionFont, mutedColor, cardColor)
+	static("服务端口（修改后需重新启动服务）", 42, 551, 554, 22, bodyFont, inkColor, canvasColor)
+	portField = add("EDIT", servicePort, 42, 581, 120, 28, 113, 0x810080, bodyFont)
+	call(user, "EnableWindow", button("重新启动 / 重试", 180, 577, 190, buttonRestart), 0)
+	button("复制全部地址", 390, 577, 208, buttonCopyAddresses)
+	static("换端口后请更新 OBS 浏览器源地址，并重新连接 OCLR。", 42, 623, 554, 22, captionFont, mutedColor, canvasColor)
 	loadLauncherPreferences()
 	showTosuProcess(processChecking)
 	checkTosu(window)
