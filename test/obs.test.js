@@ -80,10 +80,10 @@ test('a saved, unreachable OBS connection can retry after startup while the matc
   const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-unavailable-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   let attempts = 0;
-  const unavailable = createServer();
-  unavailable.on('upgrade', (_req, socket) => {
+  const unavailable = createServer((_req, response) => {
     attempts++;
-    socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+    response.writeHead(503, { Connection: 'close', 'Content-Length': '0' });
+    response.end();
   });
   await new Promise(resolve => unavailable.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => unavailable.close(resolve)));
