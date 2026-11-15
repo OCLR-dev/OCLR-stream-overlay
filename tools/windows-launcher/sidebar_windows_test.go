@@ -89,6 +89,18 @@ func TestLauncherSidebarShowsPageControlsAndPreservesSettings(t *testing.T) {
 	}
 	navigate(buttonAbout)
 	assertPage(pageAbout)
+	for _, text := range []string{"开源许可  MIT License", "© 2026 OCLR Dev Team"} {
+		found := false
+		for _, control := range pageControls[pageAbout] {
+			if readControl(control) == text && call(user, "IsWindowVisible", control) != 0 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("About page is missing visible text %q", text)
+		}
+	}
 	navigate(buttonSettings)
 	if got := readControl(portField); got != "3456" {
 		t.Fatalf("switching pages discarded the port input: %q", got)

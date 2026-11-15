@@ -14,6 +14,9 @@ import (
 	"time"
 	"unicode/utf16"
 	"unsafe"
+
+	"github.com/rodrigocfd/windigo/co"
+	"github.com/rodrigocfd/windigo/win"
 )
 
 var commonDialog = syscall.NewLazyDLL("comdlg32.dll")
@@ -169,6 +172,11 @@ func findExecutableProcess(path string) processStatus {
 	if err != nil {
 		return processUnknown
 	}
+	return findProcess(filepath.Base(resolved), resolved)
+}
+
+// An empty path matches a running process by image name.
+func findProcess(name, path string) processStatus {
 	snapshot, err := syscall.CreateToolhelp32Snapshot(syscall.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
 		return processUnknown
@@ -176,14 +184,16 @@ func findExecutableProcess(path string) processStatus {
 	defer syscall.CloseHandle(snapshot)
 	entry := syscall.ProcessEntry32{Size: uint32(unsafe.Sizeof(syscall.ProcessEntry32{}))}
 	status := processStopped
-	name := filepath.Base(resolved)
 	err = syscall.Process32First(snapshot, &entry)
 	for ; err == nil; err = syscall.Process32Next(snapshot, &entry) {
 		imageName := syscall.UTF16ToString(entry.ExeFile[:])
-		// An 8.3 image name can differ from the selected file's long name.
 		matchingName := strings.EqualFold(imageName, name)
-		if !matchingName && !strings.Contains(imageName, "~") {
+		// An 8.3 image name can differ from the selected file's long name.
+		if !matchingName && (path == "" || !strings.Contains(imageName, "~")) {
 			continue
+		}
+		if path == "" {
+			return processRunning
 		}
 		image, queryErr := processImage(entry.ProcessID)
 		if queryErr != nil {
@@ -192,7 +202,7 @@ func findExecutableProcess(path string) processStatus {
 			}
 			continue
 		}
-		if sameExecutable(resolved, image) {
+		if sameExecutable(path, image) {
 			return processRunning
 		}
 	}
@@ -367,18 +377,36 @@ func chooseTosu(owner uintptr) {
 	checkTosu(owner)
 }
 
-func openTosu(owner uintptr) {
+func canOpenTosu() bool {
 	status := findExecutableProcess(tosuPath)
 	showTosuProcess(status)
 	switch status {
-	case processRunning:
-		return
 	case processMissing:
 		showTosu("找不到保存的文件，请重新选择。")
-		return
 	case processUnknown:
 		showTosu("暂时无法确认运行状态，请稍后重试。")
+	}
+	return status == processStopped
+}
+
+func openTosu(owner uintptr) {
+	if !canOpenTosu() {
 		return
+	}
+	if status := osuProcessStatus(osuPath); status != processRunning {
+		detail := "未检测到 osu! 正在运行。"
+		if status == processUnknown {
+			detail = "暂时无法确认 osu! 是否正在运行。"
+		}
+		prompt := detail + "\n建议先打开 osu!Tourney，否则 tosu 可能无法读取游戏数据。\n\n仍要打开 tosu 吗？"
+		choice, _ := win.HWND(owner).MessageBox(prompt, "打开 tosu", co.MB_YESNO|co.MB_ICONWARNING|co.MB_DEFBUTTON2)
+		if choice != co.ID_YES {
+			return
+		}
+		// tosu can be started elsewhere while the confirmation is open.
+		if !canOpenTosu() {
+			return
+		}
 	}
 	cmd := exec.Command(tosuPath)
 	cmd.Dir = filepath.Dir(tosuPath)
