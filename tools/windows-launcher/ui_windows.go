@@ -313,7 +313,7 @@ func runWindow() {
 	portField = add("EDIT", servicePort, 42, 581, 120, 28, 113, 0x810080, bodyFont)
 	call(user, "EnableWindow", button("重新启动 / 重试", 180, 577, 190, buttonRestart), 0)
 	button("复制全部地址", 390, 577, 208, buttonCopyAddresses)
-	static("换端口后请更新 OBS 浏览器源地址，并重新连接 OCLR。", 42, 623, 554, 22, captionFont, mutedColor, canvasColor)
+	static("换端口后连接 OBS 自动同步画面地址，并重新连接 OCLR。", 42, 623, 554, 22, captionFont, mutedColor, canvasColor)
 	loadLauncherPreferences()
 	showTosuProcess(processChecking)
 	checkTosu(window)

@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
+import { syncBrowserAddresses } from './browser-addresses.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
 import { buildShowcase, showcaseScene } from './showcase.js';
 import { arrangeCaptures, buildPreset, ensureDesktopAudio, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
@@ -37,6 +38,13 @@ export class ObsController {
       } catch (error) {
         if (error.code !== 'ENOENT') this.storageError = 'OBS 设置文件无法读取，请维护者检查 obs-settings.json 后重启服务。';
       }
+    }
+    if (!this.storageError) {
+      try {
+        const port = new URL(this.overlayUrl()).port || '80';
+        const ports = Array.isArray(this.settings.overlayPorts) ? this.settings.overlayPorts.filter(p => typeof p === 'string') : [];
+        if (!ports.includes(port)) await this.save({ ...this.settings, overlayPorts: [...ports, port] });
+      } catch { this.storageError = 'OBS 地址设置无法保存，请检查本机存储后重启服务。'; }
     }
     this.unsubscribe = store.subscribe(({ session }) => this.observe(session));
     if (this.settings.enabled && !this.storageError) this.connect();
@@ -181,6 +189,7 @@ export class ObsController {
       this.setScenes(scenes);
       await this.readProgram(call);
       this.collection = currentSceneCollectionName;
+      await syncBrowserAddresses(call, this.overlayUrl(), this.settings.overlayPorts ?? [], this.profile);
       this.phase = 'ready';
       this.error = '';
       const profile = this.profile;
