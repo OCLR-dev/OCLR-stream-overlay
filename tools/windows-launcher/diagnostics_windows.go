@@ -2,21 +2,55 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	logLimit    = 1024 * 1024
-	stderrLimit = 8 * 1024
+	logLimit     = 1024 * 1024
+	stderrLimit  = 8 * 1024
+	previewLimit = 48 * 1024
 )
 
 type diagnostics struct {
 	sync.Mutex
 	path string
+}
+
+func (d *diagnostics) preview() (string, error) {
+	d.Lock()
+	defer d.Unlock()
+	if d.path == "" {
+		return "", errors.New("launcher log path unavailable")
+	}
+	file, err := os.Open(d.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return "", err
+	}
+	start := max(0, info.Size()-previewLimit-1)
+	tail := make([]byte, info.Size()-start)
+	if len(tail) > 0 {
+		if _, err := file.ReadAt(tail, start); err != nil {
+			return "", err
+		}
+	}
+	if info.Size() > previewLimit {
+		_, tail, _ = bytes.Cut(tail, []byte{'\n'}) // Discard the partial first line.
+	}
+	return strings.ReplaceAll(strings.ToValidUTF8(string(tail), "�"), "\x00", "�"), nil
 }
 
 func launcherDiagnostics() *diagnostics {

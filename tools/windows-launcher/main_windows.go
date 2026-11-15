@@ -81,7 +81,10 @@ type started struct {
 
 var result = make(chan started, 1)
 
-func text(s string) { setText(label, s) }
+func text(s string) {
+	setText(label, s)
+	setText(settingsStatus, s)
+}
 func openLocalLog() {
 	path := localLog.path
 	if path == "" {
@@ -155,8 +158,8 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 		service = r.b
 		if r.err != nil {
 			setStatus(serviceStatus, "● 启动失败", errorColor)
-			text("启动失败。可修改服务端口后重试，或打开本机日志。")
-			message(r.err.Error() + "\n可打开本机日志查看详情。")
+			text("到「设置」修改端口后重试，或到「日志」查看原因。")
+			message(r.err.Error() + "\n可在侧栏「日志」查看详情。")
 		} else {
 			checkTosu(h)
 			showServiceReady()
@@ -178,7 +181,7 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 			case serviceExited:
 				setStatus(serviceStatus, "● 服务已停止", errorColor)
 				enableServiceButtons(h, 0)
-				text("可打开本机日志查看原因。退出后重新启动可恢复已保存的比赛。")
+				text("到「日志」查看原因，可在「设置」重启服务并恢复比赛。")
 			}
 		}
 		return 0
@@ -203,10 +206,17 @@ func wndProc(h uintptr, m uint32, w, l uintptr) uintptr {
 	case 0x0113: // WM_TIMER
 		if w == tosuTimer {
 			checkTosu(h)
+			if currentPage == pageLogs {
+				refreshLogPreview()
+			}
 		}
 		return 0
 	case 0x111:
 		switch w & 0xffff {
+		case buttonOverview, buttonSettings, buttonLogs, buttonAbout:
+			showLauncherPage(launcherPage((w & 0xffff) - buttonOverview))
+		case buttonProject:
+			open("https://github.com/OCLR-dev/OCLR-stream-overlay")
 		case buttonCopyAddresses:
 			copyAddress(base + "/control\r\n" + base + "/overlay\r\n" + base + "/showcase?clean=1")
 		case buttonRestart:
