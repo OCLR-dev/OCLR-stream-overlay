@@ -68,6 +68,6 @@ export function useObsControl() {
   });
   onMounted(refresh);
   onUnmounted(() => { alive = false; clearTimeout(timer); });
-  return reactive({ state, pending, error, status, canReturn, measurement, act });
+  return reactive({ state, pending, error, status, canReturn, measurement, unreachable, act });
 }
 export type ObsControl = ReturnType<typeof useObsControl>;
