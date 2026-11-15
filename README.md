@@ -58,6 +58,8 @@ npm run watch
 
 ## 图池 Showcase
 
+控制台顶部右侧的「Showcase · 图池演示」按钮进入独立页面，页首可「返回直播控制台」；左侧比赛／设置页签与右侧页面入口分组，窄屏自动分两行。Showcase 页首直接显示 OBS 连接设置，连接后展开「Showcase 场景」，点击「创建 OCLR · Showcase 场景」即可建立独立播出场景。验证与剩余实机验收见 [Showcase 入口与场景操作](docs/verification/showcase-entry/README.md)。
+
 打开 `/showcase`，先录入演示图池，每行「Slot 谱面ID或链接 标题（可选）」，例如 `NM1 4278199 eclosion`；也可点击「复制控制台已加载图池」。支持 osu! 具体难度链接，图集链接须带 `#osu/难度ID`。输入停顿或离开输入框后自动同步，无需保存。图池与 Stage 单独写入比赛文件同目录的 `showcase.json`，后续控制台换场或改图池不会覆盖它们。
 
 左侧「当前 Stage」可独立填写本次图池的阶段名称，输入后自动同步到画面最上方中央，留空隐藏。它不跟随控制台默认比赛阶段；复制图池也保留已填写的名称。

@@ -32,14 +32,14 @@ function connect() {
         <button v-if="obs.state?.enabled" type="button" :disabled="!!obs.pending" @click="obs.act('disconnect')"><Unplug :size="16" aria-hidden="true" />断开连接</button>
       </div>
     </form>
-    <details v-else class="obs-layout-settings"><summary><span class="obs-layout-label"><PanelsTopLeft :size="17" aria-hidden="true" />场景与捕获窗口</span><span>{{ showcaseOnly ? (obs.state?.showcase ? '已配置' : '待配置') : (obs.state?.regular && obs.state?.ex ? '常规 / EX' : '待配置') }}</span></summary>
+    <details v-else class="obs-layout-settings" :open="showcaseOnly"><summary><span class="obs-layout-label"><PanelsTopLeft :size="17" aria-hidden="true" />{{ showcaseOnly ? 'Showcase 场景' : '场景与捕获窗口' }}</span><span>{{ showcaseOnly ? (obs.state?.showcase ? '已配置' : '待配置') : (obs.state?.regular && obs.state?.ex ? '常规 / EX' : '待配置') }}</span></summary>
       <template v-if="showcaseOnly">
         <div class="operator-inline">
-          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 Showcase 场景…' : '创建 Showcase 场景' }}</button>
+          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 OCLR · Showcase…' : '创建 OCLR · Showcase 场景' }}</button>
           <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
         </div>
         <p>创建 1920×1080、位置 (0,0)、缩放 1 的独立 Showcase 浏览器源，铺满整个画布。osu! 回放采集自行放到它上方，在中央约 800px 高的区域等比居中，再在 OBS 切到 Showcase 场景。</p>
-        <p v-if="obs.state.showcase" role="status">Showcase 场景已就绪。</p>
+        <p v-if="obs.state.showcase" role="status">OCLR · Showcase 场景已就绪，请在 OBS 中切换到此场景播出。</p>
       </template>
       <template v-else>
       <div class="operator-inline">
