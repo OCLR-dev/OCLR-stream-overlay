@@ -45,15 +45,6 @@ export async function ensureStreamChat(call, profile, save) {
     await save(chat);
   };
   const { inputs } = await call('GetInputList');
-  let input = chat.uuid && inputs.find(item => item.inputUuid === chat.uuid);
-  if (!input) {
-    input = inputs.find(item => item.inputName === (chat.name || sourceName));
-    if (input && (chat.uuid || !chat.name)) {
-      throw new ObsError('直播间弹幕来源名称已被占用，请在 OBS 给同名来源改名后重试。');
-    }
-  }
-  if (input && input.inputKind !== 'browser_source') throw new ObsError('直播间弹幕需要浏览器源，请在 OBS 核对同名来源。');
-  const name = input?.inputName || chat.name || sourceName;
   const scenes = [];
   const targets = ['regular', 'ex'].filter(layout => profile[layout]).map(layout => ({ name: profile[layout], uuid: profile.sceneIds?.[layout] }));
   if (profile.showcase?.ready) targets.push({ name: showcaseScene, uuid: profile.showcase.sceneUuid });
@@ -61,27 +52,57 @@ export async function ensureStreamChat(call, profile, save) {
     const sceneUuid = uuid || null;
     const target = sceneUuid ? { sceneUuid } : { sceneName };
     const { sceneItems } = await call('GetSceneItemList', target);
-    const matches = sceneItems.filter(i => i.sourceName === name);
-    if (matches.length > 1) throw new ObsError(`「${sceneName}」里有多个直播间弹幕场景项，请在 OBS 保留一项后重试。`);
-    scenes.push({ scene: sceneUuid || sceneName, target, item: matches[0] });
+    scenes.push({ scene: sceneUuid || sceneName, sceneName, target, sceneItems });
+  }
+  const settings = new Map();
+  const readSettings = async input => {
+    if (!settings.has(input.inputName)) {
+      const { inputSettings } = await call('GetInputSettings', { inputName: input.inputName });
+      settings.set(input.inputName, inputSettings);
+    }
+    return settings.get(input.inputName);
+  };
+  // OBS input lists belong to the active collection; the controller guards
+  // every RPC against collection changes while this operation is in flight.
+  let input = chat.uuid && inputs.find(item => item.inputUuid === chat.uuid && item.inputKind === 'browser_source');
+  if (!input && !chat.uuid && chat.name) {
+    const saved = inputs.find(item => item.inputName === chat.name && item.inputKind === 'browser_source');
+    if (saved) {
+      const inputSettings = await readSettings(saved);
+      const knownItem = scenes.some(({ scene, sceneItems }) => sceneItems.some(item =>
+        item.sourceName === saved.inputName && chat.items[scene]?.id === item.sceneItemId));
+      const hasPresetSettings = [css, scrollbarCss, legacyCss].includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
+      if (knownItem || hasPresetSettings) input = saved;
+    }
+  }
+  if (!input) {
+    const preferred = chat.name || sourceName;
+    const browsers = inputs.filter(item => item.inputKind === 'browser_source');
+    const candidates = [...browsers.filter(item => item.inputName === preferred), ...browsers.filter(item => item.inputName !== preferred)];
+    for (const candidate of candidates) {
+      if ((await readSettings(candidate)).url === url) { input = candidate; break; }
+    }
+  }
+  let name = input?.inputName || chat.name || sourceName;
+  if (!input) {
+    const { groups } = await call('GetGroupList');
+    const { scenes: allScenes } = await call('GetSceneList');
+    const occupied = new Set([...inputs.map(item => item.inputName), ...groups, ...allScenes.map(scene => scene.sceneName)]);
+    const base = name;
+    for (let n = 2; occupied.has(name); n++) name = `${base} (${n})`;
+  }
+  for (const scene of scenes) {
+    const matches = scene.sceneItems.filter(item => item.sourceName === name);
+    if (matches.length > 1) throw new ObsError(`「${scene.sceneName}」里有多个直播间弹幕场景项，请在 OBS 保留一项后重试。`);
+    scene.item = matches[0];
   }
   if (input) {
-    const { inputSettings } = await call('GetInputSettings', { inputName: name });
-    // Without an OBS UUID, verify the saved source (including creation whose reply was lost).
-    const knownItem = scenes.some(({ scene, item }) => item && chat.items[scene]?.id === item.sceneItemId);
-    const hasPresetSettings = [css, scrollbarCss, legacyCss].includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
-    if (!chat.uuid && !knownItem && !hasPresetSettings) {
-      throw new ObsError('原直播间弹幕来源已被替换，请在 OBS 核对来源名称后重试。');
-    }
+    const inputSettings = await readSettings(input);
     const updates = {};
     if (inputSettings.url !== url) updates.url = url;
     // Upgrade only our original preset; retain CSS customized by the operator.
     if ([legacyCss, scrollbarCss].includes(inputSettings.css)) updates.css = css;
     if (Object.keys(updates).length) await call('SetInputSettings', { inputName: name, inputSettings: updates, overlay: true });
-  } else {
-    const { groups } = await call('GetGroupList');
-    const { scenes: allScenes } = await call('GetSceneList');
-    if (groups.includes(name) || allScenes.some(s => s.sceneName === name)) throw new ObsError('直播间弹幕来源名称已被占用，请在 OBS 改名后重试。');
   }
   for (const { scene, target, item } of scenes) {
     if (item && chat.items[scene]?.id === item.sceneItemId) continue;
