@@ -132,7 +132,7 @@ func paintLauncher(dc uintptr) {
 	case pageLogs:
 		paintCard(dc, 87, 383)
 	case pageAbout:
-		paintCard(dc, 87, 158)
+		paintCard(dc, 87, 210)
 	}
 }
 
@@ -479,7 +479,9 @@ func newLauncherWindow(onCreate func()) (*ui.Main, func()) {
 		build = build[:12]
 	}
 	detail(nil, "构建标识  "+build, x, 162, inside, 19)
-	button("打开项目主页", x, 193, 148, buttonProject)
+	detail(nil, "开源许可  MIT License", x, 189, inside, 19)
+	detail(nil, "© 2026 OCLR Dev Team", x, 214, inside, 19)
+	button("打开项目主页", x, 245, 148, buttonProject)
 
 	wnd.On().WmCreate(func(ui.WmCreate) int {
 		window = uintptr(wnd.Hwnd())

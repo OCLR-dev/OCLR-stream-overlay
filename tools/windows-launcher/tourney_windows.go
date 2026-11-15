@@ -10,7 +10,10 @@ import (
 	"strings"
 )
 
-const tournamentConfig = "tournament.cfg"
+const (
+	tournamentConfig  = "tournament.cfg"
+	osuExecutableName = "osu!.exe"
+)
 
 var editionSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 var osuPath string
@@ -18,7 +21,14 @@ var tourneyBusy bool
 var tourneyResults = make(chan string, 1)
 
 func isOsuExecutable(path string) bool {
-	return strings.EqualFold(filepath.Base(path), "osu!.exe") && isExecutable(path)
+	return strings.EqualFold(filepath.Base(path), osuExecutableName) && isExecutable(path)
+}
+
+func osuProcessStatus(path string) processStatus {
+	if path == "" {
+		return findProcess(osuExecutableName, "")
+	}
+	return findExecutableProcess(path)
 }
 
 func chooseOsu(owner uintptr) {
