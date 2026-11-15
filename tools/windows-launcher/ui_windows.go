@@ -19,6 +19,13 @@ const (
 	buttonChooseOsu       = 108
 	buttonGenerateTourney = 109
 	buttonOpenTourney     = 110
+	buttonOverview        = 115
+	buttonSettings        = 116
+	buttonLogs            = 117
+	buttonAbout           = 118
+	buttonProject         = 119
+	editServicePort       = 113
+	editLogPreview        = 120
 
 	msgServiceStarted  = 0x8001
 	msgServiceState    = 0x8002
@@ -27,8 +34,21 @@ const (
 	msgTourneyFinished = 0x8005
 	tosuTimer          = 1
 
-	launcherWidth  = 640
-	launcherHeight = 660
+	launcherWidth  = 780
+	launcherHeight = 500
+	sidebarWidth   = 152
+	pageLeft       = 176
+	pageWidth      = launcherWidth - pageLeft - 24
+)
+
+type launcherPage int
+
+const (
+	pageOverview launcherPage = iota
+	pageSettings
+	pageLogs
+	pageAbout
+	pageCount
 )
 
 type rect struct{ Left, Top, Right, Bottom int32 }
@@ -45,8 +65,10 @@ type color uint32
 func rgb(r, g, b uint32) color { return color(r | g<<8 | b<<16) }
 
 var (
-	canvasColor = rgb(242, 240, 248)
-	headerColor = rgb(29, 20, 48)
+	canvasColor = rgb(246, 243, 250)
+	railColor   = rgb(238, 232, 246)
+	lineColor   = rgb(228, 220, 237)
+	activeColor = rgb(228, 216, 245)
 	cardColor   = rgb(255, 255, 255)
 	inkColor    = rgb(36, 25, 55)
 	mutedColor  = rgb(95, 83, 115)
@@ -65,6 +87,13 @@ var (
 	serviceStatus, tosuField, tosuFeedback uintptr
 	tosuProcessStatus, tosuPortStatus      uintptr
 	osuField, tourneyFeedback              uintptr
+	tosuSettingsFeedback                   uintptr
+	tourneySettingsFeedback                uintptr
+	settingsStatus, logPreview             uintptr
+	logPreviewText                         string
+	pageControls                           [pageCount][]uintptr
+	currentPage                            launcherPage
+	navIconFont                            uintptr
 )
 
 func px(n int) uintptr { return uintptr((n*windowScale + 48) / 96) }
@@ -86,11 +115,45 @@ func fill(dc uintptr, bounds rect, c color) {
 
 func paintLauncher(dc uintptr) {
 	fill(dc, area(0, 0, launcherWidth, launcherHeight), canvasColor)
-	fill(dc, area(0, 0, launcherWidth, 70), headerColor)
-	fill(dc, area(0, 70, launcherWidth, 3), accentColor)
-	fill(dc, area(24, 87, 592, 136), cardColor)
-	fill(dc, area(24, 237, 592, 152), cardColor)
-	fill(dc, area(24, 403, 592, 132), cardColor)
+	fill(dc, area(0, 0, sidebarWidth, launcherHeight), railColor)
+	fill(dc, area(sidebarWidth-1, 0, 1, launcherHeight), lineColor)
+	fill(dc, area(12, 438, sidebarWidth-24, 1), lineColor)
+	switch currentPage {
+	case pageOverview:
+		paintCard(dc, 87, 155)
+		paintCard(dc, 256, 166)
+		fill(dc, area(pageLeft+pageWidth/2, 274, 1, 130), lineColor)
+	case pageSettings:
+		paintCard(dc, 87, 148)
+		paintCard(dc, 248, 236)
+	case pageLogs:
+		paintCard(dc, 87, 383)
+	case pageAbout:
+		paintCard(dc, 87, 158)
+	}
+}
+
+func paintCard(dc uintptr, y, height int) {
+	bounds := area(pageLeft, y, pageWidth, height)
+	oldBrush := call(gdi, "SelectObject", dc, brush(cardColor))
+	oldPen := call(gdi, "SelectObject", dc, call(gdi, "GetStockObject", 8)) // NULL_PEN
+	call(gdi, "RoundRect", dc, uintptr(bounds.Left), uintptr(bounds.Top), uintptr(bounds.Right), uintptr(bounds.Bottom), px(14), px(14))
+	call(gdi, "SelectObject", dc, oldPen)
+	call(gdi, "SelectObject", dc, oldBrush)
+}
+
+func showLauncherPage(page launcherPage) {
+	for _, control := range pageControls[currentPage] {
+		call(user, "ShowWindow", control, 0) // SW_HIDE
+	}
+	currentPage = page
+	for _, control := range pageControls[page] {
+		call(user, "ShowWindow", control, 8) // SW_SHOWNA
+	}
+	if page == pageLogs {
+		refreshLogPreview()
+	}
+	call(user, "RedrawWindow", window, 0, 0, 0x0085) // RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN
 }
 
 func paintStatic(dc, child uintptr) uintptr {
@@ -108,11 +171,21 @@ func paintButton(item *drawItem) bool {
 		return false
 	}
 	background, pressed, foreground := rgb(234, 228, 247), rgb(216, 205, 241), inkColor
+	var icon string
 	switch item.ControlID {
-	case buttonControl, buttonTosu, buttonOpenTourney:
+	case buttonControl, buttonRestart:
 		background, pressed, foreground = accentColor, rgb(82, 42, 154), cardColor
+	case buttonOverview, buttonSettings, buttonLogs, buttonAbout:
+		icons := [...]string{"\uE80F", "\uE713", "\uE8A5", "\uE946"}
+		page := launcherPage(item.ControlID - buttonOverview)
+		icon = icons[page]
+		background, pressed, foreground = railColor, activeColor, mutedColor
+		if page == currentPage {
+			background, foreground = activeColor, accentColor
+		}
 	case buttonExit:
-		background, pressed, foreground = rgb(249, 235, 240), rgb(241, 214, 225), errorColor
+		icon = "\uE7E8"
+		background, pressed, foreground = railColor, rgb(241, 214, 225), errorColor
 	}
 	if item.State&0x0001 != 0 { // ODS_SELECTED
 		background = pressed
@@ -128,7 +201,16 @@ func paintButton(item *drawItem) bool {
 	call(gdi, "SetBkMode", item.DC, 1) // TRANSPARENT
 	call(gdi, "SetTextColor", item.DC, uintptr(foreground))
 	bounds := item.Bounds
-	call(user, "DrawTextW", item.DC, uintptr(unsafe.Pointer(&caption[0])), ^uintptr(0), uintptr(unsafe.Pointer(&bounds)), 0x25) // Center, vertically centered, single line.
+	format := uintptr(0x25) // DT_CENTER | DT_VCENTER | DT_SINGLELINE
+	if icon != "" {
+		call(gdi, "SelectObject", item.DC, navIconFont)
+		bounds.Left += int32(px(11))
+		call(user, "DrawTextW", item.DC, ptr(icon), ^uintptr(0), uintptr(unsafe.Pointer(&bounds)), 0x24)
+		call(gdi, "SelectObject", item.DC, font)
+		bounds.Left += int32(px(24))
+		format = 0x24 // Left aligned navigation label.
+	}
+	call(user, "DrawTextW", item.DC, uintptr(unsafe.Pointer(&caption[0])), ^uintptr(0), uintptr(unsafe.Pointer(&bounds)), format)
 	call(gdi, "SelectObject", item.DC, oldFont)
 	if item.State&0x0010 != 0 && item.State&0x0200 == 0 { // ODS_FOCUS, ODS_NOFOCUSRECT
 		margin := int32(px(4))
@@ -149,6 +231,7 @@ func showTosu(note string) {
 	}
 	setText(tosuField, path)
 	setText(tosuFeedback, note)
+	setText(tosuSettingsFeedback, note)
 }
 
 func showTourney(note string) {
@@ -159,7 +242,7 @@ func showTourney(note string) {
 	if note == "" {
 		switch {
 		case osuPath == "":
-			note = "请选择 osu!stable 的 osu!.exe。"
+			note = "到「设置」选择 osu!stable 的 osu!.exe。"
 		case !isOsuExecutable(osuPath):
 			note = "找不到保存的文件，请重新选择。"
 		default:
@@ -168,6 +251,7 @@ func showTourney(note string) {
 	}
 	setText(osuField, path)
 	setText(tourneyFeedback, note)
+	setText(tourneySettingsFeedback, note)
 	var choose, actions uintptr
 	if !tourneyBusy {
 		choose = 1
@@ -225,11 +309,11 @@ func setStatus(control uintptr, text string, foreground color) {
 	setText(control, text)
 }
 
-func launcherFont(size, weight int) uintptr {
-	return call(gdi, "CreateFontW", 0-px(size), 0, 0, 0, uintptr(weight), 0, 0, 0, 1, 0, 0, 5, 0, ptr("Segoe UI"))
+func launcherFont(size, weight int, face string) uintptr {
+	return call(gdi, "CreateFontW", 0-px(size), 0, 0, 0, uintptr(weight), 0, 0, 0, 1, 0, 0, 5, 0, ptr(face))
 }
 
-func runWindow() {
+func createLauncherWindow() func() {
 	call(user, "SetProcessDPIAware")
 	dc := call(user, "GetDC", 0)
 	if dc != 0 {
@@ -242,38 +326,64 @@ func runWindow() {
 	const appIcon = 1 // ID in assets/winres.json.
 	largeIcon := call(user, "LoadIconW", instance, appIcon)
 	smallIcon := call(user, "LoadImageW", instance, appIcon, 1, px(16), px(16), 0) // IMAGE_ICON
-	if smallIcon != 0 {
-		defer call(user, "DestroyIcon", smallIcon)
-	}
 	class := wc{Proc: syscall.NewCallback(wndProc), Instance: instance, Cursor: call(user, "LoadCursorW", 0, 32512),
 		Icon: largeIcon, Small: smallIcon, Name: syscall.StringToUTF16Ptr("OCLRPortableWindow")}
 	class.Size = uint32(unsafe.Sizeof(class))
 	if call(user, "RegisterClassExW", uintptr(unsafe.Pointer(&class))) == 0 {
+		if smallIcon != 0 {
+			call(user, "DestroyIcon", smallIcon)
+		}
 		message("无法创建启动窗口。")
-		return
+		return nil
 	}
-	const windowStyle = 0x00CA0000
+	const windowStyle = 0x02CA0000 // Includes WS_CLIPCHILDREN for switching pages.
 	bounds := area(0, 0, launcherWidth, launcherHeight)
 	call(user, "AdjustWindowRectEx", uintptr(unsafe.Pointer(&bounds)), windowStyle, 0, 0)
 	window = call(user, "CreateWindowExW", 0, ptr("OCLRPortableWindow"), ptr("OCLR 直播服务"), windowStyle,
 		0x80000000, 0x80000000, uintptr(bounds.Right-bounds.Left), uintptr(bounds.Bottom-bounds.Top), 0, 0, instance, 0)
 	if window == 0 {
+		call(user, "UnregisterClassW", ptr("OCLRPortableWindow"), instance)
+		if smallIcon != 0 {
+			call(user, "DestroyIcon", smallIcon)
+		}
 		message("无法创建启动窗口。")
-		return
+		return nil
 	}
-	titleFont, headingFont, bodyFont, captionFont := launcherFont(24, 600), launcherFont(16, 600), launcherFont(14, 400), launcherFont(12, 400)
-	defer func() {
-		for _, font := range []uintptr{titleFont, headingFont, bodyFont, captionFont} {
+	titleFont := launcherFont(26, 600, "Segoe UI")
+	headingFont := launcherFont(16, 600, "Segoe UI")
+	bodyFont := launcherFont(14, 400, "Segoe UI")
+	captionFont := launcherFont(12, 400, "Segoe UI")
+	logFont := launcherFont(13, 400, "Consolas")
+	navIconFont = launcherFont(15, 400, "Segoe MDL2 Assets")
+	cleanup := func() {
+		for _, font := range []uintptr{titleFont, headingFont, bodyFont, captionFont, logFont, navIconFont} {
 			call(gdi, "DeleteObject", font)
 		}
 		for _, handle := range brushes {
 			call(gdi, "DeleteObject", handle)
 		}
-	}()
+		clear(brushes)
+		clear(controlColors)
+		pageControls = [pageCount][]uintptr{}
+		logPreviewText = ""
+		call(user, "UnregisterClassW", ptr("OCLRPortableWindow"), instance)
+		if smallIcon != 0 {
+			call(user, "DestroyIcon", smallIcon)
+		}
+	}
+	buildingPage := pageCount
 	add := func(kind, title string, x, y, width, height int, id, style, font uintptr) uintptr {
-		h := call(user, "CreateWindowExW", 0, ptr(kind), ptr(title), 0x50000000|style,
+		const wsChild, wsVisible = 0x40000000, 0x10000000
+		style |= wsChild
+		if buildingPage == pageCount {
+			style |= wsVisible
+		}
+		h := call(user, "CreateWindowExW", 0, ptr(kind), ptr(title), style,
 			px(x), px(y), px(width), px(height), window, id, instance, 0)
 		call(user, "SendMessageW", h, 0x30, font, 1) // WM_SETFONT
+		if buildingPage < pageCount {
+			pageControls[buildingPage] = append(pageControls[buildingPage], h)
+		}
 		return h
 	}
 	static := func(value string, x, y, width, height int, font uintptr, fg, bg color) uintptr {
@@ -284,36 +394,104 @@ func runWindow() {
 	button := func(value string, x, y, width int, id uintptr) uintptr {
 		return add("BUTTON", value, x, y, width, 36, id, 0x1000B, bodyFont) // WS_TABSTOP | BS_OWNERDRAW
 	}
-	static("OCLR 直播服务", 24, 12, 590, 30, titleFont, cardColor, headerColor)
-	static("直播控制台与 OBS 浏览器源", 25, 47, 589, 18, captionFont, rgb(214, 199, 242), headerColor)
-	static("直播服务", 42, 97, 200, 24, headingFont, inkColor, cardColor)
-	serviceStatus = static("● 正在启动", 440, 100, 156, 21, bodyFont, waitColor, cardColor)
-	addressLabel = static("OBS 地址  "+base+"/overlay", 42, 127, 554, 20, bodyFont, mutedColor, cardColor)
-	call(user, "EnableWindow", button("打开控制台", 42, 152, 130, buttonControl), 0)
-	call(user, "EnableWindow", button("复制 OBS 地址", 184, 152, 130, buttonCopyOBS), 0)
-	button("打开本机日志", 326, 152, 130, buttonOpenLog)
-	button("退出直播服务", 468, 152, 130, buttonExit)
-	label = static("正在准备本机服务，请稍候…", 42, 198, 554, 19, captionFont, mutedColor, cardColor)
-	static("tosu 应用程序", 42, 247, 555, 22, headingFont, inkColor, cardColor)
-	tosuField = add("EDIT", "", 42, 274, 556, 25, 106, 0x810880, bodyFont) // Border, tab stop, read-only, horizontal scroll.
-	controlColors[tosuField] = textColors{inkColor, cardColor}
-	button("选择 tosu…", 42, 307, 148, buttonChoose)
-	button("打开 tosu", 202, 307, 148, buttonTosu)
-	tosuFeedback = static("", 364, 316, 234, 22, captionFont, mutedColor, cardColor)
-	tosuProcessStatus = static("", 42, 352, 229, 23, bodyFont, mutedColor, cardColor)
-	tosuPortStatus = static("端口 · 正在检查…", 287, 352, 311, 23, bodyFont, mutedColor, cardColor)
-	static("osu!Tourney", 42, 413, 554, 22, headingFont, inkColor, cardColor)
-	osuField = add("EDIT", "", 42, 439, 556, 25, 111, 0x810880, bodyFont)
-	controlColors[osuField] = textColors{inkColor, cardColor}
-	button("选择 osu!.exe…", 42, 473, 172, buttonChooseOsu)
-	button("生成 tournament.cfg", 234, 473, 172, buttonGenerateTourney)
-	button("打开 osu!Tourney", 426, 473, 172, buttonOpenTourney)
-	tourneyFeedback = static("", 42, 513, 556, 19, captionFont, mutedColor, cardColor)
-	static("服务端口（修改后需重新启动服务）", 42, 551, 554, 22, bodyFont, inkColor, canvasColor)
-	portField = add("EDIT", servicePort, 42, 581, 120, 28, 113, 0x810080, bodyFont)
-	call(user, "EnableWindow", button("重新启动 / 重试", 180, 577, 190, buttonRestart), 0)
-	button("复制全部地址", 390, 577, 208, buttonCopyAddresses)
-	static("换端口后连接 OBS 自动同步画面地址，并重新连接 OCLR。", 42, 623, 554, 22, captionFont, mutedColor, canvasColor)
+	for i, name := range [...]string{"概览", "设置", "日志", "关于"} {
+		button(name, 12, 24+i*45, sidebarWidth-24, uintptr(buttonOverview+i))
+	}
+	button("退出直播服务", 12, 449, sidebarWidth-24, buttonExit)
+
+	const x = pageLeft + 16
+	const inside = pageWidth - 32
+	const right = x + inside - 148
+	heading := func(title, subtitle string) {
+		static(title, pageLeft, 24, pageWidth, 34, titleFont, inkColor, canvasColor)
+		static(subtitle, pageLeft, 60, pageWidth, 18, captionFont, mutedColor, canvasColor)
+	}
+	title := func(value string, x, y, width int) {
+		static(value, x, y, width, 23, headingFont, inkColor, cardColor)
+	}
+	detail := func(value string, x, y, width, height int) uintptr {
+		return static(value, x, y, width, height, captionFont, mutedColor, cardColor)
+	}
+	readonly := func(value string, x, y, width int, id uintptr) uintptr {
+		h := add("EDIT", value, x, y, width, 30, id, 0x810880, bodyFont) // Border, tab stop, read-only, horizontal scroll.
+		controlColors[h] = textColors{inkColor, canvasColor}
+		return h
+	}
+
+	buildingPage = pageOverview
+	heading("概览", "直播服务状态与常用操作")
+	title("直播服务", x, 100, 235)
+	serviceStatus = static("● 正在启动", right, 102, 148, 22, bodyFont, waitColor, cardColor)
+	detail("OBS 浏览器源地址", x, 132, inside, 17)
+	addressLabel = readonly(base+"/overlay", x, 153, right-x-12, 121)
+	call(user, "EnableWindow", button("复制 OBS 地址", right, 150, 148, buttonCopyOBS), 0)
+	call(user, "EnableWindow", button("打开控制台", x, 194, 142, buttonControl), 0)
+	label = detail("正在准备本机服务，请稍候…", x+156, 195, inside-156, 40)
+
+	otherTool := pageLeft + pageWidth/2 + 16
+	toolWidth := pageWidth/2 - 32
+	title("tosu", x, 271, toolWidth)
+	tosuProcessStatus = detail("", x, 301, toolWidth, 17)
+	tosuPortStatus = detail("端口 · 正在检查…", x, 321, toolWidth, 18)
+	button("打开 tosu", x, 348, 142, buttonTosu)
+	tosuFeedback = detail("", x, 391, toolWidth, 26)
+	title("osu!Tourney", otherTool, 271, toolWidth)
+	tourneyFeedback = detail("", otherTool, 301, toolWidth, 38)
+	button("打开 osu!Tourney", otherTool, 348, 159, buttonOpenTourney)
+
+	buildingPage = pageSettings
+	heading("设置", "管理服务端口和直播工具路径")
+	title("直播服务", x, 100, inside)
+	detail("服务端口", x, 131, 120, 17)
+	portField = add("EDIT", servicePort, x, 150, 115, 30, editServicePort, 0x810080, bodyFont)
+	call(user, "EnableWindow", button("重新启动 / 重试", x+130, 147, 150, buttonRestart), 0)
+	button("复制全部地址", x+292, 147, 145, buttonCopyAddresses)
+	detail("端口变更在服务重启后生效。连接 OBS 后可同步画面地址。", x, 190, inside, 19)
+	settingsStatus = detail("正在准备本机服务，请稍候…", x, 211, inside, 19)
+
+	title("应用程序", x, 261, inside)
+	detail("tosu 应用程序", x, 289, inside, 17)
+	tosuField = readonly("", x, 309, right-x-12, 106)
+	button("选择 tosu.exe…", right, 306, 148, buttonChoose)
+	tosuSettingsFeedback = detail("", x, 347, inside, 18)
+	detail("osu!Tourney", x, 369, inside, 17)
+	osuField = readonly("", x, 389, right-x-12, 111)
+	button("选择 osu!.exe…", right, 386, 148, buttonChooseOsu)
+	button("生成 tournament.cfg", x, 431, 176, buttonGenerateTourney)
+	tourneySettingsFeedback = detail("", x+190, 434, inside-190, 38)
+
+	buildingPage = pageLogs
+	heading("日志", "查看本机启动器与直播服务的记录")
+	title("启动器日志", x, 106, 210)
+	button("打开本机日志", right, 101, 148, buttonOpenLog)
+	detail(`%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\launcher.log`, x, 145, inside, 20)
+	detail("最近记录", x, 180, inside, 18)
+	logPreview = add("EDIT", "", x, 204, inside, 249, editLogPreview, 0xA10844, logFont)
+	controlColors[logPreview] = textColors{inkColor, canvasColor}
+
+	buildingPage = pageAbout
+	heading("关于", "OCLR 直播服务启动器")
+	title("OCLR Stream Overlay", x, 101, inside)
+	detail("Windows x64 便携版 · 直播控制台与 OBS 浏览器源", x, 133, inside, 20)
+	build := buildID
+	if build == "" {
+		build = "开发构建"
+	} else if len(build) > 12 {
+		build = build[:12]
+	}
+	detail("构建标识  "+build, x, 162, inside, 19)
+	button("打开项目主页", x, 193, 148, buttonProject)
+
+	showLauncherPage(pageOverview)
+	return cleanup
+}
+
+func runWindow() {
+	cleanup := createLauncherWindow()
+	if cleanup == nil {
+		return
+	}
+	defer cleanup()
 	loadLauncherPreferences()
 	showTosuProcess(processChecking)
 	checkTosu(window)

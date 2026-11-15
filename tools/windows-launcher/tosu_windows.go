@@ -331,7 +331,7 @@ func loadLauncherPreferences() {
 	showTourney("")
 	switch {
 	case tosuPath == "":
-		showTosu("选择一次，下次可直接打开。")
+		showTosu("到「设置」选择 tosu.exe。")
 	case isExecutable(tosuPath):
 		showTosu("已记住 tosu 路径。")
 	default:

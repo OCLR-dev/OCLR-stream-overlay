@@ -80,7 +80,7 @@ func restartOnPort(h uintptr) {
 	service = nil
 	servicePort = port
 	base = "http://127.0.0.1:" + port
-	setText(addressLabel, "OBS 地址  "+base+"/overlay")
+	setText(addressLabel, base+"/overlay")
 	setStatus(serviceStatus, "● 正在启动", waitColor)
 	text("正在重新启动；连接 OBS 后自动同步画面地址。")
 	go func() {
