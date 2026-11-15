@@ -258,7 +258,8 @@ let mapKey = '';
 let incidentRoundKey = '';
 let incidentKey = '';
 const needsResult = (r: Round) => ['playing', 'ranking'].includes(r.status) && r.resultSource !== 'series-correction';
-const roundStatusLabel = (r: Round) => r.resultSource === 'series-correction' ? '比分已校正 · 本图已处理' : roundStatus[r.status];
+const roundStatusLabel = (r: Round) => r.resultSource === 'series-correction' ? '比分已校正 · 本图已处理'
+  : r.status === 'recorded' && !r.winner ? '已记录平局' : roundStatus[r.status];
 watch(s, value => {
   if (!value) return;
   const nextIncidentRoundKey = `${value.id}:${value.currentRoundId}`;
@@ -894,7 +895,11 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <section v-if="!exhibition"><h3>EX 剩余次数修正</h3><p>本图开启／关闭请使用「本图 EX」。</p><div class="operator-two"><label>{{ names.a }} 剩余<input v-model.number="exForm.a" type="number" min="0" max="2" @input="scheduleSetting('ex-a')" @blur="dirtySettings.has('ex-a') && scheduleSetting('ex-a', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-a'] }}</span></label><label>{{ names.b }} 剩余<input v-model.number="exForm.b" type="number" min="0" max="2" @input="scheduleSetting('ex-b')" @blur="dirtySettings.has('ex-b') && scheduleSetting('ex-b', true)"><span class="operator-hint" role="status">{{ settingMessages['ex-b'] }}</span></label></div><p>修改后自动同步，无需保存；不推定实际上场名单。</p></section>
 
           </div>
-          <section><h3>逐局赛果修正</h3><div v-for="r in s.rounds.filter(r => r.status === 'recorded')" :key="r.id" class="operator-round-record"><span>{{ entry(r.entryId)?.label }} · {{ r.winner ? names[r.winner] : '未知' }} 胜 · {{ r.resultSource === 'tosu' ? '自动' : '人工' }}</span><div class="operator-inline"><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('correct-result', { roundId: r.id, winner: r.winner === 'a' ? 'b' : 'a', reason: note('直播员核对后修正胜方') })">改为 {{ names[r.winner === 'a' ? 'b' : 'a'] }} 胜</button><button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('retract-result', { roundId: r.id, reason: note('直播员撤回计胜，等待核对') })">撤回计胜</button></div></div></section>
+          <section><h3>逐局赛果修正</h3><div v-for="r in s.rounds.filter(r => r.status === 'recorded')" :key="r.id" class="operator-round-record"><span>{{ entry(r.entryId)?.label }} · {{ r.winner ? names[r.winner] + ' 胜' : '平局' }} · {{ r.resultSource === 'tosu' ? '自动' : '人工' }}</span><div class="operator-inline">
+            <template v-for="team in (['a', 'b'] as const)" :key="team"><button v-if="r.winner !== team" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('correct-result', { roundId: r.id, winner: team, reason: note('直播员核对后修正本图赛果') })">改为 {{ names[team] }} 胜</button></template>
+            <button v-if="r.winner && exhibition?.tiedMapPolicy === 'count_as_draw'" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('correct-result', { roundId: r.id, winner: null, reason: note('直播员核对后修正本图为平局') })">改为平局</button>
+            <button :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="run('retract-result', { roundId: r.id, reason: note('直播员撤回本图赛果，等待核对') })">撤回本图赛果</button>
+          </div></div></section>
         </details>
         <details class="operator-records"><summary>最近操作记录</summary><ol class="operator-history"><li v-for="item in [...s.history].reverse().slice(0, 40)" :key="item.id"><time>{{ operationTime(item.at) }}</time><span>{{ item.message }}</span><b>{{ item.source === 'tosu' ? '自动' : '人工' }}</b></li><li v-if="!s.history.length">尚无操作记录</li></ol></details>
       </template>

@@ -34,6 +34,36 @@ test('pending Ranking stays unconfirmed even when displayed series has reached t
   s.auto.results = false; assert.match(hint(s), /核对后记胜/);
 });
 
+test('equal completed scores point to the referee replay action before the client restarts', () => {
+  for (const results of [true, false]) for (const total of [0, 1000]) {
+    const s = fixture('ranking'); s.auto.results = results;
+    s.rounds[0]!.finalScore = { a: total, b: total };
+    assert.match(hint(s, 'playing'), /队分相同.*裁判确认重赛.*处理异常.*裁判已要求重赛本图.*重新开打/);
+    assert.doesNotMatch(hint(s, 'playing'), /校正系列比分|记录本图平局/);
+  }
+});
+
+test('countable exhibition draws point to draw recording instead of requiring a replay', () => {
+  const s = fixture('ranking'); s.match.stage = 'exhibition';
+  s.match.exhibition = { roundName: '测试阶段', series: { type: 'fixed_maps', count: 3, allowDraw: true }, tiedMapPolicy: 'count_as_draw', autoResults: true };
+  s.rounds[0]!.finalScore = { a: 1000, b: 1000 };
+  assert.match(hint(s, 'playing'), /允许逐图平局.*裁判核对.*记录本图平局/);
+  assert.doesNotMatch(hint(s, 'playing'), /确认重赛/);
+  s.match.exhibition.tiedMapPolicy = 'require_replay';
+  assert.match(hint(s, 'playing'), /裁判已要求重赛本图/);
+});
+
+test('missing, unequal and unconfirmed scores do not claim a tied result', () => {
+  for (const finalScore of [null, { a: null, b: null }, { a: 0, b: null }, { a: 1000, b: 999 }, { a: NaN, b: NaN }]) {
+    const s = fixture('ranking'); s.rounds[0]!.finalScore = finalScore;
+    assert.doesNotMatch(hint(s, 'playing'), /队分相同|确认重赛|记录本图平局/);
+  }
+  const s = fixture('playing'); s.rounds[0]!.finalScore = { a: 1000, b: 1000 };
+  assert.doesNotMatch(hint(s, 'playing'), /队分相同|确认重赛/);
+  s.rounds[0]!.status = 'ranking'; s.rounds[0]!.resultSource = 'series-correction';
+  assert.doesNotMatch(hint(s, 'playing'), /队分相同|确认重赛/);
+});
+
 test('aggregate corrections and recorded results direct the operator onward without another win entry', () => {
   const s = fixture('ranking'); s.rounds[0]!.resultSource = 'series-correction';
   assert.match(hint(s, 'playing'), /无需重复记胜/);

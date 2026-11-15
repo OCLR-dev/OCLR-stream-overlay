@@ -1,0 +1,13 @@
+{
+  "replayHint": "本图队分相同，暂不计胜。裁判确认重赛后，请先点击「处理异常 → 裁判已要求重赛本图」，再等待客户端重新开打。",
+  "replayButtonCreatesAttempt": true,
+  "initialButtons": [
+    "改为 测试红队 胜",
+    "改为 测试蓝队 胜",
+    "撤回本图赛果"
+  ],
+  "bothTeamsAndDrawCorrections": true,
+  "mobileNoOverflow": true,
+  "withdrawDraw": true,
+  "errors": []
+}
