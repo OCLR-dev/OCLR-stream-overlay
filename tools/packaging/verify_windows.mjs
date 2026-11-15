@@ -16,6 +16,7 @@ const first = join(temp, '第一版 程序');
 const second = join(temp, '更新 程序');
 const local = join(temp, '用户 数据');
 const data = join(local, 'OCLR/StreamOverlay/session.json');
+const launcherLog = join(local, 'OCLR/StreamOverlayLauncher/launcher.log');
 const base = 'http://127.0.0.1:3001';
 const results = [];
 const children = new Set();
@@ -38,6 +39,14 @@ async function ready() {
   throw new Error('readiness timeout');
 }
 async function check(name, fn) { await fn(); results.push({ name, passed: true }); await writeFile(reportFile, JSON.stringify(report, null, 2)); }
+async function waitForLog(pattern) {
+  for (let i = 0; i < 100; i++) {
+    const log = await readFile(launcherLog, 'utf8');
+    if (pattern.test(log)) return log;
+    await delay(200);
+  }
+  throw new Error('launcher log entry did not appear: ' + pattern);
+}
 let running;
 try {
   await cp(packageRoot, first, { recursive: true });
@@ -97,8 +106,10 @@ try {
   });
   const saved = await readFile(data, 'utf8');
   await check('normal native exit releases service and fixed port', async () => {
+    const { pid } = await ready();
     await running.stop(); running = null;
     await assert.rejects(fetch(base+'/api/health'));
+    assert.match(await readFile(launcherLog, 'utf8'), new RegExp('backend exited pid=' + pid + ' exit_code=0'));
   });
   await check('restart from replacement program directory retains complete session and undo', async () => {
     running = launch(second); await ready();
@@ -125,7 +136,14 @@ try {
   });
   await check('corrupt data refuses startup and preserves original bytes', async () => {
     await writeFile(data, 'corrupt original');
-    try { const broken = launch(first); assert.equal(await broken.done, 1); assert.equal(await readFile(data,'utf8'),'corrupt original'); }
+    try {
+      const broken = launch(first);
+      assert.equal(await broken.done, 1);
+      const log = await readFile(launcherLog, 'utf8');
+      assert.match(log, /backend stderr: "比赛记录无法读取/);
+      assert.match(log, /backend exited pid=\d+ exit_code=1/);
+      assert.equal(await readFile(data, 'utf8'), 'corrupt original');
+    }
     finally { await writeFile(data, saved); }
   });
   await check('bundled runtime and native smoke-test exit cleanly', async () => {
@@ -155,6 +173,42 @@ try {
       assert.equal((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl, url);
       await running.stop(); running = null;
     } finally { await new Promise(resolve => fixture.close(resolve)); }
+  });
+  await check('native launcher keeps the same backend through timeouts and logs its eventual exit', async () => {
+    // The copied package and marker stay in the temporary test workspace.
+    const marker = join(second, 'fixture-mode.txt');
+    await writeFile(marker, 'ready');
+    await writeFile(join(second, 'app/server/portable.js'), [
+      "import { readFile } from 'node:fs/promises';",
+      "import { createServer } from 'node:http';",
+      "import { createInterface } from 'node:readline';",
+      "const { build } = JSON.parse(await readFile(new URL('../portable-build.json', import.meta.url), 'utf8'));",
+      "const marker = new URL('../../fixture-mode.txt', import.meta.url);",
+      "const server = createServer(async (request, response) => {",
+      "  const mode = await readFile(marker, 'utf8');",
+      "  if (mode === 'timeout') return;",
+      "  if (mode === 'exit') return process.stderr.write('synthetic final backend error', () => process.exit(23));",
+      "  response.end(JSON.stringify({ project: 'oclr-stream-overlay', build, ready: true, session: true, pid: process.pid }));",
+      "});",
+      "server.listen(3001, '127.0.0.1');",
+      "const input = createInterface({ input: process.stdin });",
+      "input.on('close', () => { server.closeAllConnections(); server.close(); });",
+    ].join('\n'));
+    const monitored = launch(second);
+    const { pid } = await ready();
+    await waitForLog(new RegExp('backend ready pid=' + pid + '\\b'));
+    await writeFile(marker, 'timeout');
+    await waitForLog(new RegExp('health failed pid=' + pid + ' consecutive=3 .*reason=.*(?:Timeout|timeout)'));
+    assert.equal(monitored.child.exitCode, null);
+    await writeFile(marker, 'ready');
+    await waitForLog(new RegExp('health recovered pid=' + pid + ' failures=3'));
+    assert.equal((await ready()).pid, pid);
+    await writeFile(marker, 'exit');
+    const code = monitored.child.exitCode ?? (await once(monitored.child, 'exit', { signal: AbortSignal.timeout(10_000) }))[0];
+    assert.equal(code, 23, monitored.error());
+    const log = await readFile(launcherLog, 'utf8');
+    assert.match(log, /backend stderr: "synthetic final backend error"/);
+    assert.match(log, new RegExp('backend exited pid=' + pid + ' exit_code=23'));
   });
   report.passed = true;
   report.guiCommand = `LOCALAPPDATA=${local}; ${join(first, 'OCLR.exe')}`;

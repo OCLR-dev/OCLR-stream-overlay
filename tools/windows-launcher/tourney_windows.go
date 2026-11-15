@@ -90,7 +90,7 @@ func runTourney(owner uintptr, launch bool) {
 	}
 	tourneyBusy = true
 	showTourney("正在读取授权赛季并检查 osu!…")
-	path, pid := osuPath, service.cmd.Process.Pid
+	path, pid := osuPath, service.pid
 	go func() {
 		tourneyResults <- prepareTourney(path, pid, launch)
 		call(user, "PostMessageW", owner, msgTourneyFinished, 0, 0)
@@ -103,7 +103,7 @@ func prepareTourney(path string, pid int, launch bool) string {
 		return "找不到所选 osu!.exe，请重新选择。"
 	}
 	h, err := getHealth()
-	if err != nil || !compatible(h) || h.PID != pid {
+	if err != nil || healthProblem(h, pid) != nil {
 		return "无法读取本机直播服务，请稍后重试。"
 	}
 	edition := h.AuthorizedEdition

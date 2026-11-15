@@ -13,12 +13,13 @@ const (
 	buttonExit            = 103
 	buttonChoose          = 104
 	buttonTosu            = 105
-	buttonChooseOsu       = 107
-	buttonGenerateTourney = 108
-	buttonOpenTourney     = 109
+	buttonOpenLog         = 107
+	buttonChooseOsu       = 108
+	buttonGenerateTourney = 109
+	buttonOpenTourney     = 110
 
 	msgServiceStarted  = 0x8001
-	msgServiceStopped  = 0x8002
+	msgServiceState    = 0x8002
 	msgTosuExited      = 0x8003
 	msgTosuChecked     = 0x8004
 	msgTourneyFinished = 0x8005
@@ -50,6 +51,7 @@ var (
 	accentColor = rgb(108, 64, 190)
 	waitColor   = rgb(128, 87, 17)
 	readyColor  = rgb(26, 108, 81)
+	errorColor  = rgb(128, 39, 72)
 )
 
 type textColors struct{ foreground, background color }
@@ -108,7 +110,7 @@ func paintButton(item *drawItem) bool {
 	case buttonControl, buttonTosu, buttonOpenTourney:
 		background, pressed, foreground = accentColor, rgb(82, 42, 154), cardColor
 	case buttonExit:
-		background, pressed, foreground = rgb(249, 235, 240), rgb(241, 214, 225), rgb(128, 39, 72)
+		background, pressed, foreground = rgb(249, 235, 240), rgb(241, 214, 225), errorColor
 	}
 	if item.State&0x0001 != 0 { // ODS_SELECTED
 		background = pressed
@@ -285,9 +287,10 @@ func runWindow() {
 	static("直播服务", 42, 97, 200, 24, headingFont, inkColor, cardColor)
 	serviceStatus = static("● 正在启动", 440, 100, 156, 21, bodyFont, waitColor, cardColor)
 	static("OBS 地址  "+base+"/overlay", 42, 127, 554, 20, bodyFont, mutedColor, cardColor)
-	call(user, "EnableWindow", button("打开控制台", 42, 152, 172, buttonControl), 0)
-	call(user, "EnableWindow", button("复制 OBS 地址", 234, 152, 172, buttonCopyOBS), 0)
-	button("退出直播服务", 426, 152, 172, buttonExit)
+	call(user, "EnableWindow", button("打开控制台", 42, 152, 130, buttonControl), 0)
+	call(user, "EnableWindow", button("复制 OBS 地址", 184, 152, 130, buttonCopyOBS), 0)
+	button("打开本机日志", 326, 152, 130, buttonOpenLog)
+	button("退出直播服务", 468, 152, 130, buttonExit)
 	label = static("正在准备本机服务，请稍候…", 42, 198, 554, 19, captionFont, mutedColor, cardColor)
 	static("tosu 应用程序", 42, 247, 555, 22, headingFont, inkColor, cardColor)
 	tosuField = add("EDIT", "", 42, 274, 556, 25, 106, 0x810880, bodyFont) // Border, tab stop, read-only, horizontal scroll.
@@ -298,7 +301,7 @@ func runWindow() {
 	tosuProcessStatus = static("", 42, 352, 229, 23, bodyFont, mutedColor, cardColor)
 	tosuPortStatus = static("端口 · 正在检查…", 287, 352, 311, 23, bodyFont, mutedColor, cardColor)
 	static("osu!Tourney", 42, 413, 554, 22, headingFont, inkColor, cardColor)
-	osuField = add("EDIT", "", 42, 439, 556, 25, 110, 0x810880, bodyFont)
+	osuField = add("EDIT", "", 42, 439, 556, 25, 111, 0x810880, bodyFont)
 	controlColors[osuField] = textColors{inkColor, cardColor}
 	button("选择 osu!.exe…", 42, 473, 172, buttonChooseOsu)
 	button("生成 tournament.cfg", 234, 473, 172, buttonGenerateTourney)
@@ -311,7 +314,7 @@ func runWindow() {
 	call(user, "ShowWindow", window, 1)
 	call(user, "UpdateWindow", window)
 	go func() {
-		b, e := start()
+		b, e := start(localLog)
 		result <- started{b, e}
 		call(user, "PostMessageW", window, msgServiceStarted, 0, 0)
 	}()
