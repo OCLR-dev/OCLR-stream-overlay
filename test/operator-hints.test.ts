@@ -84,7 +84,7 @@ test('TB instructions point to the existing button and handle ambiguous or corre
 test('room scores without a tracked round remain broadcastable without fabricating a result', () => {
   const s = fixture();
   assert.match(operatorNextStep(s, 'playing', 'synced', true, 6), /可继续播出/);
-  assert.match(hint(s), /开播前设置/);
+  assert.match(hint(s), /比赛配置/);
 });
 
 test('Ranking hints follow actual scene automation; missed finishes require manual results', () => {

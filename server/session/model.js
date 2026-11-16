@@ -319,7 +319,7 @@ export function tiebreakerProgress(s) {
     : round?.status === 'prepared' && !active ? '先作废误准备的普通选图，再单独准备 TB'
     : active && round.status !== 'prepared' ? 'TB 已开始；核对赛果或按裁判决定重赛'
     : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待比赛开始；禁 Ban／EX'
-    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在开播前设置补齐本场 TB 谱面'
+    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在比赛配置补齐本场 TB 谱面'
     : exhibition ? '如裁判确认本场使用 TB，点击 TieBreaker 手动准备' : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
   return { eligible, active, canPrepare: eligible && !s.paused && !s.incident && !unresolved &&
     (!round || round.status !== 'prepared' || active) && (!active || round.status === 'prepared') && s.pool.some(e => e.mod === 'TB'), reason };
