@@ -26,6 +26,11 @@ test('OBS reconnect migrates original chat CSS once and preserves custom CSS and
   await obs.command({ action: 'stream-chat', code: 'TESTONLY000001' });
   const input = studio.inputs.get(source);
   const css = input.inputSettings.css;
+  // New rows fade in; blivechat's own translateY carries the older rows up.
+  assert.match(css, /@keyframes oclr-chat-line-in/);
+  assert.match(css, /yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer \{ animation: oclr-chat-line-in/);
+  const baseCss = css.slice(0, css.indexOf('\nyt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer'));
+  assert.ok(baseCss.length > 0 && baseCss !== css);
   const legacyCss = css.slice(0, css.indexOf('\nyt-live-chat-renderer { --scrollbar-width:'));
   assert.ok(legacyCss.length > 0 && legacyCss !== css);
   input.inputSettings.css = legacyCss;
@@ -45,8 +50,13 @@ test('OBS reconnect migrates original chat CSS once and preserves custom CSS and
   await reconnect();
   assert.equal(input.inputSettings.css, css);
   assert.equal(writes().length, 2);
+  // Existing installs still carry the preset from before the entry animation.
+  input.inputSettings.css = baseCss;
+  await reconnect();
+  assert.equal(input.inputSettings.css, css);
+  assert.equal(writes().length, 3);
   input.inputSettings.css = 'body { color: pink; }';
   await reconnect();
   assert.equal(input.inputSettings.css, 'body { color: pink; }');
-  assert.equal(writes().length, 2);
+  assert.equal(writes().length, 3);
 });

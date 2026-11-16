@@ -2,6 +2,7 @@
 // is inferred here; live data remains a separate subscription boundary.
 import type { SeriesRule } from './session';
 import { playingLayout } from '../src/playing-layout.js';
+import { formatTeamScore } from './scoreFormat.ts';
 
 export const scenes = ['waiting', 'mappool', 'playing', 'victory', 'pause', 'roll'] as const;
 export type Scene = typeof scenes[number];
@@ -27,9 +28,9 @@ export function exhibitionFormat(rule: SeriesRule | null | undefined) {
   return rule.type === 'first_to' ? `先赢 ${rule.wins} 图` : `固定 ${rule.count} 图`;
 }
 export const leadDemos = {
-  'left-small': ['105,0000', '100,0000'], 'left-large': ['140,0000', '100,0000'],
-  equal: ['100,0000', '100,0000'], 'right-small': ['100,0000', '105,0000'],
-  'right-large': ['100,0000', '140,0000']
+  'left-small': ["1'050'000", "1'000'000"], 'left-large': ["1'400'000", "1'000'000"],
+  equal: ["1'000'000", "1'000'000"], 'right-small': ["1'000'000", "1'050'000"],
+  'right-large': ["1'000'000", "1'400'000"]
 } as const;
 export const mapLabels = { open: '未选', banned: '禁用 · 示例A队', picked: '选用 · 示例B队' };
 export const mapIcons = { open: '○', banned: '×', picked: '✓' };
@@ -161,7 +162,7 @@ export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) 
   const arrived = (team: Team) => state.arrival === 'both' || state.arrival === team;
   const orderLabel = (value: 'unknown' | Team) => value === 'unknown' ? '未确认' : teamNames[value];
   const rematchLabel = (value: OverlayState['rematchA']) => value === 'used' ? '已用' : value === 'available' ? '可确认' : '未确认';
-  const resultTotal = (values: number[]) => values.slice(0, count).reduce((sum, n) => sum + n, 0).toLocaleString('en-US');
+  const resultTotal = (values: number[]) => formatTeamScore(values.slice(0, count).reduce((sum, n) => sum + n, 0));
   return {
     meta, exhibition, seriesTarget: exhibition ? meta.format : `${meta.format} · 先 ${meta.target}`, count, ex, format,
     formatLabel: { normal: '普通', ex: 'EX', tb: 'TB' }[format],

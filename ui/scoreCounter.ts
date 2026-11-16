@@ -1,15 +1,10 @@
 // Presentation-only interpolation. The target always remains the exact shared
 // score; no intermediate value is ever used for results or match automation.
 export const parseCounterScore = (text: string) => {
-  if (!/^\d+(?:,\d+)*$/.test(text)) return null;
-  const value = Number(text.replaceAll(',', ''));
+  if (!/^\d+(?:'\d{3})*$/.test(text)) return null;
+  const value = Number(text.replaceAll("'", ''));
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
-export function formatCounterScore(value: number, target: string) {
-  const digits = String(Math.floor(value));
-  const group = target.includes(',') ? target.split(',').at(-1)!.length : 0;
-  return group ? digits.replace(new RegExp(`\\B(?=(\\d{${group}})+(?!\\d))`, 'g'), ',') : digits;
-}
 export class ScoreCounter {
   value: number | null = null;
   target: number | null = null;
