@@ -125,7 +125,7 @@ test('an open exhibition imports from a mixed task page and counts fixed-map dra
   assert.equal(match.stage, 'exhibition');
   assert.equal(match.mode, '2v2');
   assert.equal(match.exhibition.roundName, 'Open exhibition');
-  assert.deepEqual(match.teams, { a: { id: id(4), name: 'Crimson', roster: [] }, b: { id: id(5), name: 'Azure', roster: [] } });
+  assert.deepEqual(match.teams, { a: { id: id(4), name: 'Crimson', avatarKey: null, roster: [] }, b: { id: id(5), name: 'Azure', avatarKey: null, roster: [] } });
   assert.deepEqual(store.state.pool.map(e => e.beatmapId), [101, 102, 103]);
   await command('set-roll', { winner: 'a', pickFirst: 'a', banFirst: 'a' });
   assert.equal(store.state.action.kind, 'pick', 'explicit Roll first-Pick starts exhibition picks without inventing bans');
@@ -306,4 +306,31 @@ test('unknown scoring task imports with explicit manual stage and mode preserved
   const store = new SessionStore(); store.state.match.stage = 'elimination'; store.state.match.mode = '3v3';
   await store.command(s.importCommand({ id: 'missing-rules', version: 0, fixtureId: id(1) }));
   assert.equal(store.state.match.stage, 'elimination'); assert.equal(store.state.match.mode, '3v3');
+});
+
+test('streaming team image versions survive explicit import without copying arbitrary media URLs', async () => {
+  const body = fixture();
+  body.data.nextFixture.home.team.avatarKey = id(40);
+  body.data.nextFixture.home.team.avatarUrl = 'https://untrusted.invalid/image';
+  body.data.nextFixture.away.team.avatarKey = id(50);
+  const { s } = source(async url => response(new URL(url).search ? empty() : body));
+  const store = new SessionStore();
+  await s.connect({ edition: 's11', token });
+  await store.command(s.importCommand({ id: 'images', version: 0, fixtureId: id(1) }));
+  assert.deepEqual(store.snapshot().session.match.teams, {
+    a: { id: id(4), name: 'Red', avatarKey: id(40), roster: [] },
+    b: { id: id(5), name: 'Blue', avatarKey: id(50), roster: [] },
+  });
+  s.disconnect(); store.close();
+});
+
+test('streaming accepts absent/null image versions and rejects malformed image keys', () => {
+  for (const key of [undefined, null, id(40)]) {
+    const body = fixture(); body.data.nextFixture.home.team.avatarKey = key;
+    assert.equal(validateStreaming(body).nextFixture.home.avatarKey, key ?? null);
+  }
+  for (const key of ['', 42, {}, '../private', 'https://example.com/image', 'x'.repeat(1000)]) {
+    const body = fixture(); body.data.nextFixture.home.team.avatarKey = key;
+    assert.throws(() => validateStreaming(body), /INVALID_RESPONSE/);
+  }
 });

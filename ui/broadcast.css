@@ -274,13 +274,17 @@
 .team-block--a .win-stars { flex-direction: row-reverse; }
 .team-block--b .win-stars { flex-direction: row; }
 .header-score-line { display: contents; }
-/* Flag placement trial shared by the console preview and standalone output. */
-.team-flag-preview { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
-.team-block--a .team-flag-preview { left: 32px; }
-.team-block--b .team-flag-preview { right: 32px; }
-.team-flag-preview svg { display: block; width: 120px; height: 72px; border: 1px solid #ffffff70; object-fit: contain; }
-.broadcast-header--flag-preview .header-score-line { display: flex; align-items: center; gap: 12px; max-width: 100%; }
-.broadcast-header--flag-preview .team-block--a .header-score-line { flex-direction: row-reverse; }
+/* Fixed image frames shared by the console preview and standalone output. */
+.team-flag { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
+.team-block--a .team-flag { left: 32px; }
+.team-block--b .team-flag { right: 32px; }
+.team-flag-frame { position: relative; display: grid; place-items: center; width: 120px; height: 72px; border: 1px solid #ffffff70; background: #191322; color: #e9e4f2; }
+.team-flag-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; visibility: hidden; }
+.team-flag-frame img.is-loaded { visibility: visible; }
+.team-flag-monogram { font: 700 28px/1 var(--display); }
+.map-win-banner .team-flag-monogram { font-size: 36px; }
+.broadcast-header--flags .header-score-line { display: flex; align-items: center; gap: 12px; max-width: 100%; }
+.broadcast-header--flags .team-block--a .header-score-line { flex-direction: row-reverse; }
 .event-block { position: absolute; top: 0; left: 760px; width: 400px; text-align: center; }
 .event-logo {
   display: flex;
@@ -336,8 +340,8 @@
   white-space: nowrap;
 }
 .map-win-suffix { flex: none; font: 700 40px/1 var(--display); letter-spacing: .2em; opacity: .92; text-shadow: 0 2px 18px #0007; white-space: nowrap; }
-.map-win-banner .team-flag-preview { position: static; width: 150px; margin: 0; transform: none; }
-.map-win-banner .team-flag-preview svg { width: 150px; height: 90px; border: 2px solid #ffffffb3; box-shadow: 0 14px 44px #00000073; }
+.map-win-banner .team-flag { position: static; width: 150px; margin: 0; transform: none; }
+.map-win-banner .team-flag-frame { width: 150px; height: 90px; border: 2px solid #ffffffb3; box-shadow: 0 14px 44px #00000073; }
 @keyframes map-win-sweep-a {
   0% { transform: translate3d(-101%, 0, 0); }
   20%, 80% { transform: translate3d(0, 0, 0); }
@@ -642,9 +646,9 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry .map-status[data-winner='b'] { --status-color: var(--team-b); --status-ink: #b7d3ff; }
 
 /* Small radii soften information cards while preserving the angular broadcast frame. */
-.map-entry, .map-group-head, .team-flag-preview svg { border-radius: var(--radius-card); }
+.map-entry, .map-group-head, .team-flag-frame { border-radius: var(--radius-card); }
 .map-entry::before, .map-entry::after { border-radius: inherit; }
-.team-flag-preview svg { overflow: hidden; }
+.team-flag-frame { overflow: hidden; }
 .map-row { border-radius: var(--radius-panel); }
 .map-cover, .map-star-slot { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
 .map-slot { border-radius: 0 var(--radius-panel) var(--radius-panel) 0; }
