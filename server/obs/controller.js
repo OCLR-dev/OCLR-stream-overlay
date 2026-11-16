@@ -219,7 +219,7 @@ export class ObsController {
   async sync(call, force) {
     const p = this.profile;
     if (!force && (!p.follow || !this.target)) return;
-    if (!p.regular || !p.ex || !this.target) throw new ObsError('请核对常规人数为 4v4，并在开播前设置中绑定两个场景。');
+    if (!p.regular || !p.ex || !this.target) throw new ObsError('请核对常规人数为 4v4，并在比赛配置中绑定两个场景。');
     const missing = this.missing(p);
     if (missing) throw new ObsError(missing);
     if (this.managed) await this.align(call, p);
@@ -362,7 +362,7 @@ export class ObsController {
           const profile = { ...p, preset: { ...p.preset, lineup, lineupDirty: true } };
           await this.saveProfile(profile); // A retry/reconnect can finish interrupted transforms.
           await this.align(call, profile);
-        } else throw new ObsError('请在开播前设置中核对当前绑定的比赛场景。');
+        } else throw new ObsError('请在比赛配置中核对当前绑定的比赛场景。');
       }
       return this.snapshot();
     });

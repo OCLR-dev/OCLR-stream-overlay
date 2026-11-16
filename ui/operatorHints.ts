@@ -52,7 +52,7 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (tb?.eligible && !s.exhibition) {
     if (!tb.canPrepare) return tb.reason;
     const count = s.pool.filter(e => e.mod === 'TB').length;
-    if (count !== 1) return '本场有多张 TB，请在开播前设置确定唯一决胜图。';
+    if (count !== 1) return '本场有多张 TB，请在比赛配置确定唯一决胜图。';
     return panel === 'mappool' ? '已到决胜比分，按裁判确认点击 TieBreaker 准备决胜图。' : '已到决胜比分，请切到图池点击 TieBreaker。';
   }
   if (ipc === 4 && panel === 'playing' && s.auto.scenes &&
@@ -60,7 +60,7 @@ export function operatorNextStep(s: Session | undefined, panel: Scene, connectio
   if (round?.resultSource === 'series-correction' || round?.status === 'recorded') return panel === 'mappool' ? '本图比分已处理，可继续现场 Ban／Pick。' : '本图比分已处理，可切回图池继续，无需重复记胜。';
   if (round?.status === 'prepared') return '本图已准备，等待比赛开始；比赛开始前可更换选图。';
   if (panel === 'mappool') {
-    if (!s.pool.length) return '本场尚无图池，请在「开播前设置」选择或录入本场图池。';
+    if (!s.pool.length) return '本场尚无图池，请在「比赛配置」选择或录入本场图池。';
     if (s.pool.find(e => e.id === selectedMap)?.mod === 'TB') return '已选中 TB，请核对决胜比分后点击 TieBreaker。';
     if (s.bp?.stopped) return s.bp.waiting || '常规 BP 已停止，请核对比分。';
     if (s.action) return `自动待处理：${s.match.teams[s.action.team].name} ${s.action.kind === 'ban' ? `Ban${s.action.slot == null ? '' : ` ${s.action.slot + 1}`}` : 'Pick'}；房间换图后自动记录，也可直接选择谱面。`;
