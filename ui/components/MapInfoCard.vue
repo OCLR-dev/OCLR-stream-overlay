@@ -72,7 +72,7 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
 
 <template>
   <div class="map-row" :data-mod="mapMod" :data-pick="view.pickTeam || 'none'" :style="modColorStyle(mapMod)">
-    <MapArtwork :beatmap-id="view.currentMap?.beatmapId" :live="!!view.mapParameters" />
+    <MapArtwork :beatmap-id="view.currentMap?.beatmapId" :source-url="view.artworkUrl" :live="!!view.mapParameters" />
     <div class="map-star-slot" :data-range="star.value.includes('–') || undefined" :style="{ '--star-bg': star.color || undefined, '--star-ink': star.ink, '--slot-shadow': starShadow }" :title="`星数 ${star.value}`" :aria-label="`星数 ${star.value}`">
       <span class="map-star-caption" aria-hidden="true">星数 ★</span>
       <b>{{ star.value }}</b>

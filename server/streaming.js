@@ -2,6 +2,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { normalizePool } from './session/model.js';
 import { validTeamImageId } from './team-art.js';
+import { readWebsiteShowcase } from './showcase-website.js';
 const slug = value => typeof value === 'string' && value.length <= 80 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
 const text = value => typeof value === 'string' && value.length <= 500;
@@ -69,7 +70,7 @@ export function validateStreaming(body) {
 }
 
 export class StreamingSource {
-  #token = ''; #timer; #controller; #generation = 0; #failures = 0; #authorization = null;
+  #token = ''; #timer; #controller; #generation = 0; #failures = 0; #authorization = null; #connection = '';
   constructor({ backend, fetchImpl, readJson, notify = () => {}, schedule = setTimeout, cancel = clearTimeout }) {
     const url = new URL(backend);
     if (url.protocol !== 'https:' || url.href !== `${url.origin}/`) throw new Error('INVALID_BACKEND_ORIGIN');
@@ -78,6 +79,18 @@ export class StreamingSource {
     this.state = { status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null, tasks: [], hasMore: false };
   }
   snapshot() { return structuredClone(this.state); }
+  showcaseConnection() {
+    return this.#token ? { edition: this.state.edition, connection: this.#connection } : { edition: null, connection: null };
+  }
+  async readShowcase(input) {
+    const { edition, connection } = this.showcaseConnection();
+    const token = this.#token;
+    const isCurrent = () => !!token && token === this.#token && edition === this.state.edition &&
+      connection === this.#connection && input.edition === edition &&
+      (input.connection === undefined || input.connection === connection);
+    const data = await readWebsiteShowcase({ backend: this.backend, edition, token, isCurrent, fetchImpl: this.fetch, readJson: this.readJson }, input);
+    return { data, isCurrent };
+  }
   authorizedEdition() {
     const { status, edition, updatedAt } = this.state;
     return status === 'ready' && Date.now() - Date.parse(updatedAt) <= 30000 ? edition : null;
@@ -100,12 +113,12 @@ export class StreamingSource {
     return this.connect(input);
   }
   disconnect() {
-    this.#generation++; this.cancel(this.#timer); this.#controller?.abort(); this.#token = ''; this.#failures = 0; this.#authorization = null;
+    this.#connection = ''; this.#generation++; this.cancel(this.#timer); this.#controller?.abort(); this.#token = ''; this.#failures = 0; this.#authorization = null;
     this.publish({ status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null, tasks: [], hasMore: false });
   }
   connect({ edition, token, afterFixtureId = null }) {
     if (!slug(edition) || !/^oclr_stream_[A-Za-z0-9_-]{43}$/.test(token) || (afterFixtureId !== null && !uuid(afterFixtureId))) throw new Error('INVALID_STREAMING_ACCESS');
-    this.disconnect(); this.#token = token;
+    this.disconnect(); this.#token = token; this.#connection = randomBytes(16).toString('hex');
     this.publish({ status: 'connecting', edition, afterFixtureId });
     return this.poll(this.#generation);
   }

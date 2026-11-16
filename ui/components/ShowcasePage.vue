@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useCanvasFit } from '../useOverlay';
-import { useShowcase } from '../showcase';
+import { useShowcase, type WebsitePoolSelection } from '../showcase';
+import ShowcaseWebsite from './ShowcaseWebsite.vue';
 import { useObsControl } from '../obsControl';
 import { modColorStyle } from '../modColors';
 import type { MapInfoSource } from '../mapInfo';
@@ -20,6 +21,7 @@ const poolList = ref<HTMLElement | null>(null);
 const poolDraft = ref('');
 const dirty = ref(false);
 const poolFeedback = ref('');
+const importingWebsite = ref(false);
 const stageDraft = ref('');
 const stageDirty = ref(false);
 const stageFeedback = ref('');
@@ -31,7 +33,8 @@ watch(() => snapshot.value?.poolText, value => { if (!dirty.value && value !== u
 watch(() => snapshot.value?.stageLabel, value => { if (!stageDirty.value && value !== undefined) stageDraft.value = value; }, { immediate: true });
 const source = computed<MapInfoSource>(() => ({ shared: true, emptyTitle: '等待客户端谱面',
   currentMap: connection.value === 'synced' ? snapshot.value?.currentMap || null : null,
-  metadataEnabled: !!snapshot.value?.matchedId,
+  metadataEnabled: !!snapshot.value?.matchedId && !snapshot.value?.websitePool,
+  artworkUrl: connection.value === 'synced' ? snapshot.value?.websiteArtwork : undefined,
   parameterMode: 'tosu', mapParameters: connection.value === 'synced' ? snapshot.value?.mapParameters || null : null }));
 const playbackStatus = computed(() => {
   if (connection.value !== 'synced') return '正在连接本机 Showcase…';
@@ -72,6 +75,15 @@ function editStage() {
   stageRevision++; stageDirty.value = true; stageFeedback.value = '停止输入后自动同步'; error.value = '';
   clearTimeout(pendingStage);
   pendingStage = setTimeout(() => { void syncStage(); }, 450);
+}
+async function importWebsitePool(selection: WebsitePoolSelection) {
+  if (dirty.value || importingWebsite.value) return false;
+  importingWebsite.value = true;
+  try {
+    const ok = await command('import-website', { ...selection });
+    if (ok) poolFeedback.value = '已更新 Showcase 图池';
+    return ok;
+  } finally { importingWebsite.value = false; }
 }
 async function copyLoadedPool() {
   const revision = ++editRevision;
@@ -126,9 +138,11 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
       <section class="showcase-pool-setup" aria-labelledby="showcase-pool-heading">
         <h2 id="showcase-pool-heading">演示图池</h2>
         <p class="showcase-help">先录入列表，再在 osu! 中播放 rep。切换谱面时会自动识别 Slot。</p>
+        <ShowcaseWebsite :can-import="connection === 'synced' && !busy && !dirty" :import-pool="importWebsitePool" />
+        <p v-if="snapshot?.websitePool" class="showcase-help">当前来源：{{ snapshot.websitePool.edition.toUpperCase() }} · {{ snapshot.websitePool.name }}</p>
         <button :disabled="busy || connection !== 'synced' || !snapshot?.loadedPoolCount" @click="copyLoadedPool">复制控制台已加载图池<template v-if="snapshot?.loadedPoolCount">（{{ snapshot.loadedPoolCount }} 张）</template></button>
         <label class="showcase-pool-input">每行「Slot 谱面ID或链接 标题（可选）」
-          <textarea v-model="poolDraft" rows="7" spellcheck="false" :disabled="connection !== 'synced'" placeholder="NM1 谱面ID
+          <textarea v-model="poolDraft" rows="7" spellcheck="false" :disabled="connection !== 'synced' || importingWebsite" placeholder="NM1 谱面ID
 HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
             aria-describedby="showcase-pool-feedback" :aria-invalid="dirty && !!error" @input="editPool" @blur="syncPool"></textarea>
         </label>

@@ -37,3 +37,15 @@ Node 利用现有 `GET /api/v1/streaming/tournaments/{edition}/next?afterFixture
 本机专用 `/api/streaming` POST 仅允许严格同源 JSON，不扩大 `/api/oclr` 的 Developer/public 白名单。`authorize` 开始登录；`complete-authorization` 消费一次性 state；`connect` 是手动复制备援；`select` 仅选取已读取任务；`page` 选择后续或首批；`import` 验证来源新鲜度、fixture ID 与会话版本。断开/换授权/关闭服务会取消旧请求，迟到响应不会恢复旧资料。
 
 参考：[网站契约](https://github.com/OCLR-dev/OCLR-website/blob/main/docs/streaming-api.md)、网站配套 issue #616。真实 OAuth/Streamer/OBS、中文文案及部署由具备权限的使用者验收；不以合成浏览器测试代替。
+
+## 从网站导入 Showcase 图池（#51）
+
+在 `/showcase` 的「演示图池 → 从 OCLR 网站导入」登录，或沿用控制台已经连接的直播授权。网站管理者须先锁定尚未公开的正式图池，并逐一授权符合资格的直播员。已有比赛指派并非前置条件。
+
+1. 选择获准的图池，核对名称、轮次和谱面数量。「刷新图池」会重新读取网站资料。
+2. 点击「导入到 Showcase」替换独立的演示图池。确认时本机再次向网站读取同一授权版本。若授权、网站版本或本机图池已改变，刷新后重新确认。
+3. 在普通 osu! 客户端播放回放。tosu 提供具体难度 ID，Showcase 据此匹配 Slot。池外或多个 Slot 使用同一难度 ID 时，Slot 显示「—」。
+
+读取列表、预览或刷新只读取网站资料。导入保留 Showcase 的 Stage 及本场比赛状态。导入版本和谱面随本机 Showcase 设置保存，手动录入及复制控制台图池仍是独立来源。`/showcase?clean=1` 继续作为播出画面。
+
+Node 使用同一赛季的内存凭证访问 [网站 Showcase 契约](https://github.com/OCLR-dev/OCLR-website/blob/main/docs/streaming-api.md)，要求 saved-read 1.37.0 或后续兼容版本。列表及逐池读取限制为 2 MiB。保护封面通过本机 Showcase 专用地址回源，每次由网站执行当前权限检查。封面不可用时显示占位，不经公开谱面代理降级。已明确导入的图池在读取失败、断开或重启后保留。如需继续读取受保护的封面，请重新连接当前赛季的有效授权。

@@ -138,7 +138,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
     showcase.attachSession(activeSession);
     if (await obsHttp(req, res, url, config.obs)) return;
-    if (await showcaseHttp(req, res, url, showcase)) return;
+    if (await showcaseHttp(req, res, url, showcase, streaming)) return;
     if (await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;
