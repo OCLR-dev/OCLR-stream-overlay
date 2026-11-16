@@ -23,7 +23,7 @@ export class ObsSocket {
         const { op, d } = JSON.parse(event.data);
         if (this.closed) return;
         if (op === 0) {
-          const identify = { rpcVersion: 1, eventSubscriptions: 6 }; // Config and Scenes
+          const identify = { rpcVersion: 1, eventSubscriptions: 134 }; // Config, Scenes and SceneItems
           if (d.authentication) {
             identify.authentication = sha256(sha256(password + d.authentication.salt) + d.authentication.challenge);
           }

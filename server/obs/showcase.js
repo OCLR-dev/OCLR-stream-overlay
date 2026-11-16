@@ -64,3 +64,89 @@ export async function buildShowcase(call, previous, url, save) {
   }
   return state;
 }
+
+export const showcaseCover = 'OCLR · Showcase 过场';
+const coverKinds = ['color_source_v3', 'color_source_v2', 'color_source'];
+const coverSettings = { width: 1600, height: 800, color: 0xff281633 };
+const coverTransform = { alignment: 5, positionX: 160, positionY: 100, scaleX: 1, scaleY: 1,
+  rotation: 0, boundsType: 'OBS_BOUNDS_NONE', cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 };
+const coverError = () => new ObsError('Showcase 遮挡未确认，请在 OBS 核对过场来源与层级，或重新设置。');
+const sceneTarget = showcase => showcase.sceneUuid ? { sceneUuid: showcase.sceneUuid } : { sceneName: showcaseScene };
+const topItem = items => items.every(i => Number.isInteger(i.sceneItemIndex))
+  ? items.find(i => i.sceneItemIndex === items.length - 1) : items.at(-1);
+
+function findCover(items, layer) {
+  const matches = items.filter(item => item.sourceName === showcaseCover);
+  if (matches.length !== 1 || (layer.inputUuid && matches[0].sourceUuid !== layer.inputUuid) ||
+      (layer.ready && matches[0].sceneItemId !== layer.itemId)) throw coverError();
+  return matches[0];
+}
+
+export async function installShowcaseCover(call, showcase, save) {
+  const { baseWidth, baseHeight } = await call('GetVideoSettings');
+  if (baseWidth !== 1920 || baseHeight !== 1080) throw new ObsError('请先将 OBS 基础画布设为 1920×1080。');
+  const target = sceneTarget(showcase);
+  const { inputs } = await call('GetInputList');
+  const { groups } = await call('GetGroupList');
+  const { scenes } = await call('GetSceneList');
+  if (groups.includes(showcaseCover) || scenes.some(s => s.sceneName === showcaseCover)) throw coverError();
+  const input = inputs.find(value => value.inputName === showcaseCover);
+  const previous = showcase.transition;
+  if (input && (!previous || !coverKinds.includes(input.inputKind) ||
+      (previous.inputUuid && previous.inputUuid !== input.inputUuid))) throw coverError();
+  if (!input && previous?.inputUuid && inputs.some(i => i.inputUuid === previous.inputUuid)) throw coverError();
+  if (input && !previous.inputUuid) {
+    const { inputSettings } = await call('GetInputSettings', { inputName: showcaseCover });
+    if (!Object.entries(coverSettings).every(([key, value]) => inputSettings[key] === value)) throw coverError();
+  }
+  const { inputKinds } = await call('GetInputKindList');
+  const kind = coverKinds.find(value => inputKinds.includes(value));
+  if (!input && !kind) throw new ObsError('OBS 缺少色彩来源，无法建立 Showcase 过场。');
+  await save({ ...previous, ready: false, inputUuid: input?.inputUuid ?? null });
+  let { sceneItems } = await call('GetSceneItemList', target);
+  if (sceneItems.filter(item => item.sourceName === showcaseCover).length > 1) throw coverError();
+  if (!sceneItems.some(item => item.sourceName === showcaseCover)) {
+    const result = input
+      ? await call('CreateSceneItem', { ...target, sourceName: showcaseCover, sceneItemEnabled: false })
+      : await call('CreateInput', { ...target, inputName: showcaseCover, inputKind: kind, inputSettings: coverSettings, sceneItemEnabled: false });
+    await save({ ready: false, inputUuid: input?.inputUuid ?? result.inputUuid ?? null });
+    ({ sceneItems } = await call('GetSceneItemList', target));
+  }
+  const layer = { ready: false, inputUuid: input?.inputUuid ?? null };
+  const existing = findCover(sceneItems, layer);
+  const item = { ...target, sceneItemId: existing.sceneItemId };
+  await call('SetInputSettings', { inputName: showcaseCover, inputSettings: coverSettings, overlay: true });
+  await call('SetSceneItemTransform', { ...item, sceneItemTransform: coverTransform });
+  await call('SetSceneItemLocked', { ...item, sceneItemLocked: true });
+  const complete = { ready: true, itemId: existing.sceneItemId, inputUuid: existing.sourceUuid ?? null };
+  await setShowcaseCover(call, { ...showcase, transition: complete }, true, () => true);
+  await save(complete);
+}
+
+// Confirm the actual OBS item, not just our requested state. OBS lists back to
+// front. Recheck the index to account for captures added after configuration.
+export async function setShowcaseCover(call, showcase, enabled, current) {
+  const target = sceneTarget(showcase);
+  const { sceneItems } = await call('GetSceneItemList', target);
+  const cover = findCover(sceneItems, showcase.transition);
+  const item = { ...target, sceneItemId: cover.sceneItemId };
+  if (!current()) return null;
+  if (enabled) {
+    const [{ inputSettings }, { sceneItemTransform }] = await Promise.all([
+      call('GetInputSettings', { inputName: showcaseCover }),
+      call('GetSceneItemTransform', item),
+    ]);
+    if (!Object.entries(coverSettings).every(([key, value]) => inputSettings[key] === value) ||
+        !Object.entries(coverTransform).every(([key, value]) => sceneItemTransform[key] === value)) throw coverError();
+  }
+  if (!current()) return null;
+  if (enabled && topItem(sceneItems)?.sceneItemId !== cover.sceneItemId) {
+    await call('SetSceneItemIndex', { ...item, sceneItemIndex: sceneItems.length - 1 });
+  }
+  if (!current()) return null;
+  if (cover.sceneItemEnabled !== enabled) await call('SetSceneItemEnabled', { ...item, sceneItemEnabled: enabled });
+  const { sceneItems: latest } = await call('GetSceneItemList', target);
+  const confirmed = findCover(latest, showcase.transition);
+  if (confirmed.sceneItemEnabled !== enabled || (enabled && topItem(latest)?.sceneItemId !== cover.sceneItemId)) throw coverError();
+  return enabled;
+}

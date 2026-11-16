@@ -4,7 +4,9 @@ import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
 import { syncBrowserAddresses } from './browser-addresses.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
-import { buildShowcase, showcaseScene } from './showcase.js';
+import { buildShowcase, installShowcaseCover, setShowcaseCover, showcaseScene } from './showcase.js';
+import { normalizeShowcaseTokens, ordinaryClient, ShowcaseReplay, showcaseTokensUrl } from './showcase-replay.js';
+import { TosuClient } from '../../src/tosu.js';
 import { arrangeCaptures, buildPreset, ensureDesktopAudio, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
 
 const defaults = () => ({ enabled: false, port: 4455, password: '', profiles: [] });
@@ -13,7 +15,7 @@ const changed = 'OBS 连接或场景集合已切换，请核对当前场景后�
 const safeMessage = error => error instanceof ObsError ? error.message : 'OBS 操作未完成，请核对本机存储和 OBS 后重试。';
 
 export class ObsController {
-  constructor({ file, overlayUrl, Socket = ObsSocket, retryMs = 3500, scanMs = 6000 }) {
+  constructor({ file, overlayUrl, Socket = ObsSocket, retryMs = 3500, scanMs = 6000, tosuUrl = null, ReplayClient = TosuClient, resultsMs = 3500 }) {
     this.file = file;
     this.overlayUrl = overlayUrl;
     this.Socket = Socket;
@@ -25,6 +27,13 @@ export class ObsController {
     this.programRevision = 0;
     this.phase = 'off';
     this.error = '';
+    this.replay = new ShowcaseReplay(() => this.scheduleShowcase(), resultsMs);
+    this.replayClient = new ReplayClient({ url: showcaseTokensUrl(tosuUrl), normalize: normalizeShowcaseTokens,
+      onStatus: status => {
+        if (this.showcaseActive && status !== 'live') this.discardReplay();
+      },
+      onFrame: frame => this.observeReplay(frame),
+    });
     this.invalidate();
   }
 
@@ -46,7 +55,10 @@ export class ObsController {
         if (!ports.includes(port)) await this.save({ ...this.settings, overlayPorts: [...ports, port] });
       } catch { this.storageError = 'OBS 地址设置无法保存，请检查本机存储后重启服务。'; }
     }
-    this.unsubscribe = store.subscribe(({ session }) => this.observe(session));
+    this.unsubscribe = store.subscribe(({ session, live }) => {
+      this.observe(session);
+      this.observeShowcaseClient(live?.tosu);
+    });
     if (this.settings.enabled && !this.storageError) this.connect();
     return this;
   }
@@ -85,6 +97,99 @@ export class ObsController {
     }
     return '';
   }
+  get showcaseConfigured() {
+    const { showcase } = this.profile;
+    return !!showcase?.ready && this.scenes.includes(showcaseScene) &&
+      (!showcase.sceneUuid || this.sceneIds.get(showcaseScene) === showcase.sceneUuid);
+  }
+
+  setTosuUrl(url) {
+    this.showcaseClient = null;
+    this.discardReplay();
+    this.replay.reset();
+    this.replayClient.setUrl(showcaseTokensUrl(url));
+  }
+
+  discardReplay() {
+    this.latestReplay = null;
+    // A manual reveal remains an explicit operator override until the next cover.
+    if (this.replay.phase !== 'manual') this.replay.reset();
+  }
+
+  observeShowcaseClient(source) {
+    this.showcaseClient = source;
+    if (!this.showcaseActive || !this.latestReplay) return;
+    if (!this.replayClientMatches(this.latestReplay) || ![2, 7].includes(source.data?.state?.number)) this.discardReplay();
+    else this.replay.observeResult(source.data.resultIdentity);
+  }
+
+  replayClientMatches(frame) {
+    const source = this.showcaseClient;
+    const age = Date.now() - Date.parse(source?.updatedAt);
+    return source?.status === 'live' && age >= 0 && age < 5000 && ordinaryClient(source.data, frame.map);
+  }
+
+  observeReplay(frame) {
+    if (!this.showcaseActive) return;
+    if (!this.replayClientMatches(frame)) { this.discardReplay(); return; }
+    this.latestReplay = frame;
+    this.replay.observe(frame, this.showcaseConfirmed, this.showcaseClient.data.state?.number);
+    this.replay.observeResult(this.showcaseClient.data.resultIdentity);
+  }
+
+  refreshShowcase() {
+    const configured = this.phase === 'ready' && this.showcaseConfigured && this.profile.showcase.transition?.ready;
+    const active = !!configured && this.program === showcaseScene;
+    if (active !== !!this.showcaseActive) {
+      this.showcaseActive = active;
+      this.latestReplay = null;
+      this.showcaseConfirmed = null;
+      this.replay.reset();
+      if (active) this.replayClient.start();
+      else this.replayClient.stop();
+    }
+    if (configured) this.scheduleShowcase();
+  }
+
+  scheduleShowcase(verify = false) {
+    if (this.phase !== 'ready' || !this.showcaseConfigured || !this.profile.showcase.transition?.ready ||
+        this.showcaseSync === this.epoch || (!verify && this.showcaseConfirmed === this.replay.covered)) return;
+    const epoch = this.epoch;
+    this.showcaseSync = epoch;
+    void this.queue(async () => {
+      let applied;
+      try {
+        this.guard(epoch);
+        applied = await this.applyShowcase(this.caller(epoch));
+      } finally {
+        if (this.showcaseSync === epoch) this.showcaseSync = null;
+      }
+      if (epoch === this.epoch && (applied === null || this.showcaseConfirmed !== this.replay.covered)) this.scheduleShowcase();
+    }).catch(error => {
+      if (epoch === this.epoch) {
+        this.showcaseConfirmed = null;
+        this.showcaseError = safeMessage(error);
+      }
+    });
+  }
+
+  async applyShowcase(call) {
+    if (!this.showcaseConfigured || !this.profile.showcase.transition?.ready) return this.replay.covered;
+    const profile = this.profile.showcase;
+    const covered = this.replay.covered;
+    const revision = this.programRevision;
+    const current = () => this.showcaseConfigured && this.profile.showcase === profile && covered === this.replay.covered &&
+      revision === this.programRevision && (covered || this.showcaseActive);
+    const confirmed = await setShowcaseCover(call, profile, covered, current);
+    if (confirmed === null || !current()) {
+      this.showcaseConfirmed = null;
+      return null;
+    }
+    this.showcaseConfirmed = confirmed;
+    this.showcaseError = '';
+    return confirmed;
+  }
+
   snapshot() {
     const p = this.profile;
     return { enabled: this.settings.enabled, port: this.settings.port, hasPassword: !!this.settings.password,
@@ -92,7 +197,9 @@ export class ObsController {
       regular: p.regular, ex: p.ex, follow: p.follow, target: this.target ?? null,
       managed: !!this.managed, lineup: this.managed ? p.preset.lineup : [], ...this.captures,
       streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
-      showcase: !!p.showcase?.ready && this.scenes.includes(showcaseScene) && (!p.showcase.sceneUuid || this.sceneIds.get(showcaseScene) === p.showcase.sceneUuid),
+      showcase: this.showcaseConfigured,
+      showcaseTransition: { configured: !!p.showcase?.transition?.ready, active: !!this.showcaseActive,
+        covered: this.showcaseConfirmed ?? null, phase: this.replay.phase, error: this.showcaseError || '' },
       error: this.storageError || this.error || this.missing(p) };
   }
 
@@ -113,7 +220,13 @@ export class ObsController {
 
   invalidate() {
     this.epoch++;
+    this.showcaseActive = false;
+    this.latestReplay = null;
+    this.showcaseConfirmed = null;
+    this.showcaseError = '';
+    this.replayClient.stop();
     this.collection = null;
+    this.replay.reset();
     this.program = null;
     this.setScenes([]);
     this.captures = { windows: [], rows: [] };
@@ -163,8 +276,16 @@ export class ObsController {
     if (type === 'CurrentProgramSceneChanged') {
       this.programRevision++;
       this.program = data.sceneName;
+      this.refreshShowcase();
     } else if (type === 'SceneListChanged') {
       this.setScenes(data.scenes);
+      this.refreshShowcase();
+    } else if (['SceneItemCreated', 'SceneItemRemoved', 'SceneItemListReindexed', 'SceneItemEnableStateChanged'].includes(type) &&
+        (data.sceneName === showcaseScene || (data.sceneUuid && data.sceneUuid === this.profile.showcase?.sceneUuid))) {
+      if (this.showcaseSync !== this.epoch) {
+        if (this.replay.covered) this.showcaseConfirmed = null;
+        this.scheduleShowcase(true);
+      }
     } else if (type === 'CurrentSceneCollectionChanging') {
       this.invalidate();
       this.phase = 'connecting';
@@ -192,6 +313,7 @@ export class ObsController {
       await syncBrowserAddresses(call, this.overlayUrl(), this.settings.overlayPorts ?? [], this.profile);
       this.phase = 'ready';
       this.error = '';
+      this.refreshShowcase();
       const profile = this.profile;
       if (profile.streamChat?.code && ((profile.regular && profile.ex && !this.missing(profile)) || this.snapshot().showcase)) {
         try { await this.placeStreamChat(call); }
@@ -298,6 +420,7 @@ export class ObsController {
     const { scenes } = await call('GetSceneList');
     this.setScenes(scenes);
     if (this.profile.streamChat?.code) await this.placeStreamChat(call);
+    this.refreshShowcase();
   }
 
   command(input) {
@@ -321,7 +444,22 @@ export class ObsController {
         const call = this.caller(epoch);
         const p = this.profile;
         if (input.action === 'create-showcase') await this.createShowcase(call, p);
-        else if (input.action === 'create') await this.create(call, p);
+        else if (input.action === 'setup-showcase-transition') {
+          if (!this.showcaseConfigured) throw new ObsError('请先创建 Showcase 场景。');
+          this.showcaseConfirmed = null;
+          this.replay.reset();
+          try {
+            await installShowcaseCover(call, p.showcase, transition =>
+              this.saveProfile({ ...this.profile, showcase: { ...this.profile.showcase, transition } }));
+            this.showcaseConfirmed = true;
+            this.showcaseError = '';
+          } finally { this.refreshShowcase(); }
+        } else if (['cover-showcase', 'reveal-showcase'].includes(input.action)) {
+          if (!this.showcaseActive) throw new ObsError('请先将 Showcase 切到 OBS 播出并配置过场。');
+          const covered = input.action === 'cover-showcase';
+          this.replay.manual(covered, this.latestReplay);
+          if (await this.applyShowcase(call) !== covered || this.showcaseConfirmed !== covered) throw new ObsError(changed);
+        } else if (input.action === 'create') await this.create(call, p);
         else if (input.action === 'stream-chat') {
           const code = chatIdentityCode(input.code ?? p.streamChat?.code);
           await this.saveProfile({ ...p, streamChat: { ...p.streamChat, code, pending: true } });
@@ -373,5 +511,5 @@ export class ObsController {
 
 export async function attachObs(config, store) {
   config.obs = await new ObsController({ file: store.file && join(dirname(store.file), 'obs-settings.json'),
-    overlayUrl: () => `http://127.0.0.1:${config.port}/overlay` }).start(store);
+    tosuUrl: config.wsUrl, overlayUrl: () => `http://127.0.0.1:${config.port}/overlay` }).start(store);
 }
