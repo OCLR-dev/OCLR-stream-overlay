@@ -1,6 +1,7 @@
 // Dedicated Streamer credentials never enter persistent session state or snapshots.
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { normalizePool } from './session/model.js';
+import { validTeamImageId } from './team-art.js';
 const slug = value => typeof value === 'string' && value.length <= 80 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
 const text = value => typeof value === 'string' && value.length <= 500;
@@ -22,6 +23,7 @@ export function validateStreaming(body) {
     check(f[side] && text(f[side].label));
     const t = f[side].team;
     check(t === null || (uuid(t?.id) && text(t.name)));
+    check(t?.avatarKey == null || validTeamImageId(t.avatarKey));
   }
   check(s === null || (s && s.id === f.stageId && s.kind === f.stage &&
     s.round?.id === f.roundId && text(s.round.name)));
@@ -57,8 +59,8 @@ export function validateStreaming(body) {
   // Project explicit fields rather than copying arbitrary upstream properties.
   return { nextFixture: { id: f.id, label: f.label, roundName: f.roundName, scheduledAt: f.scheduledAt,
     ...(exhibition ? { exhibition: true } : {}),
-    home: f.home.team ? { id: f.home.team.id, name: f.home.team.name, roster: [] } : null,
-    away: f.away.team ? { id: f.away.team.id, name: f.away.team.name, roster: [] } : null },
+    home: f.home.team ? { id: f.home.team.id, name: f.home.team.name, avatarKey: f.home.team.avatarKey ?? null, roster: [] } : null,
+    away: f.away.team ? { id: f.away.team.id, name: f.away.team.name, avatarKey: f.away.team.avatarKey ?? null, roster: [] } : null },
     stage: s === null ? null : { kind: s.kind, roundName: s.round.name, playersPerTeam: s.round.scoringRules?.playersPerTeam ?? null, scoringRules: rules == null ? null :
       rules.type === 'first_to' ? { type: rules.type, wins: rules.wins } :
         { type: rules.type, count: rules.count, ...(exhibition ? { allowDraw: rules.allowDraw } : {}) },

@@ -3,6 +3,7 @@ import { exhibitionOf, fixedSeries, targetOf, seriesOf, validSeries, seriesCompl
 import { migrateSession, synchronizeRecords, settleEx, refundReplayEx } from './records.js';
 export { targetOf, seriesOf, seriesComplete, canShowWinner, exhibitionProgress } from './rules.js';
 import { randomUUID } from 'node:crypto';
+import { validTeamImageId } from '../team-art.js';
 
 export const SCENES = ['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause'];
 const MODS = ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'];
@@ -118,8 +119,9 @@ function normalizeTeams(teams) {
     const value = teams?.[team];
     requireValue(value && text(value.name, 300) && value.name.trim(), '请填写双方队名');
     requireValue(value.id == null || text(value.id, 100), '队伍 ID 无效');
+    requireValue(value.avatarKey == null || (validTeamImageId(value.id) && validTeamImageId(value.avatarKey)), '队伍图片标识无效');
     requireValue(Array.isArray(value.roster) && value.roster.length <= 20, '名单格式无效');
-    result[team] = { id: value.id || null, name: value.name.trim(), roster: value.roster.map(p => {
+    result[team] = { id: value.id || null, name: value.name.trim(), avatarKey: value.avatarKey ?? null, roster: value.roster.map(p => {
       requireValue(p && text(p.name, 80) && p.name.trim(), '选手姓名无效');
       requireValue(p.osuId == null || (Number.isSafeInteger(p.osuId) && p.osuId > 0), '选手 ID 无效');
       return { name: p.name.trim(), osuId: p.osuId ?? null };
