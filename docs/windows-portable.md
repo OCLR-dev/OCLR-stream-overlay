@@ -38,6 +38,16 @@
 
 ## 4. 添加 OBS 浏览器源
 
+### Showcase 回放过场
+
+在 `/showcase` 的「OBS 场景」中连接 OBS、创建或打开已有 Showcase 场景，然后点「启用自动过场」。将普通 osu! 客户端的捕获源放在 Showcase 浏览器源上方，并保持在中央 1600×800 区域内。过场使用置于最上层的不透明 OBS 色彩来源，覆盖该区域。底部三个区块继续显示。
+
+1. 将 Showcase 切到 OBS 的节目画面。等控制台显示「遮挡已确认」后，再打开第一份 rep。确认普通客户端进入回放并观察到时间推进后，自动显示游戏。
+2. 回放结束后，已确认的成绩页展示 3.5 秒，然后自动遮挡。等遮挡确认再打开下一份 rep。同一谱面重播也走同一流程。
+3. 打开失败、取消或 tosu 断线时，遮罩会保持或重新盖上。可以点「立即遮挡」提前准备下一份回放。需手动接管时，先在 OBS 核对画面安全，再点「确认画面安全，手动显示」。点「立即遮挡」恢复自动过场。OBS 连接中断时，在 OBS 手动确认遮挡再开 rep。
+
+自动过场只在已配置的 Showcase 场景中显隐遮罩。在节目中切到休息或广告时会取消计时并预备遮罩。它通过 tosu 的 [StreamCompanion 状态](https://raw.githubusercontent.com/tosuapp/tosu/master/packages/tosu/src/api/utils/scStatus.ts) 与 [原生 v2 状态](https://raw.githubusercontent.com/tosuapp/tosu/master/packages/tosu/src/api/utils/buildResultV2.ts) 核对普通客户端。打开文件前应等遮挡确认，因为游戏变化后的采样无法预先挡住同一帧。
+
 ### OBS 跟随 EX
 
 1. 在 OBS 的「设置 → 视频」将基础画布设为 1920×1080。在「工具 → WebSocket 服务器设置」启用服务和密码认证。打开 OCLR 控制台，在「比赛配置 → OBS」输入端口（默认 4455）和密码，点「连接本机 OBS」。

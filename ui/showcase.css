@@ -95,3 +95,6 @@ body.is-showcase { background: transparent; }
 .showcase-website-preview span { color: var(--muted); }
 .showcase-website .showcase-website-import { background: #623798; }
 .showcase-website details > * + * { margin-top: 8px; }
+
+.showcase-transition-controls { display: grid; gap: 8px; margin-block: 14px; padding-block: 12px; border-top: 1px solid var(--review-line); }
+.showcase-transition-controls h3, .showcase-transition-controls p { margin: 0; }

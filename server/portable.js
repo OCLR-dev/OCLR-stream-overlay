@@ -58,6 +58,7 @@ try {
     const port = Number(match[1]);
     if (port > 65535) return;
     config.wsUrl = port ? `ws://127.0.0.1:${port}/websocket/v2` : null;
+    config.obs?.setTosuUrl(config.wsUrl);
     data.setTosuUrl(config.wsUrl);
   });
   input.on('close', () => void shutdown());
