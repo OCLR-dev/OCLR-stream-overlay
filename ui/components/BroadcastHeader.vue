@@ -9,7 +9,7 @@ import TeamNameMarquee from './TeamNameMarquee.vue';
 import HeaderAmbient from './HeaderAmbient.vue';
 import TeamBlockParticles from './TeamBlockParticles.vue';
 import MapWinBanner from './MapWinBanner.vue';
-import oclrLogo from '../assets/oclr-logo-light.svg';
+import oclrLogo from '../assets/oclr-logo-white.svg';
 
 const { state, view, motionScope, motionReady, session } = useOverlay();
 // Playing crossfades the room total over the series score once both sides have
@@ -73,7 +73,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
     </section>
 
     <section class="event-block">
-      <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="42" /></div>
+      <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="50" /></div>
       <div class="event-meta">
         <strong data-stage-label>{{ view.warmup ? 'Warm-up' : view.meta.label }}</strong>
       </div>
