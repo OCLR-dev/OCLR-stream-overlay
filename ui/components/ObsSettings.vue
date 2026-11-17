@@ -58,8 +58,8 @@ function connect() {
           <h3>回放过场</h3>
           <p role="status">{{ transitionStatus }}</p>
           <div class="operator-inline">
-            <button v-if="!transition?.configured || transition.error" type="button" :disabled="!!obs.pending"
-              @click="obs.act('setup-showcase-transition')">{{ transition?.error ? '重新设置过场' : '启用自动过场' }}</button>
+            <button v-if="!transition?.configured || !transition.artwork || transition.error" type="button" :disabled="!!obs.pending"
+              @click="obs.act('setup-showcase-transition')">{{ transition?.error ? '重新设置过场' : transition?.configured ? '更新过场美术' : '启用自动过场' }}</button>
             <template v-if="transition?.configured && transition.active">
               <button type="button" :disabled="!!obs.pending" @click="obs.act('cover-showcase')">立即遮挡</button>
               <button v-if="transition.covered !== false || transition.error" type="button" :disabled="!!obs.pending"

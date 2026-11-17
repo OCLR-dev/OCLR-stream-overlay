@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ObsController } from '../server/obs/controller.js';
-import { showcaseBrowser, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
+import { showcaseArtwork, showcaseBrowser, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
 import { ShowcaseReplay } from '../server/obs/showcase-replay.js';
 import { TosuClient } from '../src/tosu.js';
 
@@ -171,7 +171,12 @@ test('Showcase uses an opaque OBS layer above the game and validates actual cove
   assert.equal(feed.url, 'ws://127.0.0.1:24050/tokens');
   assert.equal(feed.active, false);
   assert.equal(studio.program, '休息');
-  assert.equal(studio.scenes.get(showcaseScene).at(-1), mask());
+  assert.equal(studio.scenes.get(showcaseScene).at(-1).sourceName, showcaseArtwork);
+  assert.equal(studio.scenes.get(showcaseScene).at(-2), mask());
+  assert.deepEqual(studio.inputs.get(showcaseArtwork).inputSettings, {
+    url: 'http://127.0.0.1:3010/showcase?clean=1&layer=cover', width: 1920, height: 1080, shutdown: false, restart_when_active: false,
+  });
+  assert.equal(obs.snapshot().showcaseTransition.artwork, true);
   assert.equal(mask().sceneItemEnabled, true);
   assert.equal(mask().sceneItemLocked, true);
   assert.deepEqual(studio.inputs.get(showcaseCover).inputSettings, { width: 1600, height: 800, color: 0xff281633 });
@@ -194,7 +199,8 @@ test('Showcase uses an opaque OBS layer above the game and validates actual cove
   assert.equal(obs.snapshot().showcaseTransition.phase, 'playing');
   studio.addItem(showcaseScene, 'game', true);
   await obs.command({ action: 'cover-showcase' });
-  assert.equal(studio.scenes.get(showcaseScene).at(-1), mask());
+  assert.equal(studio.scenes.get(showcaseScene).at(-1).sourceName, showcaseArtwork);
+  assert.equal(studio.scenes.get(showcaseScene).at(-2), mask());
   assert.equal(mask().sceneItemEnabled, true);
   feed.frame(8, 202, 0.5);
   feed.frame(8, 202, 1);
@@ -359,4 +365,64 @@ test('the replay feed opens /tokens only on Program and drops frames from a repl
   studio.cut('休息');
   await obs.tail;
   assert.equal(sockets[1].closed, true);
+});
+
+test('legacy masks upgrade to full-frame artwork without duplicate sources or changed captures', async t => {
+  const { studio, obs, mask } = await setupReplay(t);
+  const art = studio.scenes.get(showcaseScene).find(item => item.sourceName === showcaseArtwork);
+  studio.scenes.get(showcaseScene).splice(studio.scenes.get(showcaseScene).indexOf(art), 1);
+  studio.inputs.delete(showcaseArtwork);
+  delete obs.profile.showcase.transition.artwork;
+  const capture = structuredClone(studio.scenes.get(showcaseScene).find(item => item.sourceName === 'game'));
+  const maskId = mask().sceneItemId;
+  assert.equal(obs.snapshot().showcaseTransition.artwork, false);
+  await obs.command({ action: 'setup-showcase-transition' });
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(mask().sceneItemId, maskId);
+  assert.equal(studio.scenes.get(showcaseScene).filter(item => item.sourceName === showcaseArtwork).length, 1);
+  assert.deepEqual(studio.scenes.get(showcaseScene).find(item => item.sourceName === 'game'), capture);
+  assert.equal(studio.program, '休息');
+});
+
+test('artwork interrupted after creation retries, and wrong artwork geometry cannot reveal the fallback', async t => {
+  const { studio, obs } = await setup(t);
+  studio.kinds.push('color_source_v3');
+  await obs.command({ action: 'create-showcase' });
+  const request = studio.request.bind(studio);
+  let fail = true;
+  studio.request = async (type, args) => {
+    const result = await request(type, args);
+    if (fail && type === 'CreateInput' && args.inputName === showcaseArtwork) { fail = false; throw new Error('lost response'); }
+    return result;
+  };
+  await assert.rejects(obs.command({ action: 'setup-showcase-transition' }));
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(studio.scenes.get(showcaseScene).filter(item => item.sourceName === showcaseArtwork).length, 1);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  const art = studio.scenes.get(showcaseScene).at(-1);
+  art.transform.scaleX = .5;
+  await assert.rejects(obs.command({ action: 'reveal-showcase' }), /未确认/);
+  assert.equal(studio.scenes.get(showcaseScene).find(item => item.sourceName === showcaseCover).sceneItemEnabled, true);
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(art.transform.scaleX, 1);
+});
+
+test('only the results timeout animates entry; early changes cover instantly', async t => {
+  const { studio, obs, v2, watch, feed } = await setupReplay(t, 25);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  await watch();
+  v2(7);
+  feed.frame(32, 101, 120);
+  assert.equal(obs.coverSnapshot().completed.map, '101');
+  await delay(40);
+  await obs.tail;
+  assert.equal(obs.coverSnapshot().instant, false);
+  await watch(202);
+  v2(0, 202);
+  await obs.tail;
+  assert.equal(obs.coverSnapshot().covered, true);
+  assert.equal(obs.coverSnapshot().instant, true);
+  assert.equal(obs.coverSnapshot().completed.serial, 1, 'cancellation does not invent a completed map');
 });

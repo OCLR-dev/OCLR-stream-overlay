@@ -103,7 +103,7 @@ export async function readBoundedJson(response) {
 }
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
-  const showcase = new ShowcaseStore(config.session || session);
+  const showcase = new ShowcaseStore(config.session || session, { obs: () => config.obs });
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session, showcase);
   const playerArt = createPlayerArtHandler(fetchImpl);
   const teamArt = createTeamArtHandler(config);

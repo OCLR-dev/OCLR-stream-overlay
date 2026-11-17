@@ -14,9 +14,11 @@ const stageLabel = value => {
 // Showcase owns its pool. Live map identity is derived from the ordinary client,
 // never persisted as an operator selection or sent back to competition state.
 export class ShowcaseStore {
-  constructor(session, { file = session?.file && join(dirname(session.file), 'showcase.json') } = {}) {
+  constructor(session, { file = session?.file && join(dirname(session.file), 'showcase.json'), obs = () => null } = {}) {
     this.session = session;
     this.file = file;
+    this.obs = obs;
+    this.shown = new Set();
     this.state = { schema: 2, pool: [], stageLabel: '' };
     this.tail = Promise.resolve();
     this.ready = this.restore();
@@ -79,12 +81,36 @@ export class ShowcaseStore {
       sourceStatus: !fresh ? 'unavailable' : tourneyEvidence ? 'tourney' : !map ? 'no-map' : !pool.length ? 'no-pool' : candidates.length > 1 ? 'ambiguous' : matched ? 'matched' : 'unmatched',
       error: this.storageError || '', persistence: this.file ? 'ready' : 'memory',
     };
-    const serialized = JSON.stringify(snapshot);
-    if (serialized !== this.lastSnapshot) { this.revision = (this.revision || 0) + 1; this.lastSnapshot = serialized; }
+    const transition = this.obs()?.coverSnapshot();
+    if (transition) {
+      const serial = transition.completed?.serial;
+      if (this.progressPool !== snapshot.poolToken) {
+        this.progressPool = snapshot.poolToken;
+        this.shown.clear();
+        this.lastMap = null;
+        this.completedSerial = serial;
+      }
+      if (serial && serial !== this.completedSerial) {
+        this.completedSerial = serial;
+        this.lastMap = transition.completed.map;
+        const completed = pool.filter(entry => String(entry.beatmapId) === this.lastMap);
+        if (completed.length === 1) this.shown.add(completed[0].id);
+      }
+      // The first observed selection is a baseline, not evidence that the
+      // client has moved to a next replay (it may already show old results).
+      if (this.lastMap === null && currentMap) this.lastMap = String(currentMap.beatmapId);
+      snapshot.transition = { covered: transition.covered, instant: transition.instant, shown: [...this.shown], lastMap: this.lastMap };
+    }
+    const rendered = JSON.stringify(snapshot);
+    if (rendered !== this.lastSnapshot) { this.revision = (this.revision || 0) + 1; this.lastSnapshot = rendered; }
     return { ...snapshot, revision: this.revision };
   }
 
-  subscribe(listener) { return this.session.subscribe(envelope => listener(this.snapshot(envelope))); }
+  subscribe(listener) {
+    const unsubscribe = this.session.subscribe(envelope => listener(this.snapshot(envelope)));
+    const unsubscribeCover = this.obs()?.subscribeCover(() => listener(this.snapshot()));
+    return () => { unsubscribe(); unsubscribeCover?.(); };
+  }
 
   cover(poolId, version, entryId) {
     const website = this.state.website;
