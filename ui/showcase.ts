@@ -32,6 +32,7 @@ export interface ShowcaseSnapshot {
   mapParameters: MapInfoSource['mapParameters'];
   sourceStatus: 'unavailable' | 'tourney' | 'no-map' | 'no-pool' | 'ambiguous' | 'matched' | 'unmatched';
   error: string;
+  transition?: { covered: boolean; instant: boolean; shown: string[]; lastMap: string | null };
 }
 
 export function useShowcase() {

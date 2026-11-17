@@ -31,3 +31,27 @@ test('recorded browser identity migrates an older custom port and failed writes 
   await syncBrowserAddresses(studio.request.bind(studio), 'http://127.0.0.1:3022/overlay', [], profile);
   assert.equal(studio.inputs.get('renamed').inputSettings.url, 'http://localhost:3022/showcase?clean=1');
 });
+
+test('Showcase artwork URL and coverage validation move to the new local port together', async () => {
+  const studio = new Studio();
+  const url = 'http://localhost:8123/showcase?clean=1&layer=cover';
+  studio.inputs.set('art', { inputName: 'art', inputUuid: 'art-id', inputKind: 'browser_source', inputSettings: { url, width: 1920, height: 1080 } });
+  const profile = { showcase: { transition: { artwork: { inputUuid: 'art-id', url } } } };
+  await syncBrowserAddresses(studio.request.bind(studio), 'http://127.0.0.1:3022/overlay', [], profile);
+  assert.equal(studio.inputs.get('art').inputSettings.url, 'http://localhost:3022/showcase?clean=1&layer=cover');
+  assert.equal(profile.showcase.transition.artwork.url, studio.inputs.get('art').inputSettings.url);
+  profile.showcase.transition.artwork.url = url;
+  await syncBrowserAddresses(studio.request.bind(studio), 'http://127.0.0.1:3022/overlay', [], profile);
+  assert.equal(profile.showcase.transition.artwork.url, studio.inputs.get('art').inputSettings.url, 'restart reconciles a saved old URL even when OBS already has the new port');
+  studio.inputs.get('art').inputSettings.url = 'http://localhost:3022/showcase?clean=1';
+  await syncBrowserAddresses(studio.request.bind(studio), 'http://127.0.0.1:3022/overlay', [], profile);
+  assert.equal(profile.showcase.transition.artwork.url, 'http://localhost:3022/showcase?clean=1&layer=cover', 'a changed output query is not approved by port synchronization');
+});
+
+test('legacy browser lists without UUIDs continue to migrate with no Showcase artwork configured', async () => {
+  const studio = new Studio();
+  studio.inputs.set('legacy', { inputName: 'legacy', inputKind: 'browser_source', inputSettings: { url: 'http://localhost:3001/overlay' } });
+  await syncBrowserAddresses(studio.request.bind(studio), 'http://127.0.0.1:3022/overlay', [], {});
+  await syncBrowserAddresses(studio.request.bind(studio), 'http://127.0.0.1:3022/overlay', [], {});
+  assert.equal(studio.inputs.get('legacy').inputSettings.url, 'http://localhost:3022/overlay');
+});

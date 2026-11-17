@@ -22,6 +22,35 @@ function frame(session, entry, extra = {}) {
   session.emit();
 }
 
+test('cover progress follows confirmed replay completions, survives subscribers, and resets for a new pool', async t => {
+  let presentation = { covered: true, instant: true, completed: null };
+  const listeners = new Set();
+  const obs = { coverSnapshot: () => presentation, subscribeCover: fn => { listeners.add(fn); return () => listeners.delete(fn); } };
+  const { session, showcase } = setup(t, { obs: () => obs });
+  await setPool(showcase, 'NM1 101\nHD1 102');
+  frame(session, showcase.snapshot().pool[0]);
+  assert.equal(showcase.snapshot().transition.lastMap, '101', 'first observed map is a brand baseline, not an invented next map');
+  const original = structuredClone(session.state);
+  const snapshots = [];
+  const stop = showcase.subscribe(value => snapshots.push(value));
+  const notify = value => { presentation = value; for (const listener of listeners) listener(); };
+  notify({ covered: false, instant: true, completed: { serial: 1, map: '101' } });
+  assert.deepEqual(snapshots.at(-1).transition.shown, [showcase.snapshot().pool[0].id]);
+  assert.equal(snapshots.at(-1).transition.lastMap, '101');
+  const revision = showcase.snapshot().revision;
+  notify({ ...presentation, covered: true, instant: false });
+  assert.ok(showcase.snapshot().revision > revision, 'timer-only changes reach SSE subscribers');
+  stop();
+  assert.equal(listeners.size, 0);
+  assert.equal(showcase.snapshot().transition.shown.length, 1, 'page reload does not reset progress');
+  notify({ ...presentation, completed: { serial: 2, map: '101' } });
+  assert.equal(showcase.snapshot().transition.shown.length, 1, 'same-map replay counts once');
+  await setPool(showcase, 'NM1 101\nHD1 103');
+  assert.deepEqual(showcase.snapshot().transition.shown, []);
+  assert.equal(showcase.snapshot().transition.lastMap, '101');
+  assert.deepEqual(session.state, original);
+});
+
 test('pool input accepts IDs and exact difficulty URLs, retains same-map metadata and rejects incomplete/invalid lists', () => {
   const previous = [{ id: 'old', label: 'NM1', beatmapId: 101, title: 'Old title', setId: 42, difficulty: 'Old difficulty', artist: 'Artist' }];
   const pool = parseShowcasePool('NM1 101 Title\nHD2 https://osu.ppy.sh/beatmaps/102\nHR1 https://osu.ppy.sh/beatmapsets/42#osu/103\nTB https://osu.ppy.sh/b/104', previous);

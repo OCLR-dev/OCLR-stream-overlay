@@ -30,6 +30,7 @@ export class ShowcaseReplay {
     this.resultsMs = resultsMs;
     this.phase = 'covered';
     this.covered = true;
+    this.instant = true;
   }
 
   change(phase) {
@@ -39,9 +40,10 @@ export class ShowcaseReplay {
     this.onChange();
   }
 
-  reset() {
+  reset(instant = true) {
     clearTimeout(this.timer);
     this.candidate = this.run = this.blocked = this.resultIdentity = null;
+    if (this.phase !== 'covered') this.instant = instant;
     this.change('covered');
   }
 
@@ -67,7 +69,7 @@ export class ShowcaseReplay {
       if (this.phase === 'results' && this.run?.map === map) return;
       if (this.phase === 'playing' && confirmedCover === false && this.run?.map === map) {
         this.change('results');
-        this.timer = setTimeout(() => this.reset(), this.resultsMs);
+        this.timer = setTimeout(() => this.reset(false), this.resultsMs);
         this.timer.unref?.();
       } else this.reset();
       return;

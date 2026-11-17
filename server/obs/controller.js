@@ -4,7 +4,7 @@ import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
 import { syncBrowserAddresses } from './browser-addresses.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
-import { buildShowcase, installShowcaseCover, setShowcaseCover, showcaseScene } from './showcase.js';
+import { buildShowcase, installShowcaseCover, installShowcaseArtwork, setShowcaseCover, showcaseScene } from './showcase.js';
 import { normalizeShowcaseTokens, ordinaryClient, ShowcaseReplay, showcaseTokensUrl } from './showcase-replay.js';
 import { TosuClient } from '../../src/tosu.js';
 import { arrangeCaptures, buildPreset, ensureDesktopAudio, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
@@ -27,7 +27,12 @@ export class ObsController {
     this.programRevision = 0;
     this.phase = 'off';
     this.error = '';
-    this.replay = new ShowcaseReplay(() => this.scheduleShowcase(), resultsMs);
+    this.coverListeners = new Set();
+    this.completedReplay = null;
+    this.replay = new ShowcaseReplay(() => {
+      if (this.replay.phase === 'results') this.completedReplay = { map: this.replay.run.map, serial: (this.completedReplay?.serial || 0) + 1 };
+      this.scheduleShowcase();
+    }, resultsMs);
     this.replayClient = new ReplayClient({ url: showcaseTokensUrl(tosuUrl), normalize: normalizeShowcaseTokens,
       onStatus: status => {
         if (this.showcaseActive && status !== 'live') this.discardReplay();
@@ -152,6 +157,7 @@ export class ObsController {
   }
 
   scheduleShowcase(verify = false) {
+    this.emitCover();
     if (this.phase !== 'ready' || !this.showcaseConfigured || !this.profile.showcase.transition?.ready ||
         this.showcaseSync === this.epoch || (!verify && this.showcaseConfirmed === this.replay.covered)) return;
     const epoch = this.epoch;
@@ -169,6 +175,7 @@ export class ObsController {
       if (epoch === this.epoch) {
         this.showcaseConfirmed = null;
         this.showcaseError = safeMessage(error);
+        this.emitCover();
       }
     });
   }
@@ -187,8 +194,17 @@ export class ObsController {
     }
     this.showcaseConfirmed = confirmed;
     this.showcaseError = '';
+    this.emitCover();
     return confirmed;
   }
+
+  coverSnapshot() {
+    return { covered: !this.showcaseActive || this.replay.covered || this.showcaseConfirmed !== false,
+      instant: this.replay.instant, completed: this.completedReplay };
+  }
+
+  subscribeCover(listener) { this.coverListeners.add(listener); return () => this.coverListeners.delete(listener); }
+  emitCover() { for (const listener of this.coverListeners) listener(); }
 
   snapshot() {
     const p = this.profile;
@@ -198,7 +214,7 @@ export class ObsController {
       managed: !!this.managed, lineup: this.managed ? p.preset.lineup : [], ...this.captures,
       streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
       showcase: this.showcaseConfigured,
-      showcaseTransition: { configured: !!p.showcase?.transition?.ready, active: !!this.showcaseActive,
+      showcaseTransition: { configured: !!p.showcase?.transition?.ready, artwork: !!p.showcase?.transition?.artwork?.ready, active: !!this.showcaseActive,
         covered: this.showcaseConfirmed ?? null, phase: this.replay.phase, error: this.showcaseError || '' },
       error: this.storageError || this.error || this.missing(p) };
   }
@@ -451,6 +467,10 @@ export class ObsController {
           try {
             await installShowcaseCover(call, p.showcase, transition =>
               this.saveProfile({ ...this.profile, showcase: { ...this.profile.showcase, transition } }));
+            const url = new URL('/showcase?clean=1&layer=cover', this.overlayUrl()).href;
+            await installShowcaseArtwork(call, this.profile.showcase, url, artwork =>
+              this.saveProfile({ ...this.profile, showcase: { ...this.profile.showcase,
+                transition: { ...this.profile.showcase.transition, artwork } } }));
             this.showcaseConfirmed = true;
             this.showcaseError = '';
           } finally { this.refreshShowcase(); }

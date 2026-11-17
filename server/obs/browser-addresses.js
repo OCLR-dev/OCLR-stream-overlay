@@ -5,6 +5,7 @@ export async function syncBrowserAddresses(call, overlayUrl, ports, profile) {
   const known = new Set(['3001', current.port || '80', ...ports]);
   const owned = new Set([
     ...Object.values(profile.preset?.inputIds ?? {}), profile.showcase?.inputUuid,
+    profile.showcase?.transition?.artwork?.inputUuid,
   ].filter(Boolean));
   const { inputs } = await call('GetInputList', { inputKind: 'browser_source' });
   for (const input of inputs) {
@@ -16,8 +17,17 @@ export async function syncBrowserAddresses(call, overlayUrl, ports, profile) {
     if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname) ||
         url.username || url.password || !['/overlay', '/showcase'].includes(url.pathname) ||
         (!known.has(url.port || '80') && !owned.has(input.inputUuid))) continue;
-    if (url.port === current.port) continue;
-    url.port = current.port;
-    await call('SetInputSettings', { ...target, inputSettings: { url: url.href }, overlay: true });
+    if (url.port !== current.port) {
+      url.port = current.port;
+      await call('SetInputSettings', { ...target, inputSettings: { url: url.href }, overlay: true });
+    }
+    const artwork = profile.showcase?.transition?.artwork;
+    if (input.inputUuid && input.inputUuid === artwork?.inputUuid) {
+      // Migrate only the expected port. A manually changed output path/query
+      // must still fail coverage validation rather than becoming trusted here.
+      const expected = new URL(artwork.url);
+      expected.port = current.port;
+      artwork.url = expected.href;
+    }
   }
 }
