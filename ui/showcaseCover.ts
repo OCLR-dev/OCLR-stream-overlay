@@ -33,24 +33,8 @@ export const COVER_BAND_TRAVEL = 2440;
 export type CoverStage = 'hidden' | 'entering' | 'holding' | 'leaving';
 export type ProgressState = 'todo' | 'done' | 'next';
 
-export interface ProgressGroup { mod: string; chips: { entry: PoolEntry; state: ProgressState }[] }
-
-// Only real neighbours: missing slots at either end stay empty in the grid.
-export function progressWindow(pool: PoolEntry[], currentId: string | null): PoolEntry[] {
-  const index = Math.max(0, pool.findIndex(entry => entry.id === currentId));
-  return pool.slice(Math.max(0, index - 3), index + 4);
-}
-
-// Consecutive slots of one mod form a group; groups get a wider gap.
-export function progressGroups(pool: PoolEntry[], shown: ReadonlySet<string>, nextId: string | null): ProgressGroup[] {
-  const groups: ProgressGroup[] = [];
-  for (const entry of pool) {
-    const state: ProgressState = entry.id === nextId ? 'next' : shown.has(entry.id) ? 'done' : 'todo';
-    const last = groups[groups.length - 1];
-    if (last && last.mod === entry.mod) last.chips.push({ entry, state });
-    else groups.push({ mod: entry.mod, chips: [{ entry, state }] });
-  }
-  return groups;
+export function progressChips(pool: PoolEntry[], shown: ReadonlySet<string>, nextId: string | null) {
+  return pool.map(entry => ({ entry, state: (entry.id === nextId ? 'next' : shown.has(entry.id) ? 'done' : 'todo') as ProgressState }));
 }
 
 // Rough rendered width of a title: CJK / full-width glyphs count double.

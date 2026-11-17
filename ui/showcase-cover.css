@@ -124,11 +124,13 @@
 .cover-progress > header { display: flex; align-items: center; justify-content: space-between; }
 .cover-progress > header b { color: var(--muted); font: 500 22px/1 var(--mono); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
 .cover-progress > header em { color: var(--ink); font-style: normal; }
-.cover-progress-track, .cover-progress-group { margin: 0; padding: 0; list-style: none; }
-.cover-progress-track { display: grid; grid-template-columns: repeat(7, var(--chip-w)); justify-content: center; gap: 16px; }
-.cover-progress-track > li, .cover-progress-group { display: contents; }
+.cover-progress-viewport { justify-self: center; width: calc(7 * var(--chip-w) + 6 * var(--chip-gap)); height: 80px; margin-top: -6px; padding-block: 6px; overflow: hidden; }
+.cover-progress-track { display: flex; gap: var(--chip-gap); width: max-content; margin: 0; padding: 0; list-style: none; transform: translate3d(var(--progress-x), 0, 0); transition: transform calc(420ms * var(--cover-slow)) var(--cover-ease-in); }
+.showcase-cover[data-stage='hidden'] .cover-progress-track,
+.showcase-cover.is-reduced .cover-progress-track,
+.showcase-cover.is-seeking .cover-progress-track { transition: none; }
 .cover-chip {
-  position: relative; display: grid; place-items: center; width: var(--chip-w); height: 56px; overflow: hidden;
+  position: relative; display: grid; flex: 0 0 var(--chip-w); place-items: center; width: var(--chip-w); height: 56px; overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--mod-bg) 50%, #ffffff1f); border-radius: var(--radius-card);
   background: #ffffff08; color: #ded3f599; font: 700 22px/1 var(--display); letter-spacing: .03em; white-space: nowrap;
 }

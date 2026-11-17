@@ -166,6 +166,117 @@
       "changedChatChannels": 0
     }
   ],
+  "motion": [
+    {
+      "name": "nm1-to-nm2",
+      "samples": [
+        {
+          "ms": 0,
+          "x": 1088,
+          "transform": "matrix(1, 0, 0, 1, 384, 0)"
+        },
+        {
+          "ms": 105,
+          "x": 993.9141845703125,
+          "transform": "matrix(1, 0, 0, 1, 289.914, 0)"
+        },
+        {
+          "ms": 210,
+          "x": 968.1136474609375,
+          "transform": "matrix(1, 0, 0, 1, 264.114, 0)"
+        },
+        {
+          "ms": 315,
+          "x": 961.38037109375,
+          "transform": "matrix(1, 0, 0, 1, 257.38, 0)"
+        },
+        {
+          "ms": 420,
+          "x": 960,
+          "transform": "matrix(1, 0, 0, 1, 256, 0)"
+        }
+      ]
+    },
+    {
+      "name": "nm2-to-nm1",
+      "samples": [
+        {
+          "ms": 0,
+          "x": 832,
+          "transform": "matrix(1, 0, 0, 1, 256, 0)"
+        },
+        {
+          "ms": 105,
+          "x": 926.0858154296875,
+          "transform": "matrix(1, 0, 0, 1, 350.086, 0)"
+        },
+        {
+          "ms": 210,
+          "x": 951.8863525390625,
+          "transform": "matrix(1, 0, 0, 1, 375.886, 0)"
+        },
+        {
+          "ms": 315,
+          "x": 958.61962890625,
+          "transform": "matrix(1, 0, 0, 1, 382.62, 0)"
+        },
+        {
+          "ms": 420,
+          "x": 960,
+          "transform": "matrix(1, 0, 0, 1, 384, 0)"
+        }
+      ]
+    },
+    {
+      "name": "nm5-to-hd1",
+      "samples": [
+        {
+          "ms": 0,
+          "x": 1088,
+          "transform": "matrix(1, 0, 0, 1, -128, 0)"
+        },
+        {
+          "ms": 105,
+          "x": 993.9141845703125,
+          "transform": "matrix(1, 0, 0, 1, -222.086, 0)"
+        },
+        {
+          "ms": 210,
+          "x": 968.1136474609375,
+          "transform": "matrix(1, 0, 0, 1, -247.886, 0)"
+        },
+        {
+          "ms": 315,
+          "x": 961.38037109375,
+          "transform": "matrix(1, 0, 0, 1, -254.62, 0)"
+        },
+        {
+          "ms": 420,
+          "x": 960,
+          "transform": "matrix(1, 0, 0, 1, -256, 0)"
+        }
+      ]
+    }
+  ],
+  "rapid": [
+    {
+      "before": -256,
+      "after": -324.907
+    },
+    {
+      "before": -324.907,
+      "after": -444.201
+    },
+    {
+      "before": -444.201,
+      "after": -569.116
+    }
+  ],
+  "reduced": {
+    "x": 960,
+    "transition": "0s",
+    "animations": 0
+  },
   "production": {
     "chatOpaque": 0,
     "replayTransparent": 0

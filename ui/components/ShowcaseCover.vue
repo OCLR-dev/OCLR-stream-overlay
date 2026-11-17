@@ -4,7 +4,7 @@ import type { PoolEntry } from '../session';
 import { modColorStyle } from '../modColors';
 import {
   COVER_BAND_COUNT, COVER_BAND_FIRST, COVER_BAND_PITCH, COVER_BAND_WIDTH, COVER_TIMING,
-  coverEnterTotal, coverLeaveTotal, progressGroups, progressWindow, titleWeight, type CoverStage,
+  coverEnterTotal, coverLeaveTotal, progressChips, titleWeight, type CoverStage,
 } from '../showcaseCover';
 import seasonLogo from '../assets/oclr-s11-logo-white.svg';
 import '../showcase-cover.css';
@@ -81,12 +81,14 @@ const diamonds = Array.from({ length: 34 }, (_, index) => {
 const shownSet = computed(() => new Set(props.shown));
 const progressId = computed(() => props.next?.id ?? props.currentId ?? props.shown.at(-1) ?? null);
 const progressIndex = computed(() => Math.max(0, props.pool.findIndex(entry => entry.id === progressId.value)));
-const visiblePool = computed(() => progressWindow(props.pool, progressId.value));
-const groups = computed(() => progressGroups(visiblePool.value, shownSet.value, props.next?.id ?? null));
+// Keep one stable row across mod boundaries. The viewport clips it to seven
+// positions; retargeting the CSS transform also handles rapid map changes.
+const chips = computed(() => progressChips(props.pool, shownSet.value, props.next?.id ?? null));
+const progressKey = computed(() => JSON.stringify(props.pool.map(entry => entry.id)));
 const doneCount = computed(() => props.pool.filter(entry => shownSet.value.has(entry.id)).length);
 // Centre footer only (x 480–1440); the existing Stream Chat stays on the right.
 const chipWidth = 112;
-const progressColumn = (id: string) => props.pool.findIndex(entry => entry.id === id) - progressIndex.value + 4;
+const chipGap = 16;
 const pad = (value: number) => String(value).padStart(2, '0');
 
 const artLoaded = ref(false);
@@ -98,6 +100,8 @@ const rootStyle = computed(() => ({
   '--cover-slow': props.seek ? 1 : props.slow,
   '--cover-seek': `${props.seek?.ms ?? 0}ms`,
   '--chip-w': `${chipWidth}px`,
+  '--chip-gap': `${chipGap}px`,
+  '--progress-x': `${(3 - progressIndex.value) * (chipWidth + chipGap)}px`,
 }));
 
 onMounted(() => {
@@ -148,15 +152,14 @@ onUnmounted(() => { clearTimeout(timer); media?.removeEventListener('change', on
           <span class="cover-kicker">PROGRESS</span>
           <b><em>{{ pad(doneCount) }}</em> / {{ pad(pool.length) }}</b>
         </header>
-        <ol class="cover-progress-track">
-          <li v-for="(group, groupIndex) in groups" :key="`${group.mod}-${groupIndex}`">
-            <ol class="cover-progress-group">
-              <li v-for="chip in group.chips" :key="chip.entry.id" class="cover-chip" :data-state="chip.state" :data-mod="chip.entry.mod"
-                :data-current="chip.entry.id === progressId || undefined" :aria-current="chip.entry.id === progressId ? 'step' : undefined"
-                :style="{ ...modColorStyle(chip.entry.mod), gridColumn: progressColumn(chip.entry.id) }" :title="chip.entry.label">{{ chip.entry.label }}</li>
-            </ol>
-          </li>
-        </ol>
+        <div class="cover-progress-viewport">
+          <ol :key="progressKey" class="cover-progress-track">
+            <li v-for="(chip, index) in chips" :key="chip.entry.id" class="cover-chip" :data-state="chip.state" :data-mod="chip.entry.mod"
+              :data-current="chip.entry.id === progressId || undefined" :aria-current="chip.entry.id === progressId ? 'step' : undefined"
+              :aria-hidden="Math.abs(index - progressIndex) > 3 || undefined"
+              :style="modColorStyle(chip.entry.mod)" :title="chip.entry.label">{{ chip.entry.label }}</li>
+          </ol>
+        </div>
       </div>
     </div>
     <!-- Same classes and positions as the Showcase page: pixel-identical, so
