@@ -80,16 +80,13 @@ const diamonds = Array.from({ length: 34 }, (_, index) => {
 
 const shownSet = computed(() => new Set(props.shown));
 const progressId = computed(() => props.next?.id ?? props.currentId ?? props.shown.at(-1) ?? null);
+const progressIndex = computed(() => Math.max(0, props.pool.findIndex(entry => entry.id === progressId.value)));
 const visiblePool = computed(() => progressWindow(props.pool, progressId.value));
 const groups = computed(() => progressGroups(visiblePool.value, shownSet.value, props.next?.id ?? null));
 const doneCount = computed(() => props.pool.filter(entry => shownSet.value.has(entry.id)).length);
 // Centre footer only (x 480–1440); the existing Stream Chat stays on the right.
-const chipWidth = computed(() => {
-  const count = visiblePool.value.length;
-  if (!count) return 0;
-  const gaps = (count - 1) * 8 + (groups.value.length - 1) * 12;
-  return Math.min(112, Math.floor((960 - gaps) / count));
-});
+const chipWidth = 112;
+const progressColumn = (id: string) => props.pool.findIndex(entry => entry.id === id) - progressIndex.value + 4;
 const pad = (value: number) => String(value).padStart(2, '0');
 
 const artLoaded = ref(false);
@@ -100,7 +97,7 @@ const hasArt = computed(() => !!props.artworkUrl && !artFailed.value);
 const rootStyle = computed(() => ({
   '--cover-slow': props.seek ? 1 : props.slow,
   '--cover-seek': `${props.seek?.ms ?? 0}ms`,
-  '--chip-w': `${chipWidth.value}px`,
+  '--chip-w': `${chipWidth}px`,
 }));
 
 onMounted(() => {
@@ -113,7 +110,7 @@ onUnmounted(() => { clearTimeout(timer); media?.removeEventListener('change', on
 
 <template>
   <div class="showcase-cover" :data-stage="shownStage"
-    :class="{ 'is-instant': instantNow && !seek, 'is-reduced': reducedMotion, 'is-seeking': !!seek, 'is-compact-chips': chipWidth < 60 }"
+    :class="{ 'is-instant': instantNow && !seek, 'is-reduced': reducedMotion, 'is-seeking': !!seek }"
     :style="rootStyle" :aria-hidden="shownStage === 'hidden' ? 'true' : undefined" aria-label="换图过场">
     <div class="cover-base"></div>
     <div class="cover-bands">
@@ -156,7 +153,7 @@ onUnmounted(() => { clearTimeout(timer); media?.removeEventListener('change', on
             <ol class="cover-progress-group">
               <li v-for="chip in group.chips" :key="chip.entry.id" class="cover-chip" :data-state="chip.state" :data-mod="chip.entry.mod"
                 :data-current="chip.entry.id === progressId || undefined" :aria-current="chip.entry.id === progressId ? 'step' : undefined"
-                :style="modColorStyle(chip.entry.mod)" :title="chip.entry.label">{{ chip.entry.label }}</li>
+                :style="{ ...modColorStyle(chip.entry.mod), gridColumn: progressColumn(chip.entry.id) }" :title="chip.entry.label">{{ chip.entry.label }}</li>
             </ol>
           </li>
         </ol>

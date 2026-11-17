@@ -124,9 +124,9 @@
 .cover-progress > header { display: flex; align-items: center; justify-content: space-between; }
 .cover-progress > header b { color: var(--muted); font: 500 22px/1 var(--mono); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
 .cover-progress > header em { color: var(--ink); font-style: normal; }
-.cover-progress-track, .cover-progress-group { display: flex; margin: 0; padding: 0; list-style: none; }
-.cover-progress-track { justify-content: center; gap: 20px; }
-.cover-progress-group { gap: 8px; }
+.cover-progress-track, .cover-progress-group { margin: 0; padding: 0; list-style: none; }
+.cover-progress-track { display: grid; grid-template-columns: repeat(7, var(--chip-w)); justify-content: center; gap: 16px; }
+.cover-progress-track > li, .cover-progress-group { display: contents; }
 .cover-chip {
   position: relative; display: grid; place-items: center; width: var(--chip-w); height: 56px; overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--mod-bg) 50%, #ffffff1f); border-radius: var(--radius-card);
@@ -139,7 +139,6 @@
 .cover-chip[data-state='next'] { border-color: #ffffffd9; background: var(--mod-bg); color: var(--mod-ink); box-shadow: 0 0 26px color-mix(in srgb, var(--mod-bg) 62%, transparent); transform: translateY(-5px); animation: cover-chip-stamp calc(240ms * var(--cover-slow)) ease-out both; }
 .cover-chip[data-state='next']::before { display: none; }
 .cover-chip[data-state='next'][data-mod='TB'] { box-shadow: 0 0 0 1px #ffffff8c, 0 0 26px #8b5cf666; }
-.is-compact-chips .cover-chip { font-size: 17px; letter-spacing: 0; }
 @keyframes cover-chip-stamp { from { transform: translateY(-5px) scale(1.1); } to { transform: translateY(-5px); } }
 
 /* Reduced motion: no travelling bands, a 200ms crossfade both ways. */

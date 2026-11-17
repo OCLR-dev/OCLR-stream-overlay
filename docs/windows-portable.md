@@ -48,7 +48,7 @@
 
 自动过场只在已配置的 Showcase 场景中显隐遮罩。在节目中切到休息或广告时会取消计时并预备遮罩。它通过 tosu 的 [StreamCompanion 状态](https://raw.githubusercontent.com/tosuapp/tosu/master/packages/tosu/src/api/utils/scStatus.ts) 与 [原生 v2 状态](https://raw.githubusercontent.com/tosuapp/tosu/master/packages/tosu/src/api/utils/buildResultV2.ts) 核对普通客户端。打开文件前应等遮挡确认，因为游戏变化后的采样无法预先挡住同一帧。
 
-过场底栏只显示当前 Slot 前后各 3 张，首尾自动补足，右侧 Stream Chat 全程保留。图池进度只记录本次服务运行期间确认结束的回放，同图重播不重复增加；刷新网页保留，修改演示图池或重启服务后重新统计。没有封面时显示 Slot 色块。过场使用现有谱面卡的封面来源，不控制音频。
+过场底栏将当前 Slot 固定居中，只显示前后各 3 张；首尾缺少的位置留空，右侧 Stream Chat 全程保留。图池进度只记录本次服务运行期间确认结束的回放，同图重播不重复增加；刷新网页保留，修改演示图池或重启服务后重新统计。没有封面时显示 Slot 色块。过场使用现有谱面卡的封面来源，不控制音频。
 
 ### OBS 跟随 EX
 

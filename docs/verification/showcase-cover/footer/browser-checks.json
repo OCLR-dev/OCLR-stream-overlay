@@ -10,15 +10,13 @@
         "NM1",
         "NM2",
         "NM3",
-        "NM4",
-        "HD1",
-        "HD2",
-        "HR1"
+        "NM4"
       ],
       "current": 0,
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -38,6 +36,7 @@
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -45,18 +44,16 @@
       "size": 13,
       "position": "end",
       "labels": [
-        "HR1",
-        "HR2",
-        "DT1",
         "DT2",
         "FM1",
         "FM2",
         "TB"
       ],
-      "current": 6,
+      "current": 3,
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -67,15 +64,13 @@
         "NM1",
         "NM2",
         "NM3",
-        "NM4",
-        "NM5",
-        "HD1",
-        "HD2"
+        "NM4"
       ],
       "current": 0,
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -95,6 +90,7 @@
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -102,18 +98,16 @@
       "size": 18,
       "position": "end",
       "labels": [
-        "DT1",
-        "DT2",
-        "DT3",
         "FM1",
         "FM2",
         "FM3",
         "TB"
       ],
-      "current": 6,
+      "current": 3,
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -124,15 +118,13 @@
         "NM1",
         "NM2",
         "NM3",
-        "NM4",
-        "NM5",
-        "NM6",
-        "NM7"
+        "NM4"
       ],
       "current": 0,
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -152,6 +144,7 @@
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     },
@@ -159,18 +152,16 @@
       "size": 24,
       "position": "end",
       "labels": [
-        "DT3",
-        "DT4",
-        "FM1",
         "FM2",
         "FM3",
         "FM4",
         "TB"
       ],
-      "current": 6,
+      "current": 3,
       "progressRight": 1440,
       "chatLeft": 1470,
       "chatTop": 928,
+      "currentCenter": 960,
       "stage": "holding",
       "changedChatChannels": 0
     }

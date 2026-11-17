@@ -35,13 +35,10 @@ export type ProgressState = 'todo' | 'done' | 'next';
 
 export interface ProgressGroup { mod: string; chips: { entry: PoolEntry; state: ProgressState }[] }
 
-// Keep three neighbours on each side; near either end use the remaining
-// space for slots on the other side instead of shrinking the context.
+// Only real neighbours: missing slots at either end stay empty in the grid.
 export function progressWindow(pool: PoolEntry[], currentId: string | null): PoolEntry[] {
-  const count = 7;
   const index = Math.max(0, pool.findIndex(entry => entry.id === currentId));
-  const start = Math.max(0, Math.min(index - 3, pool.length - count));
-  return pool.slice(start, start + count);
+  return pool.slice(Math.max(0, index - 3), index + 4);
 }
 
 // Consecutive slots of one mod form a group; groups get a wider gap.
