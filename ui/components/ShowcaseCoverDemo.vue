@@ -227,6 +227,9 @@ onUnmounted(stop);
       <header class="showcase-heading">
         <span>ISSUE #57 · 本地预览</span>
         <h1>Showcase 换图过场</h1>
+        <nav class="showcase-navigation" aria-label="过场测试页面切换">
+          <a href="/showcase">返回图池演示</a>
+        </nav>
         <p class="showcase-help">只用于评审美术与时序，不是直播员操作。所有谱面、封面、osu! 画面和 tosu／OBS 信号均为本页模拟。</p>
       </header>
       <section class="cover-demo-group" aria-labelledby="cover-demo-flows">

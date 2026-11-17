@@ -124,6 +124,7 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
         <nav class="showcase-navigation" aria-label="Showcase 页面切换">
           <a href="/control">返回直播控制台</a>
           <a href="/showcase?clean=1" target="_blank" rel="noopener">打开播出画面 ↗</a>
+          <a href="/showcase?cover-demo=1" target="_blank" rel="noopener">测试过场动画 ↗</a>
         </nav>
       </header>
       <p v-if="error || snapshot?.error" class="showcase-error" role="alert">{{ error || snapshot?.error }}</p>
