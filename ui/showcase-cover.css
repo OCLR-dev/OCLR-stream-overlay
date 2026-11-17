@@ -9,6 +9,9 @@
   --cover-ease-in: cubic-bezier(.22, .75, .2, 1);
   --cover-ease-out: cubic-bezier(.55, 0, .75, .25);
   position: absolute; inset: 0; z-index: 3; overflow: hidden; contain: paint; pointer-events: none;
+  /* Leave the original ChatBox and OBS chat source visible without remounting
+     either one. This aperture stays open during entry, hold and reveal. */
+  clip-path: path(evenodd, 'M0 0H1920V1080H0Z M1470 928H1890V1066H1470Z');
 }
 .showcase-cover[data-stage='hidden'] { visibility: hidden; }
 .cover-base { position: absolute; inset: 0; z-index: 0; background: var(--canvas); opacity: 0; }
@@ -116,8 +119,8 @@
 .cover-brand strong { color: var(--ink); font: 800 156px/1 var(--display); letter-spacing: .14em; padding-left: .14em; text-shadow: 0 0 60px #7c3aed80, 0 4px 0 #12082480; }
 .cover-brand .cover-kicker { font-size: 34px; letter-spacing: .6em; padding-left: .6em; }
 
-/* Pool progress in the footer band (x 480–1890), beside the anchored logo. */
-.cover-progress { position: absolute; left: 480px; right: 30px; top: 934px; height: 132px; display: grid; grid-template-rows: auto 1fr; align-content: start; gap: 18px; }
+/* A seven-slot window in the centre footer, leaving Stream Chat on the right. */
+.cover-progress { position: absolute; left: 480px; width: 960px; top: 934px; height: 132px; display: grid; grid-template-rows: auto 1fr; align-content: start; gap: 18px; }
 .cover-progress > header { display: flex; align-items: center; justify-content: space-between; }
 .cover-progress > header b { color: var(--muted); font: 500 22px/1 var(--mono); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
 .cover-progress > header em { color: var(--ink); font-style: normal; }
@@ -132,6 +135,7 @@
 .cover-chip::before { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--mod-bg); content: ''; }
 .cover-chip[data-mod='TB']::before { background: #ffffff59; }
 .cover-chip[data-state='done'] { border-color: color-mix(in srgb, var(--mod-bg) 70%, transparent); background: color-mix(in srgb, var(--mod-bg) 36%, #120a26); color: var(--ink); }
+.cover-chip[data-current]:not([data-state='next']) { border-color: #ded3f5b3; box-shadow: 0 0 0 1px #ded3f533; }
 .cover-chip[data-state='next'] { border-color: #ffffffd9; background: var(--mod-bg); color: var(--mod-ink); box-shadow: 0 0 26px color-mix(in srgb, var(--mod-bg) 62%, transparent); transform: translateY(-5px); animation: cover-chip-stamp calc(240ms * var(--cover-slow)) ease-out both; }
 .cover-chip[data-state='next']::before { display: none; }
 .cover-chip[data-state='next'][data-mod='TB'] { box-shadow: 0 0 0 1px #ffffff8c, 0 0 26px #8b5cf666; }

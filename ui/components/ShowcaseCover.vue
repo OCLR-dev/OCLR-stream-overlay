@@ -4,20 +4,21 @@ import type { PoolEntry } from '../session';
 import { modColorStyle } from '../modColors';
 import {
   COVER_BAND_COUNT, COVER_BAND_FIRST, COVER_BAND_PITCH, COVER_BAND_WIDTH, COVER_TIMING,
-  coverEnterTotal, coverLeaveTotal, progressGroups, titleWeight, type CoverStage,
+  coverEnterTotal, coverLeaveTotal, progressGroups, progressWindow, titleWeight, type CoverStage,
 } from '../showcaseCover';
 import seasonLogo from '../assets/oclr-s11-logo-white.svg';
 import '../showcase-cover.css';
 
 // Issue #57 preview: full-frame curtain for the Showcase transition scene.
-// The holding stage is fully opaque; translucency only exists while the
-// curtain moves. Stage title and season logo are anchored at the exact
+// The holding replay area is fully opaque; the original Stream Chat remains
+// visible through a fixed aperture. Stage title and season logo use the exact
 // Showcase positions so the curtain sweeps under them without a seam.
 const props = withDefaults(defineProps<{
   covered: boolean;
   // Hard cut: the next rep may already be on screen, so no entry animation.
   instant?: boolean;
   next: PoolEntry | null;
+  currentId?: string | null;
   artworkUrl?: string | null;
   pool: PoolEntry[];
   shown: readonly string[];
@@ -26,7 +27,7 @@ const props = withDefaults(defineProps<{
   slow?: number;
   // Review only: freeze one moving stage at a time offset.
   seek?: { stage: 'entering' | 'leaving'; ms: number } | null;
-}>(), { instant: false, artworkUrl: null, stageLabel: '', reduced: false, slow: 1, seek: null });
+}>(), { instant: false, currentId: null, artworkUrl: null, stageLabel: '', reduced: false, slow: 1, seek: null });
 const emit = defineEmits<{ stage: [stage: CoverStage] }>();
 
 const mediaReduced = ref(false);
@@ -78,14 +79,16 @@ const diamonds = Array.from({ length: 34 }, (_, index) => {
 });
 
 const shownSet = computed(() => new Set(props.shown));
-const groups = computed(() => progressGroups(props.pool, shownSet.value, props.next?.id ?? null));
+const progressId = computed(() => props.next?.id ?? props.currentId ?? props.shown.at(-1) ?? null);
+const visiblePool = computed(() => progressWindow(props.pool, progressId.value));
+const groups = computed(() => progressGroups(visiblePool.value, shownSet.value, props.next?.id ?? null));
 const doneCount = computed(() => props.pool.filter(entry => shownSet.value.has(entry.id)).length);
-// Footer track 1410px wide (x 480–1890): 8px between chips, 20px between groups.
+// Centre footer only (x 480–1440); the existing Stream Chat stays on the right.
 const chipWidth = computed(() => {
-  const count = props.pool.length;
+  const count = visiblePool.value.length;
   if (!count) return 0;
   const gaps = (count - 1) * 8 + (groups.value.length - 1) * 12;
-  return Math.max(36, Math.min(96, Math.floor((1410 - gaps) / count)));
+  return Math.min(112, Math.floor((960 - gaps) / count));
 });
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -152,6 +155,7 @@ onUnmounted(() => { clearTimeout(timer); media?.removeEventListener('change', on
           <li v-for="(group, groupIndex) in groups" :key="`${group.mod}-${groupIndex}`">
             <ol class="cover-progress-group">
               <li v-for="chip in group.chips" :key="chip.entry.id" class="cover-chip" :data-state="chip.state" :data-mod="chip.entry.mod"
+                :data-current="chip.entry.id === progressId || undefined" :aria-current="chip.entry.id === progressId ? 'step' : undefined"
                 :style="modColorStyle(chip.entry.mod)" :title="chip.entry.label">{{ chip.entry.label }}</li>
             </ol>
           </li>

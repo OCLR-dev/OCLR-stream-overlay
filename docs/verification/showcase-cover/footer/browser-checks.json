@@ -1,0 +1,182 @@
+{
+  "hold": [],
+  "scenarios": [],
+  "errors": [],
+  "footer": [
+    {
+      "size": 13,
+      "position": "start",
+      "labels": [
+        "NM1",
+        "NM2",
+        "NM3",
+        "NM4",
+        "HD1",
+        "HD2",
+        "HR1"
+      ],
+      "current": 0,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 13,
+      "position": "middle",
+      "labels": [
+        "NM4",
+        "HD1",
+        "HD2",
+        "HR1",
+        "HR2",
+        "DT1",
+        "DT2"
+      ],
+      "current": 3,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 13,
+      "position": "end",
+      "labels": [
+        "HR1",
+        "HR2",
+        "DT1",
+        "DT2",
+        "FM1",
+        "FM2",
+        "TB"
+      ],
+      "current": 6,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 18,
+      "position": "start",
+      "labels": [
+        "NM1",
+        "NM2",
+        "NM3",
+        "NM4",
+        "NM5",
+        "HD1",
+        "HD2"
+      ],
+      "current": 0,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 18,
+      "position": "middle",
+      "labels": [
+        "HD2",
+        "HD3",
+        "HR1",
+        "HR2",
+        "HR3",
+        "DT1",
+        "DT2"
+      ],
+      "current": 3,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 18,
+      "position": "end",
+      "labels": [
+        "DT1",
+        "DT2",
+        "DT3",
+        "FM1",
+        "FM2",
+        "FM3",
+        "TB"
+      ],
+      "current": 6,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 24,
+      "position": "start",
+      "labels": [
+        "NM1",
+        "NM2",
+        "NM3",
+        "NM4",
+        "NM5",
+        "NM6",
+        "NM7"
+      ],
+      "current": 0,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 24,
+      "position": "middle",
+      "labels": [
+        "HD3",
+        "HD4",
+        "HR1",
+        "HR2",
+        "HR3",
+        "HR4",
+        "DT1"
+      ],
+      "current": 3,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    },
+    {
+      "size": 24,
+      "position": "end",
+      "labels": [
+        "DT3",
+        "DT4",
+        "FM1",
+        "FM2",
+        "FM3",
+        "FM4",
+        "TB"
+      ],
+      "current": 6,
+      "progressRight": 1440,
+      "chatLeft": 1470,
+      "chatTop": 928,
+      "stage": "holding",
+      "changedChatChannels": 0
+    }
+  ],
+  "production": {
+    "chatOpaque": 0,
+    "replayTransparent": 0
+  }
+}

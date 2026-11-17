@@ -45,7 +45,7 @@ onUnmounted(() => document.body.classList.remove('is-showcase-cover'));
   <main ref="stage" class="showcase-cover-output" aria-label="Showcase 过场输出">
     <div class="broadcast-canvas" :style="{ transform: `scale(${scale})` }" data-showcase-cover-output>
       <ShowcaseCover :covered="covered" :instant="connection !== 'synced' || snapshot?.transition?.instant !== false"
-        :next="next" :artwork-url="artwork" :pool="snapshot?.pool || []" :shown="snapshot?.transition?.shown || []"
+        :next="next" :current-id="snapshot?.matchedId" :artwork-url="artwork" :pool="snapshot?.pool || []" :shown="snapshot?.transition?.shown || []"
         :stage-label="snapshot?.stageLabel || ''" />
     </div>
   </main>

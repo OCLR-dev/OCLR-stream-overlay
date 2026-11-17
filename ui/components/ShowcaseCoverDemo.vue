@@ -310,7 +310,7 @@ onUnmounted(stop);
               </div>
             </div>
           </div>
-          <ShowcaseCover :covered="covered" :instant="instant" :next="next" :artwork-url="artworkFor(next)" :pool="pool" :shown="shown"
+          <ShowcaseCover :covered="covered" :instant="instant" :next="next" :current-id="clientMap.id" :artwork-url="artworkFor(next)" :pool="pool" :shown="shown"
             stage-label="过场预览" :reduced="reduced" :slow="slow" :seek="seek" @stage="onStage" />
           <footer class="showcase-footer">
             <div class="showcase-logo">

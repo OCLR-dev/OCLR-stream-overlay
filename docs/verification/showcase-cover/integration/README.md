@@ -2,9 +2,11 @@
 
 日期：2026-11-16。main 基于远端 `5a02427`（#58）；已确认美术来自 `preview/showcase-cover` 的 `20b890e`，以 `a261c11` 移入本地 main。
 
+底栏后续已按用户要求改为局部进度并保留右侧弹幕，见 [底栏调整](../footer/README.md)。
+
 ## 最终行为
 
-- 原美术组件 `ShowcaseCover.vue`、`showcase-cover.css` 和 `showcaseCover.ts` 保持原样，包括 8 条斜幕、品牌待机、下一张谱面、进度条、锚点与减少动态效果。
+- 首次迁移时，原美术组件 `ShowcaseCover.vue`、`showcase-cover.css` 和 `showcaseCover.ts` 保持原样，包括 8 条斜幕、品牌待机、下一张谱面、进度条、锚点与减少动态效果。
 - `/showcase?clean=1&layer=cover` 是正式只读输出，通过已有 Showcase SSE 接收服务端过场状态。原评审入口 `/showcase?cover-demo=1` 继续独立。
 - Showcase 顶部的「测试过场动画」可直接打开独立测试页，无需连接 OBS 或 osu!；可点击「正常换图」播放完整流程，或逐步遮挡、换图和揭开。该页使用明确标识的模拟数据。
 - 沿用 #58 的同场景遮挡与回放识别。OBS 最上层新增全画布「OCLR · Showcase 过场美术」浏览器源；原色彩来源保留在其下方，在加载或切换时遮住 1600×800 回放区。游戏与弹幕保持原来源，不改音频和 Program。
