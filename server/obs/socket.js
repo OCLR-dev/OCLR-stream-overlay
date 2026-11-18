@@ -23,7 +23,7 @@ export class ObsSocket {
         const { op, d } = JSON.parse(event.data);
         if (this.closed) return;
         if (op === 0) {
-          const identify = { rpcVersion: 1, eventSubscriptions: 134 }; // Config, Scenes and SceneItems
+          const identify = { rpcVersion: 1, eventSubscriptions: 198 }; // Config, Scenes, Outputs and SceneItems
           if (d.authentication) {
             identify.authentication = sha256(sha256(password + d.authentication.salt) + d.authentication.challenge);
           }
@@ -53,11 +53,17 @@ export class ObsSocket {
 
   send(op, d) { this.socket.send(JSON.stringify({ op, d })); }
 
-  request(requestType, requestData = {}) {
+  request(requestType, requestData = {}, { resetOnTimeout = true } = {}) {
     if (this.closed) return Promise.reject(new ObsError(unavailable));
     const requestId = randomUUID();
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => this.close(), 6000);
+      const timeout = setTimeout(() => {
+        if (resetOnTimeout) this.close();
+        else {
+          this.pending.delete(requestId);
+          reject(new ObsError(`OBS 未及时响应 ${requestType}。`));
+        }
+      }, 6000);
       this.pending.set(requestId, { resolve, reject, timeout });
       try { this.send(6, { requestType, requestId, requestData }); }
       catch { this.close(); }

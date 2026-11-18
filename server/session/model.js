@@ -1156,6 +1156,7 @@ export function transition(state, command, { now = Date.now(), newId: makeId = r
   next.version++;
   next.commandIds.push(command.id); next.commandIds = next.commandIds.slice(-1000);
   next.history.push({ id: command.id, at: new Date(decidedAt(next)).toISOString(), version: next.version, message, source: 'manual',
+    ...(command.type === 'winner' ? { changes: [{ type: 'WinnerConfirmed' }] } : {}),
     bp: (next.bpHistory || []).slice((state.bpHistory || []).length) });
   next.history = next.history.slice(-300);
   return next;
@@ -1258,6 +1259,7 @@ export function observedTransition(state, operation, message, eventId, options =
   next.history.at(-1).changes = operation.type === 'confirm-result'
     ? [{ type: 'ResultConfirmed', attemptId: operation.attemptId, resultId: next.rounds.find(round => round.id === operation.attemptId).resultId,
       winner: next.rounds.find(round => round.id === operation.attemptId).winner, scores: operation.payload.scores }]
+    : operation.type === 'winner-deadline' ? [{ type: 'WinnerConfirmed' }]
     : [{ type: operation.type, attemptId: operation.attemptId ?? null, actionId: operation.actionId ?? null }];
   return next;
 }

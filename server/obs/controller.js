@@ -2,6 +2,8 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
+import { ObsOutputs } from './outputs.js';
+import { RecordingTimeline } from './recording-timeline.js';
 import { syncBrowserAddresses } from './browser-addresses.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
 import { buildShowcase, installShowcaseCover, installShowcaseArtwork, setShowcaseCover, showcaseScene } from './showcase.js';
@@ -25,6 +27,7 @@ export class ObsController {
     this.tail = Promise.resolve();
     this.epoch = 0;
     this.programRevision = 0;
+    this.outputs = new ObsOutputs();
     this.phase = 'off';
     this.error = '';
     this.coverListeners = new Set();
@@ -60,7 +63,12 @@ export class ObsController {
         if (!ports.includes(port)) await this.save({ ...this.settings, overlayPorts: [...ports, port] });
       } catch { this.storageError = 'OBS 地址设置无法保存，请检查本机存储后重启服务。'; }
     }
+    this.recording = new RecordingTimeline(store.file && join(dirname(store.file), 'recording-timelines'), () => {
+      const socket = this.socket;
+      return this.outputs.timestamp(socket, () => socket === this.socket && !socket.closed);
+    });
     this.unsubscribe = store.subscribe(({ session, live }) => {
+      this.recording.observe(session, live?.tosu);
       this.observe(session);
       this.observeShowcaseClient(live?.tosu);
     });
@@ -209,7 +217,8 @@ export class ObsController {
   snapshot() {
     const p = this.profile;
     return { enabled: this.settings.enabled, port: this.settings.port, hasPassword: !!this.settings.password,
-      phase: this.phase, collection: this.collection, program: this.program, scenes: this.scenes,
+      phase: this.phase, collection: this.collection, program: this.program, programRevision: this.programRevision, scenes: this.scenes,
+      stream: this.outputs.stream, record: this.outputs.record, recordingError: this.recording?.status(),
       regular: p.regular, ex: p.ex, follow: p.follow, target: this.target ?? null,
       managed: !!this.managed, lineup: this.managed ? p.preset.lineup : [], ...this.captures,
       streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
@@ -244,6 +253,7 @@ export class ObsController {
     this.collection = null;
     this.replay.reset();
     this.program = null;
+    this.programRevision++;
     this.setScenes([]);
     this.captures = { windows: [], rows: [] };
     clearTimeout(this.scanTimer);
@@ -254,9 +264,9 @@ export class ObsController {
   }
   guard(epoch) { if (epoch !== this.epoch || !this.socket || this.socket.closed) throw new ObsError(changed); }
   caller(epoch) {
-    return async (type, args) => {
+    return async (type, args, options) => {
       this.guard(epoch);
-      const result = await this.socket.request(type, args);
+      const result = await this.socket.request(type, args, options);
       this.guard(epoch);
       return result;
     };
@@ -266,6 +276,7 @@ export class ObsController {
     clearTimeout(this.retryTimer);
     const old = this.socket;
     this.socket = null;
+    this.outputs.reset();
     this.invalidate();
     this.phase = 'off';
     old?.close();
@@ -278,6 +289,7 @@ export class ObsController {
       onEvent: (type, data) => { if (this.socket === socket) this.event(type, data); },
       onClose: message => {
         if (this.socket !== socket) return;
+        this.outputs.reset();
         this.invalidate();
         this.phase = 'offline';
         this.error = message;
@@ -285,11 +297,18 @@ export class ObsController {
         this.retryTimer.unref?.();
       } });
     this.socket = socket;
-    socket.ready.then(() => { if (this.socket === socket && !socket.closed) this.loadCollection(); }, () => {});
+    const current = () => this.socket === socket && !socket.closed;
+    socket.ready.then(() => {
+      if (!current()) return;
+      void this.outputs.initialize(socket, current);
+      this.loadCollection();
+    }, () => {});
   }
 
   event(type, data) {
-    if (type === 'CurrentProgramSceneChanged') {
+    if (type === 'StreamStateChanged' || type === 'RecordStateChanged') {
+      this.outputs.event(type, data);
+    } else if (type === 'CurrentProgramSceneChanged' || (type === 'SceneNameChanged' && data.oldSceneName === this.program)) {
       this.programRevision++;
       this.program = data.sceneName;
       this.refreshShowcase();
@@ -312,9 +331,32 @@ export class ObsController {
   async readProgram(call) {
     const revision = this.programRevision;
     const result = await call('GetCurrentProgramScene');
-    if (revision === this.programRevision) this.program = result.sceneName || result.currentProgramSceneName;
+    const program = result.sceneName || result.currentProgramSceneName;
+    if (revision === this.programRevision && program !== this.program) {
+      this.program = program;
+      this.programRevision++;
+    }
     return this.program;
   }
+  async programFrame() {
+    const { program, programRevision, epoch } = this;
+    if (this.phase !== 'ready' || !program) return null;
+    let image = null;
+    try {
+      const { imageData } = await this.caller(epoch)('GetSourceScreenshot', {
+        sourceName: program, imageFormat: 'jpeg', imageWidth: 640, imageCompressionQuality: 75,
+      }, { resetOnTimeout: false });
+      if (imageData?.startsWith('data:image/jpeg;base64,')) image = imageData;
+    } catch {}
+    if (this.phase !== 'ready' || epoch !== this.epoch || programRevision !== this.programRevision) return null;
+    return { program, programRevision, image };
+  }
+
+  async markRecording(matchId) {
+    if (!await this.recording.manual(matchId)) throw new ObsError('录像未在进行，未添加打点。');
+    return this.snapshot();
+  }
+
   loadCollection() {
     this.invalidate();
     const epoch = this.epoch;
@@ -440,6 +482,7 @@ export class ObsController {
   }
 
   command(input) {
+    if (input.action === 'mark-recording') return this.markRecording(input.matchId);
     const epoch = this.epoch;
     return this.queue(async () => {
       if (this.closed) throw new ObsError(changed);

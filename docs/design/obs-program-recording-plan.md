@@ -1,6 +1,6 @@
 # 控制台 OBS 节目画面与录像打点
 
-**待实施。** 给 GPT 6.2 Sol 的实施方案。使用者是比赛当天临时上手的志愿导播。两项功能都从比赛控制台进入。
+已实现。导播操作见[比赛现场手册](../main-operator-contract.md#obs-节目画面与录像打点)。
 
 ## 1. 在比赛控制台看 OBS 当前节目
 
@@ -24,7 +24,7 @@
 
 | 标记 | 触发时机 |
 | --- | --- |
-| 谱面开打 | 自动或人工开打时，用新 `runId` 识别本次开打，显示 Slot 或曲名。自由操作时若没有本局记录，沿用服务端已连续观察到的同房间「准备 → Playing」标记房间谱面，仅写录像时间轴。两种来源对应同一次开打时只记一条。 |
+| 谱面开打 | 以服务端连续观察到的同房间「准备 → Playing」为准。本局存在时按局次与 `runId` 去重并显示 Slot。自由操作没有本局记录时按本次 room Playing 标记房间谱面。提前手动开打或切到 Playing 不触发打点。 |
 | 重赛开打 | 带 `replayOf` 的局次实际开打。这个时刻只写一条「重赛开打」，方便剪辑直接跳到游戏。 |
 | Winner／全场平局 | 现有比赛流程确认全场结果时。覆盖人工确认、Winner 倒计时完成、表演赛平局。单纯切到 Winner 页或取消倒计时均不触发。 |
 | 精彩时刻 | 导播点按钮时。带上当前已知谱面，一键完成。 |
@@ -40,6 +40,10 @@
 3. **关掉控制台也能打点。** 关闭控制台后触发一次服务端开打，再打开应只有一条。自由操作下，直接接入 Playing 时没有开打标记，随后完整观察到的一次开打有一条。模拟 OBS 暂不可用时比赛仍能正常推进。扩展现成的 `test/obs-fixture.js` 验证这些路径。
 4. 运行相关 OBS／会话测试及 `npm run build`，检查 1440px 和 390px 控制台里的预览、返场和复制操作。交付说明分别列出自动化检查结果与实际完成的 OBS 录制验证。
 
-从包含本方案与本轮文档整理的提交创建功能工作树，衔接主线后续改动。动手前读项目 `AGENTS.md`、`README.md`、`DESIGN.md` 及其中关联的 UI 修改说明。工作量集中在现有 OBS 连接、比赛订阅和控制台；每项新增检查都应能指出它避免的具体错误。
+## 实测结果
+
+- `npm test` 570 项通过，`npm run build` 通过。打点回归包含提前操作后等待游戏开打、同图重赛、无本局记录时的房间开打、中途接入、关闭网页、暂停录像、停录再开、重连、重启恢复、结果确认和平局。
+- Chrome 在 1440px 和 390px 验证了节目缩略图、返场、断开后的 Overlay 预览、手动标记和复制时间轴。
+- 用 macOS OBS 33.0.0、色卡和模拟游戏房间信号试录。工作室模式下 Preview 显示比赛、Program 显示休息，缩略图显示休息色卡。返场后场景名和缩略图更新为比赛。停录后从控制台复制时间轴，在实际 MP4 的 `00:00:02` 和 `00:00:05` 分别定位到红色重赛画面和绿色精彩画面。
 
 协议依据见 [Program 场景](https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#getcurrentprogramscene)、[场景截图](https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#getsourcescreenshot)和[录像状态与时间码](https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#getrecordstatus)。
