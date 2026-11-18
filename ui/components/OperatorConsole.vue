@@ -6,6 +6,8 @@ import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
 import ObsSettings from './ObsSettings.vue';
+import ObsRecording from './ObsRecording.vue';
+import { useObsProgram } from '../obsProgram';
 import { useObsControl } from '../obsControl';
 import MapActionPopover from './MapActionPopover.vue';
 import ControlSelect from './ControlSelect.vue';
@@ -223,6 +225,8 @@ const settingContexts = new Map<string, string | null>();
 const settingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let drainingSettings = false;
 const diagnostics = ref(false);
+const { area: programArea, connected: obsConnected, image: programImage, message: programMessage,
+  streamLabel, recordLabel } = useObsProgram(obs);
 const adjustments = ref(false);
 watch([settings, diagnostics, () => s.value?.warmup], closePoolMenu);
 const incidentOpen = ref(false);
@@ -739,7 +743,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <div v-if="s.warmup" class="operator-action-stack">
               <h3>热身实时队分</h3>
               <div class="operator-two"><p>{{ names.a }}<br><strong>{{ teamScore(roomScores?.left) }}</strong></p><p>{{ names.b }}<br><strong>{{ teamScore(roomScores?.right) }}</strong></p></div>
-              <p>热身仅影响显示，比赛记录与房间观测继续。可在观众预览下方切换画面。</p>
+              <p>热身仅影响显示，比赛记录与房间观测继续。可在预览下方切换画面。</p>
             </div>
             <div v-else-if="panel === 'waiting'" class="operator-action-stack">
               <div class="operator-two"><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-team-status" :data-team="team"><h3>{{ names[team] }}</h3><label class="operator-check"><input type="checkbox" :checked="s.arrived[team]" :disabled="disabled" :data-unavailable="connection !== 'synced'" @change="run('arrival', { team, arrived: !s.arrived[team], ready: false })">已到场</label><label class="operator-check"><input type="checkbox" :checked="s.ready[team]" :disabled="disabled || !s.arrived[team]" :data-unavailable="connection !== 'synced' || !s.arrived[team]" @change="run('arrival', { team, arrived: true, ready: !s.ready[team] })">已就绪</label></div></div>
@@ -850,7 +854,27 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             </div>
           </section>
           <aside class="operator-side">
-            <section class="operator-preview"><div class="operator-section-head"><h2>观众正在看</h2><span>{{ sceneLabels[s.scene as Scene] }}</span></div><iframe ref="preview" src="/overlay" title="观众画面预览" @load="sharePreview"></iframe>
+            <section class="operator-preview">
+              <div class="operator-section-head">
+                <h2>{{ obsConnected ? 'OBS 节目画面' : 'Overlay 预览' }}</h2>
+                <span>{{ obsConnected ? obs.state?.program : sceneLabels[s.scene as Scene] }}</span>
+              </div>
+              <div ref="programArea">
+                <div v-if="obsConnected" class="operator-program-frame">
+                  <img v-if="programImage" :key="obs.state?.programRevision" :src="programImage" :alt="`OBS 节目场景 · ${obs.state?.program}`">
+                  <span v-else>{{ programMessage }}</span>
+                </div>
+                <iframe v-else ref="preview" src="/overlay" title="Overlay 预览" @load="sharePreview"></iframe>
+              </div>
+              <div v-if="obs.state?.enabled" class="operator-inline operator-program-status">
+                <template v-if="obsConnected">
+                  <span>{{ streamLabel }}</span><span>{{ recordLabel }}</span>
+                  <button v-if="obs.canReturn" :disabled="!!obs.pending" @click="obs.act('return')">切回当前比赛布局</button>
+                </template>
+                <span v-else role="status">{{ obs.status }}</span>
+                <span v-if="obs.error || obs.state.error" class="operator-error" role="alert">{{ obs.error || obs.state.error }}</span>
+              </div>
+              <ObsRecording :obs="obs" :match-id="s.id" />
       <nav class="operator-scenes" aria-label="一键切换播出画面">
         <span>切换画面 · Alt+1 至 Alt+5</span><button v-for="[scene, label] in scenes" :key="scene" :disabled="disabled" :data-unavailable="connection !== 'synced'" :aria-pressed="s.scene === scene" @click="display(scene)">{{ label }}</button>
       </nav>
@@ -882,11 +906,6 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <span>剩余次数</span><div v-for="team in (['a', 'b'] as const)" :key="team" class="operator-ex-team" :data-team="team"><strong>{{ names[team] }}</strong><button :aria-label="`${names[team]} EX 次数减一`" :disabled="disabled || s.ex.remaining[team] <= 0" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] <= 0" @click="adjustExCount(team, -1)">−</button><output :aria-label="`${names[team]} EX 剩余次数`">{{ s.ex.remaining[team] }}</output><button :aria-label="`${names[team]} EX 次数加一`" :disabled="disabled || s.ex.remaining[team] >= 2" :data-unavailable="connection !== 'synced' || s.ex.remaining[team] >= 2" @click="adjustExCount(team, 1)">＋</button></div>
           </div>
           <p id="ex-quick-hint" class="operator-hint">{{ exHint }}</p>
-        </section>
-        <section v-if="obs.state?.enabled" class="operator-inline" aria-label="OBS 实际播出">
-          <span role="status">{{ obs.status }}</span>
-          <span v-if="obs.error || obs.state.error" class="operator-error" role="alert">{{ obs.error || obs.state.error }}</span>
-          <button v-if="obs.canReturn" :disabled="!!obs.pending" @click="obs.act('return')">切回当前比赛布局</button>
         </section>
           </aside>
         </div>

@@ -10,6 +10,7 @@ import { ObsSocket } from '../server/obs/socket.js';
 import { capture, exPositions, presetScenes, slots } from '../server/obs/presets.js';
 import { createOverlayServer } from '../server/app.js';
 import { SessionStore } from '../server/session/store.js';
+import { newCustomSession } from '../server/session/model.js';
 import { clientWindow, Studio } from './obs-fixture.js';
 
 const { regular, ex } = presetScenes;
@@ -44,7 +45,7 @@ test('OBS WebSocket identifies using the v5 challenge, correlates RPCs and disca
   const socket = new ObsSocket({ port: 4455, password: 'supersecretpassword', WebSocketImpl: Transport,
     onEvent: (...args) => events.push(args), onClose() {} });
   wire.push(0, { authentication: { salt: 'lM1GncleQOaCu9lT1yeUZhFYnqhsLLP1G5lAGo3ixaI=', challenge: '+IxH4CnCiqpX1rM9scsNynZzbOe4KhDeYcTNS3PDaeY=' } });
-  assert.deepEqual(wire.sent[0], { op: 1, d: { rpcVersion: 1, eventSubscriptions: 6, authentication: '1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=' } });
+  assert.deepEqual(wire.sent[0], { op: 1, d: { rpcVersion: 1, eventSubscriptions: 70, authentication: '1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=' } });
   wire.push(2, { negotiatedRpcVersion: 1 }); await socket.ready;
   const one = socket.request('GetSceneList'), two = socket.request('GetCurrentProgramScene');
   const reply = (index, data) => wire.push(7, { requestId: wire.sent[index].d.requestId, requestStatus: { result: true }, responseData: data });
@@ -661,7 +662,7 @@ test('modern OBS scene identities protect a manually replaced same-name scene un
 });
 
 test('OBS controls accept same-origin JSON only and never return the configured password', async t => {
-  const { obs, store } = await setup(t);
+  const { obs, store, studio } = await setup(t);
   const config = { port: 0, obs };
   const server = createOverlayServer(config, undefined, undefined, store);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); config.port = server.address().port;
@@ -672,5 +673,286 @@ test('OBS controls accept same-origin JSON only and never return the configured 
   assert.equal((await fetch(url, { ...options, headers: { ...options.headers, Origin: 'https://example.org' } })).status, 403);
   const response = await fetch(url, { ...options, headers: { ...options.headers, Origin: origin } });
   assert.equal(response.status, 200); assert.doesNotMatch(await response.text(), /test-only-password/);
-  assert.doesNotMatch(await (await fetch(url)).text(), /test-only-password/);
+  await until(() => obs.phase === 'ready');
+  const status = await fetch(url);
+  assert.doesNotMatch(await status.text(), /test-only-password|data:image/);
+  assert.ok(!studio.log.some(request => request.type === 'GetSourceScreenshot'));
+  const screenshot = await fetch(url + '/program');
+  assert.equal(screenshot.headers.get('cache-control'), 'no-store');
+  assert.match((await screenshot.json()).image, /^data:image\/jpeg;/);
+  assert.equal((await fetch(url + '/program', { ...options, headers: { ...options.headers, Origin: origin } })).status, 405);
+  assert.equal((await fetch(url + '/program?source=预览')).status, 400);
+  assert.equal((await fetch(url + '/program', { headers: { Origin: 'https://example.org' } })).status, 403);
+  assert.equal((await (await fetch(url + '/recording')).json()).matchId, store.state.id);
+});
+
+test('Program screenshot names its scene and drops old captures after returning or disconnecting', async t => {
+  const { obs, studio } = await setup(t);
+  studio.scenes.set('比赛', []);
+  studio.scenes.set('EX', []);
+  studio.preview = '比赛';
+  studio.stream.outputActive = true;
+  await ready(obs);
+  await obs.command({ action: 'bind', layout: 'regular', name: '比赛' });
+  await obs.command({ action: 'bind', layout: 'ex', name: 'EX' });
+
+  const frame = await obs.programFrame();
+  const decode = frame => Buffer.from(frame.image.split(',')[1], 'base64').toString();
+  assert.equal(frame.program, '休息');
+  assert.equal(decode(frame), frame.program);
+  studio.preview = 'EX';
+  studio.event('CurrentPreviewSceneChanged', { sceneName: 'EX' });
+  assert.equal((await obs.programFrame()).program, '休息');
+  assert.equal(obs.snapshot().stream, 'active');
+  assert.equal(obs.snapshot().record, 'off');
+  assert.equal(obs.snapshot().image, undefined);
+  studio.event('StreamStateChanged', { outputState: 'OBS_WEBSOCKET_OUTPUT_RECONNECTING' });
+  assert.equal(obs.snapshot().stream, 'reconnecting');
+
+  for (const action of ['return', 'disconnect']) {
+    let release;
+    studio.before = type => {
+      if (type === 'GetSourceScreenshot') return new Promise(resolve => { release = resolve; });
+    };
+    const stale = obs.programFrame();
+    await obs.command({ action });
+    release();
+    assert.equal(await stale, null);
+    delete studio.before;
+    if (action === 'return') {
+      const current = await obs.programFrame();
+      assert.equal(current.program, '比赛');
+      assert.equal(decode(current), current.program);
+      assert.ok(current.programRevision > frame.programRevision);
+      assert.equal(studio.preview, 'EX');
+      studio.failNext = 'GetSourceScreenshot';
+      assert.deepEqual(await obs.programFrame(), { ...current, image: null });
+    }
+  }
+  assert.equal(obs.snapshot().program, null);
+  assert.equal(await obs.programFrame(), null);
+});
+
+const markers = obs => obs.recording.snapshot().groups.flatMap(group => group.markers.map(m => [m.time, m.label]));
+const prepare = act => act('prepare-round', { entryId: 'hd2', pickedBy: 'a' });
+const practicePool = [{ id: 'hd2', beatmapId: 102, label: 'HD2', mod: 'HD' }];
+const practiceSetup = act => act('setup', { title: '录像测试', stage: 'group', mode: '4v4', source: '4x3', pool: practicePool,
+  teams: { a: { name: '左队待设置', roster: [] }, b: { name: '右队待设置', roster: [] } } });
+const practiceFrame = (store, ipcState) => store.frame({ beatmap: { id: 102 }, tourney: { ipcState,
+  teams: { left: '左队待设置', right: '右队待设置' }, totalScore: { left: 0, right: 0 },
+  players: [{ side: 'left', osuId: 1, score: 0 }, { side: 'right', osuId: 2, score: 0 }],
+} });
+
+test('recording uses OBS time for actual starts, replay and confirmation with the console closed', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-timeline-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'session.json');
+  const { obs, store, studio, act } = await setup(t, { store: new SessionStore({ file }) });
+  const matchId = store.state.id;
+  await practiceSetup(act);
+  await act('bp');
+  await prepare(act);
+  studio.record = { outputActive: true, outputPaused: false, outputDuration: 150000 };
+  await ready(obs);
+  await practiceFrame(store, 1);
+  await act('display', { scene: 'playing' });
+  await act('start');
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), []);
+  studio.record.outputDuration = 198421;
+  await practiceFrame(store, 3);
+  store.emit();
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [['00:03:18', 'HD2 开打']]);
+  studio.record.outputDuration = 342300;
+  await obs.command({ action: 'mark-recording', matchId });
+
+  await act('referee-replay', { reason: '裁判要求重赛' });
+  await obs.recording.tail;
+  assert.equal(markers(obs).length, 2);
+  await practiceFrame(store, 1);
+  studio.record.outputDuration = 426897;
+  await practiceFrame(store, 3);
+  const originalRun = store.state.rounds.at(-1).runId;
+  store.emit();
+  await obs.recording.tail;
+  assert.equal(store.state.rounds.at(-1).runId, originalRun);
+  assert.deepEqual(markers(obs).at(-1), ['00:07:06', 'HD2 重赛开打']);
+
+  await act('set-series', { a: 6, b: 4, reason: '核对比分' });
+  await act('display', { scene: 'victory' });
+  await act('winner-soon', { team: 'a' });
+  await act('cancel-winner');
+  await store.confirmWinnerNow();
+  assert.equal(markers(obs).length, 3);
+
+  studio.recording('PAUSED', 2900000);
+  assert.equal(obs.snapshot().record, 'paused');
+  await assert.rejects(obs.command({ action: 'mark-recording', matchId }), /录像未在进行/);
+  await act('winner', { team: 'a' });
+  studio.recording('RESUMED', 3020000);
+  store.emit();
+  await obs.recording.tail;
+  assert.equal(markers(obs).length, 3);
+
+  studio.recording('STOPPING');
+  studio.recording('STOPPED');
+  studio.recording('STARTING', 0);
+  studio.recording('STARTED', 3500);
+  await obs.command({ action: 'mark-recording', matchId });
+  assert.deepEqual(obs.recording.snapshot().groups.map(g => g.title), ['录像 1', '录像 2']);
+  assert.equal(obs.recording.snapshot().groups[1].markers[0].time, '00:00:03');
+
+  studio.socket.close();
+  await assert.rejects(obs.command({ action: 'mark-recording', matchId }), /录像未在进行/);
+  await until(() => obs.phase === 'ready');
+  studio.record.outputDuration = 9100;
+  await obs.command({ action: 'mark-recording', matchId });
+  assert.equal(obs.recording.snapshot().groups[2].title, '录像 3 · 重新接入');
+  const beforeRestart = obs.recording.snapshot();
+  obs.close();
+  const reopened = await SessionStore.open(file);
+  const restored = await setup(t, { store: reopened, studio });
+  await restored.obs.recording.tail;
+  assert.deepEqual(restored.obs.recording.snapshot(), beforeRestart);
+  await restored.act('next-match');
+  await restored.obs.recording.tail;
+  assert.deepEqual(markers(restored.obs), []);
+  assert.equal(JSON.parse(await readFile(join(dir, 'recording-timelines', matchId + '.json'))).groups.length, 3);
+});
+
+test('a newly observed room start and its later recorded run share a single marker', async t => {
+  const { obs, store, studio, act } = await setup(t);
+  await practiceSetup(act);
+  studio.recording('STARTED', 10000);
+  await ready(obs);
+  const frame = ipcState => store.frame({ beatmap: { id: 102 }, tourney: { ipcState, teams: { left: '红', right: '蓝' },
+    players: [], totalScore: { left: 0, right: 0 } } });
+  await frame(3);
+  store.emit();
+  await store.sourceStatus('disconnected');
+  await frame(3);
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), []);
+
+  await frame(1);
+  await frame(0);
+  await frame(3);
+  await frame(3);
+  await act('bp');
+  await prepare(act);
+  await act('start');
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [['00:00:10', 'HD2 开打']]);
+});
+
+test('Winner markers follow committed manual, deadline and exhibition draw events', async t => {
+  const first = await setup(t);
+  await ready(first.obs);
+  first.studio.recording('STARTED', 3260333);
+  await first.act('set-series', { a: 6, b: 4, reason: '核对比分' });
+  await first.act('display', { scene: 'victory' });
+  await first.act('winner-soon', { team: 'a' });
+  await first.act('cancel-winner');
+  await first.obs.recording.tail;
+  assert.deepEqual(markers(first.obs), []);
+  await first.act('winner-soon', { team: 'a' });
+  first.store.state.winnerPending.endsAt = Date.now() - 1;
+  await first.store.confirmWinnerNow();
+  await first.act('winner', { team: 'a' });
+  await first.obs.recording.tail;
+  assert.deepEqual(markers(first.obs), [['00:54:20', 'Winner · 左队待设置 6–4']]);
+
+  const draw = await setup(t);
+  await draw.act('import-streaming', {
+    title: '表演赛', stage: 'exhibition', mode: '1v1', source: '4x3', pool: practicePool,
+    teams: { a: { name: '红', roster: [] }, b: { name: '蓝', roster: [] } },
+    exhibition: { roundName: '表演赛', series: { type: 'fixed_maps', count: 4, allowDraw: true }, tiedMapPolicy: 'count_as_draw', autoResults: false },
+  });
+  await draw.act('set-series', { a: 2, b: 2, reason: '核对比分' });
+  await ready(draw.obs);
+  draw.studio.recording('STARTED', 30215);
+  await draw.act('display', { scene: 'victory' });
+  await draw.act('winner', { team: null });
+  await draw.obs.recording.tail;
+  assert.deepEqual(markers(draw.obs), [['00:00:30', '全场平局 2–2']]);
+});
+
+test('a delayed time read never labels a later recording or prevents continuing the match', async t => {
+  const { obs, store, studio, act } = await setup(t);
+  await ready(obs);
+  await practiceSetup(act);
+  await act('bp');
+  await prepare(act);
+  studio.recording('STARTED', 10000);
+  await practiceFrame(store, 1);
+  let release;
+  studio.before = type => {
+    if (type === 'GetRecordStatus') return new Promise(resolve => { release = resolve; });
+  };
+  await practiceFrame(store, 3);
+  studio.recording('STOPPED');
+  studio.recording('STARTED', 0);
+  delete studio.before;
+  release();
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), []);
+  assert.equal(store.state.rounds.at(-1).status, 'playing');
+  studio.failNext = 'GetRecordStatus';
+  await assert.rejects(obs.command({ action: 'mark-recording', matchId: store.state.id }), /读不到 OBS 录像时间/);
+});
+
+test('a tosu replay earns one start marker, even when saving the timeline fails', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-write-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const { obs, store, studio, act } = await setup(t, { store: new SessionStore({ file: join(dir, 'session.json') }) });
+  await practiceSetup(act);
+  await act('bp');
+  await prepare(act);
+  await ready(obs);
+  studio.recording('STARTED', 4123);
+  const frame = ipc => practiceFrame(store, ipc);
+  const directory = join(dir, 'recording-timelines');
+  await writeFile(directory, '阻止写入');
+  await frame(1);
+  await frame(3);
+  await obs.recording.tail;
+  assert.equal(store.state.rounds.at(-1).status, 'playing');
+  assert.deepEqual(markers(obs), []);
+  assert.match(obs.snapshot().recordingError.message, /未保存/);
+  await rm(directory);
+  await act('referee-replay', { reason: '裁判要求重赛' });
+  studio.record.outputDuration = 9750;
+  await frame(1);
+  await frame(3);
+  await frame(3);
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [['00:00:09', 'HD2 重赛开打']]);
+  assert.equal(obs.snapshot().recordingError, null);
+});
+
+test('a custom BO9 records a CA replay and its own series winner', async t => {
+  const { obs, studio, store, act } = await setup(t, { store: new SessionStore({ state: newCustomSession() }) });
+  await act('setting', { field: 'bestOf', value: 9 });
+  await act('setting', { field: 'stageName', value: '邀请赛' });
+  await act('setting', { field: 'pool', value: [{ id: 'ca1', beatmapId: 102, label: 'CA1', mod: 'CA' }] });
+  await act('bp');
+  await act('prepare-round', { entryId: 'ca1', pickedBy: 'a' });
+  await ready(obs);
+  studio.recording('STARTED', 10000);
+  await practiceFrame(store, 1);
+  await practiceFrame(store, 3);
+  await act('referee-replay', { reason: '裁判要求重赛' });
+  studio.record.outputDuration = 20500;
+  await practiceFrame(store, 1);
+  await practiceFrame(store, 3);
+  await act('finish-round');
+  studio.record.outputDuration = 35100;
+  await act('set-series', { a: 5, b: 2, reason: '核对比分' });
+  const team = store.state.match.teams.a.name;
+  await act('winner', { team: 'a' });
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [
+    ['00:00:10', 'CA1 开打'], ['00:00:20', 'CA1 重赛开打'], ['00:00:35', `Winner · ${team} 5–2`],
+  ]);
 });

@@ -1,8 +1,14 @@
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue';
 
+type StreamStatus = 'off' | 'active' | 'starting' | 'stopping' | 'reconnecting';
+type RecordStatus = 'off' | 'active' | 'starting' | 'stopping' | 'paused';
+interface ProgramFrame { program: string; programRevision: number; image: string | null }
+
 interface ObsStatus {
   enabled: boolean; port: number; hasPassword: boolean; phase: 'off' | 'connecting' | 'offline' | 'ready';
-  collection: string | null; program: string | null; scenes: string[]; regular: string; ex: string;
+  collection: string | null; program: string | null; programRevision: number;
+  stream: StreamStatus | null; record: RecordStatus | null;
+  recordingError: { matchId: string; message: string } | null; scenes: string[]; regular: string; ex: string;
   follow: boolean; target: 'regular' | 'ex' | null; managed: boolean; lineup: string[]; error: string;
   streamChat: 'off' | 'pending' | 'configured';
   showcase: boolean;
@@ -14,6 +20,7 @@ export function useObsControl() {
   const state = shallowRef<ObsStatus | null>(null);
   const pending = ref('');
   const error = ref('');
+  const markError = ref('');
   const unreachable = ref(false);
   const measurement = ref('');
   let generation = 0;
@@ -37,7 +44,8 @@ export function useObsControl() {
     if (pending.value) return false;
     generation++;
     pending.value = action;
-    error.value = '';
+    const actionError = action === 'mark-recording' ? markError : error;
+    actionError.value = '';
     try {
       const response = await fetch('/api/obs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, collection: state.value?.collection, ...fields }) });
@@ -49,9 +57,23 @@ export function useObsControl() {
       unreachable.value = false;
       return true;
     } catch (err) {
-      error.value = err instanceof Error && /[\u3400-\u9fff]/.test(err.message) ? err.message : '本机服务未响应，请核对 OBS 后重试。';
+      actionError.value = err instanceof Error && /[\u3400-\u9fff]/.test(err.message) ? err.message : '本机服务未响应，请核对 OBS 后重试。';
       return false;
     } finally { generation++; pending.value = ''; }
+  }
+  async function readProgram(signal: AbortSignal): Promise<ProgramFrame | null> {
+    const revision = generation;
+    const response = await fetch('/api/obs/program', { signal });
+    if (!response.ok) throw new Error();
+    const frame: ProgramFrame | null = await response.json();
+    const current = state.value;
+    if (signal.aborted || !alive || revision !== generation || current?.phase !== 'ready' ||
+        !frame || frame.programRevision < current.programRevision) return null;
+    if (frame.programRevision !== current.programRevision) {
+      generation++;
+      state.value = { ...current, program: frame.program, programRevision: frame.programRevision };
+    }
+    return frame;
   }
   const status = computed(() => {
     const s = state.value;
@@ -68,6 +90,6 @@ export function useObsControl() {
   });
   onMounted(refresh);
   onUnmounted(() => { alive = false; clearTimeout(timer); });
-  return reactive({ state, pending, error, status, canReturn, measurement, act });
+  return reactive({ state, pending, error, markError, status, canReturn, measurement, unreachable, act, readProgram });
 }
 export type ObsControl = ReturnType<typeof useObsControl>;
