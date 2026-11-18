@@ -1,0 +1,54 @@
+{
+  "synthetic": true,
+  "firstPickPreparedWithoutMapClick": true,
+  "results": [
+    {
+      "path": "/overlay",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "source": "official-preview",
+      "text": "CS 5.2AR 10OD 10HP 7BPM 120TIME 0:06HR 参数预览",
+      "star": "7.21",
+      "chatTime": "12:34:--",
+      "note": [],
+      "box": {
+        "x": 578,
+        "y": 1024,
+        "width": 764,
+        "height": 42
+      }
+    },
+    {
+      "path": "/overlay",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "source": "tosu",
+      "text": "CS 5.2AR 10OD 10HP 7BPM 120TIME 0:06",
+      "star": "7.21",
+      "chatTime": "12:34:--",
+      "note": [],
+      "box": {
+        "x": 578,
+        "y": 1024,
+        "width": 764,
+        "height": 42
+      }
+    },
+    {
+      "path": "/control",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "note": [
+        "游戏音频：已绑定 osu!tourney Client 0"
+      ]
+    },
+    {
+      "path": "/control",
+      "width": 390,
+      "scrollWidth": 390,
+      "note": [
+        "游戏音频：已绑定 osu!tourney Client 0"
+      ]
+    }
+  ]
+}

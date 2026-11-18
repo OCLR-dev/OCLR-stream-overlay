@@ -38,21 +38,8 @@ watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod,
   void load();
 }, { immediate: true, flush: 'sync' });
 const parameters = computed(() => mapParameterDisplay(view.value.currentMap?.beatmapId ?? null, view.value.parameterMode, view.value.mapParameters, metadata.value, view.value.currentMap?.mod || null));
-// Keep the big star block on exactly the same value as the middleware star
-// calculation: simulation uses the mod-matched official result, live play tosu.
-const starValue = computed(() => {
-  const id = view.value.currentMap?.beatmapId ?? null;
-  if (!id || id <= 0) return null;
-  if (view.value.parameterMode === 'official-test') {
-    const source = metadata.value;
-    const matched = source?.beatmapId === id && source.source === 'osu-file' && source.calculation?.mod === testModForCategory(view.value.currentMap?.mod || null) ? source.calculation : null;
-    return matched?.stars ?? null;
-  }
-  const live = view.value.mapParameters;
-  return live?.id === id ? live.stats?.stars?.total ?? null : null;
-});
 const star = computed(() => parameters.value.rangeMode
-  ? starRatingRangeDisplay(view.value.mapParameters?.stats?.ranges?.stars) : starRatingDisplay(starValue.value));
+  ? starRatingRangeDisplay(view.value.mapParameters?.stats?.ranges?.stars) : starRatingDisplay(parameters.value.stars));
 // Black ink needs no shadow: it would only muddy the text. The star and the
 // pool-position block both inherit their ink from the middleware colours.
 const isBlackInk = (color: string | null | undefined) => {
@@ -83,11 +70,12 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
         <span class="map-sub" :title="mapDifficulty">{{ mapDifficulty }}</span>
       </div>
     </div>
-    <div class="map-params" :data-range="parameters.rangeMode" :data-compact="compactParameters" :aria-label="parameters.rangeMode ? '谱面参数：各选手实际数值范围，相同值合并显示' : '谱面参数'">
+    <div class="map-params" :data-source="parameters.source" :data-range="parameters.rangeMode" :data-compact="compactParameters" :aria-label="parameters.rangeMode ? '谱面参数：各选手实际数值范围，相同值合并显示' : '谱面参数'">
       <span v-for="param in parameterRows" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
-      <div v-if="view.ex || parameters.rangeMode || view.mapRule" class="map-status-slot">
+      <div v-if="view.ex || parameters.rangeMode || view.mapRule || parameters.source === 'official-preview'" class="map-status-slot">
         <span v-if="view.ex" class="map-chip" data-map-ex data-format="ex" :data-ex-team="state.exTeam" :title="view.exLabel" :aria-label="view.exLabel">{{ view.exLabel }}</span>
         <span v-if="parameters.rangeMode" class="map-range-note">选手参数范围</span>
+        <span v-if="parameters.source === 'official-preview'" class="map-range-note">{{ parameters.mod }} 参数预览</span>
         <ScrollingText v-if="view.mapRule" class="map-rule" data-map-rule :text="view.mapRule" :title="view.mapRule" />
       </div>
     </div>

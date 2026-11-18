@@ -4,6 +4,7 @@
 
 | 主题 | 当前主线可用的功能 | 记录 |
 | --- | --- | --- |
+| 表演赛现场修复 | 固定 MOD 准备期参数预览、首张 Pick 跟随、OBS Client 0 音频 | [表演赛调查与验证](../verification/showmatch-2026-11-15/README.md) |
 | OBS 节目画面与录像打点 | 比赛现场查看 Program 和返场。录制中自动打点，停录后复制时间轴 | [操作手册](../main-operator-contract.md#obs-节目画面与录像打点) · [实施与验收](obs-program-recording-plan.md) |
 | 决胜图 | 正赛到达决胜比分后，单独准备本场唯一 TB；表演赛按其规则和裁判决定操作 | [TB 验收](../verification/tiebreaker/README.md) |
 | BP 与操作提示 | 已确认的 Ban/Pick 跟随比赛，当前步骤显示下一项可做的操作；准备图与房间谱面不同时可人工纠正 | [当前操作约定](../main-operator-contract.md) |

@@ -956,3 +956,129 @@ test('a tosu replay earns one start marker, even when saving the timeline fails'
   assert.deepEqual(markers(obs), [['00:00:09', 'HD2 重赛开打']]);
   assert.equal(obs.snapshot().recordingError, null);
 });
+
+const applicationAudio = 'OCLR · osu!tourney 音频';
+const applicationKind = 'wasapi_process_output_capture';
+const gameAudio = studio => studio.inputs.get(applicationAudio);
+
+test('Windows captures Client 0 through one shared application source and retains it when EX hides A1', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind); studio.useUuids = true;
+  await ready(obs); await obs.command({ action: 'create' });
+  const input = gameAudio(studio);
+  assert.equal(input.inputKind, applicationKind);
+  assert.deepEqual(input.inputSettings, { window: clientWindow(0).itemValue, priority: 1 });
+  assert.equal(studio.inputs.has(desktop), false);
+  assert.equal(obs.snapshot().audio.bound, true);
+  assert.match(obs.snapshot().audio.status, /Client 0/);
+  for (const scene of [regular, ex]) {
+    const items = studio.scenes.get(scene).filter(item => item.sourceUuid === input.inputUuid);
+    assert.equal(items.length, 1); assert.equal(items[0].sceneItemEnabled, true); assert.equal(items[0].sceneItemLocked, true);
+  }
+  for (const slot of slots) assert.equal(studio.inputs.get(capture(slot)).inputSettings.capture_audio, false);
+  await obs.command({ action: 'lineup', position: 'A1', slot: 'A4' });
+  assert.equal(current(studio, ex, 'A1').sceneItemEnabled, false);
+  assert.equal(studio.scenes.get(ex).find(item => item.sourceName === applicationAudio).sceneItemEnabled, true);
+  const before = writes(studio).length;
+  await obs.command({ action: 'scan' }); await obs.command({ action: 'create' });
+  assert.equal(writes(studio).length, before);
+  assert.equal((await obs.command({ action: 'measure' })).measurements.some(item => item.input === applicationAudio), false);
+});
+
+test('Windows migrates only its owned desktop items, leaves operator mixer sources intact and disables video audio', async t => {
+  const { obs, studio } = await setup(t);
+  studio.useUuids = true;
+  await ready(obs); await obs.command({ action: 'create' });
+  const oldAudio = studio.inputs.get(desktop);
+  studio.kinds.push(applicationKind);
+  studio.specialInputs.desktop1 = '导播桌面'; studio.specialInputs.mic1 = '解说';
+  studio.inputs.get(capture('A1')).inputSettings.capture_audio = true;
+  await studio.request('CreateSceneItem', { sceneName: '休息', sourceName: desktop, sceneItemEnabled: true });
+  await studio.request('CreateInput', { sceneName: ex, inputName: '导播自选声卡', inputKind: 'wasapi_output_capture',
+    inputSettings: { device_id: 'USB interface' }, sceneItemEnabled: true });
+  await obs.command({ action: 'scan' });
+  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).find(item => item.sourceUuid === oldAudio.inputUuid).sceneItemEnabled, false);
+  assert.equal(studio.scenes.get('休息')[0].sceneItemEnabled, true);
+  assert.equal(studio.scenes.get(ex).find(item => item.sourceName === '导播自选声卡').sceneItemEnabled, true);
+  assert.equal(studio.specialInputs.desktop1, '导播桌面'); assert.equal(studio.specialInputs.mic1, '解说');
+  assert.equal(studio.inputs.get(capture('A1')).inputSettings.capture_audio, false);
+  assert.equal(obs.snapshot().audio.globalDesktop, true);
+  const saved = structuredClone(obs.profile.preset.applicationAudio);
+  await obs.command({ action: 'window', slot: 'B4', value: '' });
+  assert.deepEqual(obs.profile.preset.applicationAudio, saved, 'manual video binding cannot discard audio ownership');
+});
+
+test('missing or ambiguous Client 0 waits silently without falling back to another osu!.exe', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind);
+  studio.windows = studio.windows.filter(window => window.itemValue !== clientWindow(0).itemValue);
+  await ready(obs); await obs.command({ action: 'create' });
+  const assertWaiting = () => {
+    assert.equal(gameAudio(studio).inputSettings.window, '');
+    assert.equal(obs.snapshot().audio.bound, false);
+    for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).find(item => item.sourceName === applicationAudio).sceneItemEnabled, false);
+  };
+  assertWaiting();
+  studio.windows.push(clientWindow(0));
+  await obs.command({ action: 'scan' });
+  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  studio.windows.push(clientWindow(0, 'OtherClass'));
+  await obs.command({ action: 'scan' }); assertWaiting();
+  assert.match(obs.snapshot().audio.status, /重名/);
+  studio.windows = [clientWindow(1), { ...clientWindow(0), itemValue: 'Tournament Manager:Window:osu!.exe' }];
+  await obs.command({ action: 'scan' }); assertWaiting();
+  const padded = { ...clientWindow(0), itemValue: ' Tournament Client 0:NewClass:osu!.exe' };
+  studio.windows = [padded, clientWindow(1)];
+  await obs.command({ action: 'scan' });
+  assert.equal(gameAudio(studio).inputSettings.window, padded.itemValue);
+  assert.equal(gameAudio(studio).inputSettings.priority, 1);
+});
+
+test('an interrupted application-audio placement retries without duplicates or resetting adjusted geometry', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind); studio.useUuids = true;
+  studio.before = (type, args) => {
+    const audio = studio.scenes.get(regular)?.find(item => item.sourceName === applicationAudio);
+    if (type === 'SetSceneItemLocked' && audio?.sceneItemId === args.sceneItemId) studio.failNext = type;
+  };
+  await ready(obs);
+  await assert.rejects(obs.command({ action: 'create' }), /模拟请求失败/);
+  const input = gameAudio(studio);
+  studio.before = undefined;
+  current(studio, ex, 'B2').transform.positionY = 333;
+  await obs.command({ action: 'create' });
+  assert.equal(gameAudio(studio).inputUuid, input.inputUuid);
+  assert.equal(obs.profile.preset.applicationAudio.uuid, input.inputUuid);
+  for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).filter(item => item.sourceName === applicationAudio).length, 1);
+  assert.equal(current(studio, ex, 'B2').transform.positionY, 333);
+  const before = writes(studio).length;
+  await obs.command({ action: 'create' });
+  assert.equal(writes(studio).length, before);
+});
+
+test('reconnecting an older preset automatically adds Client 0 audio without a create or scan click', async t => {
+  const { obs, studio } = await setup(t);
+  await ready(obs); await obs.command({ action: 'create' });
+  assert.equal(gameAudio(studio), undefined);
+  studio.kinds.push(applicationKind);
+  await obs.command({ action: 'disconnect' });
+  await ready(obs);
+  await until(() => obs.snapshot().audio?.bound);
+  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  assert.deepEqual(cuts(studio), []);
+});
+
+test('an operator-owned application audio name collision is preserved and new preset audio uses a unique name', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind); studio.useUuids = true;
+  await studio.request('CreateInput', { sceneName: '休息', inputName: applicationAudio, inputKind: applicationKind,
+    inputSettings: { window: 'Other game:Class:other.exe', priority: 2 }, sceneItemEnabled: true });
+  const original = structuredClone(gameAudio(studio));
+  await ready(obs); await obs.command({ action: 'create' });
+  assert.deepEqual(gameAudio(studio), original);
+  const own = obs.profile.preset.applicationAudio;
+  assert.equal(own.name, applicationAudio + ' (2)');
+  assert.equal(studio.inputs.get(own.name).inputSettings.window, clientWindow(0).itemValue);
+  assert.deepEqual(studio.scenes.get('休息').map(item => item.sourceName), [applicationAudio]);
+});

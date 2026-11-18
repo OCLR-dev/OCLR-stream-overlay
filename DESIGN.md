@@ -17,9 +17,9 @@
 
 ## 游戏捕获和比分
 
-- **OBS 图层。** 比赛浏览器源置于各路游戏捕获上方。正式 Playing 使用透明洞口，游戏与 Ranking 共用相同的槽位和位置。每路 4:3 占 480×360，16:9 占 480×270。3v3 两侧第三路各在本队下排居中。等待画面保留选手名单，Playing 窗底留给游戏。人数、比例和 EX 的实际坐标见[播出样式](ui/broadcast.css)与[OBS 预设](server/obs/presets.js)。
+- **OBS 图层。** 比赛浏览器源置于各路游戏捕获上方。正式 Playing 使用透明洞口，游戏与 Ranking 共用相同的槽位和位置。每路 4:3 占 480×360，16:9 占 480×270。3v3 两侧第三路各在本队下排居中。等待画面保留选手名单，Playing 窗底留给游戏。Windows 两套预设共用 Client 0 的应用音频。人数、比例和 EX 的实际坐标见[播出样式](ui/broadcast.css)与[OBS 预设](server/obs/presets.js)。
 - **顶栏。** 队名、队旗、Ban 和 EX 状态共用一套布局。队旗按原比例展示，读取不到时用队名首字。常规比赛显示系列分；Playing 收到双方有效总分后，大字显示本图队分，系列分缩到赢图菱形旁。热身隐藏系列比分与赢图位，仍可显示实时队分。[顶栏实现](ui/components/BroadcastHeader.vue)
-- **分差和图卡。** 分差条以中线为零，绝对分差 25 万时达到半条端点；平分归零。Playing 的槽位与参数来自能匹配的谱面及有效 tosu 数据，FM 使用有效选手的参数范围。FM 的 EZ 队分补偿与保存赛果共用服务端计算。[分差刻度](ui/scoreDifference.ts) · [计分口径](docs/verification/fm-ez-scoring/README.md)
+- **分差和图卡。** 分差条以中线为零，绝对分差 25 万时达到半条端点；平分归零。准备期按匹配的 NM／HD／HR／DT 槽位预览参数。Playing 和 Ranking 使用实际选手参数，FM 显示有效选手的范围。FM 的 EZ 队分补偿与保存赛果共用服务端计算。[分差刻度](ui/scoreDifference.ts) · [计分口径](docs/verification/fm-ez-scoring/README.md)
 - **动效。** 背景斜条带位于内容层后方，Ban/Pick 确认、比分与赢图各用对应反馈。新接入或恢复连接时以已有状态起画。保留减少动态效果偏好，窗口使用稳定槽位标识。
 
 ## 导播控制台
