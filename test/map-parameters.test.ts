@@ -49,3 +49,28 @@ test('free mod and tiebreaker test data explicitly use an NM baseline without gu
     assert.equal(display.mod, 'NM');
   }
 });
+
+test('ready-room fixed-mod preview replaces root NM stats and returns to actual client stats on play', async () => {
+  const { mapParameterMode } = await import('../ui/mapParameters.ts');
+  for (const ipc of [1, 2]) {
+    const mode = mapParameterMode(false, ipc, 'HR');
+    assert.equal(mode, 'official-preview');
+    const display = mapParameterDisplay(101, mode, live, calculated, 'HR');
+    assert.equal(display.source, 'official-preview');
+    assert.equal(display.stars, 6.85);
+    assert.equal(values(display).AR, '10');
+    assert.ok(mapParameterDisplay(101, mode, live, null, 'HR').rows.every(row => row.value === '—'));
+    assert.ok(mapParameterDisplay(102, mode, live, calculated, 'HR').rows.every(row => row.value === '—'));
+    for (const category of ['FM', 'TB', '', null]) assert.equal(mapParameterMode(false, ipc, category), 'tosu');
+  }
+  for (const ipc of [3, 4, null]) {
+    const mode = mapParameterMode(false, ipc, 'HR');
+    assert.equal(mode, 'tosu');
+    assert.equal(values(mapParameterDisplay(101, mode, live, calculated, 'HR')).AR, '10.3');
+  }
+  assert.equal(mapParameterMode(true, 1, 'FM'), 'official-test');
+  const dt = { ...calculated, calculation: { ...calculated.calculation, mod: 'DT', clockRate: 1.5 } };
+  assert.equal(values(mapParameterDisplay(101, 'official-preview', live, dt, 'DT')).TIME, '2:43');
+  assert.ok(mapParameterDisplay(101, 'official-preview', live, calculated, 'DT').rows.every(row => row.value === '—'));
+  assert.ok(mapParameterDisplay(101, 'official-preview', live, { ...calculated, calculation: { ...calculated.calculation, mod: 'NM' } }, 'FM').rows.every(row => row.value === '—'));
+});

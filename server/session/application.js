@@ -208,6 +208,11 @@ export class SessionApplication {
           } else this.automation.reset();
         }
         else if (changedAction) this.automation.invalidate({ action: true });
+        if (['set-roll', 'roll'].includes(command.type) && changedAction && next.auto.bp &&
+          next.bpFlow?.mode === 'roll' && next.action?.kind === 'pick' &&
+          !next.rounds.length && !next.bpHistory?.length && !next.paused && !next.incident) {
+          this.automation.armInitialPick(next);
+        }
         if (changedResults) this.automation.invalidate({ result: true });
         if (command.type === 'set-series' && currentRound(next)?.status === 'ranking') this.automation.invalidate({ result: true });
         this.emit();
