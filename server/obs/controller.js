@@ -6,7 +6,8 @@ import { ObsOutputs } from './outputs.js';
 import { RecordingTimeline } from './recording-timeline.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
 import { buildShowcase, showcaseScene } from './showcase.js';
-import { arrangeCaptures, buildPreset, ensureDesktopAudio, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
+import { arrangeCaptures, buildPreset, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
+import { ensureTournamentAudio } from './audio.js';
 
 const defaults = () => ({ enabled: false, port: 4455, password: '', profiles: [] });
 const emptyProfile = name => ({ name, regular: '', ex: '', follow: false, preset: null });
@@ -291,10 +292,12 @@ export class ObsController {
     this.scanTimer.unref?.();
   }
   async scan(call, preset, options) {
-    const captures = await inspectWindows(call, preset, options);
-    this.captures = captures;
+    const audio = await ensureTournamentAudio(call, preset, progress =>
+      this.saveProfile({ ...this.profile, preset: { ...this.profile.preset, ...progress } }), { desktop: !!options?.useDesktopAudio });
+    const captures = await inspectWindows(call, preset, { ...options, useDesktopAudio: !!audio || !!options?.useDesktopAudio });
+    this.captures = { ...captures, audio };
     clearTimeout(this.scanTimer);
-    if (captures.rows.some(row => row.status !== '已绑定' && row.status !== '手动留空')) this.scheduleScan();
+    if (audio?.mode === 'application' || captures.rows.some(row => row.status !== '已绑定' && row.status !== '手动留空')) this.scheduleScan();
   }
 
   async create(call, profile) {
@@ -306,8 +309,6 @@ export class ObsController {
       ...(profile.streamChat?.code && { streamChat: { ...profile.streamChat, pending: true } }) });
     const { scenes } = await call('GetSceneList');
     this.setScenes(scenes);
-    await ensureDesktopAudio(call, preset, progress =>
-      this.saveProfile({ ...this.profile, preset: { ...this.profile.preset, ...progress } }));
     if (this.profile.streamChat?.code) await this.placeStreamChat(call);
     await this.scan(call, preset, { useDesktopAudio: true });
     this.scheduleSync();
@@ -387,7 +388,7 @@ export class ObsController {
           if (input.value === '') manualEmpty.push(input.slot);
           const preset = { ...p.preset, manualEmpty };
           await this.scan(call, preset, { edit: input });
-          await this.saveProfile({ ...p, preset });
+          await this.saveProfile({ ...this.profile, preset: { ...this.profile.preset, manualEmpty } });
         } else if (input.action === 'lineup' && this.managed) {
           const index = exPositions.indexOf(input.position);
           if (index < 0 || !/^[AB][1-4]$/.test(input.slot) || input.slot[0] !== input.position[0]) throw new ObsError('请为这个 EX 位置选择同队的捕获源。');
