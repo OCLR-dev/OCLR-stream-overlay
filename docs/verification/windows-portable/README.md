@@ -1,6 +1,6 @@
 # Windows 便携版交付与验证
 
-日期：2026-10-29（America/New_York）。实现验收时未提交、推送或发布 Release；后续提交与推送不代表 Windows 验收通过。
+此页按阶段保留构建和验证结果。2026-10-29 的 macOS 初验、后续 Windows 原生验证及 2026-11-15 的端口复验分别列在对应章节。便携包的操作步骤见随包《使用说明.txt》。
 
 ## 早期 macOS 验证结论
 
@@ -8,7 +8,7 @@
 - **Windows 原生启动验收未完成**。已检查并启动本机 Parallels 的 Windows 11；`prlctl start/exec` 受 Pro / Business 版本限制。图形方式可启动 Windows，但 Computer Use 无法操作虚拟机内容区，出现 `noWindowsAvailable` / `cannotClickOffscreenElement`，键盘输入无法落入 Windows。没有运行成功的 `.exe` 或 Windows 验收报告，不能把启动虚拟机视为启动应用通过。
 - **真实 tosu / osu!tourney / OBS 未验证**。没有捆绑或下载这些程序。游戏捕获仍是占位，真实结算旧快照风险与接线边界保留。
 
-## 实现
+## 当时验证的实现
 
 `tools/windows-launcher` 使用 Windigo 建立原生窗口和控件，由 Go 管理后端进程。启动器等待后端就绪及完整会话恢复，核对构建标识和子进程 PID 后才打开默认浏览器。关闭窗口先确认停止输出；关闭浏览器不关服务。重复双击通过 Windows 命名互斥量复用同版本实例；旧版本或未知占用明确提示，不杀其他进程。
 
@@ -77,7 +77,9 @@ go run github.com/tc-hib/go-winres@v0.3.3 make --in assets/winres.json --arch am
 
 脚本在 Windows TEMP 下建立隔离的中文/空格程序目录与数据目录，执行原生 exe 首启、重复启动、SSE、退出、目录更新保留、端口占用、旧服务拒绝、损坏记录和 smoke-test，报告含每项结果。测试通过仍需人工补测正常 GUI 模式的浏览器自动打开、重复双击、复制地址、关闭网页后输出、关闭确认、键盘导航及高 DPI。
 
-### GitHub Actions 与 Pre-release
+### 初版发布流程（历史）
+
+以下是早期按 main 提交逐一打包的记录。现行流程打包推送至 `release/windows` 的最新提交，详见[发布说明](../../windows-release.md)。
 
 `windows-release.yml` 在推送到 `main` 后触发。一次推送包含多个主线提交时，按 `main` 的第一父提交链为每个新增提交分别打包。合并提交以其最终内容打包，分支内的开发历史沿用各自的 PR 检查。单次推送的 GitHub Actions 矩阵上限为 256 个主线提交。
 
@@ -90,3 +92,17 @@ go run github.com/tc-hib/go-winres@v0.3.3 make --in assets/winres.json --arch am
 当前服务仍是本机可信边界，不开放公网。远端服务器无法读取直播电脑的 `127.0.0.1:24050`；未来需要本地 tosu 数据桥接、身份验证、授权控制、断线重连和状态恢复设计。本轮未增加这些入口，也没有用监听 `0.0.0.0` 冒充服务器支持。
 
 构建来源：[Node 官方固定版本下载](https://nodejs.org/dist/v22.23.4/)、[Go 官方下载](https://go.dev/dl/)。CI 设置参考 [setup-go](https://github.com/actions/setup-go)、[setup-node](https://github.com/actions/setup-node)。
+
+## 服务端口与 OBS 地址同步（#36，2026-11-15）
+
+- `npm test`：542 项通过；测试使用隔离随机端口，不占用已有 3001 服务。
+- `npm run build`：类型检查与生产构建通过。
+- Windows Go 启动器：`go test ./...` 与编译通过；涵盖端口范围、持久化及与现有程序路径设置共存。
+- 使用开发运行时 Node 24.22.1 组装的 synthetic Windows 包，在 `OCLR_VERIFY_PORT=3011` 下完成 13 项原生启动器验证：中文及空格路径、单实例复用、SSE、重启保留比赛与撤销、占用端口不影响其他程序、旧后端隔离、损坏数据保留和健康检查超时恢复等均通过。这不是正式发布包验收。
+- 尚未完成可见启动器界面操作、真实 OBS／OCLR 重连与正式发布包验收。Go race 检查因环境未启用 CGO 未运行。
+
+### OBS 自动同步补充（2026-11-15）
+
+连接 OBS、服务重启后重连、切换场景集合时自动检查浏览器源。`localhost` 与 `127.0.0.1` 均可识别；只修改匹配的本机 `/overlay`、`/showcase` 端口，保留查询参数、片段及其他来源设置。每个共享来源只更新一次，不重建场景，不改变 Program、位置、尺寸或锁定状态。其他网站、弹幕和未识别端口不变。OBS 未开启时等待重连，写入失败沿用连接重试流程。
+
+合成验证：545 项 Node 测试通过，包含自定义端口跨重启保存、集合切换、别名、参数保留、无关来源隔离、重复同步与失败后重试。真实 OBS 画面仍待实机验收。

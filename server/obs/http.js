@@ -1,7 +1,8 @@
 import { ObsError } from './socket.js';
 
 export async function obsHttp(req, res, url, obs) {
-  if (url.pathname !== '/api/obs') return false;
+  const endpoint = url.pathname;
+  if (!['/api/obs', '/api/obs/program', '/api/obs/recording'].includes(endpoint)) return false;
   const send = (status, body) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
     res.end(JSON.stringify(body));
@@ -9,6 +10,11 @@ export async function obsHttp(req, res, url, obs) {
   };
   if (url.search) return send(400, { error: { code: 'INVALID_QUERY' } });
   if (!obs) return send(503, { error: { message: '本机 OBS 服务尚未就绪。' } });
+  if (endpoint !== '/api/obs') {
+    if (req.method !== 'GET') return send(405, { error: { code: 'METHOD_NOT_ALLOWED' } });
+    if (endpoint === '/api/obs/program') return send(200, await obs.programFrame());
+    return send(200, obs.recording.snapshot());
+  }
   if (req.method === 'GET') return send(200, obs.snapshot());
   if (req.method !== 'POST') return send(405, { error: { code: 'METHOD_NOT_ALLOWED' } });
   if (req.headers.origin !== `http://${req.headers.host}` || req.headers['content-type']?.split(';')[0].trim() !== 'application/json') {
