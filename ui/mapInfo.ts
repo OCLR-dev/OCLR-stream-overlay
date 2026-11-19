@@ -6,6 +6,7 @@ export interface MapInfoSource {
   shared: boolean;
   emptyTitle?: string;
   metadataEnabled?: boolean;
+  artworkUrl?: string | null;
   currentMap: PoolEntry | null;
   mod?: string;
   parameterMode: ParameterMode;

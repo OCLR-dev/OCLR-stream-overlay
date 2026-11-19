@@ -9,6 +9,7 @@ import { createArtworkHandler } from './artwork.js';
 import { createPlayerArtHandler } from './player-art.js';
 import { obsHttp } from './obs/http.js';
 import { ShowcaseStore, showcaseHttp } from './showcase.js';
+import { ShowcaseReplayList } from './showcase-replay-list.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -102,13 +103,16 @@ export async function readBoundedJson(response) {
 }
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
-  const showcase = new ShowcaseStore(config.session || session);
+  const showcase = new ShowcaseStore(config.session || session, { obs: () => config.obs, websiteEnabled: !config.customMatch });
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session, showcase);
   const playerArt = createPlayerArtHandler(fetchImpl);
   const streaming = config.customMatch ? null : new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
     const store = config.session || session;
     if (store) { store.live.streaming = value; store.emit(); }
+    if (replays.connection !== streaming.showcaseConnection().connection) replays.emit();
   } });
+  const replays = new ShowcaseReplayList(showcase, streaming, config.prepareShowcaseReplay);
+  showcase.onChange = () => { replays.sync(); replays.emit(); };
   const server = createServer((req, res) => {
     void handleRequest(req, res).catch(() => {
       // A failed image/API request must not terminate the broadcast service.
@@ -137,7 +141,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     if (config.customMatch && (url.pathname.startsWith('/api/oclr/') || url.pathname === '/api/streaming')) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
     showcase.attachSession(activeSession);
     if (await obsHttp(req, res, url, config.obs)) return;
-    if (await showcaseHttp(req, res, url, showcase)) return;
+    if (await showcaseHttp(req, res, url, showcase, streaming, replays)) return;
     if (streaming && await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;
@@ -186,6 +190,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       clearTimeout(timeout);
     }
   };
-  server.on('close', () => { config.obs?.close(); streaming?.disconnect(); (config.session || session)?.close?.(); });
+  server.on('close', () => { config.obs?.close(); replays.close(); streaming?.disconnect(); (config.session || session)?.close?.(); });
   return server;
 }
