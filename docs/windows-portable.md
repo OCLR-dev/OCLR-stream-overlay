@@ -107,11 +107,17 @@ OBS 不提供应用程序音频采集时保留旧桌面音频方式，并提示�
 
 直播结束，在小窗口点“退出直播服务”并确认。OBS 网页输出会停止；再次双击会恢复已保存比赛。点窗口右上角关闭也会先确认。
 
-更新时先退出旧版，再把新版解压到另一个目录，双击新版 OCLR.exe。**比赛数据在 `%LOCALAPPDATA%\OCLR\StreamOverlay`，不在程序目录里**；替换或移动程序不会清空数据。找数据时按 Win + R，粘贴这个路径并回车。备份前先退出直播服务，再复制整个数据文件夹，包含 session.json、archive、backups 和 recording-timelines。
+### 资料存储与更新
 
-tosu 和 osu! 路径保存在 `%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\settings.json`，更换便携包后仍可读取。
+默认使用 `%LOCALAPPDATA%\OCLR`。`StreamOverlay` 保存比赛、Showcase、OCLR 的 OBS 连接设置、归档、备份和录像时间轴。`StreamOverlayLauncher` 保存 tosu／osu! 路径（`settings.json`）、服务端口（`service-port.txt`）、启动日志及 WebView2 缓存。
 
-本机日志保存在同一目录的 `launcher.log`。达到 1 MiB 时保留上一份为 `launcher.log.1`。如需提供给维护者，先检查其中的错误输出是否包含私人资料。
+希望资料随程序移动时，在桌面「设置 → 资料存储」点击「启用完全便携模式」。确认后，OCLR 保存比赛并退出，OBS 输出会中断。重新打开 OCLR 即可使用 `OCLR.exe` 旁边的 `OCLR-data`。首次启用会复制现有设置和比赛，Windows 用户目录中的原资料会保留。WebView2 缓存会在新位置重建；Showcase 回放的临时文件也会写入 `OCLR-data`。
+
+切回 Windows 用户目录时，会恢复该目录中的资料；以后再次启用完全便携时，会恢复之前的 `OCLR-data`。两个位置各自保存进度。包内工具路径可随程序目录移动，位于程序目录外的工具仍使用其原路径。随包 tosu 的 `tosu.env` 仍位于 `tosu` 目录。OBS、系统浏览器和 osu! 自己的配置由相应程序管理。
+
+更新时先退出旧版，再把新版解压到另一个目录。默认模式可直接启动新版；完全便携模式请把旧版的 **`OCLR-portable` 文件和 `OCLR-data` 目录**一起复制到新版 `OCLR.exe` 旁边。备份前请先退出 OCLR。当前存储位置可在桌面「设置 → 资料存储」查看。
+
+启动日志为当前存储中的 `StreamOverlayLauncher/launcher.log`。达到 1 MiB 时保留上一份为 `launcher.log.1`。如需提供给维护者，请先检查是否包含私人资料。
 
 从旧 Node 版本迁移：先正常退出旧服务，把旧项目的 `.local` 文件夹复制到新包的 `OCLR.exe` 旁边，再首次启动。程序先备份旧记录，再迁移；原文件保留。已有新数据时以用户数据目录为准，不自动覆盖。旧比赛若原本用其他地址，请把 OBS 源改为启动窗口当前显示的地址。以后修改服务端口时，连接 OBS 后会自动同步已识别的本机来源。
 
@@ -137,4 +143,4 @@ tosu 和 osu! 路径保存在 `%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\setting
 
 默认使用 3001。在启动窗口的「设置」输入 1–65535 的整数，然后点击「重新启动 / 重试」。运行中的服务会要求确认暂时中断输出；程序先记住设置，再正常结束自己的服务并重新启动，比赛资料保持原目录。端口已被占用时可直接修改后重试，不会结束其他程序或自动跳到另一个端口。
 
-「复制全部地址」依次提供控制台、Overlay 和 Showcase 地址。已连接 OBS 时，会自动检查当前场景集合中的本机 Overlay／Showcase 浏览器源并更新端口，保留网址参数、位置与尺寸；重连或切换场景集合时也会检查。手动来源识别默认 3001 与本机记录过的服务端口，已记录身份的预设来源也支持旧自定义端口。未连接 OBS 时，连接后自动同步。更换端口后重新连接 OCLR。设置独立保存在 `%LOCALAPPDATA%\OCLR\StreamOverlayLauncher\service-port.txt`，更换 tosu 或 osu! 路径不会覆盖端口。
+「复制全部地址」依次提供控制台、Overlay 和 Showcase 地址。已连接 OBS 时，会自动检查当前场景集合中的本机 Overlay／Showcase 浏览器源并更新端口，保留网址参数、位置与尺寸；重连或切换场景集合时也会检查。手动来源识别默认 3001 与本机记录过的服务端口，已记录身份的预设来源也支持旧自定义端口。未连接 OBS 时，连接后自动同步。更换端口后重新连接 OCLR。端口保存在当前存储的 `StreamOverlayLauncher/service-port.txt`，更换 tosu 或 osu! 路径不会覆盖端口。

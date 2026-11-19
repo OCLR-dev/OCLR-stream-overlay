@@ -145,13 +145,21 @@ func start(log *diagnostics) (_ *backend, err error) {
 	root := filepath.Dir(exe)
 	cmd := exec.Command(filepath.Join(root, "runtime", "node.exe"), filepath.Join(root, "app", "server", "portable.js"))
 	cmd.Dir = root
-	// Fixed production data location; development/test overrides do not leak in.
+	// Only launcher-selected storage and port reach the packaged backend.
 	for _, v := range os.Environ() {
-		if !strings.HasPrefix(strings.ToUpper(v), "OCLR_DATA_DIR=") && !strings.HasPrefix(strings.ToUpper(v), "NODE_OPTIONS=") && !strings.HasPrefix(strings.ToUpper(v), "OCLR_APP_PORT=") {
-			cmd.Env = append(cmd.Env, v)
+		key, _, _ := strings.Cut(v, "=")
+		switch strings.ToUpper(key) {
+		case "OCLR_DATA_DIR", "OCLR_LAUNCHER_SETTINGS", "OCLR_REPLAY_TEMP", "NODE_OPTIONS", "OCLR_APP_PORT":
+			continue
 		}
+		cmd.Env = append(cmd.Env, v)
 	}
 	cmd.Env = append(cmd.Env, "OCLR_APP_PORT="+servicePort)
+	if storage.enabled {
+		prefs, _ := storage.settingsPath()
+		cmd.Env = append(cmd.Env, "OCLR_DATA_DIR="+filepath.Join(storage.portableRoot(), "StreamOverlay"),
+			"OCLR_LAUNCHER_SETTINGS="+prefs, "OCLR_REPLAY_TEMP="+filepath.Join(storage.portableRoot(), "ReplayTemp"))
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	b, err := launchBackend(cmd, log)
 	if err != nil {

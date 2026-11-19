@@ -72,6 +72,14 @@ func focusLauncher(class string) bool {
 }
 
 func runLauncher() int {
+	exe, err := os.Executable()
+	if err == nil {
+		storage, err = detectStorage(filepath.Dir(exe))
+	}
+	if err != nil {
+		message("无法读取 OCLR 的存储设置。请确认程序目录可访问后重试。")
+		return 1
+	}
 	loadServicePort()
 	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr(instanceMutex))
 	if mutex == 0 {

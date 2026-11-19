@@ -6,6 +6,8 @@ Windows 启动窗口使用 Wails + Vue，启动后直接显示直播控制台。
 
 Windows 包附带打包时最新的官方 tosu Windows 正式版，位于 `tosu/`。启动器默认识别包内程序，保留有效的自定义路径；新包附带 `tosu.env`，默认端口为 24050。左上角和关于页使用与应用窗口一致的正式图标。详见 [随包 tosu 与图标验证](docs/verification/bundled-tosu/README.md)。
 
+Windows 默认将设置和比赛保存在 `%LOCALAPPDATA%\OCLR`。在桌面「设置 → 资料存储」可启用完全便携模式，首次复制现有设置与比赛，之后将资料保存在 `OCLR.exe` 旁的 `OCLR-data`。[存储与更新说明](docs/windows-portable.md#资料存储与更新)
+
 ## 开播
 
 1. Windows 直播机从 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 下载 `OCLR-Windows-x64.zip`，全部解压后双击 `OCLR.exe`。等待桌面控制台载入。安装、接线与更新见 [Windows 直播员手册](docs/windows-portable.md)。

@@ -14,18 +14,20 @@ import (
 )
 
 type launcherState struct {
-	Status       string `json:"status"`
-	Notice       string `json:"notice"`
-	Port         string `json:"port"`
-	Address      string `json:"address"`
-	Build        string `json:"build"`
-	ServicePID   int    `json:"servicePID"`
-	Busy         bool   `json:"busy"`
-	TosuPath     string `json:"tosuPath"`
-	OsuPath      string `json:"osuPath"`
-	TosuStatus   string `json:"tosuStatus"`
-	TosuPort     string `json:"tosuPort"`
-	CanStartTosu bool   `json:"canStartTosu"`
+	Status          string `json:"status"`
+	Notice          string `json:"notice"`
+	Port            string `json:"port"`
+	Address         string `json:"address"`
+	Build           string `json:"build"`
+	ServicePID      int    `json:"servicePID"`
+	Busy            bool   `json:"busy"`
+	TosuPath        string `json:"tosuPath"`
+	OsuPath         string `json:"osuPath"`
+	TosuStatus      string `json:"tosuStatus"`
+	TosuPort        string `json:"tosuPort"`
+	CanStartTosu    bool   `json:"canStartTosu"`
+	PortableStorage bool   `json:"portableStorage"`
+	StoragePath     string `json:"storagePath"`
 }
 
 // op serializes native actions and child ownership; mu protects UI snapshots.
@@ -45,7 +47,8 @@ type Launcher struct {
 }
 
 func newLauncher(log *diagnostics) *Launcher {
-	return &Launcher{log: log, stop: make(chan struct{}), state: launcherState{Status: "starting", Busy: true, Port: servicePort, Address: base, Build: buildID, TosuStatus: "正在检查"}}
+	path, _ := storage.root()
+	return &Launcher{log: log, stop: make(chan struct{}), state: launcherState{Status: "starting", Busy: true, Port: servicePort, Address: base, Build: buildID, TosuStatus: "正在检查", PortableStorage: storage.enabled, StoragePath: path}}
 }
 func (a *Launcher) update(fn func(*launcherState)) { a.mu.Lock(); defer a.mu.Unlock(); fn(&a.state) }
 func (a *Launcher) Snapshot() launcherState        { a.mu.Lock(); defer a.mu.Unlock(); return a.state }
@@ -55,6 +58,8 @@ func (a *Launcher) startup(ctx context.Context) {
 		a.op.Lock()
 		path, err := launcherSettingsPath()
 		prefs, e := loadLauncherSettings(path)
+		prefs.TosuPath = storage.readTool(prefs.TosuPath)
+		prefs.OsuPath = storage.readTool(prefs.OsuPath)
 		a.selectedTosuPath = prefs.TosuPath
 		a.update(func(s *launcherState) {
 			s.TosuPath = effectiveTosuPath(prefs.TosuPath)
@@ -173,6 +178,53 @@ func (a *Launcher) Restart(port string) error {
 	a.startService()
 	return nil
 }
+
+func (a *Launcher) ChangeStorage(enabled bool) (bool, error) {
+	if err := a.begin(); err != nil {
+		return false, err
+	}
+	defer a.end()
+	if enabled == storage.enabled {
+		return false, nil
+	}
+	detail := "切回此 Windows 用户的存储。便携资料会保留在 OCLR 目录，两个位置的资料各自保存。"
+	if enabled {
+		detail = "首次启用会复制现有设置和比赛记录到 OCLR 目录；如果已有便携资料，则继续使用该份资料。"
+	}
+	if !a.confirm("切换资料存储位置", detail+"\n\n切换会保存比赛并退出 OCLR，OBS 网页输出会停止。请在方便时切换，之后重新打开 OCLR。") {
+		return false, nil
+	}
+	// Check the package directory before interrupting an active broadcast.
+	probe, err := os.CreateTemp(storage.packageDir, ".oclr-write-")
+	if err != nil {
+		return false, errors.New("OCLR 目录无法写入。请将完整程序移到有写入权限的文件夹后重试。")
+	}
+	_ = probe.Close()
+	_ = os.Remove(probe.Name())
+	running := a.service != nil && !a.service.exited()
+	if running {
+		a.update(func(s *launcherState) { s.Status = "stopping"; s.Notice = "正在保存比赛并切换存储位置…" })
+		a.service.stop("operator storage change")
+	}
+	if running && a.service.exitCode != 0 {
+		a.startService()
+		return false, errors.New("无法确认比赛已正常保存，存储位置未切换。请查看日志后重试。")
+	}
+	if err := storage.change(enabled); err != nil {
+		a.log.record("storage change failed: %v", err)
+		if running {
+			a.startService()
+		}
+		return false, errors.New("无法切换存储位置。请检查目录权限和可用空间；原有资料仍保留。")
+	}
+	a.closing = true
+	a.quitAllowed = true
+	a.update(func(s *launcherState) {
+		s.Status = "stopping"
+		s.Notice = "已切换存储位置，请重新打开 OCLR。"
+	})
+	return true, nil
+}
 func (a *Launcher) checkTosu() {
 	path := effectiveTosuPath(a.selectedTosuPath)
 	a.update(func(s *launcherState) { s.TosuPath = path })
@@ -268,7 +320,8 @@ func (a *Launcher) saveTool(kind, path string) error {
 	if err != nil {
 		return err
 	}
-	if err = saveLauncherSettings(p, prefs); err != nil {
+	stored := launcherSettings{TosuPath: storage.storeTool(prefs.TosuPath), OsuPath: storage.storeTool(prefs.OsuPath)}
+	if err = saveLauncherSettings(p, stored); err != nil {
 		return errors.New("无法保存路径，请检查设置目录权限。")
 	}
 	a.selectedTosuPath = prefs.TosuPath

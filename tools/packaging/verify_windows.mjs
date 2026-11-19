@@ -1,6 +1,6 @@
 // Run using the *bundled* runtime on Windows. All data is isolated in TEMP.
 import { spawn } from 'node:child_process';
-import { mkdtemp, cp, readFile, writeFile, mkdir, access } from 'node:fs/promises';
+import { mkdtemp, cp, readFile, writeFile, mkdir, access, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer, get } from 'node:http';
@@ -28,8 +28,8 @@ const results = [];
 const children = new Set();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const report = { platform: process.platform, arch: process.arch, node: process.version, temp, appPort, results };
-function launch(folder, args = ['--headless']) {
-  const child = spawn(join(folder, 'OCLR.exe'), args, { cwd: tmpdir(), env: { ...process.env, LOCALAPPDATA: local }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+function launch(folder, args = ['--headless'], localAppData = local) {
+  const child = spawn(join(folder, 'OCLR.exe'), args, { cwd: tmpdir(), env: { ...process.env, LOCALAPPDATA: localAppData }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   let error = '';
   child.stderr.on('data', chunk => { error += chunk; });
   const done = once(child, 'close').then(([code]) => { children.delete(child); return code; });
@@ -246,6 +246,58 @@ try {
       assert.equal((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl, url);
       await running.stop(); running = null;
     } finally { await new Promise(resolve => fixture.close(resolve)); }
+  });
+  await check('fully portable launcher retains its session and selected tools after moving the package', async () => {
+    const packagePath = await fixtureDataDir(temp, '完全便携 旧目录', 'OCLR-data/StreamOverlay');
+    const movedPackage = await fixtureDataDir(temp, '完全便携 新目录', 'OCLR-data/StreamOverlay');
+    const unusedAppData = join(temp, '便携模式不应写入');
+    const launcherDir = 'OCLR-data/StreamOverlayLauncher';
+    await cp(first, packagePath, { recursive: true });
+    await mkdir(join(packagePath, launcherDir), { recursive: true });
+    await mkdir(join(packagePath, 'OCLR-data/StreamOverlay'), { recursive: true });
+    await mkdir(join(packagePath, 'custom tools'), { recursive: true });
+    await writeFile(join(packagePath, 'OCLR-portable'), 'OCLR portable storage\n');
+    await writeFile(join(packagePath, launcherDir, 'service-port.txt'), String(appPort));
+    await writeFile(join(packagePath, 'OCLR-data/StreamOverlay/session.json'), saved);
+    let port;
+    do { port = await availableLoopbackPort(0); } while (port === bundledTosuPort);
+    assert.ok(port);
+    await writeFile(join(packagePath, 'custom tools', 'tosu.exe'), 'synthetic fixture, never launched');
+    await writeFile(join(packagePath, 'custom tools', 'tosu.env'), `SERVER_PORT=${port}\r\n`);
+    await writeFile(join(packagePath, 'custom tools', 'osu!.exe'), 'synthetic fixture, never launched');
+    await writeFile(join(packagePath, launcherDir, 'settings.json'), JSON.stringify({
+      tosuPath: '.\\custom tools\\tosu.exe', osuPath: '.\\custom tools\\osu!.exe',
+    }));
+    await rename(packagePath, movedPackage);
+    running = launch(movedPackage, ['--headless'], unusedAppData);
+    await ready();
+    const { session } = await fetch(base + '/api/session').then(r => r.json());
+    assert.equal(session.match.title, 'Windows 验收比赛');
+    const expected = `ws://127.0.0.1:${port}/websocket/v2`;
+    for (let i = 0; i < 25; i++) {
+      if ((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl === expected) break;
+      await delay(100);
+    }
+    assert.equal((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl, expected);
+    await running.stop(); running = null;
+    await access(join(movedPackage, launcherDir, 'launcher.log'));
+    await assert.rejects(access(unusedAppData), { code: 'ENOENT' });
+    assert.equal(await readFile(data, 'utf8'), saved);
+
+    const { prepareStableReplay, stageReplayFile } = await import(pathToFileURL(join(movedPackage, 'app/server/showcase-replay-files.js')));
+    const tempReplays = join(movedPackage, 'OCLR-data/ReplayTemp');
+    process.env.OCLR_LAUNCHER_SETTINGS = join(movedPackage, launcherDir, 'settings.json');
+    process.env.OCLR_REPLAY_TEMP = tempReplays;
+    try {
+      assert.equal(typeof await prepareStableReplay('unused.osr'), 'function');
+      const replay = await stageReplayFile(Buffer.from('synthetic replay bytes'));
+      assert.equal(resolve(replay.path, '../..'), tempReplays);
+      await replay.dispose();
+      await assert.rejects(access(replay.path), { code: 'ENOENT' });
+    } finally {
+      delete process.env.OCLR_LAUNCHER_SETTINGS;
+      delete process.env.OCLR_REPLAY_TEMP;
+    }
   });
   await check('native launcher keeps the same backend through timeouts and logs its eventual exit', async () => {
     // The copied package and marker stay in the temporary test workspace.
