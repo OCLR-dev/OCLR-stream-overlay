@@ -3,6 +3,7 @@
 !.env.example
 node_modules/
 coverage/
+__pycache__/
 dist/
 *.tsbuildinfo
 *.log

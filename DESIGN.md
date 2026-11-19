@@ -43,3 +43,7 @@
 Windows 启动窗口使用 Wails + Vue。桌面将 Node 提供的 `/control` 和 `/showcase` 放在各自的隔离 frame 中，保留网页组件、同源 API、SSE 与独立 OBS 输出。切换桌面导航保留已打开的页面，明确重启后按新的服务 PID 和端口重新加载。最小化继续播出，关闭窗口与「退出服务」共用确认和保存流程。
 
 Go 管理子进程、设置与原生对话框。只有启动器外壳可调用桌面绑定，内嵌页面只能请求切换入口或打开固定用途的浏览器页面。OCLR 授权在同一 Node 地址的浏览器页面沿用网站握手，桌面通过 SSE 看到结果。见 [桌面控制台验收](docs/verification/desktop-control/README.md)。
+
+## 启动器图标与随包 tosu
+
+Wails 顶部品牌区与关于页复用 Windows 应用的 `oclr-stream.ico`，按正方形尺寸等比显示。Windows CI 每次打包解析 tosu 最新正式 Windows release。启动器优先使用有效的明确选择路径，否则定位自身目录中的 `tosu/tosu.exe`；自动检测路径不保存为固定绝对路径。tosu 的配置与工作目录跟随实际程序位置，launcher 只读取端口，不改写其他设置。实现、测试与待验收项见 [验证记录](docs/verification/bundled-tosu/README.md)。

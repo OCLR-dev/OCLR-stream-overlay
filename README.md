@@ -4,6 +4,8 @@
 
 Windows 启动窗口使用 Wails + Vue，启动后直接显示直播控制台。顶部可切换 Showcase、服务、设置、日志和关于。桌面和浏览器共用 Node 服务保存比赛，外部授权使用系统浏览器。Windows 需要 Microsoft Edge WebView2 Runtime。见 [桌面控制台验收](docs/verification/desktop-control/README.md)。
 
+Windows 包附带打包时最新的官方 tosu Windows 正式版，位于 `tosu/`。启动器默认识别包内程序，保留有效的自定义路径；新包附带 `tosu.env`，默认端口为 24050。左上角和关于页使用与应用窗口一致的正式图标。详见 [随包 tosu 与图标验证](docs/verification/bundled-tosu/README.md)。
+
 ## 开播
 
 1. Windows 直播机从 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 下载 `OCLR-Windows-x64.zip`，全部解压后双击 `OCLR.exe`。等待桌面控制台载入。安装、接线与更新见 [Windows 直播员手册](docs/windows-portable.md)。

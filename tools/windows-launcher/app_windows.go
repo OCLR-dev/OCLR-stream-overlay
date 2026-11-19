@@ -31,16 +31,17 @@ type launcherState struct {
 // op serializes native actions and child ownership; mu protects UI snapshots.
 // No bound method accepts an executable path, command, or URL from JavaScript.
 type Launcher struct {
-	ctx         context.Context
-	op          sync.Mutex
-	mu          sync.Mutex
-	state       launcherState
-	activePID   int      // protected by mu
-	service     *backend // protected by op
-	log         *diagnostics
-	closing     bool
-	quitAllowed bool
-	stop        chan struct{}
+	ctx              context.Context
+	op               sync.Mutex
+	mu               sync.Mutex
+	state            launcherState
+	activePID        int      // protected by mu
+	service          *backend // protected by op
+	log              *diagnostics
+	closing          bool
+	quitAllowed      bool
+	selectedTosuPath string // explicit preference only, protected by op
+	stop             chan struct{}
 }
 
 func newLauncher(log *diagnostics) *Launcher {
@@ -54,8 +55,9 @@ func (a *Launcher) startup(ctx context.Context) {
 		a.op.Lock()
 		path, err := launcherSettingsPath()
 		prefs, e := loadLauncherSettings(path)
+		a.selectedTosuPath = prefs.TosuPath
 		a.update(func(s *launcherState) {
-			s.TosuPath = prefs.TosuPath
+			s.TosuPath = effectiveTosuPath(prefs.TosuPath)
 			s.OsuPath = prefs.OsuPath
 			if err != nil || e != nil {
 				s.Notice = "无法读取保存的路径，请在设置重新选择。"
@@ -172,6 +174,8 @@ func (a *Launcher) Restart(port string) error {
 	return nil
 }
 func (a *Launcher) checkTosu() {
+	path := effectiveTosuPath(a.selectedTosuPath)
+	a.update(func(s *launcherState) { s.TosuPath = path })
 	state := a.Snapshot()
 	probe := probeTosu(state.TosuPath, 0)
 	status := "未选择 tosu"
@@ -254,7 +258,7 @@ func (a *Launcher) saveTool(kind, path string) error {
 		return errors.New("请选择正确的应用程序文件。")
 	}
 	s := a.Snapshot()
-	prefs := launcherSettings{TosuPath: s.TosuPath, OsuPath: s.OsuPath}
+	prefs := launcherSettings{TosuPath: a.selectedTosuPath, OsuPath: s.OsuPath}
 	if kind == "tosu" {
 		prefs.TosuPath = path
 	} else {
@@ -267,6 +271,7 @@ func (a *Launcher) saveTool(kind, path string) error {
 	if err = saveLauncherSettings(p, prefs); err != nil {
 		return errors.New("无法保存路径，请检查设置目录权限。")
 	}
+	a.selectedTosuPath = prefs.TosuPath
 	if kind == "tosu" && a.service != nil && path != s.TosuPath {
 		a.service.setTosuPort("")
 	}
@@ -283,6 +288,7 @@ func (a *Launcher) StartTosu() error {
 		return err
 	}
 	defer a.end()
+	a.checkTosu()
 	s := a.Snapshot()
 	path := s.TosuPath
 	allowed, err := allowTosuStart(path, s.OsuPath, findExecutableProcess, osuProcessStatus, a.confirm)

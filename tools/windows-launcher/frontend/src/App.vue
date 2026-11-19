@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { LayoutDashboard, Settings2, ScrollText, Info, ExternalLink, Copy, Play, FolderOpen, RefreshCw, Power, Radio, ChevronRight, Monitor, PanelsTopLeft, ListMusic } from '@lucide/vue';
+import { LayoutDashboard, Settings2, ScrollText, Info, ExternalLink, Copy, Play, FolderOpen, RefreshCw, Power, ChevronRight, Monitor, PanelsTopLeft, ListMusic } from '@lucide/vue';
+import appIcon from '../../assets/oclr-stream.ico';
 import { launcher } from './bridge';
 import type { LauncherState } from './bridge';
 import ServiceFrame from './ServiceFrame.vue';
@@ -69,7 +70,7 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); });
 <template>
   <div class="shell">
     <aside>
-      <div class="brand"><span class="brand-mark"><Radio :size="23" /></span><div><strong>OCLR</strong><small>直播工作台</small></div></div>
+      <div class="brand"><img class="brand-mark" :src="appIcon" alt="" width="44" height="44" /><div><strong>OCLR</strong><small>直播工作台</small></div></div>
       <nav aria-label="启动器导航"><button v-for="item in pages" :key="item.id" :class="{ selected: page === item.id }" :aria-current="page === item.id ? 'page' : undefined" @click="page = item.id"><component :is="item.icon" :size="18" />{{ item.label }}</button></nav>
       <button class="exit" :disabled="locked" @click="act(() => launcher().Quit())"><Power :size="16" />退出服务</button>
     </aside>
@@ -106,7 +107,7 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); });
           <article class="card"><h2>比赛工具</h2><div class="setting-tool"><label>tosu 应用程序</label><p class="path">{{ state.tosuPath || '尚未选择 tosu.exe' }}</p><button :disabled="locked" @click="act(() => launcher().ChooseTool('tosu'))"><FolderOpen :size="16" />选择 tosu.exe</button></div><div class="setting-tool"><label>osu!stable 应用程序</label><p class="path">{{ state.osuPath || '尚未选择 osu!.exe' }}</p><div class="actions"><button :disabled="locked" @click="act(() => launcher().ChooseTool('osu'))"><FolderOpen :size="16" />选择 osu!.exe</button><button :disabled="locked || !running || !state.osuPath" @click="act(() => launcher().Tourney(false))">生成比赛配置</button></div></div></article>
         </section>
         <section v-else-if="page === 'logs'" class="logs-page" aria-label="本机日志"><div class="section-heading"><h2>最近运行记录</h2><button :disabled="locked" @click="act(() => launcher().OpenLog())"><ExternalLink :size="15" />打开完整日志</button></div><p>遇到启动或连接问题时，可在这里查看原因。</p><pre ref="logElement" tabindex="0" aria-label="最近日志">{{ log || '暂无日志记录。' }}</pre></section>
-        <section v-else class="stack" aria-label="关于 OCLR"><article class="card about"><span class="brand-mark large"><Radio :size="35" /></span><h2>OCLR 直播工作台</h2><p>开源许可 · MIT License<br>© 2026 OCLR Dev Team</p><p>直播控制台和 Showcase 可在本窗口使用。观众画面由 OBS 浏览器源显示。</p><button :disabled="locked" @click="act(() => launcher().OpenProject())">项目主页<ExternalLink :size="16" /></button></article><article class="card"><h3>构建标识</h3><code class="build">{{ state.build || '开发版本' }}</code><small>启动界面：Wails · Vue<br>比赛服务：Node.js</small></article></section>
+        <section v-else class="stack" aria-label="关于 OCLR"><article class="card about"><img class="brand-mark large" :src="appIcon" alt="" width="60" height="60" /><h2>OCLR 直播工作台</h2><p>开源许可 · MIT License<br>© 2026 OCLR Dev Team</p><p>直播控制台和 Showcase 可在本窗口使用。观众画面由 OBS 浏览器源显示。</p><button :disabled="locked" @click="act(() => launcher().OpenProject())">项目主页<ExternalLink :size="16" /></button></article><article class="card"><h3>构建标识</h3><code class="build">{{ state.build || '开发版本' }}</code><small>启动界面：Wails · Vue<br>比赛服务：Node.js</small></article></section>
       </div>
       <footer role="status"><i :class="state.status" /><span>{{ (state.status === 'ready' && workspace) ? statusLabel : (state.notice || statusLabel) }}</span><span v-if="locked" class="working">处理中…</span></footer>
     </main>

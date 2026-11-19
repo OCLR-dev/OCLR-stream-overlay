@@ -30,3 +30,11 @@ git push origin release/windows
 - 一次推送即使包含多个开发提交，也只为分支顶端提交制作一个包。
 - Windows 构建、测试、ZIP 校验和原生启动验证继续全部执行；通过后才上传 Release。
 - GitHub Release 的源码 SHA、标签归属及已有产物检查保持有效，不覆盖指向其他提交的版本标签。
+
+## 随包 tosu
+
+每次 Windows 打包通过 GitHub latest release API 重新解析 tosu 的最新正式版，下载匹配 Windows x64 的 ZIP，校验 GitHub 提供的 SHA-256，并检查 exe 的 AMD64 格式。下载缓存按内容摘要识别，不缓存版本选择；查询或校验失败时构建失败，不回退旧版。
+
+完整上游 ZIP 内容解压至 `tosu/`，缺少 `tosu.env` 时加入仓库的默认配置。包内 `tosu/bundled-release.json` 记录打包版本、资产与源代码提交；`licenses/tosu/` 附带对应源代码 ZIP、上游 LICENSE 与 GPL 全文。tosu 启用自动更新，因此清单不是当前运行版本报告。
+
+`python -m unittest discover -s tools/packaging -p "test_*.py"` 验证最新版切换、校验失败和解压边界；Windows ZIP 验证另检查实际包内容及默认端口传递。

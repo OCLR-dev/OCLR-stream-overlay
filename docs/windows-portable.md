@@ -1,6 +1,6 @@
 # Windows 便携版使用说明
 
-适用：Windows 10 / 11，Intel 或 AMD 64 位（x64）。无需安装 Node.js、Git，不用输入命令。tosu、osu!stable、OBS 需自行安装。
+适用：Windows 10 / 11，Intel 或 AMD 64 位（x64）。无需安装 Node.js、Git，不用输入命令。包内附带 tosu；osu!stable、OBS 需自行安装。
 
 > 开播前在 OBS 节目画面核对捕获窗口，在混音器核对音量。下面的操作与本包对应；下载其他版本时请使用该包随附的《使用说明.txt》。
 
@@ -26,7 +26,11 @@ Windows 启动窗口使用 Wails + Vue，需要 Microsoft Edge WebView2 Runtime�
 
 ## 3. 连接 tosu 与 osu!Tourney
 
-在启动窗口的「设置」点击「选择 tosu.exe…」，选取本机已解压的程序。建议先打开 osu!Tourney，再到「概览」点击「打开 tosu」。若启动器未检测到 osu!，会提醒 tosu 可能无法读取游戏数据。点「是」可以继续打开 tosu，点「否」可以返回先开 osu!Tourney。所选路径会记住，下次打开 OCLR 时可直接使用。移动或更新 tosu 后若原路径失效，重新选择新版程序即可。
+启动器默认识别同一解压目录下的 `tosu/tosu.exe`，无需先选择路径。建议先打开 osu!Tourney，再在「服务」点击「打开 tosu」。未检测到 osu! 时会提示，可选择继续或先打开游戏。需要使用自己的 tosu 时，在「设置」选择程序；有效的自定义路径优先，失效时回退到包内版本，「设置」显示实际使用的路径。整包移动后会重新定位包内程序。
+
+包内 `tosu.env` 以本机 `127.0.0.1:24050` 为默认地址，开启自动更新，关闭启动时打开 Dashboard 和游戏内 overlay。完整默认值见 [tosu.env](../tools/packaging/tosu.env)。启动器以 tosu 所在目录作为工作目录，支持 `STATIC_FOLDER_PATH=./static`，读取配置时不改写已有设置或未知字段。
+
+`tosu/bundled-release.json` 记录 CI 打包时的版本、下载校验与来源；自动更新后的实际版本以 tosu 自身显示为准。更新 OCLR 建议解压到新目录；若需要沿用旧配置，将旧 `tosu.env` 复制到新包的 `tosu/`，不要直接覆盖正在使用的目录。
 
 启动窗口按所选 `.exe` 的完整路径检查程序是否运行，运行时会停用「打开 tosu」以避免重复启动。端口检查会定期重读所选程序同目录下 `tosu.env` 的 `SERVER_PORT`，并显示 `127.0.0.1` 上该端口的连通状态。若文件缺失、无法读取或未提供有效端口，启动窗口会显示对应提示。游戏数据是否就绪可在直播控制台查看。
 

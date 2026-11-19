@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer, get } from 'node:http';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { pathToFileURL } from 'node:url';
 import { availableLoopbackPort, fixtureDataDir } from './portable-fixture.mjs';
@@ -65,8 +66,30 @@ try {
     }
     assert.equal(JSON.parse(await readFile(join(packageRoot, 'app/package.json'), 'utf8')).license, 'MIT');
   });
+  await check('bundled tosu contains Windows x64 executable, env, provenance and matching source license', async () => {
+    const manifest = JSON.parse(await readFile(join(packageRoot, 'tosu/bundled-release.json'), 'utf8'));
+    assert.match(manifest.bundledVersion, /^v/);
+    assert.match(manifest.url, /^https:\/\/github.com\/tosuapp\/tosu\/releases\/download\//);
+    assert.match(manifest.sha256, /^[a-f0-9]{64}$/);
+    const exe = await readFile(join(packageRoot, 'tosu/tosu.exe'));
+    assert.equal(exe.subarray(0, 2).toString(), 'MZ');
+    assert.equal(exe.readUInt16LE(exe.readUInt32LE(60) + 4), 0x8664);
+    const source = await readFile(join(packageRoot, 'licenses/tosu/source.zip'));
+    assert.equal(createHash('sha256').update(source).digest('hex'), manifest.sourceSha256);
+    assert.ok((await readFile(join(packageRoot, 'licenses/tosu/LICENSE'))).length > 100);
+    assert.ok((await readFile(join(packageRoot, 'licenses/tosu/GPL-3.0.txt'))).length > 100);
+    assert.match(await readFile(join(packageRoot, 'tosu/tosu.env'), 'utf8'), /^SERVER_PORT=\d+/m);
+    report.tosu = manifest;
+  });
   await cp(packageRoot, first, { recursive: true });
   await cp(packageRoot, second, { recursive: true });
+  // Isolated test endpoint; never connect these fixtures to the operator's tosu.
+  const bundledTosuPort = await availableLoopbackPort(0);
+  for (const folder of [first, second]) {
+    const envPath = join(folder, 'tosu/tosu.env');
+    const env = await readFile(envPath, 'utf8');
+    await writeFile(envPath, env.replace(/^SERVER_PORT=.*$/m, `SERVER_PORT=${bundledTosuPort}`));
+  }
   if (appPort !== 3001) {
     const prefs = join(local, 'OCLR/StreamOverlayLauncher');
     await mkdir(prefs, { recursive: true });
@@ -86,6 +109,15 @@ try {
     assert.equal(h.session, true);
     assert.equal(h.build, JSON.parse(await readFile(join(first, 'app/portable-build.json'))).build);
     for (const page of ['/control', '/overlay']) assert.equal((await fetch(base+page)).status, 200);
+  });
+  await check('fresh launcher resolves bundled tosu without saving an absolute preference', async () => {
+    const expected = `ws://127.0.0.1:${bundledTosuPort}/websocket/v2`;
+    for (let i = 0; i < 100; i++) {
+      if ((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl === expected) break;
+      await delay(100);
+    }
+    assert.equal((await fetch(base + '/api/config').then(r => r.json())).tosuWsUrl, expected);
+    await assert.rejects(access(join(local, 'OCLR/StreamOverlayLauncher/settings.json')), { code: 'ENOENT' });
   });
   await check('desktop can frame the packaged console and Showcase without granting access to other origins or APIs', async () => {
     const request = (path, referer) => new Promise((resolve, reject) => {
