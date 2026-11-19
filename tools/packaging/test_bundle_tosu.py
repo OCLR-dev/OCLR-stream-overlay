@@ -1,13 +1,15 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
-from bundle_tosu import LATEST, bundle_tosu, extract_windows, verified_download, windows_asset
+from bundle_tosu import LATEST, bundle_tosu, download, extract_windows, verified_download, windows_asset
 
 
 def archive(entries):
@@ -27,6 +29,21 @@ def executable():
 
 
 class BundleTosuTests(unittest.TestCase):
+    def test_ci_token_is_only_used_for_github_api_metadata(self):
+        with patch.dict(os.environ, {'OCLR_GITHUB_TOKEN': 'test-token'}), \
+                patch('bundle_tosu.urllib.request.urlopen') as urlopen:
+            for url, expected in (
+                (LATEST, 'Bearer test-token'),
+                ('https://api.github.com/repos/tosuapp/tosu/commits/v1', 'Bearer test-token'),
+                ('https://github.com/tosuapp/tosu/releases/download/v1/tosu.zip', None),
+                ('https://codeload.github.com/tosuapp/tosu/zip/commit', None),
+            ):
+                with self.subTest(url=url):
+                    download(url)
+                    request = urlopen.call_args.args[0]
+                    self.assertEqual(request.get_header('Authorization'), expected)
+                    self.assertNotIn('Authorization', request.headers)
+
     def test_latest_is_resolved_each_build_and_env_and_companions_survive(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

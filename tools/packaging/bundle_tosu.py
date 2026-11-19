@@ -1,6 +1,7 @@
 """Bundle the latest official Windows tosu release; never reuse a cached version choice."""
 import hashlib
 import json
+import os
 import re
 import shutil
 import stat
@@ -11,10 +12,15 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 LATEST = 'https://api.github.com/repos/tosuapp/tosu/releases/latest'
+GITHUB_API = 'https://api.github.com/'
 
 
 def download(url):
     request = urllib.request.Request(url, headers={'User-Agent': 'OCLR-Windows-packager', 'Cache-Control': 'no-cache'})
+    token = os.environ.get('OCLR_GITHUB_TOKEN')
+    if token and url.startswith(GITHUB_API):
+        # Authenticate metadata requests without forwarding the token to redirects.
+        request.add_unredirected_header('Authorization', f'Bearer {token}')
     with urllib.request.urlopen(request, timeout=120) as response:
         return response.read()
 

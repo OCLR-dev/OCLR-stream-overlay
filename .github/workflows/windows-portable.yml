@@ -44,6 +44,8 @@ jobs:
         working-directory: tools/windows-launcher
         run: go test ./...
       - run: python tools/packaging/build_windows.py
+        env:
+          OCLR_GITHUB_TOKEN: ${{ github.token }}
       - run: npm test
       - name: Verify and test the distributable ZIP
         shell: pwsh
