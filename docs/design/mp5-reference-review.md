@@ -1,4 +1,6 @@
-# MP5 直播操作方案参考核对
+# MP5 直播操作参考（历史对照）
+
+> 表中的「当前实现」指 2026-10-28 做对照时的 OCLR 版本。现行操作见[比赛现场操作](../main-operator-contract.md)。
 
 日期：2026-10-28。用户提供 [Mother-Ship/mp5-stream-overlay](https://github.com/Mother-Ship/mp5-stream-overlay)。已通过 GitHub API 与 raw 源码读取 master，核对提交 `3a66536f2baa9a379a51a818bd8601a2ac613ac9`。本次为源码对照，没有安装、运行参考项目，也没有复制其代码或素材。
 

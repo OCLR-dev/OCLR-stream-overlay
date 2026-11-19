@@ -7,6 +7,7 @@ import { streamingHttp } from './streaming-http.js';
 import { sessionHttp } from './session/http.js';
 import { createArtworkHandler } from './artwork.js';
 import { createPlayerArtHandler } from './player-art.js';
+import { createTeamArtHandler } from './team-art.js';
 import { obsHttp } from './obs/http.js';
 import { ShowcaseStore, showcaseHttp } from './showcase.js';
 
@@ -102,9 +103,10 @@ export async function readBoundedJson(response) {
 }
 
 export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT, session = null) {
-  const showcase = new ShowcaseStore(config.session || session);
+  const showcase = new ShowcaseStore(config.session || session, { obs: () => config.obs });
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session, showcase);
   const playerArt = createPlayerArtHandler(fetchImpl);
+  const teamArt = createTeamArtHandler(config);
   const streaming = new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
     const store = config.session || session;
     if (store) { store.live.streaming = value; store.emit(); }
@@ -136,10 +138,11 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
     showcase.attachSession(activeSession);
     if (await obsHttp(req, res, url, config.obs)) return;
-    if (await showcaseHttp(req, res, url, showcase)) return;
+    if (await showcaseHttp(req, res, url, showcase, streaming)) return;
     if (await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;
+    if (teamArt(req, res, url)) return;
     if (await artwork(req, res, url)) return;
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     if (url.pathname === '/api/health') {

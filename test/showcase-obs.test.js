@@ -2,16 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ObsController } from '../server/obs/controller.js';
-import { showcaseBrowser, showcaseScene } from '../server/obs/showcase.js';
+import { showcaseArtwork, showcaseBrowser, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
+import { ShowcaseReplay } from '../server/obs/showcase-replay.js';
+import { TosuClient } from '../src/tosu.js';
+
 import { presetScenes } from '../server/obs/presets.js';
 import { SessionStore } from '../server/session/store.js';
 import { Studio } from './obs-fixture.js';
 
-async function setup(t) {
+async function setup(t, options = {}) {
   const studio = new Studio();
   studio.useUuids = true;
   const session = new SessionStore();
-  const obs = await new ObsController({ overlayUrl: () => 'http://127.0.0.1:3010/overlay', Socket: studio.Socket, scanMs: 20000 }).start(session);
+  const obs = await new ObsController({ overlayUrl: () => 'http://127.0.0.1:3010/overlay', Socket: studio.Socket, scanMs: 20000, ...options }).start(session);
   t.after(() => { obs.close(); session.close(); });
   await obs.command({ action: 'connect', port: 4455, password: 'test-password' });
   for (let n = 0; obs.phase !== 'ready' && n < 100; n++) await delay(5);
@@ -127,4 +130,299 @@ test('Showcase checks the OBS canvas before creation and leaves settings usable 
   studio.canvas.baseWidth = 1920;
   await obs.command({ action: 'create-showcase' });
   assert.equal(obs.snapshot().showcase, true);
+});
+
+class ReplayFeed {
+  constructor({ url, onFrame, onStatus, normalize }) { Object.assign(this, { url, onFrame, onStatus, normalize }); }
+  start() { this.active = true; }
+  stop() { this.active = false; }
+  setUrl(url) { this.url = url; }
+  status(status) { if (this.active) this.onStatus(status); }
+  frame(status, mapid, time, rawStatus = status === 32 ? 7 : 2) {
+    if (this.active) this.onFrame(this.normalize({ osuIsRunning: 1, status, rawStatus, mapid, time }));
+  }
+}
+
+async function setupReplay(t, resultsMs = 3500) {
+  const { studio, obs, session } = await setup(t, { ReplayClient: ReplayFeed, tosuUrl: 'ws://127.0.0.1:24050/websocket/v2', resultsMs });
+  studio.kinds.push('color_source_v3');
+  await obs.command({ action: 'create-showcase' });
+  const outside = studio.scenes.get('休息');
+  studio.inputs.set('game', { inputName: 'game', inputKind: 'game_capture' });
+  studio.addItem(showcaseScene, 'game', true);
+  await obs.command({ action: 'setup-showcase-transition' });
+  const mask = () => studio.scenes.get(showcaseScene).find(item => item.sourceName === showcaseCover);
+  const v2 = (number, id = 101, extra = {}) => {
+    session.live.tosu = { status: 'live', updatedAt: new Date().toISOString(), data: { state: { number }, beatmap: { id }, ...extra } };
+    session.emit();
+  };
+  const watch = async (id = 101) => {
+    v2(2, id);
+    obs.replayClient.frame(8, id, 0);
+    obs.replayClient.frame(8, id, 0.2);
+    await obs.tail;
+  };
+  return { studio, obs, mask, v2, watch, session, outside, feed: obs.replayClient };
+}
+
+test('Showcase uses an opaque OBS layer above the game and validates actual coverage before confirming', async t => {
+  const { studio, obs, mask, v2, watch, session, outside, feed } = await setupReplay(t);
+  const original = structuredClone(session.state);
+  assert.equal(feed.url, 'ws://127.0.0.1:24050/tokens');
+  assert.equal(feed.active, false);
+  assert.equal(studio.program, '休息');
+  assert.equal(studio.scenes.get(showcaseScene).at(-1).sourceName, showcaseArtwork);
+  assert.equal(studio.scenes.get(showcaseScene).at(-2), mask());
+  assert.deepEqual(studio.inputs.get(showcaseArtwork).inputSettings, {
+    url: 'http://127.0.0.1:3010/showcase?clean=1&layer=cover', width: 1920, height: 1080, shutdown: false, restart_when_active: false,
+  });
+  assert.equal(obs.snapshot().showcaseTransition.artwork, true);
+  assert.equal(mask().sceneItemEnabled, true);
+  assert.equal(mask().sceneItemLocked, true);
+  assert.deepEqual(studio.inputs.get(showcaseCover).inputSettings, { width: 1600, height: 800, color: 0xff281633 });
+  assert.equal(mask().transform.positionX, 160);
+  assert.equal(mask().transform.positionY, 100);
+
+  studio.cut(showcaseScene);
+  await obs.tail;
+  assert.equal(feed.active, true);
+  assert.equal(obs.snapshot().showcaseTransition.covered, true);
+  v2(2);
+  feed.frame(2, 101, 10);
+  feed.frame(2, 101, 11);
+  feed.frame(8, 101, 11);
+  feed.frame(8, 101, 11);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true, 'hands-on play and a frozen clock cannot reveal the capture');
+  await watch(202);
+  assert.equal(mask().sceneItemEnabled, false);
+  assert.equal(obs.snapshot().showcaseTransition.phase, 'playing');
+  studio.addItem(showcaseScene, 'game', true);
+  await obs.command({ action: 'cover-showcase' });
+  assert.equal(studio.scenes.get(showcaseScene).at(-1).sourceName, showcaseArtwork);
+  assert.equal(studio.scenes.get(showcaseScene).at(-2), mask());
+  assert.equal(mask().sceneItemEnabled, true);
+  feed.frame(8, 202, 0.5);
+  feed.frame(8, 202, 1);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true, 'manual cover holds over an ongoing run');
+  assert.deepEqual(session.state, original);
+  assert.deepEqual(outside, []);
+  assert.ok(!studio.log.some(call => call.type === 'SetCurrentProgramScene'));
+});
+
+test('confirmed results get one timer; stale results, a changed score, and same-map replay never reuse permission', async t => {
+  assert.equal(new ShowcaseReplay(() => {}).resultsMs, 3500);
+  const { studio, obs, mask, v2, watch, feed } = await setupReplay(t, 60);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  v2(7);
+  feed.frame(32, 101, 120);
+  assert.equal(obs.snapshot().showcaseTransition.phase, 'covered');
+  await watch();
+  assert.equal(mask().sceneItemEnabled, false);
+  v2(7, 101, { resultIdentity: 'one' });
+  feed.frame(32, 101, 120);
+  assert.equal(obs.snapshot().showcaseTransition.phase, 'results');
+  assert.equal(mask().sceneItemEnabled, false);
+  const timer = obs.replay.timer;
+  feed.frame(32, 101, 120.25);
+  feed.frame(32, 101, 120.5);
+  assert.equal(obs.replay.timer, timer);
+  await delay(70);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  feed.frame(32, 101, 120);
+  assert.equal(obs.snapshot().showcaseTransition.phase, 'covered');
+  await watch();
+  assert.equal(mask().sceneItemEnabled, false, 'same map can begin a new run');
+
+  v2(7, 101, { resultIdentity: 'two' });
+  feed.frame(32, 101, 120);
+  v2(7, 101, { resultIdentity: 'next replay score' });
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  await watch();
+  v2(7);
+  feed.frame(32, 101, 120);
+  assert.equal(mask().sceneItemEnabled, false);
+  v2(2);
+  feed.frame(8, 101, 0);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true, 'early start covers before allowing a new reveal');
+  feed.frame(8, 101, 0.3);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, false);
+  await delay(70);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, false, 'old timer did not interrupt the next run');
+});
+
+test('disconnect, cancellation, an external scene cut, and explicit recovery cannot expose an old score', async t => {
+  const { studio, obs, mask, v2, watch, feed } = await setupReplay(t, 60);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  await watch();
+  v2(7);
+  feed.frame(32, 101, 120);
+  feed.status('disconnected');
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  feed.frame(32, 101, 120);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  v2(0);
+  feed.frame(1, 101, 0, 0);
+  await obs.command({ action: 'reveal-showcase' });
+  assert.equal(mask().sceneItemEnabled, false);
+  feed.status('disconnected');
+  assert.equal(obs.snapshot().showcaseTransition.phase, 'manual');
+  await obs.command({ action: 'cover-showcase' });
+  assert.equal(mask().sceneItemEnabled, true);
+  await watch();
+  v2(7);
+  feed.frame(32, 101, 120);
+  studio.cut('休息');
+  await obs.tail;
+  assert.equal(feed.active, false);
+  assert.equal(mask().sceneItemEnabled, true, 'prepares the mask while Showcase is off air');
+  await delay(70);
+  await obs.tail;
+  assert.equal(studio.program, '休息');
+  await assert.rejects(obs.command({ action: 'reveal-showcase' }), /切到 OBS 播出/);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  v2(7);
+  feed.frame(32, 101, 120);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  assert.equal(obs.snapshot().showcaseTransition.phase, 'covered');
+});
+
+test('an in-flight reveal is discarded after a cut, and altered mask geometry is not confirmed', async t => {
+  const { studio, obs, mask, v2, feed } = await setupReplay(t);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  const entered = Promise.withResolvers(), release = Promise.withResolvers();
+  studio.before = async type => {
+    if (type === 'GetSceneItemList') { entered.resolve(); await release.promise; }
+  };
+  v2(2);
+  feed.frame(8, 101, 0);
+  feed.frame(8, 101, 0.3);
+  await entered.promise;
+  studio.cut('休息');
+  release.resolve();
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  assert.ok(!studio.log.some(call => call.type === 'SetSceneItemEnabled' && call.sceneItemId === mask().sceneItemId && !call.sceneItemEnabled));
+  studio.before = null;
+  mask().transform.positionX = 50;
+  studio.cut(showcaseScene);
+  await obs.tail;
+  await delay(0);
+  assert.equal(obs.snapshot().showcaseTransition.covered, null);
+  assert.match(obs.snapshot().showcaseTransition.error, /未确认/);
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(mask().transform.positionX, 160);
+  assert.equal(mask().sceneItemEnabled, true);
+});
+
+test('the replay feed opens /tokens only on Program and drops frames from a replaced tosu connection', async t => {
+  const sockets = [];
+  class Wire {
+    constructor(url) { this.url = url; sockets.push(this); }
+    sendFrame(status, time) {
+      this.onmessage?.({ data: JSON.stringify({ osuIsRunning: 1, status, rawStatus: 2, mapid: 101, time }) });
+    }
+    close() { this.closed = true; }
+  }
+  const { studio, obs, session } = await setup(t, {
+    ReplayClient: class extends TosuClient { constructor(options) { super({ ...options, WebSocketImpl: Wire }); } },
+    tosuUrl: 'ws://127.0.0.1:24050/websocket/v2',
+  });
+  studio.kinds.push('color_source_v3');
+  await obs.command({ action: 'create-showcase' });
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(sockets.length, 0);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  const first = sockets[0];
+  assert.equal(first.url, 'ws://127.0.0.1:24050/tokens');
+  session.live.tosu = { status: 'live', updatedAt: new Date().toISOString(), data: { state: { number: 2 }, beatmap: { id: 101 } } };
+  session.emit();
+  first.sendFrame(8, 1);
+  first.sendFrame(8, 1.2);
+  await obs.tail;
+  assert.equal(obs.snapshot().showcaseTransition.covered, false);
+  const stale = first.onmessage;
+  obs.setTosuUrl('ws://127.0.0.1:24051/websocket/v2');
+  stale({ data: JSON.stringify({ osuIsRunning: 1, status: 8, rawStatus: 2, mapid: 101, time: 2 }) });
+  await obs.tail;
+  assert.equal(obs.snapshot().showcaseTransition.covered, true);
+  assert.equal(first.closed, true);
+  assert.equal(sockets[1].url, 'ws://127.0.0.1:24051/tokens');
+  studio.cut('休息');
+  await obs.tail;
+  assert.equal(sockets[1].closed, true);
+});
+
+test('legacy masks upgrade to full-frame artwork without duplicate sources or changed captures', async t => {
+  const { studio, obs, mask } = await setupReplay(t);
+  const art = studio.scenes.get(showcaseScene).find(item => item.sourceName === showcaseArtwork);
+  studio.scenes.get(showcaseScene).splice(studio.scenes.get(showcaseScene).indexOf(art), 1);
+  studio.inputs.delete(showcaseArtwork);
+  delete obs.profile.showcase.transition.artwork;
+  const capture = structuredClone(studio.scenes.get(showcaseScene).find(item => item.sourceName === 'game'));
+  const maskId = mask().sceneItemId;
+  assert.equal(obs.snapshot().showcaseTransition.artwork, false);
+  await obs.command({ action: 'setup-showcase-transition' });
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(mask().sceneItemId, maskId);
+  assert.equal(studio.scenes.get(showcaseScene).filter(item => item.sourceName === showcaseArtwork).length, 1);
+  assert.deepEqual(studio.scenes.get(showcaseScene).find(item => item.sourceName === 'game'), capture);
+  assert.equal(studio.program, '休息');
+});
+
+test('artwork interrupted after creation retries, and wrong artwork geometry cannot reveal the fallback', async t => {
+  const { studio, obs } = await setup(t);
+  studio.kinds.push('color_source_v3');
+  await obs.command({ action: 'create-showcase' });
+  const request = studio.request.bind(studio);
+  let fail = true;
+  studio.request = async (type, args) => {
+    const result = await request(type, args);
+    if (fail && type === 'CreateInput' && args.inputName === showcaseArtwork) { fail = false; throw new Error('lost response'); }
+    return result;
+  };
+  await assert.rejects(obs.command({ action: 'setup-showcase-transition' }));
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(studio.scenes.get(showcaseScene).filter(item => item.sourceName === showcaseArtwork).length, 1);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  const art = studio.scenes.get(showcaseScene).at(-1);
+  art.transform.scaleX = .5;
+  await assert.rejects(obs.command({ action: 'reveal-showcase' }), /未确认/);
+  assert.equal(studio.scenes.get(showcaseScene).find(item => item.sourceName === showcaseCover).sceneItemEnabled, true);
+  await obs.command({ action: 'setup-showcase-transition' });
+  assert.equal(art.transform.scaleX, 1);
+});
+
+test('only the results timeout animates entry; early changes cover instantly', async t => {
+  const { studio, obs, v2, watch, feed } = await setupReplay(t, 25);
+  studio.cut(showcaseScene);
+  await obs.tail;
+  await watch();
+  v2(7);
+  feed.frame(32, 101, 120);
+  assert.equal(obs.coverSnapshot().completed.map, '101');
+  await delay(40);
+  await obs.tail;
+  assert.equal(obs.coverSnapshot().instant, false);
+  await watch(202);
+  v2(0, 202);
+  await obs.tail;
+  assert.equal(obs.coverSnapshot().covered, true);
+  assert.equal(obs.coverSnapshot().instant, true);
+  assert.equal(obs.coverSnapshot().completed.serial, 1, 'cancellation does not invent a completed map');
 });

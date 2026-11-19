@@ -3,6 +3,7 @@ import { exhibitionOf, fixedSeries, targetOf, seriesOf, validSeries, seriesCompl
 import { migrateSession, synchronizeRecords, settleEx, refundReplayEx } from './records.js';
 export { targetOf, seriesOf, seriesComplete, canShowWinner, exhibitionProgress } from './rules.js';
 import { randomUUID } from 'node:crypto';
+import { validTeamImageId } from '../team-art.js';
 
 export const SCENES = ['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause'];
 const MODS = ['NM', 'HD', 'HR', 'DT', 'FM', 'TB'];
@@ -118,8 +119,9 @@ function normalizeTeams(teams) {
     const value = teams?.[team];
     requireValue(value && text(value.name, 300) && value.name.trim(), '请填写双方队名');
     requireValue(value.id == null || text(value.id, 100), '队伍 ID 无效');
+    requireValue(value.avatarKey == null || (validTeamImageId(value.id) && validTeamImageId(value.avatarKey)), '队伍图片标识无效');
     requireValue(Array.isArray(value.roster) && value.roster.length <= 20, '名单格式无效');
-    result[team] = { id: value.id || null, name: value.name.trim(), roster: value.roster.map(p => {
+    result[team] = { id: value.id || null, name: value.name.trim(), avatarKey: value.avatarKey ?? null, roster: value.roster.map(p => {
       requireValue(p && text(p.name, 80) && p.name.trim(), '选手姓名无效');
       requireValue(p.osuId == null || (Number.isSafeInteger(p.osuId) && p.osuId > 0), '选手 ID 无效');
       return { name: p.name.trim(), osuId: p.osuId ?? null };
@@ -317,7 +319,7 @@ export function tiebreakerProgress(s) {
     : round?.status === 'prepared' && !active ? '先作废误准备的普通选图，再单独准备 TB'
     : active && round.status !== 'prepared' ? 'TB 已开始；核对赛果或按裁判决定重赛'
     : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待比赛开始；禁 Ban／EX'
-    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在开播前设置补齐本场 TB 谱面'
+    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在比赛配置补齐本场 TB 谱面'
     : exhibition ? '如裁判确认本场使用 TB，点击 TieBreaker 手动准备' : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
   return { eligible, active, canPrepare: eligible && !s.paused && !s.incident && !unresolved &&
     (!round || round.status !== 'prepared' || active) && (!active || round.status === 'prepared') && s.pool.some(e => e.mod === 'TB'), reason };
@@ -1154,6 +1156,7 @@ export function transition(state, command, { now = Date.now(), newId: makeId = r
   next.version++;
   next.commandIds.push(command.id); next.commandIds = next.commandIds.slice(-1000);
   next.history.push({ id: command.id, at: new Date(decidedAt(next)).toISOString(), version: next.version, message, source: 'manual',
+    ...(command.type === 'winner' ? { changes: [{ type: 'WinnerConfirmed' }] } : {}),
     bp: (next.bpHistory || []).slice((state.bpHistory || []).length) });
   next.history = next.history.slice(-300);
   return next;
@@ -1256,6 +1259,7 @@ export function observedTransition(state, operation, message, eventId, options =
   next.history.at(-1).changes = operation.type === 'confirm-result'
     ? [{ type: 'ResultConfirmed', attemptId: operation.attemptId, resultId: next.rounds.find(round => round.id === operation.attemptId).resultId,
       winner: next.rounds.find(round => round.id === operation.attemptId).winner, scores: operation.payload.scores }]
+    : operation.type === 'winner-deadline' ? [{ type: 'WinnerConfirmed' }]
     : [{ type: operation.type, attemptId: operation.attemptId ?? null, actionId: operation.actionId ?? null }];
   return next;
 }

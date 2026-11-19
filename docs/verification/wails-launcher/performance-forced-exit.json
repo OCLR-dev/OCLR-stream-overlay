@@ -1,0 +1,199 @@
+{
+  "date": "2026-11-19T02:09:22.346Z",
+  "baselines": {
+    "win32": "d6f9df4",
+    "windigo": "0014963"
+  },
+  "build": "7a8d7bc5bdfbd5b17ed45c1646e9257d5065096eeac04e19f0098b48d1c3ad5e",
+  "method": "same Node/service/assets; full GUI; browser auto-open suppressed; temporary readiness instrumentation; 7 alternating warm samples after one first-profile launch per variant",
+  "firstProfile": {
+    "win32": {
+      "healthMs": 765,
+      "frameMs": 339,
+      "readyMs": 771
+    },
+    "windigo": {
+      "healthMs": 703,
+      "frameMs": 296,
+      "readyMs": 706
+    },
+    "wails": {
+      "healthMs": 714,
+      "frameMs": 377,
+      "readyMs": 783
+    }
+  },
+  "samples": {
+    "win32": [
+      {
+        "healthMs": 221,
+        "frameMs": 80,
+        "readyMs": 244
+      },
+      {
+        "healthMs": 223,
+        "frameMs": 82,
+        "readyMs": 246
+      },
+      {
+        "healthMs": 205,
+        "frameMs": 82,
+        "readyMs": 248
+      },
+      {
+        "healthMs": 238,
+        "frameMs": 87,
+        "readyMs": 251
+      },
+      {
+        "healthMs": 223,
+        "frameMs": 87,
+        "readyMs": 251
+      },
+      {
+        "healthMs": 221,
+        "frameMs": 85,
+        "readyMs": 250
+      },
+      {
+        "healthMs": 222,
+        "frameMs": 85,
+        "readyMs": 250
+      }
+    ],
+    "windigo": [
+      {
+        "healthMs": 190,
+        "frameMs": 75,
+        "readyMs": 214
+      },
+      {
+        "healthMs": 190,
+        "frameMs": 75,
+        "readyMs": 213
+      },
+      {
+        "healthMs": 190,
+        "frameMs": 76,
+        "readyMs": 211
+      },
+      {
+        "healthMs": 218,
+        "frameMs": 101,
+        "readyMs": 226
+      },
+      {
+        "healthMs": 190,
+        "frameMs": 72,
+        "readyMs": 213
+      },
+      {
+        "healthMs": 191,
+        "frameMs": 81,
+        "readyMs": 216
+      },
+      {
+        "healthMs": 192,
+        "frameMs": 72,
+        "readyMs": 213
+      }
+    ],
+    "wails": [
+      {
+        "healthMs": 5378,
+        "frameMs": 5362,
+        "readyMs": 5450
+      },
+      {
+        "healthMs": 331,
+        "frameMs": 350,
+        "readyMs": 438
+      },
+      {
+        "healthMs": 314,
+        "frameMs": 301,
+        "readyMs": 386
+      },
+      {
+        "healthMs": 343,
+        "frameMs": 321,
+        "readyMs": 409
+      },
+      {
+        "healthMs": 4305,
+        "frameMs": 4293,
+        "readyMs": 4373
+      },
+      {
+        "healthMs": 6352,
+        "frameMs": 6332,
+        "readyMs": 6411
+      },
+      {
+        "healthMs": 4361,
+        "frameMs": 4338,
+        "readyMs": 4430
+      }
+    ]
+  },
+  "summary": {
+    "win32": {
+      "healthMs": {
+        "min": 205,
+        "median": 222,
+        "max": 238
+      },
+      "frameMs": {
+        "min": 80,
+        "median": 85,
+        "max": 87
+      },
+      "readyMs": {
+        "min": 244,
+        "median": 250,
+        "max": 251
+      }
+    },
+    "windigo": {
+      "healthMs": {
+        "min": 190,
+        "median": 190,
+        "max": 218
+      },
+      "frameMs": {
+        "min": 72,
+        "median": 75,
+        "max": 101
+      },
+      "readyMs": {
+        "min": 211,
+        "median": 213,
+        "max": 226
+      }
+    },
+    "wails": {
+      "healthMs": {
+        "min": 314,
+        "median": 4305,
+        "max": 6352
+      },
+      "frameMs": {
+        "min": 301,
+        "median": 4293,
+        "max": 6332
+      },
+      "readyMs": {
+        "min": 386,
+        "median": 4373,
+        "max": 6411
+      }
+    }
+  },
+  "sizes": {
+    "win32ExeBytes": 7020032,
+    "windigoExeBytes": 7156224,
+    "wailsExeBytes": 11610112,
+    "wailsZipBytes": 38792545
+  },
+  "passed": true
+}

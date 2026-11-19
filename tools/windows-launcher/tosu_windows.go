@@ -14,7 +14,6 @@ import (
 	"unsafe"
 )
 
-var commonDialog = syscall.NewLazyDLL("comdlg32.dll")
 var queryProcessImage = kernel.NewProc("QueryFullProcessImageNameW")
 
 var errTosuPortMissing = errors.New("SERVER_PORT is missing")
@@ -124,6 +123,11 @@ func findExecutableProcess(path string) processStatus {
 	if err != nil {
 		return processUnknown
 	}
+	return findProcess(filepath.Base(resolved), resolved)
+}
+
+// An empty path matches a running process by image name.
+func findProcess(name, path string) processStatus {
 	snapshot, err := syscall.CreateToolhelp32Snapshot(syscall.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
 		return processUnknown
@@ -131,14 +135,16 @@ func findExecutableProcess(path string) processStatus {
 	defer syscall.CloseHandle(snapshot)
 	entry := syscall.ProcessEntry32{Size: uint32(unsafe.Sizeof(syscall.ProcessEntry32{}))}
 	status := processStopped
-	name := filepath.Base(resolved)
 	err = syscall.Process32First(snapshot, &entry)
 	for ; err == nil; err = syscall.Process32Next(snapshot, &entry) {
 		imageName := syscall.UTF16ToString(entry.ExeFile[:])
-		// An 8.3 image name can differ from the selected file's long name.
 		matchingName := strings.EqualFold(imageName, name)
-		if !matchingName && !strings.Contains(imageName, "~") {
+		// An 8.3 image name can differ from the selected file's long name.
+		if !matchingName && (path == "" || !strings.Contains(imageName, "~")) {
 			continue
+		}
+		if path == "" {
+			return processRunning
 		}
 		image, queryErr := processImage(entry.ProcessID)
 		if queryErr != nil {
@@ -147,7 +153,7 @@ func findExecutableProcess(path string) processStatus {
 			}
 			continue
 		}
-		if sameExecutable(resolved, image) {
+		if sameExecutable(path, image) {
 			return processRunning
 		}
 	}

@@ -31,3 +31,29 @@
 ## 实机边界
 
 未进行真实 Windows 普通客户端 rep、tosu 与 OBS 合成验收，未验证真实观众弹幕。未部署到原 3001 服务或发布 Windows 包。隔离预览读取本机 `127.0.0.1:24050/websocket/v2` 的普通客户端数据；没有数据时显示等待，不自动播放合成信号。
+
+## 2026-11-17 白色 SVG 同步
+
+`ui/assets/oclr-s11-logo-white.svg` 已从同级 `OCLR-website` 工作区的最新
+`public/branding/oclr-s11-winter-banner.svg` 衍生，替代上文记录的旧白色字标。
+O/C/L、S11、副标题、轮廓与星点均为纯白；R 内部保留主站的透明度渐变
+（底层 6%，中心线 40% 后高斯柔化），遮罩黑白值保留，尾端星点位于圆头中心。
+仍使用 690×240 画布以及 Overlay 原有 S11 基线位置；无背景照片或外部依赖。
+Showcase、过场画面和过场演示继续共用此文件。
+
+重新导出：
+
+```sh
+python3 tools/artwork/export-white-logo.py ../OCLR-website/public/branding/oclr-s11-winter-banner.svg
+```
+
+此命令读取显式传入的 SVG，不下载线上素材。来源包含本次本地确认的透明度
+渐变修改；其是否已进入网站上游 main 需单独核对。
+
+同一导出命令还生成 `ui/assets/oclr-logo-white.svg`，由比赛画面中央的
+`BroadcastHeader.vue` 使用。此版本仅含 O/C/L/R 四个字母，保留 R 内部
+星点与透明度渐变，不含 S11、喝、副标题或下划线；Showcase 继续使用完整赛季版。
+
+2026-11-17 选定 B 档：R 描边向内由 9 加粗到 27，内轨宽度 109，
+圆头内半径 55.25；渐变宽度 27.0621、柔化半径 18.7931，同比缩至原来的
+约 75%。主站与 Overlay 两种白色字标统一采用此参数，外轮廓和星点不移动。

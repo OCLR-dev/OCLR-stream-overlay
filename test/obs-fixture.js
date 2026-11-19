@@ -14,6 +14,9 @@ export class Studio {
     this.sceneIds = new Map();
     this.inputs = new Map();
     this.program = '休息';
+    this.record = { outputActive: false, outputPaused: false, outputDuration: 0 };
+    this.stream = { outputActive: false, outputReconnecting: false };
+    this.images = new Map();
     this.preview = '预览';
     this.collection = '比赛集合';
     this.windows = Array.from({ length: 8 }, (_, i) => clientWindow(i));
@@ -43,6 +46,10 @@ export class Studio {
   cut(sceneName) {
     this.program = sceneName;
     this.event('CurrentProgramSceneChanged', { sceneName });
+  }
+  recording(state, duration = this.record.outputDuration) {
+    this.record = { outputActive: ['STARTED', 'PAUSED', 'RESUMED'].includes(state), outputPaused: state === 'PAUSED', outputDuration: duration };
+    this.event('RecordStateChanged', { ...this.record, outputState: 'OBS_WEBSOCKET_OUTPUT_' + state });
   }
   addItem(scene, name, enabled) {
     const input = this.inputs.get(name);
@@ -77,6 +84,11 @@ export class Studio {
     switch (type) {
       case 'GetSceneCollectionList': return { currentSceneCollectionName: this.collection };
       case 'GetSceneList': return { scenes: [...this.scenes.keys()].map(sceneName => ({ sceneName, sceneUuid: this.sceneIds.get(sceneName) })), currentPreviewSceneName: this.preview };
+      case 'GetStreamStatus': return { ...this.stream };
+      case 'GetRecordStatus': return { ...this.record };
+      case 'GetSourceScreenshot':
+        assert.ok(this.scenes.has(args.sourceName));
+        return { imageData: this.images.get(args.sourceName) || 'data:image/jpeg;base64,' + Buffer.from(args.sourceName).toString('base64') };
       case 'GetCurrentProgramScene': return { currentProgramSceneName: this.program };
       case 'SetCurrentProgramScene': {
         const name = args.sceneName ?? [...this.sceneIds].find(([, uuid]) => uuid === args.sceneUuid)?.[0];

@@ -7,6 +7,7 @@ import { liveBeatmap, livePlayingMap, liveRoom, liveRoomChat, createPlayingScore
 import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
 import { formatTeamScore } from './scoreFormat';
 import { presentMatchChat } from './matchChat';
+import { mapParameterMode } from './mapParameters';
 import { currentPoolEntry } from '../src/playing-layout.js';
 
 export function createOverlay(shared = false) {
@@ -131,7 +132,7 @@ export function createOverlay(shared = false) {
       pauseTimer, pauseClock, pauseTimerEnded: !!pauseTimer && pauseSecondsLeft === 0,
       pickTeam: playingPickTeam(s, currentMap),
       showPlayingScores: !shared || !!scores,
-      parameterMode: envelope?.live.sources?.tosu === 'simulated' ? 'official-test' as const : 'tosu' as const,
+      parameterMode: mapParameterMode(envelope?.live.sources?.tosu === 'simulated', bound?.ipcState, currentMap?.mod),
       winner: s?.winner ? names[s.winner] : null,
       drawnExhibition: !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',

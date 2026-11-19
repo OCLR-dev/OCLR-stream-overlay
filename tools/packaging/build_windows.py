@@ -43,7 +43,7 @@ def main():
     for folder in ['dist', 'server', 'src']:
         shutil.copytree(ROOT / folder, app / folder)
     shutil.copytree(ROOT / 'node_modules/rosu-pp-js', app / 'node_modules/rosu-pp-js')
-    (app / 'package.json').write_text('{"type":"module","private":true}\n', encoding='utf-8')
+    (app / 'package.json').write_text('{"type":"module","private":true,"license":"MIT"}\n', encoding='utf-8')
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
     launcher_dir = ROOT / 'tools/windows-launcher'
@@ -69,6 +69,8 @@ def main():
                     '-o', str(stage / 'OCLR.exe'), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
     shutil.copyfile(ROOT / 'docs/windows-portable.md', stage / '使用说明.txt')
     shutil.copyfile(ROOT / 'docs/verification/wails-launcher/README.md', stage / '验证状态.txt')
+    shutil.copyfile(ROOT / 'LICENSE', stage / 'LICENSE')
+    shutil.copyfile(ROOT / 'THIRD_PARTY_NOTICES.md', stage / 'THIRD_PARTY_NOTICES.md')
     license_dir = stage / 'licenses'
     license_dir.mkdir()
     for path in (ROOT / 'tools/packaging/licenses').glob('*'):

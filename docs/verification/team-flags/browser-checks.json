@@ -1,0 +1,166 @@
+{
+  "synthetic": true,
+  "checks": [
+    {
+      "case": "standalone images, wide/tall contain",
+      "flags": [
+        {
+          "label": "隔离验证红队 · 长队名检查队旗",
+          "text": "",
+          "src": "/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000011",
+          "loaded": true,
+          "fit": "contain",
+          "box": {
+            "x": 32,
+            "y": 29,
+            "width": 120,
+            "height": 72
+          }
+        },
+        {
+          "label": "隔离验证蓝队队旗",
+          "text": "",
+          "src": "/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000022",
+          "loaded": true,
+          "fit": "contain",
+          "box": {
+            "x": 1768,
+            "y": 29,
+            "width": 120,
+            "height": 72
+          }
+        }
+      ]
+    },
+    {
+      "case": "six scenes and eight capture layouts",
+      "geometry": [
+        {
+          "mode": "3v3",
+          "source": "4x3",
+          "ex": null,
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "3v3",
+          "source": "4x3",
+          "ex": "a",
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "3v3",
+          "source": "16x9",
+          "ex": null,
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "3v3",
+          "source": "16x9",
+          "ex": "a",
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "4v4",
+          "source": "4x3",
+          "ex": null,
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "4v4",
+          "source": "4x3",
+          "ex": "a",
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "4v4",
+          "source": "16x9",
+          "ex": null,
+          "flagsUnchanged": true
+        },
+        {
+          "mode": "4v4",
+          "source": "16x9",
+          "ex": "a",
+          "flagsUnchanged": true
+        }
+      ]
+    },
+    {
+      "case": "swap, version update and late previous image",
+      "passed": true
+    },
+    {
+      "case": "win banner a",
+      "src": "/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000022",
+      "fit": "contain",
+      "width": 150,
+      "height": 90
+    },
+    {
+      "case": "win banner b",
+      "src": "/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000044",
+      "fit": "contain",
+      "width": 150,
+      "height": 90
+    },
+    {
+      "case": "one absent and one failed image",
+      "flags": [
+        {
+          "label": "隔离验证红队 · 长队名检查队旗（首字标识）",
+          "text": "隔离",
+          "loaded": false,
+          "fit": null,
+          "box": {
+            "x": 32,
+            "y": 29,
+            "width": 120,
+            "height": 72
+          }
+        },
+        {
+          "label": "隔离验证蓝队队旗（首字标识）",
+          "text": "隔离",
+          "loaded": false,
+          "fit": null,
+          "box": {
+            "x": 1768,
+            "y": 29,
+            "width": 120,
+            "height": 72
+          }
+        }
+      ]
+    },
+    {
+      "case": "win banner fallback a",
+      "passed": true
+    },
+    {
+      "case": "win banner fallback b",
+      "passed": true
+    },
+    {
+      "case": "legacy and exhibition absent images",
+      "passed": true
+    },
+    {
+      "case": "control preview shares session transport and loads both images",
+      "passed": true
+    }
+  ],
+  "mediaRequests": [
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000011",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000022",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000033",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000044",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000099",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000099",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000099",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000011",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000022",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000001/avatar?v=00000000-0000-4000-8000-000000000011",
+    "https://oclr.org/api/teams/00000000-0000-4000-8000-000000000002/avatar?v=00000000-0000-4000-8000-000000000022"
+  ],
+  "runtimeErrors": []
+}

@@ -2,11 +2,28 @@ import { onMounted, onUnmounted, ref, shallowRef } from 'vue';
 import type { PoolEntry } from './session';
 import type { MapInfoSource } from './mapInfo';
 
+export interface WebsitePool {
+  id: string;
+  version: number;
+  name: string;
+  updatedAt: string;
+  round: { name: string };
+  entryCount: number;
+}
+export interface WebsitePoolSelection {
+  connection: string;
+  edition: string;
+  poolId: string;
+  version: number;
+}
+
 export interface ShowcaseSnapshot {
   revision: number;
   poolToken: string;
   pool: PoolEntry[];
   poolText: string;
+  websitePool: (WebsitePool & { edition: string }) | null;
+  websiteArtwork?: string | null;
   stageLabel: string;
   loadedPoolCount: number;
   loadedPoolToken: string;
@@ -15,6 +32,7 @@ export interface ShowcaseSnapshot {
   mapParameters: MapInfoSource['mapParameters'];
   sourceStatus: 'unavailable' | 'tourney' | 'no-map' | 'no-pool' | 'ambiguous' | 'matched' | 'unmatched';
   error: string;
+  transition?: { covered: boolean; instant: boolean; shown: string[]; lastMap: string | null };
 }
 
 export function useShowcase() {
@@ -43,7 +61,7 @@ export function useShowcase() {
     watchdog = setInterval(() => { if (Date.now() - lastReceived > 10000) connection.value = 'disconnected'; }, 1500);
   });
   onUnmounted(() => { disposed = true; events?.close(); clearInterval(watchdog); });
-  const command = async (type: 'pool-text' | 'use-loaded-pool' | 'stage-label', fields: Record<string, unknown> = {}) => {
+  const command = async (type: 'pool-text' | 'use-loaded-pool' | 'stage-label' | 'import-website', fields: Record<string, unknown> = {}) => {
     if (busy.value || !snapshot.value || connection.value !== 'synced') return false;
     busy.value = true; error.value = '';
     try {

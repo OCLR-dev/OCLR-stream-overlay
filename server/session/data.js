@@ -25,7 +25,7 @@ export function catalogue(source) {
   }
   return {
     kind: 'published', capturedOn: null, warnings: [],
-    teams: data?.teams?.map(t => ({ id: t.id, name: t.name, roster: t.members?.map(p => ({ name: p.username, osuId: p.osuId })) || [] })) || [],
+    teams: data?.teams?.map(t => ({ id: t.id, name: t.name, avatarKey: t.avatarKey ?? null, roster: t.members?.map(p => ({ name: p.username, osuId: p.osuId })) || [] })) || [],
     pools: data?.mappools?.map(p => ({ id: p.id, name: p.name, entries: normalizePool(p.entries.map(e => ({
       id: e.id, beatmapId: e.beatmapId, setId: e.metadata?.setId, mod: e.category, label: `${e.category}${e.position}`,
       title: e.metadata?.title || '', artist: e.metadata?.artist || '', difficulty: e.metadata?.difficulty || '',

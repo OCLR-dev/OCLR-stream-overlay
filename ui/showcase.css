@@ -82,3 +82,19 @@ body.is-showcase { background: transparent; }
   .showcase-app:not(.showcase-clean) .canvas-stage { order: -1; flex: 0 0 280px; padding-top: 64px; }
   .showcase-preview-status { top: 12px; left: 12px; right: 12px; }
 }
+
+.showcase-website { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--review-line); }
+.showcase-website h3 { margin: 0; font-size: 14px; }
+.showcase-website-field, .showcase-website-preview { display: grid; gap: 5px; min-width: 0; }
+.showcase-website-field :is(input, select) { width: 100%; min-width: 0; }
+.showcase-controls select { min-height: 44px; border: 1px solid var(--review-line); border-radius: 4px; background: #211139; color: var(--ink); padding: 8px 10px; font: inherit; }
+.showcase-controls select:focus-visible { outline: 2px solid #d1baff; outline-offset: 3px; }
+.showcase-website-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.showcase-website-actions strong { margin-inline-end: auto; font-size: 13px; }
+.showcase-website-preview { padding: 9px 10px; border: 1px solid var(--review-line); border-radius: 4px; overflow-wrap: anywhere; }
+.showcase-website-preview span { color: var(--muted); }
+.showcase-website .showcase-website-import { background: #623798; }
+.showcase-website details > * + * { margin-top: 8px; }
+
+.showcase-transition-controls { display: grid; gap: 8px; margin-block: 14px; padding-block: 12px; border-top: 1px solid var(--review-line); }
+.showcase-transition-controls h3, .showcase-transition-controls p { margin: 0; }

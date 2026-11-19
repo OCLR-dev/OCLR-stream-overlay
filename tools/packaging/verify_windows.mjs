@@ -59,6 +59,12 @@ async function waitForLog(pattern) {
 }
 let running;
 try {
+  await check('distributable includes project and third-party licenses', async () => {
+    for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
+      assert.equal(await readFile(join(packageRoot, name), 'utf8'), await readFile(new URL('../../' + name, import.meta.url), 'utf8'));
+    }
+    assert.equal(JSON.parse(await readFile(join(packageRoot, 'app/package.json'), 'utf8')).license, 'MIT');
+  });
   await cp(packageRoot, first, { recursive: true });
   await cp(packageRoot, second, { recursive: true });
   if (appPort !== 3001) {

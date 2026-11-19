@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "production output reads Showcase SSE and treats the first map as a baseline",
+    "initial cover mounts silently",
+    "confirmed replay reveals artwork",
+    "1920×1080 playback output is fully transparent",
+    "results timeout animates the eight bands",
+    "curtain reaches opaque holding state",
+    "completed map is counted once and same map shows brand",
+    "new client map selects the next real Slot",
+    "reload preserves server progress and next map",
+    "next replay reveals the same persistent output",
+    "disconnect cuts immediately to opaque brand cover"
+  ],
+  "errors": []
+}

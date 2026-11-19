@@ -274,13 +274,17 @@
 .team-block--a .win-stars { flex-direction: row-reverse; }
 .team-block--b .win-stars { flex-direction: row; }
 .header-score-line { display: contents; }
-/* Flag placement trial shared by the console preview and standalone output. */
-.team-flag-preview { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
-.team-block--a .team-flag-preview { left: 32px; }
-.team-block--b .team-flag-preview { right: 32px; }
-.team-flag-preview svg { display: block; width: 120px; height: 72px; border: 1px solid #ffffff70; object-fit: contain; }
-.broadcast-header--flag-preview .header-score-line { display: flex; align-items: center; gap: 12px; max-width: 100%; }
-.broadcast-header--flag-preview .team-block--a .header-score-line { flex-direction: row-reverse; }
+/* Fixed image frames shared by the console preview and standalone output. */
+.team-flag { position: absolute; top: 50%; width: 120px; margin: 0; transform: translateY(-50%); }
+.team-block--a .team-flag { left: 32px; }
+.team-block--b .team-flag { right: 32px; }
+.team-flag-frame { position: relative; display: grid; place-items: center; width: 120px; height: 72px; border: 1px solid #ffffff70; background: #191322; color: #e9e4f2; }
+.team-flag-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; visibility: hidden; }
+.team-flag-frame img.is-loaded { visibility: visible; }
+.team-flag-monogram { font: 700 28px/1 var(--display); }
+.map-win-banner .team-flag-monogram { font-size: 36px; }
+.broadcast-header--flags .header-score-line { display: flex; align-items: center; gap: 12px; max-width: 100%; }
+.broadcast-header--flags .team-block--a .header-score-line { flex-direction: row-reverse; }
 .event-block { position: absolute; top: 0; left: 760px; width: 400px; text-align: center; }
 .event-logo {
   display: flex;
@@ -336,8 +340,8 @@
   white-space: nowrap;
 }
 .map-win-suffix { flex: none; font: 700 40px/1 var(--display); letter-spacing: .2em; opacity: .92; text-shadow: 0 2px 18px #0007; white-space: nowrap; }
-.map-win-banner .team-flag-preview { position: static; width: 150px; margin: 0; transform: none; }
-.map-win-banner .team-flag-preview svg { width: 150px; height: 90px; border: 2px solid #ffffffb3; box-shadow: 0 14px 44px #00000073; }
+.map-win-banner .team-flag { position: static; width: 150px; margin: 0; transform: none; }
+.map-win-banner .team-flag-frame { width: 150px; height: 90px; border: 2px solid #ffffffb3; box-shadow: 0 14px 44px #00000073; }
 @keyframes map-win-sweep-a {
   0% { transform: translate3d(-101%, 0, 0); }
   20%, 80% { transform: translate3d(0, 0, 0); }
@@ -563,6 +567,19 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-index { position: absolute; right: 8px; bottom: 8px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
+/* Title and meta viewports clip to the space left of the #N reserve; long text
+   scrolls there instead of running under the card number. Keep the 40px gap in
+   sync with MapCardMarquee.vue's GAP. */
+.map-card-marquee-viewport { display: block; overflow: hidden; white-space: nowrap; }
+.map-card-marquee-track { display: inline-flex; white-space: nowrap; }
+.map-card-marquee-copy { display: inline-block; flex: none; }
+.map-card-marquee-viewport.is-scrolling .map-card-marquee-copy { padding-right: 40px; }
+.map-card-marquee-viewport.is-scrolling .map-card-marquee-track { will-change: transform; }
+/* Soften the cut edge while the text moves; the left edge stays sharp so the
+   beginning remains fully readable during the hold. */
+.map-card-marquee-viewport.is-scrolling {
+  mask-image: linear-gradient(90deg, #000, #000 calc(100% - 14px), transparent);
+}
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
 /* Ban darkens the artwork; its title and corner badge remain legible. */
@@ -642,9 +659,9 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry .map-status[data-winner='b'] { --status-color: var(--team-b); --status-ink: #b7d3ff; }
 
 /* Small radii soften information cards while preserving the angular broadcast frame. */
-.map-entry, .map-group-head, .team-flag-preview svg { border-radius: var(--radius-card); }
+.map-entry, .map-group-head, .team-flag-frame { border-radius: var(--radius-card); }
 .map-entry::before, .map-entry::after { border-radius: inherit; }
-.team-flag-preview svg { overflow: hidden; }
+.team-flag-frame { overflow: hidden; }
 .map-row { border-radius: var(--radius-panel); }
 .map-cover, .map-star-slot { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
 .map-slot { border-radius: 0 var(--radius-panel) var(--radius-panel) 0; }
@@ -662,7 +679,13 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .chat-box-header strong { color: var(--muted); font-size: 12px; font-weight: 600; line-height: 16px; }
 .chat-box-header span { color: var(--muted); font-family: var(--display); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .chat-box-content { display: flex; flex: 1; flex-direction: column; align-items: stretch; justify-content: center; min-height: 0; overflow: hidden; padding: 4px 10px; }
+.chat-lines { display: flex; flex: 1 1 auto; flex-direction: column; justify-content: flex-end; min-height: 0; }
 .chat-box-content .match-chat-line { flex: 0 0 auto; margin: 0; line-height: 20px; }
+/* New messages take their place immediately; TransitionGroup's FLIP move
+   carries every older line up while the entering line fades in from below. */
+.chat-line-enter-active { transition: opacity 280ms cubic-bezier(.2, .7, .3, 1), transform 280ms cubic-bezier(.2, .7, .3, 1); }
+.chat-line-enter-from { opacity: 0; transform: translateY(8px); }
+.chat-line-move { transition: transform 280ms cubic-bezier(.2, .7, .3, 1); }
 .chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
 .chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
 .chat-box--compact .chat-box-content { height: 100%; justify-content: flex-end; padding-top: 4px; }

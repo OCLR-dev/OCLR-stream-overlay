@@ -3,8 +3,55 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestTosuStartupAdviceAndModalRecheck(t *testing.T) {
+	for _, tc := range []struct {
+		name                    string
+		first, after, osu       processStatus
+		accept, want, wantError bool
+		checks, prompts         int
+	}{
+		{"osu running", processStopped, processStopped, processRunning, false, true, false, 1, 0},
+		{"cancel advice", processStopped, processStopped, processStopped, false, false, false, 1, 1},
+		{"accept advice", processStopped, processStopped, processStopped, true, true, false, 2, 1},
+		{"osu unknown", processStopped, processStopped, processUnknown, true, true, false, 2, 1},
+		{"tosu started during modal", processStopped, processRunning, processStopped, true, false, false, 2, 1},
+		{"file removed during modal", processStopped, processMissing, processStopped, true, false, true, 2, 1},
+		{"already running", processRunning, processRunning, processStopped, true, false, false, 1, 0},
+		{"unknown blocks duplicate", processUnknown, processUnknown, processRunning, true, false, true, 1, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checks, prompts := 0, 0
+			ok, err := allowTosuStart("selected tosu", "selected osu", func(path string) processStatus {
+				if path != "selected tosu" {
+					t.Fatal("wrong executable")
+				}
+				checks++
+				if checks == 1 {
+					return tc.first
+				}
+				return tc.after
+			}, func(path string) processStatus {
+				if path != "selected osu" {
+					t.Fatal("wrong osu selection")
+				}
+				return tc.osu
+			}, func(title, body string) bool {
+				prompts++
+				if !strings.Contains(body, "先打开 osu!Tourney") || (tc.osu == processUnknown && !strings.Contains(body, "无法确认")) {
+					t.Fatal("missing advice", body)
+				}
+				return tc.accept
+			})
+			if ok != tc.want || (err != nil) != tc.wantError || checks != tc.checks || prompts != tc.prompts {
+				t.Fatalf("allowed=%v error=%v checks=%d prompts=%d", ok, err, checks, prompts)
+			}
+		})
+	}
+}
 
 func TestRetiredBackendCannotReplaceCurrentStatus(t *testing.T) {
 	a := newLauncher(&diagnostics{})

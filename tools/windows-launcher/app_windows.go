@@ -189,6 +189,12 @@ func (a *Launcher) checkTosu() {
 	port := "等待选择 tosu"
 	if state.TosuPath != "" {
 		switch {
+		case errors.Is(probe.portErr, os.ErrNotExist):
+			port = "未找到 tosu.env"
+		case errors.Is(probe.portErr, errTosuPortMissing):
+			port = "tosu.env 未设置 SERVER_PORT"
+		case errors.Is(probe.portErr, errTosuPortInvalid):
+			port = "tosu.env 的 SERVER_PORT 无效"
 		case probe.portErr != nil:
 			port = "无法读取 tosu 端口，请检查 tosu.env"
 		case probe.port == "":
@@ -216,7 +222,17 @@ func (a *Launcher) ChooseTool(kind string) error {
 	if kind == "osu" {
 		title = "选择 osu!stable 的 osu!.exe"
 	}
-	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{Title: title, Filters: []wruntime.FileFilter{{DisplayName: "Windows 应用程序", Pattern: "*.exe"}}})
+	previous := a.Snapshot().TosuPath
+	if kind == "osu" {
+		previous = a.Snapshot().OsuPath
+	}
+	directory := ""
+	if filepath.IsAbs(previous) {
+		if info, err := os.Stat(filepath.Dir(previous)); err == nil && info.IsDir() {
+			directory = filepath.Dir(previous)
+		}
+	}
+	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{Title: title, DefaultDirectory: directory, Filters: []wruntime.FileFilter{{DisplayName: "Windows 应用程序", Pattern: "*.exe"}}})
 	if err != nil {
 		return errors.New("无法打开文件选择窗口，请重试。")
 	}
@@ -264,14 +280,12 @@ func (a *Launcher) StartTosu() error {
 		return err
 	}
 	defer a.end()
-	path := a.Snapshot().TosuPath
-	switch findExecutableProcess(path) {
-	case processRunning:
-		return nil
-	case processMissing:
-		return errors.New("找不到 tosu，请在设置中重新选择。")
-	case processUnknown:
-		return errors.New("无法确认 tosu 是否已启动，请稍后重试。")
+	s := a.Snapshot()
+	path := s.TosuPath
+	allowed, err := allowTosuStart(path, s.OsuPath, findExecutableProcess, osuProcessStatus, a.confirm)
+	if !allowed || err != nil {
+		a.checkTosu()
+		return err
 	}
 	cmd := exec.Command(path)
 	cmd.Dir = filepath.Dir(path)
@@ -279,12 +293,54 @@ func (a *Launcher) StartTosu() error {
 		return errors.New("无法启动 tosu，请检查所选程序。")
 	}
 	go func() {
-		if cmd.Wait() != nil {
+		err := cmd.Wait()
+		if err != nil {
 			a.log.record("tosu child exited with error")
+		}
+		a.op.Lock()
+		defer a.op.Unlock()
+		if !a.closing && a.Snapshot().TosuPath == path {
+			a.update(func(s *launcherState) {
+				s.Notice = "tosu 已关闭。"
+				if err != nil {
+					s.Notice = "tosu 异常退出，请检查后重试。"
+				}
+			})
+			a.checkTosu()
 		}
 	}()
 	a.checkTosu()
 	return nil
+}
+
+// Recheck after the modal: another process may start tosu while it is open.
+func allowTosuStart(path, osuPath string, tosu, osu func(string) processStatus, confirm func(string, string) bool) (bool, error) {
+	check := func() (bool, error) {
+		switch tosu(path) {
+		case processStopped:
+			return true, nil
+		case processMissing:
+			return false, errors.New("找不到 tosu，请在设置中重新选择。")
+		case processRunning:
+			return false, nil
+		default:
+			return false, errors.New("无法确认 tosu 是否已启动，请稍后重试。")
+		}
+	}
+	if ok, err := check(); !ok {
+		return false, err
+	}
+	if status := osu(osuPath); status != processRunning {
+		detail := "未检测到 osu! 正在运行。"
+		if status == processUnknown {
+			detail = "暂时无法确认 osu! 是否正在运行。"
+		}
+		if !confirm("打开 tosu", detail+"\n建议先打开 osu!Tourney，否则 tosu 可能无法读取游戏数据。\n\n仍要打开 tosu 吗？") {
+			return false, nil
+		}
+		return check()
+	}
+	return true, nil
 }
 func (a *Launcher) Tourney(launch bool) error {
 	if err := a.begin(); err != nil {
@@ -325,8 +381,14 @@ func (a *Launcher) OpenLog() error {
 	if _, err := os.Stat(a.log.path); err != nil {
 		return errors.New("无法读取本机日志。")
 	}
-	open(a.log.path)
-	return nil
+	if call(shell, "ShellExecuteW", 0, ptr("open"), ptr(a.log.path), 0, 0, 1) > 32 {
+		return nil
+	}
+	notepad := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+	if filepath.IsAbs(notepad) && call(shell, "ShellExecuteW", 0, ptr("open"), ptr(notepad), ptr(`"`+a.log.path+`"`), 0, 1) > 32 {
+		return nil
+	}
+	return errors.New("无法打开本机日志。")
 }
 func (a *Launcher) OpenProject() { open("https://github.com/OCLR-dev/OCLR-stream-overlay") }
 func (a *Launcher) Quit()        { wruntime.Quit(a.ctx) }

@@ -29,6 +29,16 @@ func TestTosuProcessMatchesFullPath(t *testing.T) {
 	}
 }
 
+func TestFindProcessByNameWithoutSelectedPath(t *testing.T) {
+	current, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findProcess(filepath.Base(current), ""); got != processRunning {
+		t.Fatalf("running process %q was not detected by name: %d", current, got)
+	}
+}
+
 func TestTosuProbeReadsPortFromSelectedDirectoryOnEveryCheck(t *testing.T) {
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {

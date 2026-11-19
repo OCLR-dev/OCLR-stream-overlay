@@ -3,7 +3,8 @@ import { onUnmounted, ref, watch } from 'vue';
 import { latestAutoWinAward, shortenWinTeamName } from '../autoWinAward';
 import type { Team } from '../model';
 import { useOverlay } from '../useOverlay';
-import TeamFlagPreview from './TeamFlagPreview.vue';
+import TeamFlag from './TeamFlag.vue';
+import type { TeamImage } from '../teamFlag';
 
 const { session, view, motionScope } = useOverlay();
 const DURATION = 5000;
@@ -12,6 +13,7 @@ interface Banner {
   sequence: number;
   team: Team;
   name: string;
+  image: TeamImage | null;
 }
 
 const banner = ref<Banner | null>(null);
@@ -22,7 +24,8 @@ let lastAwardId: string | null = null;
 
 const show = (team: Team) => {
   sequence += 1;
-  banner.value = { sequence, team, name: shortenWinTeamName(view.value.names[team]) };
+  banner.value = { sequence, team, name: shortenWinTeamName(view.value.names[team]),
+    image: session.value ? { ...session.value.match.teams[team] } : null };
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => { banner.value = null; }, DURATION);
 };
@@ -60,7 +63,7 @@ onUnmounted(() => clearTimeout(hideTimer));
         <strong class="map-win-name">{{ banner.name }}</strong>
         <span class="map-win-suffix">赢得本图</span>
       </div>
-      <TeamFlagPreview class="map-win-flag" :team="banner.team" decorative />
+      <TeamFlag class="map-win-flag" :team="banner.image" :name="banner.name" decorative />
     </div>
   </div>
 </template>

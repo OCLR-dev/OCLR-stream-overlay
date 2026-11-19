@@ -1,0 +1,52 @@
+{
+  "hold": [
+    {
+      "name": "hold-next-art",
+      "leak": 0
+    },
+    {
+      "name": "hold-long-title",
+      "leak": 0
+    },
+    {
+      "name": "hold-cjk-no-art",
+      "leak": 0
+    },
+    {
+      "name": "hold-tb",
+      "leak": 0
+    },
+    {
+      "name": "hold-brand",
+      "leak": 0
+    },
+    {
+      "name": "hold-pool-24",
+      "leak": 0
+    },
+    {
+      "name": "hold-pool-13",
+      "leak": 0
+    },
+    {
+      "name": "hold-reduced",
+      "leak": 0
+    }
+  ],
+  "scenarios": [
+    {
+      "flow": "正常换图",
+      "status": "遮挡：未遮挡 · 采集：模拟回放画面 NM2"
+    },
+    {
+      "flow": "同图重播",
+      "status": "遮挡：未遮挡 · 采集：模拟回放画面 NM1"
+    },
+    {
+      "flow": "提前打开 rep",
+      "status": "遮挡：未遮挡 · 采集：模拟回放画面 NM2"
+    }
+  ],
+  "errors": [],
+  "control": 539478
+}

@@ -1,225 +1,58 @@
 # OCLR 直播 Overlay
 
-Vue 3 / Vite / TypeScript 的 Neon Broadcast 直播界面，配套独立直播员控制台与本机共享会话。沿用现有深紫 UI、红蓝横幅、系列菱形和稳定游戏窗口。
+这套工具把 OCLR 对阵和图池、tosu 读到的游戏数据、导播在本机记录的比赛进度合成一套 osu! 比赛画面。导播使用浏览器控制台，OBS 使用独立的 1920×1080 浏览器源。
 
-Windows 启动窗口已改为 Wails + Vue，提供概览、设置、日志和关于页面。现有 Node 服务、比赛记录与浏览器控制台保持原有流程；启动界面内嵌在 exe 中，服务启动失败时仍可查看提示并重试。Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
+Windows 启动窗口使用 Wails + Vue，提供概览、设置、日志和关于页面。Node 服务、比赛记录与浏览器控制台沿用当前主线；Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
 
-自动化核心、schema 2 迁移与本轮验证见 [自动化状态机重构实现记录](docs/verification/automation-state-machine-refactor/README.md)。
+## 开播
 
-后续改进范围与 TB 待办见 [后续改进与待处理事项](docs/design/backlog.md)。
+1. Windows 直播机从 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 下载 `OCLR-Windows-x64.zip`，全部解压后双击 `OCLR.exe`。在启动窗口打开控制台。安装、接线与更新见 [Windows 直播员手册](docs/windows-portable.md)。
+2. 在「比赛配置 → 本场资料」登录 OCLR，预览自己被指派的场次，点「使用所选直播任务」。核对双方、本场图池、赛制和实际上场名单。任务提供队伍身份和可用队旗，名单由导播核对录入。见 [直播任务与表演赛](docs/streaming-api.md)。
+3. 在「游戏数据」查看 tosu 和房间，在「OBS」配置比赛场景与弹幕。在 OBS 的节目画面（Program）核对游戏捕获和弹幕，在混音器核对游戏声音。连接 OBS 后，控制台右侧显示当前节目画面、推流与录制状态，并在休息场景提供返场按钮。未连接时显示「Overlay 预览」。
 
-OCLR 直播任务的登录与断开共用一个按钮，随连接状态切换操作并显示处理进度；详见 [OCLR 登录与直播任务](docs/streaming-api.md)。
-
-开播前设置按本场比赛、游戏连接、OBS 与播出画面、比赛记录分组，桌面侧栏显示本场摘要与可收起的观众画面预览。已连接的 OCLR 任务将授权选项收进「连接设置」，当前任务显示「本场正在使用」。游戏连接集中显示有效房间与异常提示，自动 Ban / Pick、切换画面和计胜直接通过三个独立开关调整。B 站弹幕在 OBS 区内按连接、等待场景、配置、失败重试显示，粘贴身份码后自动配置。图示与窄屏验证见 [开播设置改版](docs/verification/prestream-setup/README.md)。
-
-已指派且公开的表演赛可从直播任务导入红蓝双方、已关联图池、人数和赛制。控制台与播出画面均标示表演赛，并按网站规则处理先胜、固定图数及平局。见 [表演赛操作](docs/streaming-api.md#表演赛)。
-
-当前 main 的操作口径见 [自由操作与中途加入](docs/main-operator-contract.md)。Windows 便携版构建与使用见 [直播员使用说明](docs/windows-portable.md)。
-
-## Windows 便携版
-
-启动窗口左侧可切换「概览」「设置」「日志」「关于」。概览提供直播状态及常用启动操作，设置集中管理服务端口、程序路径与配置生成，日志可预览最近记录或打开完整文件，关于显示构建标识和项目主页。
-
-在「设置」可修改服务端口，默认 3001。输入 1–65535 后点「重新启动 / 重试」，成功保存后下次沿用；已有直播服务会先提示确认中断输出。端口冲突时可直接改端口重试，比赛记录保留。「复制全部地址」提供控制台、Overlay 与 Showcase 地址。换端口后连接 OBS 会自动同步已识别的本机 Overlay／Showcase 浏览器源；OCLR 授权需重新连接，详见使用说明。
-
-需要 Windows 包时，将已确认的提交推进到专用 `release/windows` 分支；该分支最新提交通过 Windows 验证后，会在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 自动发布 Windows x64 Pre-release。日常推送 `main` 不自动发布；重构版从 `v0.1.0` 开始。操作步骤见 [Windows 发布分支](docs/windows-release.md)。下载 `OCLR-Windows-x64.zip` 并全部解压后双击 `OCLR.exe`。包内包含构建好的前端、服务端、Windows x64 Node 运行时和原生启动器，无需安装开发工具。OBS 输出地址为 `http://127.0.0.1:3001/overlay`，比赛保存在 `%LOCALAPPDATA%\OCLR\StreamOverlay`。退出时使用启动窗口按钮。
-
-启动窗口可记住 tosu 和 osu!stable 的执行文件路径。直播控制台连接授权赛季后，可生成该赛季的 `tournament.cfg`，也可一键生成并打开 osu!Tourney。[启动与设置步骤](docs/windows-portable.md#3-连接-tosu-与-osutourney)
-
-[简短上手说明](docs/windows-portable.md) · [构建、实际验证与边界](docs/verification/windows-portable/README.md)。旧版本退出后再启动新包；构建标识不一致时拒绝复用旧后端。本轮保留的 3001 模拟比赛服务使用现有本机会话，便携包不包含其数据或本机凭证。
-
-启动窗口可选择、记住并打开本机的 tosu 应用程序。端口检测和直播控制台的游戏数据连接共用所选程序同目录下 `tosu.env` 的 `SERVER_PORT`。
-
-直播服务暂时没有响应时，启动器会继续检查并在恢复后更新状态。侧栏「日志」可查看健康检查失败、后端错误和进程退出码。
-
-## 开发运行
-
-需要 Node.js 22.13+。已有依赖不需重新安装；首次使用执行 `npm ci`。
-
-```sh
-npm run build
-npm start
-```
-
-- 直播员：[http://localhost:3001/control](http://localhost:3001/control)。按当前画面管理、浏览器预览、现场处理与完整手动调整；设置修改自动同步。
-- OBS：[http://localhost:3001/overlay](http://localhost:3001/overlay)。只读输出，画幅 1920×1080；始终使用同一个浏览器源与这个固定地址。不要固定 `#scene`，旧 hash 也不会覆盖共享会话。
-- 图池 Showcase：[http://localhost:3001/showcase](http://localhost:3001/showcase)。录入演示图池后自动跟随普通客户端谱面；OBS 浏览器源使用 `/showcase?clean=1`。
-- 视觉演示：[http://localhost:3001/](http://localhost:3001/)。保留独立演示数据、URL 恢复和原评审控件，不改变正式会话。
-
-控制台与输出是两个独立页面，通过 Node 服务的快照和 SSE 同步。控制台内的只读 iframe 复用父页已收到的快照，减少重复长连接；独立 /overlay 仍直接订阅服务端。关闭或刷新控制台不影响输出；浏览器重新连接会取得统一快照。最终合成可在 OBS 的 Program（实际播出）或录像中检查。
-
-正赛 4v4 可在「开播前设置 → OBS 与播出画面」连接本机 OBS，展开「场景与捕获窗口」一次创建共用浏览器源的常规八路与 EX 六路场景，也可绑定已有场景。服务端按现有 EX 操作切换比赛布局。导播切去休息或广告后，可用「切回当前比赛布局」返场。连接、槽位核对和实机验收步骤见[直播员使用说明](docs/windows-portable.md#obs-跟随-ex)。
-
-正式与模拟服务共用单实例检查：已有本项目服务时会提示现有地址，不再另起一套。当前保留的本机验证服务为 [3001 控制台](http://127.0.0.1:3001/control) 与同端口 `/overlay`，原有比赛与模拟房间已无损恢复；模拟器为 [24051](http://127.0.0.1:24051/)。记录见 [单实例服务验证](docs/verification/single-runtime/README.md)。
-
-改 Vue/`ui/` 代码时不需要重启或重新构建模拟服务：先启动 `npm run sim`，再另开终端运行 `npm run dev`，打开 [3003 控制台](http://127.0.0.1:3003/control) 或 [3003 输出](http://127.0.0.1:3003/overlay)。Vite 提供热更新，并把 `/api` 代理到默认的模拟服务 3005；模拟服务使用其他端口时用 `OCLR_DEV_API=http://127.0.0.1:<端口> npm run dev`。Vite 根目录仅为 `ui/`，不加载凭证。只改 `server/` 或 `tools/` 下的 Node 代码才需要重启对应服务；正式流程仍用构建后的 `npm start` 验收。
-
-需要构建版预览、又不想每次手跑 `npm run build` 与 `npm run sim` 时：
-
-```sh
-npm run watch
-```
-
-首次会执行一次 `npm run build`，然后启动模拟服务；若本项目已有服务在运行则直接复用，不会结束不是它启动的进程。之后 `ui/` 修改在安静 5 秒后自动重新构建（刷新页面即可，模拟服务和 OBS 连接不中断）；`server/`、`src/`、`tools/tosu-simulator/` 修改会重启由本命令启动的模拟服务，沿用已保存比赛。修改 `server/` 等代码但使用的是已有外部服务时，脚本会提示手动重启。按 `Ctrl+C` 退出并关闭由它启动的模拟服务。可用 `--watch-delay <毫秒>` 调整安静期，`--app-port`、`--ws-port`、`--offline-oclr` 等参数原样传给模拟器，例如 `npm run watch -- --app-port 3006 --ws-port 24052`。
-
-## 图池 Showcase
-
-控制台顶部右侧的「Showcase · 图池演示」按钮进入独立页面，页首可「返回直播控制台」；左侧比赛／设置页签与右侧页面入口分组，窄屏自动分两行。Showcase 页首直接显示 OBS 连接设置，连接后展开「Showcase 场景」，点击「创建 OCLR · Showcase 场景」即可建立独立播出场景。验证与剩余实机验收见 [Showcase 入口与场景操作](docs/verification/showcase-entry/README.md)。
-
-打开 `/showcase`，先录入演示图池，每行「Slot 谱面ID或链接 标题（可选）」，例如 `NM1 4278199 eclosion`；也可点击「复制控制台已加载图池」。支持 osu! 具体难度链接，图集链接须带 `#osu/难度ID`。输入停顿或离开输入框后自动同步，无需保存。图池与 Stage 单独写入比赛文件同目录的 `showcase.json`，后续控制台换场或改图池不会覆盖它们。
-
-左侧「当前 Stage」可独立填写本次图池的阶段名称，输入后自动同步到画面最上方中央，留空隐藏。它不跟随控制台默认比赛阶段；复制图池也保留已填写的名称。
-
-顶部「STAGE」两侧使用渐隐细线，阶段标题带柔和紫色光晕。
-
-操作页预览靠上排列，当前演示状态显示在预览上方。图池每张占一行、行高 38px，标题与难度同行；当前匹配高亮并仅在列表内部自动滚动，保留页面位置和输入焦点。播出底栏上方使用贯通渐隐紫色细线，Logo 增加内边距并略微缩小，不透明度为 90%，带柔和紫光；左右角光统一为对称紫色。
-
-让 tosu 读取 osu! 普通客户端，在客户端选择谱面或运行 rep；Showcase 按当前谱面 ID 自动匹配 Slot，并同步曲名、难度、封面及可用参数，不需要手工选图或切 Slot。只有唯一匹配时才显示图池 Slot；池外或同一 ID 对应多个 Slot 时显示 `—`，操作区说明原因。断线、过期、无有效谱面或有效赛事客户端数据不会保留上张图的实时显示。
-在页面的「Showcase 的 OBS 设置」中连接本机 OBS，然后点击「创建 Showcase 场景」。会创建 `OCLR · Showcase` 和 1920×1080 的独立 `/showcase?clean=1` 浏览器源；不会自动切 Program。已有直播身份码时会复用同一弹幕源，也可在 Showcase 设置中粘贴身份码。Showcase 浏览器源保持 1920×1080、位置 (0,0)、缩放 1，铺满整个画布。osu! 普通客户端运行单张谱面的 rep 后，请自行添加独立回放采集源，放到浏览器源上方，在中央约 800px 高的区域内保持原始比例居中显示；无需缩小或移动 Showcase 浏览器源。上半区复用 Winner 的深紫背景与动态效果；底部按 Playing 排列 S11 官方比赛 Logo、1000×138 谱面卡和 `STREAM CHAT`。
-
-谱面跟随复用服务端当前已连接的 tosu 数据，不另建浏览器直连。Showcase 的图池与自动显示不修改比赛 Ban/Pick、局次、比分、场景或自动化；`/overlay` 继续承担原比赛输出。真实 Windows 单客户端 rep、tosu 与 OBS 合成仍需实机验收，隔离验证见 [Showcase 验证](docs/verification/showcase/README.md)。
-
-连接 OBS 后，弹幕配置会在当前场景集合中查找相同弹幕地址的浏览器源，找到就复用；没有匹配来源才新建。同名来源内容不同则自动使用带编号的名称，保留原来源；切换场景集合后分别检测和保存。
-
-## 贡献者实机测试数据
-
-UI 贡献者与 code agent 可使用[匿名化 Windows tosu 采样与回放说明](test-data/tosu/windows-2026-10-31/README.md)：3921 帧、10 分钟，包含已知异常输入、数据限制和隔离 UI 回放命令。它不是完整比赛或完整 WebSocket 原包。
-
-## 没有 tosu 的本机模拟测试
-
-```sh
-npm run build
-npm run sim
-```
-
-打开 [模拟器面板](http://127.0.0.1:24051/)、[模拟控制台](http://127.0.0.1:3005/control) 和 [模拟只读输出](http://127.0.0.1:3005/overlay)。在控制台读取真实 OCLR 历史场次与图池，再在模拟器中选择本场谱面、推送 Playing/Ranking、模拟队分或注入故障。现有 TosuClient 实际连接 `ws://127.0.0.1:24051/websocket/v2`，沿用原归一化、共享状态与界面链路。
-
-维护者重启模拟服务时，可使用 `--session-file <现有 session.json>` 与 `--room-file <已保存房间 JSON>` 恢复同一场比赛；会话加载完成后才启动订阅，不重置记录。普通直播员不需要操作这些参数。
-
-当前保留实例为 `3001/control`／`3001/overlay`，模拟 tosu 为 `24051/websocket/v2`；维护重启使用 `npm run sim -- --app-port 3001 --ws-port 24051`，已保存房间需要恢复时附上其 `--room-file`。在这同一实例里填写 `s10` 即可读取真实历史资料，不需要另开“真实赛事模式”。图池未绑定的历史场次需明确选择图池；历史比分不自动导入。
-
-模拟器选图列表随本场图池更新，也可手填谱面 ID。模拟房间左右队名可在模拟器中修改，控制台直接读取这些名称，无需再次填写或人工确认。模拟选手、实时分数、IPC、参数和故障仍是合成信号。正常模式的自动演练只发送当前图的 Playing → Ranking，不编排 BP，不重置对阵或赛果。
-
-保留 bearer 验证时，Key 失效会明确显示鉴权失败，不退回匿名。凭证只在服务端加载，更新本机凭证文件后由维护者有序重启；Key 的 Origin 应匹配 `OCLR_API_ORIGIN`，与控制台监听端口是不同设置。
-
-
-模拟器只替代 tosu：赛事资料仍通过已有 OCLR 只读 API、`.env.local` 与服务端凭证读取；正常模式不生成模拟对阵、图池或 BP 顺序。比赛默认保存在 `.local/session.json`，与普通启动共用；重置仅重置 tosu 信号，不清空比赛。完全离线的合成赛事须显式使用 `--offline-oclr`，仅供回归／时序诊断，使用隔离临时会话且不读取凭证或请求线上 API。Ctrl+C 关闭。可通过 `--app-port` / `--ws-port` 改端口；`npm run sim:test` 运行 8 项真实 WebSocket 测试。结构、用例与浏览器证据见 [WebSocket 模拟验证](docs/verification/tosu-websocket/README.md)。
-
-`npm run sim:timing` 对抗探测 17 种结算先后顺序；原始基线发现 5 种风险；本轮增加一致性校验与迟到分数核对后，仍有 2 种完整旧快照导致提前计胜的风险，发现风险时退出码为 1。真实直播机可用 `npm run tosu:record -- --duration 180` 记录 IPC、各路分数与人工事件标记。探测结果、限制与记录步骤见 [结算时序验证](docs/verification/result-timing/README.md)。
-
-## 本场操作
-
-正常流程以自动跟随为主，五个播出画面按钮（Alt+1 至 Alt+5）和独立暂停入口、双方开启 EX／关闭 EX 和次数加减常驻主界面。EX 由直播员手动设置，普通图准备期可开启，TB 禁用；开启／关闭不扣次数；本次 Pick 正常产生胜负后扣一次，同图重赛撤回原尝试贡献，改胜方不重复扣。左侧管理面板跟随所选画面：等待管到场，Roll 管点数和先手，图池自由选择队伍 Ban/Pick，并保留播出标记与比赛记录的边界，Playing 管开打、结算、记胜及系列比分，Winner 管胜方和下一场。切画面无需打开二级菜单，也无需先记一局胜利。
-
-已结束的本图队分相同时，控制台提示先与裁判核对；确认需要重赛后，先点击「处理异常 → 裁判已要求重赛本图」，再等待客户端重新开打。允许逐图平局的表演赛则提示「记录本图平局」。比赛纠错中的已记录平局显示为「平局」，可分别改为红队胜、蓝队胜；允许记平局时，已记录胜方也可改为平局。
-
-Playing 谱面卡显示图池完整标签（如 HR2），配色与图池一致。图池和 Playing 自动加载真实封面：匹配当前图的真实 tosu 背景优先，其余从 osu! 官方封面获取，无需新增 osu! API Key。缺少图集 ID 时后台会逐个查询并缓存，首次加载可能需要几秒；无法取得图片时保留渐变占位。详见 [EX 常用操作与谱面封面验证](docs/verification/ex-artwork/README.md)。
-
-图池背景图铺满整张卡片，左侧直接显示 NM1／HD2 等完整标签，文字区加遮罩，Ban 继续压暗、Pick 保留原色。Playing 参数默认读取匹配本局的 tosu 数据，包含星级和 CS／HP／AR／OD 转换值；模拟测试使用官方谱面文件按槽位对应的 NM／HD／HR／DT 计算星级与模组后参数，标注「测试 · HR 参数」等，不作为正式参数的自动回退。未明确自由模组组合的 FM／TB 显示「测试 · NM 基准」，时长仍等待 tosu，不猜算。验证见 [模组参数与图池标签](docs/verification/mod-parameters-labels/README.md)。
-
-“本场设置”的阶段选择立即同步到控制台预览与只读输出，自动切换 BO11 / BO13、先赢目标与赢图菱形数量，无需点击保存。阶段可在已有 BP 后修正，保留队伍、图池、BP、比分与自动跟随；现有比分超出新阶段目标时会提示先校正比分。本场设置的标题、队名、名单、人数、比例、图池、资料选择与房间跟随选项均自动同步；下拉选项立即生效，文字输入停顿 450ms 或离开输入框后同步，无需保存。每项显示同步或校验结果，不覆盖其他待编辑字段。比赛中仍可改动，保留 BP、局次、比分和自动化；不允许删除已引用谱面等破坏记录的改动。
-
-1. 启动 tosu 并连接赛事客户端，房间左右队名自动读取，无需在控制台手填或确认。默认保持自动跟随开启；连接有效且正在 Playing 时直接显示比赛画面、房间谱面和实时队分，不要求先录图池、Roll或本局记录。
-2. 赛前可录入队名、名单和图池，或选择明确赛季的 OCLR 已发布资料。缺失资料保持未知，名单和图片可后补。历史赛果不自动导入本地赢图。
-3. 图池只有一组队伍 Ban/Pick 按钮：可先选动作再选谱面，也可先选谱面再点击动作。按钮不要求按此前 BP 顺序解锁。新的普通 Pick 可准备当前局；正在进行或已打图的标记修正保留原局、run、赛果与系列分。清除标记不撤销比赛记录。
-4. 从头跟踪且两项先手齐全时，可继续使用 OCLR 既有顺序自动跟随。中途加入可直接明确当前 Pick；不补造之前的 Ban/Pick，也不猜处于第几轮。无法确定后续时等待明确动作，自动化设置保持开启。先 Ban 与先 Pick 独立，胜方不改轮换。
-5. 普通谱面统一在图池中通过队伍 Pick 准备；手动提前某个动作时，原当前动作回到队首，其余 Ban／Pick 顺序保留。Playing 可直接校正当前系列比分和处理赛果。准备期明确人工改图只替换同一次 Pick，房间再次换图不会自动纠错；图池可撤回最近一次 Ban/Pick，已有后续记录则直接修正目标标记。进行中的真实 run 不会因切画面或图池标记改变。未观察到有效开打的局只展示实时数据，不用旧 Ranking 补记胜。下一图与上一局待记录赛果独立。比赛纠错中的「真实 Ban 记录」可直接修改各队 Ban 1／Ban 2，修改后立即同步，保留当前局及后续顺序。
-6. 决胜比分时在图池点击 TieBreaker 单独准备 TB，无 Pick 方，禁 Ban/EX，不混入普通 Pick。全场达到目标后停止实际推进，Winner 由直播员展示；仍可修正播出标记及赛果。
-7. “全部撤销”和“初始化”位于“开播前设置 → 管理比赛记录”。中途初始化可勾选保留当前房间连接与自动跟随设置，清空并存档比赛记录后继续跟随 Playing 和实时队分；不补记清空前赛果。不勾选则连房间绑定一起清空。两种方式均先存档，可撤销；单纯自动接入画面不额外占用撤销步骤。
-
-人工图池每行使用 `标签 谱面ID 标题`，例如用本场真实的 `HD2` 标签与实际谱面 ID，标题可省略。条目 ID 唯一，同一 beatmap ID 可存在多个条目；这种情况自动跟随会停止并要求手动选择具体槽位。
-
-### 异常与逆向纠错
-
-裁判中止后，若本机连续观察到未完成的本局返回同房间准备状态，系统会自动保留原图恢复准备，保持当前画面、Pick、BP、EX 和系列比分，等待重新开始；无需再次点重赛或操作图池。单人掉线但房间仍在 Playing 时，继续使用“处理异常”。具体信号边界与验证见[返回准备验收](docs/verification/ready-return/README.md)。
-
-当前图旁提供“处理异常”：开打前取消启动保留原选图；比赛开始后中止并连续返回准备房间时自动恢复原图准备；仅选手掉线、房间仍在比赛时由直播员按裁判决定处理；Panic / 观战重载保留同一次开打；同图同组选手与有效 Playing 分数连续恢复后自动接回原局，无需另点恢复。实时队分独立显示，不因等待核对而隐藏；无法确认的异常仍保留人工处理。最终源码与验证状态见[今晚问题第 9 条](docs/verification/live-issues-2026-11-01/README.md)。自动检测到异常仅标记原因待核对并挂起自动推进与计胜，不把窗口缺失直接当成选手掉线或重赛。若观战恢复时本局已结束，核对实际成绩后人工记录赛果，补充说明可选。细节见 [本图异常与观战恢复](docs/design/match-incidents.md)。
-
-“比赛记录”提供三类修正，均自动记录对应原因、允许补充说明并保留操作历史：
-
-- **撤回本局计胜**：减回该局贡献，恢复为待记录结算；可重记正确胜方，或作废并重赛。旧 Ranking 帧不会自动把撤回的分数加回。
-- **修正胜方**：直接改正该局记录与赢图归属；不会重放 tosu 事件。
-- **人工校正系列比分**：直接修改赢图数，有效整数立即同步，无需等待停顿、离开输入框或点击确认。空白和越界输入不应用。保存校正差额，保留每局原记录，后续赢图在校正后的比分上累计。它与逐局修正是不同入口；若两者叠加会使比分越界，服务拒绝操作并提示先核对校正值。
-
-“撤销最近一项修改”可撤销最近的人工或自动变更，同时追加修订记录。已展示的 Winner 可通过上述纠错返回结算核对。切换显示画面本身不计胜，也不扣 EX 次数。
-
-热身由直播员手动进入／退出，仅改变显示；不清空观测、不改变 BP、比赛记录、赛果或 EX。房间信号继续独立处理，不要求先返回 Ready 才关闭热身。
-
-## tosu 自动跟随
-
-仅服务端建立一个 tosu v2 订阅，所有浏览器消费同一份会话，避免多个输出页重复推进。
-
-- 自动 BP、选画面、计胜默认保持开启，彼此独立。房间左右队名直接读取所连接 tosu 的赛事数据，收到有效 tourney / IPC 后自动跟随，无需选择“已核对”或再次填写队名。普通单人客户端没有赛事数据时等待。两侧有效客户端和谱面身份仍用于实际开打／计胜核验。
-- 新比赛的两项 Roll 先手齐全后由服务端自动建立并推进 BP；旧比赛和已配置手动队列保持原样。人工更改当前 / 后续动作仍可纠错、撤销；修改后使用该明确手动顺序，不自动补充轮换。图池模式可自由改选；可从当前 Pick 开始，未知的早先进度不作为操作前置条件。纯播出修正不改旧局或赛果。
-- 连续有效结算即开放下一动作，不要求先记胜；实际胜方不改选图轮换。系列达到目标停止 BP。常规最多 BO11 的 10 图 / BO13 的 12 图后等待核对，不把下一普通 Pick 当 TB；TB 由裁判确认后从图池单独准备，禁 Ban / EX，不消耗普通 Pick。
-- `beatmap.id` 变化稳定 400ms、至少两帧后，按事件发生时的当前 BP 动作应用。使用本场图池唯一匹配；旧的人工 entry 选择不会挡住新换图。
-- 仅已准备本局并观察到新的有效 Playing (`ipcState=3`) 边沿时建立独立 run ID；首次连接时已在 Playing 只接通实时显示，不创建开打记录。连续有效的 `3→4` 防抖 250ms、至少两帧后展示结算。完整、稳定且与逐人分数一致的双方队分用于自动加赢图（仍不能证明每人已结束），真实 0 保留，缺失不当作 0。迟到队分可在同一连续结算内补齐。若已经自动计胜后队分再变，撤回该局自动贡献并等待人工核对；人工结果和直接比分校正优先。
-- 换图不等于开打。非池内图、重复 map ID 槽位、已 Ban/已打图、房间不匹配或动作已改变时不推进 BP。
-- 明确暂停、过期、无效帧、断线会中断自动连续性。设置保持不变；结束暂停或条件恢复时自动建立基线，旧 Ranking 不补造计胜。已开打局发生观战中断仍须完成异常核对。相同 ID 的重复房间命令不能靠快照识别，重赛使用独立操作。
-- 手动切画面只覆盖播出显示，数据观察、BP 与计胜继续；下一次有效换图、开打或结算自动接回，没有抢回超时。关闭自动选画面时保持人工画面，自动计胜仍可独立工作。人工编辑直接生效；整场只保留明确暂停，没有全局人工接管模式。Winner 仍明确人工展示。不按分数停止增长、谱面时长或普通单进程 resultsScreen 判定赛事结束。
-- Roll、图池标记、EX、设置与系列比分按影响范围处理，不再无条件清空观察器。撤回／修正本局仅取消该局结算资格，后续比赛继续；补记旧局不打断新局。异常的继续、重赛、人工核对赛果本身完成恢复，无需第二次开启。详见 [自动化生命周期验收](docs/verification/automation-lifecycle/README.md)。
-
-完整方案：[控制台](docs/design/operator-console-plan.md)、[BP 自动跟随](docs/design/bp-automation-plan.md)、[tosu 信号调查](docs/design/tosu-auto-scene-research.md)。
-
-## 数据与存储
-
-| 位置 | 职责 |
+| 要做的事 | 默认本机地址 |
 | --- | --- |
-| `server/session/model.js` | 人工与观测操作的唯一状态写入入口、合法转换与目标校验 |
-| `server/session/rules.js` | 正赛／表演赛的 BP 起点、结束条件、TB／EX 与自动赛果资格 |
-| `server/session/records.js` | Pick／单次比赛／赛果身份、兼容投影、EX 贡献与 schema 迁移 |
-| `server/session/application.js` | 串行处理中的观测、局部恢复与人工操作编排 |
-| `server/session/presentation.js` | 场景跟随及提交后的显示期限调度 |
-| `server/session/automation.js` | 唯一的房间换图 / Playing / Ranking 观察器，连续性只保存在内存 |
-| `server/session/store.js` | 队列、原子文件提交、迁移前备份、存档与只读订阅快照 |
-| `server/session/data.js` | 通过 `src/index.js` 接入统一数据层，显式导入已发布资料 |
-| `server/session/http.js` | 本机会话读取、SSE 和同源 JSON 命令 |
-| `ui/components/OperatorConsole.vue` | 独立控制台；`ui/session.ts` 为浏览器会话客户端 |
-| `ui/useOverlay.ts` | 将共享会话接入现有组件；演示模式保持独立 |
+| 导播操作比赛 | [控制台](http://127.0.0.1:3001/control) |
+| 在 OBS 播出比赛 | [比赛输出](http://127.0.0.1:3001/overlay) |
+| 准备 Showcase 图池、Stage 与回放过场 | [Showcase 操作页](http://127.0.0.1:3001/showcase) |
+| 在 OBS 播出 Showcase | [Showcase 播出页](http://127.0.0.1:3001/showcase?clean=1) |
+| 单独查看演示数据和视觉控件 | [演示页](http://127.0.0.1:3001/) |
 
-`.local/session.json` 原子替换保存比赛选择、Roll、BP、轮次、来源、校正差额、暂停返回位置、最近操作与撤销记录。准备下一场前保存 `.local/archive/`；整个 `.local/` 被 Git 忽略，HTTP 不提供这些文件。实时队分、聊天和观察器连续性不作为实时数据恢复；结算队分是明确的历史快照。文件损坏时拒绝启动，不静默覆盖记录。
+便携版更改端口后使用启动窗口给出的地址。比赛输出与控制台订阅同一个本机会话，关闭控制台网页后，OBS 继续播出，直播服务继续自动打点。停录后在「录像打点」复制时间轴。[节目预览与录像操作](docs/main-operator-contract.md#obs-节目画面与录像打点)
 
-来源：OCLR 已发布只读资料；tosu 当前帧；人工播出记录，三者保持分离。API 定时刷新只更新来源健康和可选资料，不改写已确认的本场 BP/赛果。不生成 `bracket.json`、不写网站正式结果、不连接数据库。
+## 比赛与图池演示
 
-## 直播 API 授权
+- **正赛**可以从到场、Roll 和 BP 开始，也可以中途接入正在 Playing 的房间。图池管理 Ban/Pick 和 TB，Playing 管理当局比分与成绩。Ranking 沿用 Playing 捕获布局。暂停、撤销和比赛纠错都在控制台。[现场操作与中途加入](docs/main-operator-contract.md)
+- **Showcase** 使用普通 osu! 客户端播放 rep。图池可手动录入、复制控制台已加载的图池，或导入网站授权的图池。开启自动过场后，等「遮挡已确认」再打开下一份 rep。[授权导入](docs/streaming-api.md#从网站导入-showcase-图池) · [OBS 过场操作](docs/windows-portable.md#showcase-回放过场)
 
-控制台「开播前设置 → OCLR 直播任务」可打开 [S11 直播授权](https://oclr.org/streaming/s11)，登录并授权后自动连接，无需复制凭证或配置 Developer Key；保留手动复制备用。授权只留在本机服务内存，自动读取本人直播任务，选择预览后明确使用才修改本场。自动登录需同步安装网站配套更新（#616）。操作、支持赛制与失效处理见 [直播 API 使用说明](docs/streaming-api.md)。
+## 本地开发
 
-## 代理与凭证
+使用 Node.js 22.13+。首次运行执行 `npm ci`。前端在 `ui/`，来源适配在 `src/`，比赛状态和持久化在 `server/session/`，OBS 联动在 `server/obs/`。
 
-沿用已有 `.env.local`；首次配置参考 `.env.example`，不要覆盖已有文件。OCLR Key 或凭证文件引用只在服务端加载，Key 不进入浏览器、URL、日志或 Git。后端仍是只读白名单代理；只有 `/api/session/command` 接受严格同源的 JSON 写入，写入范围仅本地会话。
+| 目的 | 从仓库根目录运行 |
+| --- | --- |
+| 构建并启动正式服务 | `npm run build`，然后 `npm start` |
+| 使用游戏信号模拟器开发 UI | 分别在两个终端运行 `npm run sim` 和 `npm run dev`，打开 [热更新控制台](http://127.0.0.1:3003/control) |
+| 监听源码并更新构建版 | `npm run watch` |
+| 检查类型、构建和运行测试 | `npm run build` 包含类型检查，构建后运行 `npm test` |
+| 验证 WebSocket 或诊断结算时序 | `npm run sim:test` 或 `npm run sim:timing` |
+| 采集直播机游戏信号 | `npm run tosu:record -- --duration 180` |
 
-服务只监听 `127.0.0.1`，生产静态白名单为入口及 `dist/assets/`，另保留四个指定数据模块。禁止对项目根目录运行静态 HTTP 服务。
+模拟器默认使用控制台端口 3005、tosu 端口 24051。普通模拟只替代游戏信号，赛事资料仍按所选赛季读取。隔离回归可用 `npm run sim -- --offline-oclr`。已有采样的回放方法见 [Windows tosu 采样说明](test-data/tosu/windows-2026-10-31/README.md)。
 
-OCLR 读取：顺序加载同一赛季的 overview/teams/competition/mappools/bracket/players；分页版本冲突整份重读一次；401/403 清空来源并停止自动刷新，不降级匿名；429 遵守 Retry-After。来源时间是本机成功读取时间，不是上游原子快照。
+## 维护文档
 
-## 验证与尚未接入
+| 查什么 | 入口 |
+| --- | --- |
+| 修改项目时遵循的约定 | [AGENTS.md](AGENTS.md) |
+| 播出视觉、捕获尺寸和各页职责 | [当前设计](DESIGN.md) |
+| 本场状态、异常和赛果纠错 | [操作约定](docs/main-operator-contract.md) · [异常处理](docs/design/match-incidents.md) |
+| 准备实施的功能、已完成事项和旧方案 | [项目待办与设计索引](docs/design/backlog.md) |
+| 某次改动的测试、截图与实机记录 | [分项验收记录](docs/verification/) |
+| 构建和发布 Windows 包 | [Windows 发布分支](docs/windows-release.md) |
 
-```sh
-npm run check
-npm run build
-npm test
-```
+主线文档随源码更新。使用便携包时，随包的《使用说明.txt》和 Release 标注的提交对应这次构建。
 
-当前按画面管理的实现、81 项回归测试与截图见 [面板职责验收](docs/verification/scene-management/README.md)。此前的整体改造见 [志愿直播员控制台验收](docs/verification/volunteer-console/README.md)。原有实现记录见 [控制台验证](docs/verification/operator-console/README.md)。合成 tosu 序列只验证本地状态逻辑；真实 OCLR S10 历史 API 已在仅模拟 tosu 的实例验证，见 [数据来源分离验收](docs/verification/tosu-real-oclr/README.md)；本 Mac 没有 tosu，**尚未完成真实 tosu / osu!tourney / OBS 联调**。
+## 许可证
 
-游戏视频与原生结算捕获仍需直播机接线，当前游戏窗口明确显示待接入。Playing 在同一组窗口展示比赛和结算。控制台输入 B 站直播身份码后，OBS 常规与 EX 场景会共用一个 blive.chat 浏览器源，显示在右下角 `(1470,928,420,138)` 的 STREAM CHAT 框内。[直播间弹幕设置](docs/windows-portable.md#b-站直播间弹幕)
-
-EX 对称减员窗口保留，但真实 EX 选手映射、捕获源和完整 EX 裁判规则仍待核对，不自动推定减员名单。EX 次数现按本次 Pick 的有效赛果计算；迁移旧 Pick 的历史消耗保持未知。自动回 BP 的空闲状态计时策略尚未启用，只支持下一有效谱面或人工返回。
-
-### 界面动效
-
-背景包含36个菱形的全画布斜向漂移（6–10秒）及两侧增强的红蓝光点。Mappool先手标签按左右队属着色并对称放置，EX剩余与Ban槽对称排列。[背景与图池布局验证](docs/verification/ambient-mappool/README.md)。
-
-场景根节点与捕获区即时切换，仅安全信息区使用720ms淡入与位移；Ban/Pick用1600ms队色遮罩展开，展示动作与队名后淡出，赢图只强调发生变化的菱形，Winner文案380ms轻入场。高频实时队分直接更新，游戏窗口始终保持挂载。首次加载、重连、新场及重复快照静默；系统偏好“减少动态效果”时关闭全部动效。[隔离动态预览、截图与验证](docs/verification/semantic-motion/README.md)。
-
-控制台图池改用 48px 紧凑卡片（原最小 96px），保留队色、状态与键盘选择，长标题省略并提供完整提示；不改变 OBS 图池布局。比赛纠错里的本图／Pick 方、当前 BP 动作、先手、EX 与次数均修改即同步；文字／数值停顿 450ms 或失焦同步，下拉立即同步。BP 顺序的核实来源说明可选，动作与行动队伍必须明确填写。人工记胜直接点击对应胜方，没有胜方草稿加保存步骤。清空下一场仍使用明确的初始化动作。
-
-Roll 到完整 BP 的实现、兼容与隔离验证见 [Roll / BP 衔接验收](docs/verification/roll-bp/README.md)。当前 3007 服务未重启，需后续有序加载新后端才能使用本次功能。
-
-Mappool 支持先点击队伍 Ban / Pick 按钮，无需先选谱面；服务器随后按该动作跟随新的有效房间换图。要人工补做时再点谱面并完成当前真实动作，下面的播出标记仍独立。OCLR原有BP轮换保持，详见[动作优先验收](docs/verification/action-first/README.md)。
-
-
-模拟器持续加分改为双方追分与交替领先：两队总分只增不减，约每数秒变换优势，分差通常在 ±11 万内拉扯。仅影响模拟 tosu Playing 的增长信号；手动输入分数、空值、停止增长及明确 Ranking 结果保持原职责，不写网站赛果。
-
-FM 中的 EZ 额外计分由直播项目补入：客户端选手分数 ×1.5，逐人四舍五入后汇总；实时队分、分差、结算与计胜共用同一口径。NM／TB 等其他分组不补偿。详见 [FM EZ 计分补偿](docs/verification/fm-ez-scoring/README.md)。
+自有代码与文档采用 [MIT License](LICENSE)。字体、素材和依赖的授权见[第三方声明](THIRD_PARTY_NOTICES.md)与[随包许可证](tools/packaging/licenses/)。

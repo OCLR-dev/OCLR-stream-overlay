@@ -279,7 +279,7 @@ export async function arrangeCaptures(call, preset, source, layouts = ['regular'
   }
 }
 
-function windowOptions(items) {
+export function windowOptions(items) {
   const choices = [];
   const titles = new Map();
   for (const item of items) {
@@ -346,7 +346,7 @@ export async function measureScenes(call, profile, managed) {
     const sceneName = profile[layout];
     const { sceneItems } = await call('GetSceneItemList', { sceneName });
     for (const item of sceneItems) {
-      if (item.inputKind === desktopKind) continue;
+      if ([desktopKind, 'wasapi_process_output_capture'].includes(item.inputKind)) continue;
       const { sceneItemTransform: t } = await call('GetSceneItemTransform', { sceneName, sceneItemId: item.sceneItemId });
       const slot = managed && slots.find(s => capture(s) === item.sourceName);
       if (slot && !windows.has(slot)) {

@@ -4,18 +4,18 @@ import ScoreCounter from './ScoreCounter.vue';
 import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
-import TeamFlagPreview from './TeamFlagPreview.vue';
+import TeamFlag from './TeamFlag.vue';
 import TeamNameMarquee from './TeamNameMarquee.vue';
 import HeaderAmbient from './HeaderAmbient.vue';
 import TeamBlockParticles from './TeamBlockParticles.vue';
 import MapWinBanner from './MapWinBanner.vue';
-import oclrLogo from '../assets/oclr-logo-light.svg';
+import oclrLogo from '../assets/oclr-logo-white.svg';
 
 const { state, view, motionScope, motionReady, session } = useOverlay();
 // Playing crossfades the room total over the series score once both sides have
 // arrived; the series value stays beside the win pips as a small gilded number.
 // Every other scene keeps only the series score.
-const received = (value: string) => /^\d[\d,]*$/.test(value);
+const received = (value: string) => /^\d[\d']*$/.test(value);
 const roomTotals = computed(() => (state.scene === 'playing' || view.value.warmup) &&
   received(view.value.scoreA) && received(view.value.scoreB));
 // Interpolate only fresh Playing updates. Joining, reconnecting,
@@ -41,11 +41,11 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
 </script>
 
 <template>
-  <header class="broadcast-header broadcast-header--flag-preview" :data-warmup="view.warmup ? 'true' : undefined">
+  <header class="broadcast-header broadcast-header--flags" :data-warmup="view.warmup ? 'true' : undefined">
     <HeaderAmbient />
     <section class="team-block team-block--a" :aria-label="`左队（RED）：${view.names.a}`">
       <TeamBlockParticles />
-      <TeamFlagPreview team="a" />
+      <TeamFlag :team="session?.match.teams.a" :name="view.names.a" />
       <TeamNameMarquee :name="view.names.a" />
       <div class="header-bans header-bans--a" data-header-bans="a" role="group" :aria-label="`${view.names.a} 先手、禁用与 EX 状态`">
         <span class="ban-group">
@@ -73,7 +73,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
     </section>
 
     <section class="event-block">
-      <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="42" /></div>
+      <div class="event-logo"><img :src="oclrLogo" alt="OCLR" width="160" height="50" /></div>
       <div class="event-meta">
         <strong data-stage-label>{{ view.warmup ? 'Warm-up' : view.meta.label }}</strong>
       </div>
@@ -81,7 +81,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
 
     <section class="team-block team-block--b" :aria-label="`右队（BLUE）：${view.names.b}`">
       <TeamBlockParticles />
-      <TeamFlagPreview team="b" />
+      <TeamFlag :team="session?.match.teams.b" :name="view.names.b" />
       <TeamNameMarquee :name="view.names.b" />
       <div class="header-bans header-bans--b" data-header-bans="b" role="group" :aria-label="`${view.names.b} 先手、禁用与 EX 状态`">
         <span class="ban-group">

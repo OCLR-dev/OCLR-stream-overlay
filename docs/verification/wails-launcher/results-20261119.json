@@ -1,0 +1,80 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v22.23.4",
+  "appPort": 3001,
+  "results": [
+    {
+      "name": "distributable includes project and third-party licenses",
+      "passed": true
+    },
+    {
+      "name": "bundled WASM HR calculation works offline from a Unicode path",
+      "passed": true
+    },
+    {
+      "name": "native x64 first start from Chinese/spaced path; ready before control/overlay",
+      "passed": true
+    },
+    {
+      "name": "repeated native launch reuses one server without changing match",
+      "passed": true
+    },
+    {
+      "name": "controller and independent output SSE synchronize; closing controller leaves output alive",
+      "passed": true
+    },
+    {
+      "name": "portable artwork survives pool setup, initialization and undo without stopping the native service",
+      "passed": true
+    },
+    {
+      "name": "normal native exit releases service and fixed port",
+      "passed": true
+    },
+    {
+      "name": "restart from replacement program directory retains complete session and undo",
+      "passed": true
+    },
+    {
+      "name": "occupied port refuses start; other program remains alive",
+      "passed": true
+    },
+    {
+      "name": "old backend is not silently reused",
+      "passed": true
+    },
+    {
+      "name": "corrupt data refuses startup and preserves original bytes",
+      "passed": true
+    },
+    {
+      "name": "bundled runtime and native smoke-test exit cleanly",
+      "passed": true
+    },
+    {
+      "name": "native launcher reads the saved executable directory and supplies the backend port",
+      "passed": true
+    },
+    {
+      "name": "native launcher keeps the same backend through timeouts and logs its eventual exit",
+      "passed": true
+    }
+  ],
+  "build": "7a8d7bc5bdfbd5b17ed45c1646e9257d5065096eeac04e19f0098b48d1c3ad5e",
+  "passed": true,
+  "date": "2026-11-19",
+  "scope": "synthetic; unmodified production executable and bundled Node; headless integration",
+  "gui": {
+    "scope": "synthetic; same production UI with isolated mutex and browser auto-open suppressed",
+    "passed": true,
+    "checks": [
+      "four-page navigation",
+      "MIT and copyright visible",
+      "native picker opens previous program directory; cancel preserves settings",
+      "osu-first warning; cancel restores enabled actions",
+      "log preview loads",
+      "normal exit confirmation; backend drains; launcher exits 0"
+    ]
+  }
+}

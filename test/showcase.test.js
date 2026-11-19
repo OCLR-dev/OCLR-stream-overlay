@@ -22,6 +22,35 @@ function frame(session, entry, extra = {}) {
   session.emit();
 }
 
+test('cover progress follows confirmed replay completions, survives subscribers, and resets for a new pool', async t => {
+  let presentation = { covered: true, instant: true, completed: null };
+  const listeners = new Set();
+  const obs = { coverSnapshot: () => presentation, subscribeCover: fn => { listeners.add(fn); return () => listeners.delete(fn); } };
+  const { session, showcase } = setup(t, { obs: () => obs });
+  await setPool(showcase, 'NM1 101\nHD1 102');
+  frame(session, showcase.snapshot().pool[0]);
+  assert.equal(showcase.snapshot().transition.lastMap, '101', 'first observed map is a brand baseline, not an invented next map');
+  const original = structuredClone(session.state);
+  const snapshots = [];
+  const stop = showcase.subscribe(value => snapshots.push(value));
+  const notify = value => { presentation = value; for (const listener of listeners) listener(); };
+  notify({ covered: false, instant: true, completed: { serial: 1, map: '101' } });
+  assert.deepEqual(snapshots.at(-1).transition.shown, [showcase.snapshot().pool[0].id]);
+  assert.equal(snapshots.at(-1).transition.lastMap, '101');
+  const revision = showcase.snapshot().revision;
+  notify({ ...presentation, covered: true, instant: false });
+  assert.ok(showcase.snapshot().revision > revision, 'timer-only changes reach SSE subscribers');
+  stop();
+  assert.equal(listeners.size, 0);
+  assert.equal(showcase.snapshot().transition.shown.length, 1, 'page reload does not reset progress');
+  notify({ ...presentation, completed: { serial: 2, map: '101' } });
+  assert.equal(showcase.snapshot().transition.shown.length, 1, 'same-map replay counts once');
+  await setPool(showcase, 'NM1 101\nHD1 103');
+  assert.deepEqual(showcase.snapshot().transition.shown, []);
+  assert.equal(showcase.snapshot().transition.lastMap, '101');
+  assert.deepEqual(session.state, original);
+});
+
 test('pool input accepts IDs and exact difficulty URLs, retains same-map metadata and rejects incomplete/invalid lists', () => {
   const previous = [{ id: 'old', label: 'NM1', beatmapId: 101, title: 'Old title', setId: 42, difficulty: 'Old difficulty', artist: 'Artist' }];
   const pool = parseShowcasePool('NM1 101 Title\nHD2 https://osu.ppy.sh/beatmaps/102\nHR1 https://osu.ppy.sh/beatmapsets/42#osu/103\nTB https://osu.ppy.sh/b/104', previous);
@@ -245,4 +274,169 @@ test('Showcase attaches to the session restored after the portable HTTP server h
   const response = await fetch(url);
   assert.equal(response.status, 200);
   assert.equal((await response.json()).loadedPoolCount, session.state.pool.length);
+});
+
+const websiteId = n => `86100000-8000-4000-8000-${String(n).padStart(12, '0')}`;
+const websiteToken = 'oclr_stream_' + 'a'.repeat(43);
+const coverEntryId = websiteId(6);
+const websitePath = '/api/v1/streaming/tournaments/s11/showcase/pools';
+const authorizedPool = { id: websiteId(1), name: 'Preview pool', version: 7, updatedAt: '2026-11-15T17:00:00.000Z',
+  stage: { id: websiteId(2), kind: 'knockout' }, round: { id: websiteId(3), name: 'Semifinals', position: 2 }, entryCount: 3 };
+const protectedCover = `${websitePath}/${authorizedPool.id}/covers/${coverEntryId}?version=7`;
+const privateEntries = [
+  { slot: 'NM1', category: 'NM', position: 1, beatmapId: 704001, title: 'First', difficulty: 'Expert', coverUrl: protectedCover },
+  { slot: 'HD1', category: 'HD', position: 1, beatmapId: 704002, title: 'Second', difficulty: 'Insane', coverUrl: null },
+  { slot: 'FM1', category: 'FM', position: 1, beatmapId: 704002, title: 'Second', difficulty: 'Insane', coverUrl: null },
+];
+const websiteJson = (data, version = '1.37.0') => Response.json({ data, meta: { apiVersion: '1' } }, { headers: { 'X-OCLR-Read-Contract': version } });
+
+async function serveWebsiteShowcase(t, fetchImpl, file) {
+  const { session } = setup(t);
+  if (file) session.file = join(file, 'session.json');
+  const config = { port: 0 };
+  const server = createOverlayServer(config, (resource, options) => {
+    const url = new URL(resource);
+    assert.equal(url.origin, 'https://oclr.org');
+    assert.ok([websiteToken, websiteToken.replace(/a$/, 'b')].some(token => options.headers.Authorization === `Bearer ${token}`));
+    assert.equal(options.cache, 'no-store');
+    assert.equal(options.credentials, 'omit');
+    assert.equal(options.redirect, 'error');
+    return url.pathname.endsWith('/next') ?
+      websiteJson({ nextFixture: null, stage: null, mappools: [] }) : fetchImpl(url);
+  }, undefined, session);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  config.port = server.address().port;
+  const base = `http://127.0.0.1:${config.port}`;
+  t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
+  const get = path => fetch(base + path);
+  const send = (path, input, headers = {}) => fetch(base + path, { method: 'POST',
+    headers: { Origin: base, 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(input) });
+  const snapshot = () => get('/api/showcase').then(response => response.json());
+  const status = () => get('/api/showcase/website').then(response => response.json());
+  async function login(token = websiteToken) {
+    const response = await send('/api/streaming', { action: 'connect', edition: 's11', token });
+    assert.equal((await response.json()).data.nextFixture, null);
+    return status();
+  }
+  return { session, get, send, snapshot, status, login };
+}
+
+test('website list and preview are read-only without fixture assignments; explicit import persists only Showcase and rechecks protected artwork', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-showcase-website-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let revoked = false;
+  let detailReads = 0;
+  const paths = [];
+  const h = await serveWebsiteShowcase(t, url => {
+    const path = url.pathname + url.search;
+    paths.push(path);
+    if (path === websitePath) return websiteJson({ pools: [authorizedPool] });
+    if (path === protectedCover) return revoked ? new Response(null, { status: 404 }) :
+      new Response(Uint8Array.of(255, 216, 255, 217), { headers: { 'Content-Type': 'image/jpeg', 'X-OCLR-Read-Contract': '1.37.0' } });
+    assert.equal(path, `${websitePath}/${authorizedPool.id}?version=7`);
+    detailReads++;
+    return revoked ? new Response(null, { status: 404 }) : websiteJson({ pool: authorizedPool, entries: privateEntries });
+  }, dir);
+  const originalMatch = structuredClone(h.session.state);
+  assert.equal((await h.send('/api/showcase/website', { action: 'list', edition: 's11', connection: 'old' })).status, 401);
+  const auth = await h.login();
+  assert.equal(auth.edition, 's11');
+  assert.ok(!JSON.stringify(auth).includes(websiteToken));
+  const selected = { ...auth, poolId: authorizedPool.id, version: 7 };
+  await h.send('/api/showcase', { type: 'stage-label', value: 'Existing Stage' });
+  const current = await h.snapshot();
+  assert.equal((await h.send('/api/showcase/website', { action: 'list', ...auth }, { Origin: 'https://example.org' })).status, 403);
+  const list = await h.send('/api/showcase/website', { action: 'list', ...auth });
+  assert.equal(list.headers.get('cache-control'), 'private, no-store');
+  assert.deepEqual((await list.json()).pools, [authorizedPool]);
+  const preview = await h.send('/api/showcase/website', { action: 'preview', ...selected });
+  assert.deepEqual(await preview.json(), { pool: authorizedPool });
+  assert.deepEqual(await h.snapshot(), current);
+  const importInput = { type: 'import-website', ...selected, poolToken: current.poolToken };
+  revoked = true;
+  assert.equal((await h.send('/api/showcase', importInput)).status, 404, 'import must recheck access after preview');
+  assert.deepEqual(await h.snapshot(), current);
+  revoked = false;
+  const imported = await h.send('/api/showcase', importInput);
+  assert.equal(imported.status, 200);
+  const result = await imported.json();
+  assert.equal(detailReads, 3);
+  assert.equal(result.stageLabel, 'Existing Stage');
+  assert.equal(result.websitePool.version, 7);
+  assert.deepEqual(result.pool.map(p => [p.label, p.beatmapId, p.title, p.difficulty]),
+    privateEntries.map(entry => [entry.slot, entry.beatmapId, entry.title, entry.difficulty]));
+  assert.deepEqual(h.session.state, originalMatch);
+  const restored = new ShowcaseStore(h.session);
+  await restored.ready;
+  assert.deepEqual(restored.snapshot().websitePool, result.websitePool);
+  assert.deepEqual(restored.snapshot().pool, result.pool);
+  assert.equal(restored.snapshot().stageLabel, 'Existing Stage');
+  const persisted = await readFile(join(dir, 'showcase.json'), 'utf8');
+  assert.ok(!persisted.includes(websiteToken) && !persisted.includes(websitePath));
+
+  frame(h.session, { beatmapId: 704001 });
+  const matched = await h.snapshot();
+  assert.equal(matched.currentMap.label, 'NM1');
+  assert.equal(matched.currentMap.title, 'First');
+  assert.equal(matched.currentMap.difficulty, 'Expert');
+  const img = await h.get(matched.websiteArtwork);
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get('cache-control'), 'private, no-store');
+  assert.deepEqual(new Uint8Array(await img.arrayBuffer()), Uint8Array.of(255, 216, 255, 217));
+  assert.equal((await h.get('/api/beatmaps/704001/cover')).status, 404, 'website membership cannot open a public cover lookup');
+  assert.equal((await h.get(matched.websiteArtwork.replace(coverEntryId, websiteId(98)))).status, 404);
+  frame(h.session, { beatmapId: 704002 });
+  assert.equal((await h.snapshot()).sourceStatus, 'ambiguous');
+  frame(h.session, { beatmapId: 704003 });
+  assert.equal((await h.snapshot()).sourceStatus, 'unmatched');
+
+  revoked = true;
+  assert.equal((await h.get(matched.websiteArtwork)).status, 404);
+  await h.send('/api/streaming', { action: 'disconnect' });
+  assert.equal((await h.get(matched.websiteArtwork)).status, 401);
+  assert.equal(paths.filter(path => path === protectedCover).length, 2, 'no artwork fallback or request after disconnect');
+  assert.deepEqual((await h.snapshot()).pool, result.pool);
+  assert.deepEqual(h.session.state, originalMatch);
+});
+
+test('auth switches, invalid contract, versions and late reads cannot replace the local Showcase pool', async t => {
+  let read;
+  const h = await serveWebsiteShowcase(t, url => {
+    if (url.pathname === websitePath) return websiteJson({ pools: [] });
+    return read();
+  });
+  const auth = await h.login();
+  const preview = { ...auth, poolId: authorizedPool.id, version: 7 };
+  assert.deepEqual(await (await h.send('/api/showcase/website', { action: 'list', ...auth })).json(), { pools: [] });
+  const initial = await h.snapshot();
+  const importPool = (selection = preview) => h.send('/api/showcase', { type: 'import-website', ...selection, poolToken: initial.poolToken });
+  read = () => new Response(null, { status: 409 });
+  assert.equal((await importPool()).status, 409);
+  read = () => websiteJson({ pool: authorizedPool, entries: privateEntries }, '1.36.0');
+  assert.equal((await importPool()).status, 502);
+  read = () => websiteJson({ pool: authorizedPool, entries: [{ ...privateEntries[0], coverUrl: 'https://example.org/image.jpg' }, ...privateEntries.slice(1)] });
+  assert.equal((await importPool()).status, 502);
+  assert.deepEqual(await h.snapshot(), initial);
+  const deferred = () => {
+    const entered = Promise.withResolvers();
+    const finish = Promise.withResolvers();
+    read = () => { entered.resolve(); return finish.promise; };
+    return { entered: entered.promise, finish: () => finish.resolve(websiteJson({ pool: authorizedPool, entries: privateEntries })) };
+  };
+  const older = deferred();
+  const late = importPool();
+  await older.entered;
+  const laterAuth = await h.login(websiteToken.replace(/a$/, 'b'));
+  assert.notEqual(laterAuth.connection, auth.connection);
+  older.finish();
+  assert.equal((await late).status, 401);
+  assert.deepEqual(await h.snapshot(), initial);
+  const another = deferred();
+  const concurrent = importPool({ ...preview, ...laterAuth });
+  await another.entered;
+  const saved = await h.send('/api/showcase', { type: 'pool-text', text: 'HD2 89898 My manual edit', poolToken: initial.poolToken });
+  assert.equal(saved.status, 200);
+  another.finish();
+  assert.equal((await concurrent).status, 409);
+  assert.equal((await h.snapshot()).poolText, 'HD2 89898 My manual edit');
 });

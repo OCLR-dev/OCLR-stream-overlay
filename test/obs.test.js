@@ -44,7 +44,7 @@ test('OBS WebSocket identifies using the v5 challenge, correlates RPCs and disca
   const socket = new ObsSocket({ port: 4455, password: 'supersecretpassword', WebSocketImpl: Transport,
     onEvent: (...args) => events.push(args), onClose() {} });
   wire.push(0, { authentication: { salt: 'lM1GncleQOaCu9lT1yeUZhFYnqhsLLP1G5lAGo3ixaI=', challenge: '+IxH4CnCiqpX1rM9scsNynZzbOe4KhDeYcTNS3PDaeY=' } });
-  assert.deepEqual(wire.sent[0], { op: 1, d: { rpcVersion: 1, eventSubscriptions: 6, authentication: '1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=' } });
+  assert.deepEqual(wire.sent[0], { op: 1, d: { rpcVersion: 1, eventSubscriptions: 198, authentication: '1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=' } });
   wire.push(2, { negotiatedRpcVersion: 1 }); await socket.ready;
   const one = socket.request('GetSceneList'), two = socket.request('GetCurrentProgramScene');
   const reply = (index, data) => wire.push(7, { requestId: wire.sent[index].d.requestId, requestStatus: { result: true }, responseData: data });
@@ -661,7 +661,7 @@ test('modern OBS scene identities protect a manually replaced same-name scene un
 });
 
 test('OBS controls accept same-origin JSON only and never return the configured password', async t => {
-  const { obs, store } = await setup(t);
+  const { obs, store, studio } = await setup(t);
   const config = { port: 0, obs };
   const server = createOverlayServer(config, undefined, undefined, store);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); config.port = server.address().port;
@@ -672,7 +672,17 @@ test('OBS controls accept same-origin JSON only and never return the configured 
   assert.equal((await fetch(url, { ...options, headers: { ...options.headers, Origin: 'https://example.org' } })).status, 403);
   const response = await fetch(url, { ...options, headers: { ...options.headers, Origin: origin } });
   assert.equal(response.status, 200); assert.doesNotMatch(await response.text(), /test-only-password/);
-  assert.doesNotMatch(await (await fetch(url)).text(), /test-only-password/);
+  await until(() => obs.phase === 'ready');
+  const status = await fetch(url);
+  assert.doesNotMatch(await status.text(), /test-only-password|data:image/);
+  assert.ok(!studio.log.some(request => request.type === 'GetSourceScreenshot'));
+  const screenshot = await fetch(url + '/program');
+  assert.equal(screenshot.headers.get('cache-control'), 'no-store');
+  assert.match((await screenshot.json()).image, /^data:image\/jpeg;/);
+  assert.equal((await fetch(url + '/program', { ...options, headers: { ...options.headers, Origin: origin } })).status, 405);
+  assert.equal((await fetch(url + '/program?source=预览')).status, 400);
+  assert.equal((await fetch(url + '/program', { headers: { Origin: 'https://example.org' } })).status, 403);
+  assert.equal((await (await fetch(url + '/recording')).json()).matchId, store.state.id);
 });
 
 test('OBS reconnect and collection switches synchronize old ports without changing Program or scene layout', async t => {
@@ -700,4 +710,375 @@ test('OBS reconnect and collection switches synchronize old ports without changi
   assert.equal(studio.program, '休息');
   assert.ok(writes(studio).every(x => x.type === 'SetInputSettings'));
   assert.deepEqual(JSON.parse(await readFile(file, 'utf8')).overlayPorts, ['3011', '3022']);
+});
+
+test('Program screenshot names its scene and drops old captures after returning or disconnecting', async t => {
+  const { obs, studio } = await setup(t);
+  studio.scenes.set('比赛', []);
+  studio.scenes.set('EX', []);
+  studio.preview = '比赛';
+  studio.stream.outputActive = true;
+  await ready(obs);
+  await obs.command({ action: 'bind', layout: 'regular', name: '比赛' });
+  await obs.command({ action: 'bind', layout: 'ex', name: 'EX' });
+
+  const frame = await obs.programFrame();
+  const decode = frame => Buffer.from(frame.image.split(',')[1], 'base64').toString();
+  assert.equal(frame.program, '休息');
+  assert.equal(decode(frame), frame.program);
+  studio.preview = 'EX';
+  studio.event('CurrentPreviewSceneChanged', { sceneName: 'EX' });
+  assert.equal((await obs.programFrame()).program, '休息');
+  assert.equal(obs.snapshot().stream, 'active');
+  assert.equal(obs.snapshot().record, 'off');
+  assert.equal(obs.snapshot().image, undefined);
+  studio.event('StreamStateChanged', { outputState: 'OBS_WEBSOCKET_OUTPUT_RECONNECTING' });
+  assert.equal(obs.snapshot().stream, 'reconnecting');
+
+  for (const action of ['return', 'disconnect']) {
+    let release;
+    studio.before = type => {
+      if (type === 'GetSourceScreenshot') return new Promise(resolve => { release = resolve; });
+    };
+    const stale = obs.programFrame();
+    await obs.command({ action });
+    release();
+    assert.equal(await stale, null);
+    delete studio.before;
+    if (action === 'return') {
+      const current = await obs.programFrame();
+      assert.equal(current.program, '比赛');
+      assert.equal(decode(current), current.program);
+      assert.ok(current.programRevision > frame.programRevision);
+      assert.equal(studio.preview, 'EX');
+      studio.failNext = 'GetSourceScreenshot';
+      assert.deepEqual(await obs.programFrame(), { ...current, image: null });
+    }
+  }
+  assert.equal(obs.snapshot().program, null);
+  assert.equal(await obs.programFrame(), null);
+});
+
+const markers = obs => obs.recording.snapshot().groups.flatMap(group => group.markers.map(m => [m.time, m.label]));
+const prepare = act => act('prepare-round', { entryId: 'hd2', pickedBy: 'a' });
+const practicePool = [{ id: 'hd2', beatmapId: 102, label: 'HD2', mod: 'HD' }];
+const practiceSetup = act => act('setup', { title: '录像测试', stage: 'group', mode: '4v4', source: '4x3', pool: practicePool,
+  teams: { a: { name: '左队待设置', roster: [] }, b: { name: '右队待设置', roster: [] } } });
+const practiceFrame = (store, ipcState) => store.frame({ beatmap: { id: 102 }, tourney: { ipcState,
+  teams: { left: '左队待设置', right: '右队待设置' }, totalScore: { left: 0, right: 0 },
+  players: [{ side: 'left', osuId: 1, score: 0 }, { side: 'right', osuId: 2, score: 0 }],
+} });
+
+test('recording uses OBS time for actual starts, replay and confirmation with the console closed', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-timeline-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'session.json');
+  const { obs, store, studio, act } = await setup(t, { store: new SessionStore({ file }) });
+  const matchId = store.state.id;
+  await practiceSetup(act);
+  await act('bp');
+  await prepare(act);
+  studio.record = { outputActive: true, outputPaused: false, outputDuration: 150000 };
+  await ready(obs);
+  await practiceFrame(store, 1);
+  await act('display', { scene: 'playing' });
+  await act('start');
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), []);
+  studio.record.outputDuration = 198421;
+  await practiceFrame(store, 3);
+  store.emit();
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [['00:03:18', 'HD2 开打']]);
+  studio.record.outputDuration = 342300;
+  await obs.command({ action: 'mark-recording', matchId });
+
+  await act('referee-replay', { reason: '裁判要求重赛' });
+  await obs.recording.tail;
+  assert.equal(markers(obs).length, 2);
+  await practiceFrame(store, 1);
+  studio.record.outputDuration = 426897;
+  await practiceFrame(store, 3);
+  const originalRun = store.state.rounds.at(-1).runId;
+  store.emit();
+  await obs.recording.tail;
+  assert.equal(store.state.rounds.at(-1).runId, originalRun);
+  assert.deepEqual(markers(obs).at(-1), ['00:07:06', 'HD2 重赛开打']);
+
+  await act('set-series', { a: 6, b: 4, reason: '核对比分' });
+  await act('display', { scene: 'victory' });
+  await act('winner-soon', { team: 'a' });
+  await act('cancel-winner');
+  await store.confirmWinnerNow();
+  assert.equal(markers(obs).length, 3);
+
+  studio.recording('PAUSED', 2900000);
+  assert.equal(obs.snapshot().record, 'paused');
+  await assert.rejects(obs.command({ action: 'mark-recording', matchId }), /录像未在进行/);
+  await act('winner', { team: 'a' });
+  studio.recording('RESUMED', 3020000);
+  store.emit();
+  await obs.recording.tail;
+  assert.equal(markers(obs).length, 3);
+
+  studio.recording('STOPPING');
+  studio.recording('STOPPED');
+  studio.recording('STARTING', 0);
+  studio.recording('STARTED', 3500);
+  await obs.command({ action: 'mark-recording', matchId });
+  assert.deepEqual(obs.recording.snapshot().groups.map(g => g.title), ['录像 1', '录像 2']);
+  assert.equal(obs.recording.snapshot().groups[1].markers[0].time, '00:00:03');
+
+  studio.socket.close();
+  await assert.rejects(obs.command({ action: 'mark-recording', matchId }), /录像未在进行/);
+  await until(() => obs.phase === 'ready');
+  studio.record.outputDuration = 9100;
+  await obs.command({ action: 'mark-recording', matchId });
+  assert.equal(obs.recording.snapshot().groups[2].title, '录像 3 · 重新接入');
+  const beforeRestart = obs.recording.snapshot();
+  obs.close();
+  const reopened = await SessionStore.open(file);
+  const restored = await setup(t, { store: reopened, studio });
+  await restored.obs.recording.tail;
+  assert.deepEqual(restored.obs.recording.snapshot(), beforeRestart);
+  await restored.act('next-match');
+  await restored.obs.recording.tail;
+  assert.deepEqual(markers(restored.obs), []);
+  assert.equal(JSON.parse(await readFile(join(dir, 'recording-timelines', matchId + '.json'))).groups.length, 3);
+});
+
+test('a newly observed room start and its later recorded run share a single marker', async t => {
+  const { obs, store, studio, act } = await setup(t);
+  await practiceSetup(act);
+  studio.recording('STARTED', 10000);
+  await ready(obs);
+  const frame = ipcState => store.frame({ beatmap: { id: 102 }, tourney: { ipcState, teams: { left: '红', right: '蓝' },
+    players: [], totalScore: { left: 0, right: 0 } } });
+  await frame(3);
+  store.emit();
+  await store.sourceStatus('disconnected');
+  await frame(3);
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), []);
+
+  await frame(1);
+  await frame(0);
+  await frame(3);
+  await frame(3);
+  await act('bp');
+  await prepare(act);
+  await act('start');
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [['00:00:10', 'HD2 开打']]);
+});
+
+test('Winner markers follow committed manual, deadline and exhibition draw events', async t => {
+  const first = await setup(t);
+  await ready(first.obs);
+  first.studio.recording('STARTED', 3260333);
+  await first.act('set-series', { a: 6, b: 4, reason: '核对比分' });
+  await first.act('display', { scene: 'victory' });
+  await first.act('winner-soon', { team: 'a' });
+  await first.act('cancel-winner');
+  await first.obs.recording.tail;
+  assert.deepEqual(markers(first.obs), []);
+  await first.act('winner-soon', { team: 'a' });
+  first.store.state.winnerPending.endsAt = Date.now() - 1;
+  await first.store.confirmWinnerNow();
+  await first.act('winner', { team: 'a' });
+  await first.obs.recording.tail;
+  assert.deepEqual(markers(first.obs), [['00:54:20', 'Winner · 左队待设置 6–4']]);
+
+  const draw = await setup(t);
+  await draw.act('import-streaming', {
+    title: '表演赛', stage: 'exhibition', mode: '1v1', source: '4x3', pool: practicePool,
+    teams: { a: { name: '红', roster: [] }, b: { name: '蓝', roster: [] } },
+    exhibition: { roundName: '表演赛', series: { type: 'fixed_maps', count: 4, allowDraw: true }, tiedMapPolicy: 'count_as_draw', autoResults: false },
+  });
+  await draw.act('set-series', { a: 2, b: 2, reason: '核对比分' });
+  await ready(draw.obs);
+  draw.studio.recording('STARTED', 30215);
+  await draw.act('display', { scene: 'victory' });
+  await draw.act('winner', { team: null });
+  await draw.obs.recording.tail;
+  assert.deepEqual(markers(draw.obs), [['00:00:30', '全场平局 2–2']]);
+});
+
+test('a delayed time read never labels a later recording or prevents continuing the match', async t => {
+  const { obs, store, studio, act } = await setup(t);
+  await ready(obs);
+  await practiceSetup(act);
+  await act('bp');
+  await prepare(act);
+  studio.recording('STARTED', 10000);
+  await practiceFrame(store, 1);
+  let release;
+  studio.before = type => {
+    if (type === 'GetRecordStatus') return new Promise(resolve => { release = resolve; });
+  };
+  await practiceFrame(store, 3);
+  studio.recording('STOPPED');
+  studio.recording('STARTED', 0);
+  delete studio.before;
+  release();
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), []);
+  assert.equal(store.state.rounds.at(-1).status, 'playing');
+  studio.failNext = 'GetRecordStatus';
+  await assert.rejects(obs.command({ action: 'mark-recording', matchId: store.state.id }), /读不到 OBS 录像时间/);
+});
+
+test('a tosu replay earns one start marker, even when saving the timeline fails', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-write-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const { obs, store, studio, act } = await setup(t, { store: new SessionStore({ file: join(dir, 'session.json') }) });
+  await practiceSetup(act);
+  await act('bp');
+  await prepare(act);
+  await ready(obs);
+  studio.recording('STARTED', 4123);
+  const frame = ipc => practiceFrame(store, ipc);
+  const directory = join(dir, 'recording-timelines');
+  await writeFile(directory, '阻止写入');
+  await frame(1);
+  await frame(3);
+  await obs.recording.tail;
+  assert.equal(store.state.rounds.at(-1).status, 'playing');
+  assert.deepEqual(markers(obs), []);
+  assert.match(obs.snapshot().recordingError.message, /未保存/);
+  await rm(directory);
+  await act('referee-replay', { reason: '裁判要求重赛' });
+  studio.record.outputDuration = 9750;
+  await frame(1);
+  await frame(3);
+  await frame(3);
+  await obs.recording.tail;
+  assert.deepEqual(markers(obs), [['00:00:09', 'HD2 重赛开打']]);
+  assert.equal(obs.snapshot().recordingError, null);
+});
+
+const applicationAudio = 'OCLR · osu!tourney 音频';
+const applicationKind = 'wasapi_process_output_capture';
+const gameAudio = studio => studio.inputs.get(applicationAudio);
+
+test('Windows captures Client 0 through one shared application source and retains it when EX hides A1', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind); studio.useUuids = true;
+  await ready(obs); await obs.command({ action: 'create' });
+  const input = gameAudio(studio);
+  assert.equal(input.inputKind, applicationKind);
+  assert.deepEqual(input.inputSettings, { window: clientWindow(0).itemValue, priority: 1 });
+  assert.equal(studio.inputs.has(desktop), false);
+  assert.equal(obs.snapshot().audio.bound, true);
+  assert.match(obs.snapshot().audio.status, /Client 0/);
+  for (const scene of [regular, ex]) {
+    const items = studio.scenes.get(scene).filter(item => item.sourceUuid === input.inputUuid);
+    assert.equal(items.length, 1); assert.equal(items[0].sceneItemEnabled, true); assert.equal(items[0].sceneItemLocked, true);
+  }
+  for (const slot of slots) assert.equal(studio.inputs.get(capture(slot)).inputSettings.capture_audio, false);
+  await obs.command({ action: 'lineup', position: 'A1', slot: 'A4' });
+  assert.equal(current(studio, ex, 'A1').sceneItemEnabled, false);
+  assert.equal(studio.scenes.get(ex).find(item => item.sourceName === applicationAudio).sceneItemEnabled, true);
+  const before = writes(studio).length;
+  await obs.command({ action: 'scan' }); await obs.command({ action: 'create' });
+  assert.equal(writes(studio).length, before);
+  assert.equal((await obs.command({ action: 'measure' })).measurements.some(item => item.input === applicationAudio), false);
+});
+
+test('Windows migrates only its owned desktop items, leaves operator mixer sources intact and disables video audio', async t => {
+  const { obs, studio } = await setup(t);
+  studio.useUuids = true;
+  await ready(obs); await obs.command({ action: 'create' });
+  const oldAudio = studio.inputs.get(desktop);
+  studio.kinds.push(applicationKind);
+  studio.specialInputs.desktop1 = '导播桌面'; studio.specialInputs.mic1 = '解说';
+  studio.inputs.get(capture('A1')).inputSettings.capture_audio = true;
+  await studio.request('CreateSceneItem', { sceneName: '休息', sourceName: desktop, sceneItemEnabled: true });
+  await studio.request('CreateInput', { sceneName: ex, inputName: '导播自选声卡', inputKind: 'wasapi_output_capture',
+    inputSettings: { device_id: 'USB interface' }, sceneItemEnabled: true });
+  await obs.command({ action: 'scan' });
+  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).find(item => item.sourceUuid === oldAudio.inputUuid).sceneItemEnabled, false);
+  assert.equal(studio.scenes.get('休息')[0].sceneItemEnabled, true);
+  assert.equal(studio.scenes.get(ex).find(item => item.sourceName === '导播自选声卡').sceneItemEnabled, true);
+  assert.equal(studio.specialInputs.desktop1, '导播桌面'); assert.equal(studio.specialInputs.mic1, '解说');
+  assert.equal(studio.inputs.get(capture('A1')).inputSettings.capture_audio, false);
+  assert.equal(obs.snapshot().audio.globalDesktop, true);
+  const saved = structuredClone(obs.profile.preset.applicationAudio);
+  await obs.command({ action: 'window', slot: 'B4', value: '' });
+  assert.deepEqual(obs.profile.preset.applicationAudio, saved, 'manual video binding cannot discard audio ownership');
+});
+
+test('missing or ambiguous Client 0 waits silently without falling back to another osu!.exe', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind);
+  studio.windows = studio.windows.filter(window => window.itemValue !== clientWindow(0).itemValue);
+  await ready(obs); await obs.command({ action: 'create' });
+  const assertWaiting = () => {
+    assert.equal(gameAudio(studio).inputSettings.window, '');
+    assert.equal(obs.snapshot().audio.bound, false);
+    for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).find(item => item.sourceName === applicationAudio).sceneItemEnabled, false);
+  };
+  assertWaiting();
+  studio.windows.push(clientWindow(0));
+  await obs.command({ action: 'scan' });
+  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  studio.windows.push(clientWindow(0, 'OtherClass'));
+  await obs.command({ action: 'scan' }); assertWaiting();
+  assert.match(obs.snapshot().audio.status, /重名/);
+  studio.windows = [clientWindow(1), { ...clientWindow(0), itemValue: 'Tournament Manager:Window:osu!.exe' }];
+  await obs.command({ action: 'scan' }); assertWaiting();
+  const padded = { ...clientWindow(0), itemValue: ' Tournament Client 0:NewClass:osu!.exe' };
+  studio.windows = [padded, clientWindow(1)];
+  await obs.command({ action: 'scan' });
+  assert.equal(gameAudio(studio).inputSettings.window, padded.itemValue);
+  assert.equal(gameAudio(studio).inputSettings.priority, 1);
+});
+
+test('an interrupted application-audio placement retries without duplicates or resetting adjusted geometry', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind); studio.useUuids = true;
+  studio.before = (type, args) => {
+    const audio = studio.scenes.get(regular)?.find(item => item.sourceName === applicationAudio);
+    if (type === 'SetSceneItemLocked' && audio?.sceneItemId === args.sceneItemId) studio.failNext = type;
+  };
+  await ready(obs);
+  await assert.rejects(obs.command({ action: 'create' }), /模拟请求失败/);
+  const input = gameAudio(studio);
+  studio.before = undefined;
+  current(studio, ex, 'B2').transform.positionY = 333;
+  await obs.command({ action: 'create' });
+  assert.equal(gameAudio(studio).inputUuid, input.inputUuid);
+  assert.equal(obs.profile.preset.applicationAudio.uuid, input.inputUuid);
+  for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).filter(item => item.sourceName === applicationAudio).length, 1);
+  assert.equal(current(studio, ex, 'B2').transform.positionY, 333);
+  const before = writes(studio).length;
+  await obs.command({ action: 'create' });
+  assert.equal(writes(studio).length, before);
+});
+
+test('reconnecting an older preset automatically adds Client 0 audio without a create or scan click', async t => {
+  const { obs, studio } = await setup(t);
+  await ready(obs); await obs.command({ action: 'create' });
+  assert.equal(gameAudio(studio), undefined);
+  studio.kinds.push(applicationKind);
+  await obs.command({ action: 'disconnect' });
+  await ready(obs);
+  await until(() => obs.snapshot().audio?.bound);
+  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  assert.deepEqual(cuts(studio), []);
+});
+
+test('an operator-owned application audio name collision is preserved and new preset audio uses a unique name', async t => {
+  const { obs, studio } = await setup(t);
+  studio.kinds.push(applicationKind); studio.useUuids = true;
+  await studio.request('CreateInput', { sceneName: '休息', inputName: applicationAudio, inputKind: applicationKind,
+    inputSettings: { window: 'Other game:Class:other.exe', priority: 2 }, sceneItemEnabled: true });
+  const original = structuredClone(gameAudio(studio));
+  await ready(obs); await obs.command({ action: 'create' });
+  assert.deepEqual(gameAudio(studio), original);
+  const own = obs.profile.preset.applicationAudio;
+  assert.equal(own.name, applicationAudio + ' (2)');
+  assert.equal(studio.inputs.get(own.name).inputSettings.window, clientWindow(0).itemValue);
+  assert.deepEqual(studio.scenes.get('休息').map(item => item.sourceName), [applicationAudio]);
 });
