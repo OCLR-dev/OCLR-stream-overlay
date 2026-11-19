@@ -47,23 +47,25 @@ button svg {
 .shell {
   height:100vh;
   display:grid;
-  grid-template-columns:190px minmax(0,1fr)
+  grid-template-rows:auto minmax(0,1fr)
 }
 aside {
   display:flex;
-  flex-direction:column;
-  border-right:1px solid #ffffff09;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  border-bottom:1px solid #ffffff09;
   background:#171321;
-  padding:28px 16px 18px
+  padding:8px 14px
 }
 .brand {
   display:flex;
   align-items:center;
   gap:11px;
-  padding:0 6px 34px
+  padding:0 6px
 }
 .brand strong {
-  font-size:24px;
+  font-size:19px;
   letter-spacing:2px
 }
 .brand small {
@@ -84,39 +86,25 @@ aside {
   box-shadow:0 5px 22px #9e6aec22
 }
 nav {
-  display:grid;
-  gap:7px
+  display:flex;
+  flex-wrap:wrap;
+  gap:3px
 }
 nav button {
   justify-content:flex-start;
   border-color:transparent;
   background:transparent;
   color:#a89fb9;
-  padding:12px 14px
+  padding:7px 10px;
+  white-space:nowrap
 }
 nav button.selected {
   background:#b294ff19;
   color:#dfccff;
   border-color:#b294ff22
 }
-.chevron {
-  margin-left:auto
-}
-.aside-bottom {
-  margin-top:auto;
-  display:grid;
-  gap:15px;
-  padding-top:20px
-}
-.local-label {
-  display:flex;
-  align-items:center;
-  gap:9px;
-  color:#92889f;
-  font-size:11px;
-  padding-left:12px
-}
 .exit {
+  margin-left:auto;
   justify-content:flex-start;
   color:#baacbf;
   background:transparent
@@ -159,6 +147,55 @@ h1 {
   overflow-y:auto;
   flex:1;
   scrollbar-gutter:stable
+}
+.workspace,.workspace-page,.workspace-view {
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0
+}
+.workspace-view {
+  position:relative
+}
+.workspace-view iframe {
+  width:100%;
+  flex:1;
+  min-height:0;
+  border:0
+}
+.workspace-pending {
+  visibility:hidden
+}
+.workspace-actions {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  padding:4px 14px;
+  border-bottom:1px solid #ffffff09;
+  color:#ac9fb8;
+  font-size:12px
+}
+.workspace-actions button {
+  min-height:30px;
+  padding:3px 9px
+}
+.workspace-message {
+  margin:auto;
+  padding:24px;
+  max-width:650px;
+  text-align:center
+}
+.workspace-view .workspace-message {
+  position:absolute;
+  inset:0;
+  height:max-content
+}
+.workspace-message .actions {
+  justify-content:center
+}
+.workspace-error {
+  margin:8px 14px
 }
 h2 {
   font-size:18px;
@@ -433,9 +470,6 @@ footer span {
   color:#bda0dd
 }
 @media(max-width:800px) {
-  .shell {
-    grid-template-columns:158px minmax(0,1fr)
-  }
   aside {
     padding-left:11px;
     padding-right:11px
@@ -470,7 +504,7 @@ footer span {
     font-size:21px
   }
   .brand small {
-    letter-spacing:1px
+    display:none
   }
 }
 @media(prefers-reduced-motion:reduce) {

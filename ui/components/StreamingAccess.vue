@@ -59,7 +59,7 @@ async function act(action: string, extra: Record<string, unknown> = {}) {
       </div>
       <details>
         <summary>手动复制授权（备用）</summary>
-        <p><a :href="accessUrl" target="_blank" rel="noopener noreferrer">打开直播授权页</a>，选择 {{ localOrigin }}，复制凭证到下方。</p>
+        <p><a :href="accessUrl" data-desktop-link="streaming-page" :data-edition="validEdition ? edition : 's11'" target="_blank" rel="noopener noreferrer">打开直播授权页</a>，选择 {{ localOrigin }}，复制凭证到下方。</p>
         <label>一次性授权凭证<input ref="tokenInput" type="password" autocomplete="off" spellcheck="false" maxlength="100" :disabled="pending"></label>
         <button :disabled="disabled || pending || !validEdition" @click="act('connect')">使用复制的授权连接</button>
       </details>

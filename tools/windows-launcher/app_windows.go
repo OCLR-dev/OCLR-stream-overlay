@@ -19,6 +19,7 @@ type launcherState struct {
 	Port         string `json:"port"`
 	Address      string `json:"address"`
 	Build        string `json:"build"`
+	ServicePID   int    `json:"servicePID"`
 	Busy         bool   `json:"busy"`
 	TosuPath     string `json:"tosuPath"`
 	OsuPath      string `json:"osuPath"`
@@ -82,26 +83,28 @@ func (a *Launcher) startup(ctx context.Context) {
 	}()
 }
 func (a *Launcher) startService() {
-	a.update(func(s *launcherState) { a.activePID = 0; s.Status = "starting"; s.Busy = true })
+	a.update(func(s *launcherState) {
+		a.activePID = 0
+		s.ServicePID = 0
+		s.Status = "starting"
+		s.Busy = true
+		s.Notice = "正在启动本机直播服务。"
+	})
 	b, err := start(a.log)
 	a.service = b
 	if err != nil {
 		a.update(func(s *launcherState) { s.Status = "failed"; s.Busy = false; s.Notice = err.Error() })
 		return
 	}
-	a.mu.Lock()
-	a.activePID = b.pid
-	a.mu.Unlock()
 	a.update(func(s *launcherState) {
+		a.activePID = b.pid
+		s.ServicePID = b.pid
 		s.Status = "ready"
 		s.Busy = false
-		s.Notice = "服务已就绪，关闭控制台网页后，OBS 输出仍会继续。"
+		s.Notice = "直播服务已就绪。切换页面时 OBS 输出继续。"
 	})
 	a.checkTosu()
 	go b.watch(b.probe, 3*time.Second, func(state serviceState) { a.applyServiceState(b, state) })
-	if autoOpenControl == "true" {
-		open(b.endpoint + "/control")
-	}
 }
 func (a *Launcher) applyServiceState(b *backend, state serviceState) {
 	a.mu.Lock()
@@ -354,7 +357,7 @@ func (a *Launcher) Tourney(launch bool) error {
 	a.update(func(s *launcherState) { s.Notice = notice })
 	return nil
 }
-func (a *Launcher) OpenControl() error {
+func (a *Launcher) OpenBrowser(destination, edition string) error {
 	if err := a.begin(); err != nil {
 		return err
 	}
@@ -362,8 +365,43 @@ func (a *Launcher) OpenControl() error {
 	if a.service == nil || a.service.exited() {
 		return errors.New("请先启动直播服务。")
 	}
-	open(a.service.endpoint + "/control")
+	address, err := browserDestination(a.service.endpoint, destination, edition)
+	if err != nil {
+		return err
+	}
+	if call(shell, "ShellExecuteW", 0, ptr("open"), ptr(address), 0, 0, 1) <= 32 {
+		return errors.New("无法打开默认浏览器，请重试。")
+	}
 	return nil
+}
+
+func browserDestination(endpoint, destination, edition string) (string, error) {
+	switch destination {
+	case "control":
+		return endpoint + "/control", nil
+	case "showcase":
+		return endpoint + "/showcase", nil
+	case "overlay":
+		return endpoint + "/overlay", nil
+	case "showcase-output":
+		return endpoint + "/showcase?clean=1", nil
+	case "showcase-demo":
+		return endpoint + "/showcase?cover-demo=1", nil
+	case "bilibili":
+		return "https://play-live.bilibili.com/", nil
+	case "blive-help":
+		return "https://blive.chat/help", nil
+	case "streaming-login", "streaming-page":
+		if len(edition) > 80 || !editionSlug.MatchString(edition) {
+			return "", errors.New("请输入有效的授权赛季。")
+		}
+		if destination == "streaming-login" {
+			return endpoint + "/control?desktop-login=" + edition, nil
+		}
+		return "https://oclr.org/streaming/" + edition, nil
+	default:
+		return "", errors.New("此链接无法在启动器中打开。")
+	}
 }
 func (a *Launcher) CopyAddresses(all bool) error {
 	s := a.Snapshot()

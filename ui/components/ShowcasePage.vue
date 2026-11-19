@@ -122,9 +122,9 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
         <span>OCLR / SHOWCASE</span>
         <h1>图池演示</h1>
         <nav class="showcase-navigation" aria-label="Showcase 页面切换">
-          <a href="/control">返回直播控制台</a>
-          <a href="/showcase?clean=1" target="_blank" rel="noopener">打开播出画面 ↗</a>
-          <a href="/showcase?cover-demo=1" target="_blank" rel="noopener">测试过场动画 ↗</a>
+          <a href="/control" data-desktop-page="control">返回直播控制台</a>
+          <a href="/showcase?clean=1" data-desktop-link="showcase-output" target="_blank" rel="noopener">打开播出画面 ↗</a>
+          <a href="/showcase?cover-demo=1" data-desktop-link="showcase-demo" target="_blank" rel="noopener">测试过场动画 ↗</a>
         </nav>
       </header>
       <p v-if="error || snapshot?.error" class="showcase-error" role="alert">{{ error || snapshot?.error }}</p>

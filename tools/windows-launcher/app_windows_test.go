@@ -7,6 +7,29 @@ import (
 	"testing"
 )
 
+func TestDesktopBrowserDestinations(t *testing.T) {
+	const endpoint = "http://127.0.0.1:42601"
+	for _, tc := range []struct {
+		destination, edition, expected string
+	}{
+		{"control", "", endpoint + "/control"},
+		{"showcase", "", endpoint + "/showcase"},
+		{"overlay", "", endpoint + "/overlay"},
+		{"showcase-output", "", endpoint + "/showcase?clean=1"},
+		{"streaming-login", "s12-pro", endpoint + "/control?desktop-login=s12-pro"},
+		{"streaming-page", "s11", "https://oclr.org/streaming/s11"},
+		{"https://example.org/", "", ""},
+		{"file:///C:/Windows/notepad.exe", "", ""},
+		{"streaming-login", "s11&token=example", ""},
+		{"streaming-page", "../settings", ""},
+	} {
+		got, err := browserDestination(endpoint, tc.destination, tc.edition)
+		if got != tc.expected || (err == nil) != (tc.expected != "") {
+			t.Errorf("%s(%q) = %q, %v; want %q", tc.destination, tc.edition, got, err, tc.expected)
+		}
+	}
+}
+
 func TestTosuStartupAdviceAndModalRecheck(t *testing.T) {
 	for _, tc := range []struct {
 		name                    string
@@ -100,7 +123,7 @@ func TestLauncherRejectsConcurrentAndClosingMutations(t *testing.T) {
 	}
 	a.end()
 	a.closing = true
-	if err := a.OpenControl(); err == nil {
+	if err := a.OpenBrowser("control", ""); err == nil {
 		t.Fatal("action accepted while closing")
 	}
 	if a.Snapshot().Busy {

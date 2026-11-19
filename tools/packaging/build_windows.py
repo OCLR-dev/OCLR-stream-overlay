@@ -68,7 +68,7 @@ def main():
     subprocess.run([args.go, 'build', '-mod=readonly', '-tags', 'desktop,production', '-trimpath', '-ldflags', f'-H=windowsgui -s -w -X main.buildID={build}',
                     '-o', str(stage / 'OCLR.exe'), '.'], cwd=ROOT / 'tools/windows-launcher', env=env, check=True)
     shutil.copyfile(ROOT / 'docs/windows-portable.md', stage / '使用说明.txt')
-    shutil.copyfile(ROOT / 'docs/verification/wails-launcher/README.md', stage / '验证状态.txt')
+    shutil.copyfile(ROOT / 'docs/verification/desktop-control/README.md', stage / '验证状态.txt')
     shutil.copyfile(ROOT / 'LICENSE', stage / 'LICENSE')
     shutil.copyfile(ROOT / 'THIRD_PARTY_NOTICES.md', stage / 'THIRD_PARTY_NOTICES.md')
     license_dir = stage / 'licenses'

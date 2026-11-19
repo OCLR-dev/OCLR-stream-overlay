@@ -693,7 +693,7 @@ const setupAttention = computed(() => {
   return items;
 });
 const onKey = (event: KeyboardEvent) => {
-  if (document.querySelector('dialog[open], [role="listbox"]') || event.ctrlKey || event.metaKey || !event.altKey || event.defaultPrevented || disabled.value) return;
+  if (event.isComposing || document.querySelector('dialog[open], [role="listbox"]') || event.ctrlKey || event.metaKey || !event.altKey || event.defaultPrevented || disabled.value) return;
   const element = event.target as HTMLElement;
   if (element?.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(element?.tagName || '')) return;
   const shortcuts: Record<string, string> = { '1': 'waiting', '2': 'roll', '3': 'mappool', '4': 'playing', '5': 'victory' };
@@ -718,8 +718,8 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
         <button :aria-pressed="settings" @click="settings = true; diagnostics = false">比赛配置</button>
       </div>
       <div class="operator-page-links">
-        <a class="operator-showcase-link" href="/showcase"><PanelsTopLeft :size="17" aria-hidden="true" /><span>Showcase · 图池演示</span><ArrowRight :size="16" aria-hidden="true" /></a>
-        <a class="operator-output-link" href="/overlay" target="_blank" rel="noopener"><Monitor :size="17" aria-hidden="true" /><span>观众画面</span><ArrowUpRight :size="16" aria-hidden="true" /></a>
+        <a class="operator-showcase-link" href="/showcase" data-desktop-page="showcase"><PanelsTopLeft :size="17" aria-hidden="true" /><span>Showcase · 图池演示</span><ArrowRight :size="16" aria-hidden="true" /></a>
+        <a class="operator-output-link" href="/overlay" data-desktop-link="overlay" target="_blank" rel="noopener"><Monitor :size="17" aria-hidden="true" /><span>观众画面</span><ArrowUpRight :size="16" aria-hidden="true" /></a>
       </div>
     </nav>
     <p v-if="!s" class="operator-empty">正在连接本场比赛。连接恢复后会自动显示原有记录。</p>
@@ -824,7 +824,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
             <h3>本场摘要</h3><h2>{{ s.match.title || '尚未设置标题' }}</h2>
             <div class="setup-versus"><strong>{{ names.a }}</strong><span>vs</span><strong>{{ names.b }}</strong></div>
             <p>{{ stageSummary }}</p><div class="setup-facts"><span>{{ s.match.mode }}</span><span>{{ s.match.source === '4x3' ? '4:3' : '16:9' }}</span><span>图池 {{ s.pool.length }} 张</span></div>
-            <details class="setup-preview" open><summary>Overlay 预览</summary><iframe v-if="settings" ref="setupPreview" src="/overlay" title="比赛配置 Overlay 预览" @load="sharePreview"></iframe><a href="/overlay" target="_blank" rel="noopener">打开观众画面 ↗</a></details>
+            <details class="setup-preview" open><summary>Overlay 预览</summary><iframe v-if="settings" ref="setupPreview" src="/overlay" title="比赛配置 Overlay 预览" @load="sharePreview"></iframe><a href="/overlay" data-desktop-link="overlay" target="_blank" rel="noopener">打开观众画面 ↗</a></details>
             <div class="setup-attention"><h3><TriangleAlert v-if="setupAttention.length" aria-hidden="true" />{{ setupAttention.length ? '待处理' : '连接状态' }}</h3><ul v-if="setupAttention.length"><li v-for="item in setupAttention" :key="item">{{ item }}</li></ul><p v-else>已收到连接状态，请在 OBS 核对实际播出画面和声音。</p></div>
             <button class="operator-primary" @click="settings = false; diagnostics = false">进入比赛现场 <ArrowRight aria-hidden="true" /></button>
           </aside>

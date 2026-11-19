@@ -63,7 +63,7 @@ function edit(event: Event) {
     <p v-if="!connected" class="setup-callout"><Unplug :size="18" aria-hidden="true" />先在上方连接本机 OBS，再设置直播间弹幕。</p>
     <template v-else>
       <div v-if="showInput" class="obs-chat-entry">
-        <div><h4>获取直播身份码</h4><p>用主播账号登录 <a href="https://play-live.bilibili.com/" target="_blank" rel="noopener noreferrer">B 站互动玩法 ↗</a>，复制「身份码」。<a href="https://blive.chat/help" target="_blank" rel="noopener noreferrer">查看图文教程 ↗</a></p></div>
+        <div><h4>获取直播身份码</h4><p>用主播账号登录 <a href="https://play-live.bilibili.com/" data-desktop-link="bilibili" target="_blank" rel="noopener noreferrer">B 站互动玩法 ↗</a>，复制「身份码」。<a href="https://blive.chat/help" data-desktop-link="blive-help" target="_blank" rel="noopener noreferrer">查看图文教程 ↗</a></p></div>
         <label>直播身份码
           <div class="obs-chat-code"><input :value="code" :type="visible ? 'text' : 'password'" autocomplete="off" spellcheck="false" maxlength="100"
             placeholder="粘贴身份码后自动配置" aria-label="直播身份码" :aria-describedby="hint ? 'obs-chat-status obs-chat-hint' : 'obs-chat-status'" :aria-invalid="!!hint" :disabled="!!obs.pending"

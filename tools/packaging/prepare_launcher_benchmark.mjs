@@ -54,7 +54,7 @@ await cp('tools/windows-launcher', source, { recursive: true });
 await cp('release/OCLR-Windows-x64', join(dir, 'wails'), { recursive: true });
 const vue = join(source, 'frontend/src/App.vue');
 let text = await readFile(vue, 'utf8');
-text = replace(text, 'computed, onMounted, onUnmounted, ref', 'computed, onMounted, onUnmounted, ref, watch, nextTick');
+text = replace(text, 'computed, onMounted, onUnmounted, ref, watch', 'computed, onMounted, onUnmounted, ref, watch, nextTick');
 text = replace(text, 'onMounted(poll);', `let markedReady=false;
 async function mark(stage:string){await nextTick();requestAnimationFrame(()=>requestAnimationFrame(()=>launcher().BenchmarkMark(stage)));}
 watch(()=>state.value.status,status=>{if(status==='ready'&&!markedReady){markedReady=true;void mark('ready');}});
@@ -93,6 +93,6 @@ func (a *Launcher) BenchmarkMark(stage string) {
 }
 `);
 run(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build', '--config', join(source, 'frontend/vite.config.ts')]);
-run('go', ['build', '-mod=readonly', '-tags', 'desktop,production', '-trimpath', '-ldflags', `-H=windowsgui -s -w -X main.buildID=${build} -X main.instanceMutex=Local\\OCLR.StreamOverlay.Benchmark -X main.autoOpenControl=false`, '-o', join(dir, 'wails/OCLR.exe'), '.'], source);
+run('go', ['build', '-mod=readonly', '-tags', 'desktop,production', '-trimpath', '-ldflags', `-H=windowsgui -s -w -X main.buildID=${build} -X main.instanceMutex=Local\\OCLR.StreamOverlay.Benchmark`, '-o', join(dir, 'wails/OCLR.exe'), '.'], source);
 await writeFile(join(dir, 'prepared.json'), JSON.stringify({ build, variants, wailsSource: execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim(), workingTreeMayDiffer: true }, null, 2));
 console.log('Prepared isolated full-window launchers:', build);
