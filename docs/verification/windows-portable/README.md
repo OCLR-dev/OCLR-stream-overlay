@@ -1,4 +1,4 @@
-> 当前分支的 Windows 界面改用 Wails；新构建及验收见 [Wails 启动器](../wails-launcher/README.md)。以下保留原生版本的历史证据。
+> v0.3.0 的 Windows 界面改用 Wails。构建与验收见 [Wails 启动器](../wails-launcher/README.md)。以下保留原生版本的历史证据。
 
 # Windows 便携版交付与验证
 
@@ -32,7 +32,7 @@
 
 ## Windigo Windows 验证
 
-Windows launcher comparison 工作流在同一台 Windows x64 runner 用相同版本的 Go、Node 与 Python 构建两版 ZIP。旧版采用直接调用 Win32 的基准提交 `d6f9df4`。校验并解压 ZIP 后，工作流用防火墙阻挡解压出来的 `OCLR.exe` 和 `runtime/node.exe` 对外连接，先验证 TCP 探测确实被阻挡，再测试两个包。
+Historical Win32 and Windigo comparison 可手动运行，在同一台 Windows x64 runner 用相同版本的 Go、Node 与 Python 构建 Win32（`d6f9df4`）与 Windigo（`0014963`）的 ZIP。校验并解压 ZIP 后，工作流用防火墙阻挡解压出来的 `OCLR.exe` 和 `runtime/node.exe` 对外连接，先验证 TCP 探测确实被阻挡，再测试两个包。
 
 比较报告记录两个 ZIP 的字节数。启动时间从进程创建计至本机健康检查返回就绪。无窗口和无参数图形启动分别交错测量，每版五次，取中位数。图形流程确认主窗口可见、四页可切换，并读取旧格式保存的服务端口、tosu 与 osu! 路径。测试从设置页改端口，确认 Go 启动新 PID、旧端口关闭、旧程序路径和比赛记录字节保持一致，再从侧栏退出并确认新端口关闭。本机已从两份实际 ZIP 通过同一图形流程。真实 osu!stable、tosu 及 OBS 的联调仍待独立验证。
 
