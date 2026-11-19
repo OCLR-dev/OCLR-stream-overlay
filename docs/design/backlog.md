@@ -11,6 +11,7 @@
 | 比赛聊天 | 按最新匹配到的直播槽位为选手昵称着色，BanchoBot 单独着色 | [聊天规则与验证](../verification/issue-28/README.md) |
 | 表演赛现场反馈 | BP 队列、星级、聊天留白等原始反馈与对应修复分开记录 | [现场调查](../verification/showmatch-issues-2026-11-08/README.md) · [已做的修复](../verification/showmatch-issues-2026-11-08/FIXES.md) |
 | Showcase | 手动录入、复制或从网站导入图池；通过 OBS 在换 rep 时遮挡游戏并展示图池进度 | [授权导入](../streaming-api.md#从网站导入-showcase-图池) · [过场验收](../verification/showcase-cover/integration/README.md) |
+| 桌面直播控制台 | Wails 窗口使用现有控制台与 Showcase，和网页及 OBS 共用同一个本机服务。外部授权交给系统浏览器 | [Issue #66 验收](../verification/desktop-control/README.md) |
 
 图池排版先用已有的完整 MP5 小图池，需要更大规模时选明确赛季的完整历史图池。BP 在直播中实时进行，只展示已确认的谱面。局部文案或样式改动检查受影响画面；改动比赛流程或捕获区时，验证对应的状态转换或布局组合。
 

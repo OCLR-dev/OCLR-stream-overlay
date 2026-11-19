@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, cp, readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createServer } from 'node:http';
+import { createServer, get } from 'node:http';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { pathToFileURL } from 'node:url';
@@ -87,14 +87,30 @@ try {
     assert.equal(h.build, JSON.parse(await readFile(join(first, 'app/portable-build.json'))).build);
     for (const page of ['/control', '/overlay']) assert.equal((await fetch(base+page)).status, 200);
   });
+  await check('desktop can frame the packaged console and Showcase without granting access to other origins or APIs', async () => {
+    const request = (path, referer) => new Promise((resolve, reject) => {
+      get(base + path, { headers: { Referer: referer, 'Sec-Fetch-Site': 'cross-site',
+        'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'iframe' } }, response => {
+        response.resume();
+        resolve({ status: response.statusCode, policy: response.headers['content-security-policy'] });
+      }).on('error', reject);
+    });
+    const shell = 'http://wails.localhost/';
+    for (const path of ['/control?desktop=1', '/showcase?desktop=1']) {
+      assert.deepEqual(await request(path, shell), { status: 200, policy: 'frame-ancestors http://wails.localhost' });
+      assert.equal((await request(path, 'https://example.org/')).status, 403);
+    }
+    assert.equal((await request('/api/session?desktop=1', shell)).status, 403);
+    assert.equal((await fetch(base + '/control?desktop-login=s11')).status, 200);
+  });
   await check('repeated native launch reuses one server without changing match', async () => {
     const before = await readFile(data, 'utf8');
     const duplicate = launch(second);
     assert.equal(await duplicate.done, 0, duplicate.error());
     assert.equal(await readFile(data, 'utf8'), before);
   });
-  await check('controller and independent output SSE synchronize; closing controller leaves output alive', async () => {
-    const aborts = [new AbortController(), new AbortController()];
+  await check('desktop control, browser control and independent output SSE synchronize; reloading control preserves the session', async () => {
+    const aborts = [new AbortController(), new AbortController(), new AbortController()];
     const readers = await Promise.all(aborts.map(async controller => (await fetch(base+'/api/session/events', { signal: controller.signal })).body.getReader()));
     await Promise.all(readers.map(reader => reader.read()));
     const state = await fetch(base+'/api/session').then(r => r.json());
@@ -102,8 +118,12 @@ try {
     assert.equal(response.status, 200);
     for (const reader of readers) assert.match(new TextDecoder().decode((await reader.read()).value), /Windows 验收比赛/);
     aborts[0].abort();
+    const refreshed = await fetch(base+'/api/session').then(r => r.json());
+    assert.equal(refreshed.session.id, state.session.id);
+    assert.equal(refreshed.session.match.title, 'Windows 验收比赛');
     assert.equal((await fetch(base+'/overlay')).status, 200);
     aborts[1].abort();
+    aborts[2].abort();
   });
   await check('portable artwork survives pool setup, initialization and undo without stopping the native service', async () => {
     const command = async (type, payload) => {

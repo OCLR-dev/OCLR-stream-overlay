@@ -1,12 +1,12 @@
 # OCLR 直播 Overlay
 
-这套工具把 OCLR 对阵和图池、tosu 读到的游戏数据、导播在本机记录的比赛进度合成一套 osu! 比赛画面。导播使用浏览器控制台，OBS 使用独立的 1920×1080 浏览器源。
+这套工具把 OCLR 对阵和图池、tosu 读到的游戏数据、导播在本机记录的比赛进度合成一套 osu! 比赛画面。导播使用桌面或浏览器控制台，OBS 使用独立的 1920×1080 浏览器源。
 
-Windows 启动窗口使用 Wails + Vue，提供概览、设置、日志和关于页面。Node 服务、比赛记录与浏览器控制台沿用当前主线；Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
+Windows 启动窗口使用 Wails + Vue，启动后直接显示直播控制台。顶部可切换 Showcase、服务、设置、日志和关于。桌面和浏览器共用 Node 服务保存比赛，外部授权使用系统浏览器。Windows 需要 Microsoft Edge WebView2 Runtime。见 [桌面控制台验收](docs/verification/desktop-control/README.md)。
 
 ## 开播
 
-1. Windows 直播机从 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 下载 `OCLR-Windows-x64.zip`，全部解压后双击 `OCLR.exe`。在启动窗口打开控制台。安装、接线与更新见 [Windows 直播员手册](docs/windows-portable.md)。
+1. Windows 直播机从 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 下载 `OCLR-Windows-x64.zip`，全部解压后双击 `OCLR.exe`。等待桌面控制台载入。安装、接线与更新见 [Windows 直播员手册](docs/windows-portable.md)。
 2. 在「比赛配置 → 本场资料」登录 OCLR，预览自己被指派的场次，点「使用所选直播任务」。核对双方、本场图池、赛制和实际上场名单。任务提供队伍身份和可用队旗，名单由导播核对录入。见 [直播任务与表演赛](docs/streaming-api.md)。
 3. 在「游戏数据」查看 tosu 和房间，在「OBS」配置比赛场景与弹幕。在 OBS 的节目画面（Program）核对游戏捕获和弹幕，在混音器核对游戏声音。连接 OBS 后，控制台右侧显示当前节目画面、推流与录制状态，并在休息场景提供返场按钮。未连接时显示「Overlay 预览」。
 

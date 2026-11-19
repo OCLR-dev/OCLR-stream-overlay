@@ -40,6 +40,6 @@
 
 ## Windows 启动器
 
-Windows 启动窗口使用 Wails + Vue，提供概览、设置、日志和关于页面。Node 服务、比赛记录与浏览器控制台沿用当前主线；Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
+Windows 启动窗口使用 Wails + Vue。桌面将 Node 提供的 `/control` 和 `/showcase` 放在各自的隔离 frame 中，保留网页组件、同源 API、SSE 与独立 OBS 输出。切换桌面导航保留已打开的页面，明确重启后按新的服务 PID 和端口重新加载。最小化继续播出，关闭窗口与「退出服务」共用确认和保存流程。
 
-Go 管理子进程、设置与原生对话框；内嵌 Vue 仅调用固定操作，不接受任意 shell、URL 或程序路径。保留单实例、版本与 PID 核对、端口重启确认、等待保存以及原比赛目录。控制台继续在系统浏览器打开。
+Go 管理子进程、设置与原生对话框。只有启动器外壳可调用桌面绑定，内嵌页面只能请求切换入口或打开固定用途的浏览器页面。OCLR 授权在同一 Node 地址的浏览器页面沿用网站握手，桌面通过 SSE 看到结果。见 [桌面控制台验收](docs/verification/desktop-control/README.md)。

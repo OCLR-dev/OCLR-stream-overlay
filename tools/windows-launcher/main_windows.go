@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -23,10 +24,8 @@ import (
 var frontend embed.FS
 var buildID string
 
-// Link-time overrides are used only by isolated verification builds, never by
-// renderer input or runtime environment variables. Release defaults stay fixed.
+// A link-time override is used only by isolated verification builds.
 var instanceMutex = "Local\\OCLR.StreamOverlay.Portable"
-var autoOpenControl = "true"
 var base = "http://127.0.0.1:3001"
 var user = syscall.NewLazyDLL("user32.dll")
 var kernel = syscall.NewLazyDLL("kernel32.dll")
@@ -59,6 +58,19 @@ func open(s string) {
 	}
 }
 func main() { os.Exit(runLauncher()) }
+
+func focusLauncher(class string) bool {
+	window := call(user, "FindWindowW", ptr(class), 0)
+	if window == 0 {
+		return false
+	}
+	if call(user, "IsIconic", window) != 0 {
+		call(user, "ShowWindowAsync", window, 9) // SW_RESTORE
+	}
+	call(user, "SetForegroundWindow", window)
+	return true
+}
+
 func runLauncher() int {
 	loadServicePort()
 	mutex, _, err := kernel.NewProc("CreateMutexW").Call(0, 0, ptr(instanceMutex))
@@ -68,14 +80,18 @@ func runLauncher() int {
 	}
 	defer syscall.CloseHandle(syscall.Handle(mutex))
 	headless := len(os.Args) > 1 && (os.Args[1] == "--smoke-test" || os.Args[1] == "--headless")
+	windowClass := strings.TrimPrefix(instanceMutex, "Local\\") + ".Window"
 	if err == syscall.Errno(183) {
+		if !headless && focusLauncher(windowClass) {
+			return 0
+		}
 		if e := reuse(); e != nil {
 			if !headless {
 				message(e.Error())
 			}
 			return 1
 		}
-		if !headless {
+		if !headless && !focusLauncher(windowClass) {
 			open(base + "/control")
 		}
 		return 0
@@ -131,7 +147,7 @@ func runLauncher() int {
 	webviewStarted := time.Now()
 	var schedulePrune sync.Once
 	e = wails.Run(&options.App{
-		Title: "OCLR 直播服务", Width: 940, Height: 680, MinWidth: 760, MinHeight: 560,
+		Title: "OCLR 直播服务", Width: 1280, Height: 840, MinWidth: 760, MinHeight: 560,
 		BackgroundColour: options.NewRGB(18, 16, 29), AssetServer: &assetserver.Options{Assets: assets},
 		EnableFraudulentWebsiteDetection: true,
 		DragAndDrop:                      &options.DragAndDrop{DisableWebViewDrop: true},
@@ -145,7 +161,7 @@ func runLauncher() int {
 			})
 		},
 		OnBeforeClose: app.beforeClose, OnShutdown: app.shutdown, Bind: []interface{}{app},
-		Windows: &windows.Options{Theme: windows.Dark, WebviewUserDataPath: profile,
+		Windows: &windows.Options{Theme: windows.Dark, WebviewUserDataPath: profile, WindowClassName: windowClass,
 			Messages: messages},
 	})
 	if e != nil {

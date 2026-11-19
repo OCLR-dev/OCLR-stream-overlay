@@ -172,7 +172,7 @@ onUnmounted(() => { disposed = true; revision++; clearInterval(timer); });
       <button type="button" :disabled="pending || !validEdition" @click="login(edition)">{{ pending ? '正在连接…' : '登录 OCLR' }}</button>
       <details>
         <summary>手动复制授权（备用）</summary>
-        <a :href="`https://oclr.org/streaming/${validEdition ? edition : 's11'}`" target="_blank" rel="noopener noreferrer">打开直播授权页</a>
+        <a :href="`https://oclr.org/streaming/${validEdition ? edition : 's11'}`" data-desktop-link="streaming-page" :data-edition="validEdition ? edition : 's11'" target="_blank" rel="noopener noreferrer">打开直播授权页</a>
         <label class="showcase-website-field">一次性授权凭证
           <input ref="tokenInput" type="password" autocomplete="off" spellcheck="false" maxlength="100" :disabled="pending">
         </label>
