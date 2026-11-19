@@ -76,13 +76,12 @@ aside {
   margin-top:3px
 }
 .brand-mark {
-  display:grid;
-  place-items:center;
-  width:42px;
+  display:block;
+  flex-shrink:0;
+  object-fit:contain;
+  width:44px;
   height:44px;
   border-radius:13px;
-  background:linear-gradient(145deg,#b99af8,#7653bb);
-  color:#201431;
   box-shadow:0 5px 22px #9e6aec22
 }
 nav {

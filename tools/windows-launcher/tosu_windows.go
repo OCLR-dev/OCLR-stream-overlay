@@ -54,6 +54,25 @@ func isExecutable(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
+// Resolve on each launch rather than persisting the portable bundle's absolute path.
+func resolveTosuPath(selected, launcherExe string) string {
+	if isExecutable(selected) {
+		return selected
+	}
+	if filepath.IsAbs(launcherExe) {
+		bundled := filepath.Join(filepath.Dir(launcherExe), "tosu", "tosu.exe")
+		if isExecutable(bundled) {
+			return bundled
+		}
+	}
+	return selected
+}
+
+func effectiveTosuPath(selected string) string {
+	exe, _ := os.Executable()
+	return resolveTosuPath(selected, exe)
+}
+
 func saveLauncherSettings(path string, settings launcherSettings) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
@@ -235,9 +254,13 @@ func savedTosuPort() string {
 		return ""
 	}
 	settings, err := loadLauncherSettings(path)
-	if err != nil || !isExecutable(settings.TosuPath) {
+	if err != nil {
 		return ""
 	}
-	port, _ := readTosuPort(settings.TosuPath)
+	selected := effectiveTosuPath(settings.TosuPath)
+	if !isExecutable(selected) {
+		return ""
+	}
+	port, _ := readTosuPort(selected)
 	return port
 }

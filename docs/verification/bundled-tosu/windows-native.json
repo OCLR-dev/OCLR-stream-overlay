@@ -1,0 +1,88 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v22.23.4",
+  "results": [
+    {
+      "name": "distributable includes project and third-party licenses",
+      "passed": true
+    },
+    {
+      "name": "bundled tosu contains Windows x64 executable, env, provenance and matching source license",
+      "passed": true
+    },
+    {
+      "name": "bundled WASM HR calculation works offline from a Unicode path",
+      "passed": true
+    },
+    {
+      "name": "native x64 first start from Chinese/spaced path; ready before control/overlay",
+      "passed": true
+    },
+    {
+      "name": "fresh launcher resolves bundled tosu without saving an absolute preference",
+      "passed": true
+    },
+    {
+      "name": "desktop can frame the packaged console and Showcase without granting access to other origins or APIs",
+      "passed": true
+    },
+    {
+      "name": "repeated native launch reuses one server without changing match",
+      "passed": true
+    },
+    {
+      "name": "desktop control, browser control and independent output SSE synchronize; reloading control preserves the session",
+      "passed": true
+    },
+    {
+      "name": "portable artwork survives pool setup, initialization and undo without stopping the native service",
+      "passed": true
+    },
+    {
+      "name": "normal native exit releases service and fixed port",
+      "passed": true
+    },
+    {
+      "name": "restart from replacement program directory retains complete session and undo",
+      "passed": true
+    },
+    {
+      "name": "occupied port refuses start; other program remains alive",
+      "passed": true
+    },
+    {
+      "name": "old backend is not silently reused",
+      "passed": true
+    },
+    {
+      "name": "corrupt data refuses startup and preserves original bytes",
+      "passed": true
+    },
+    {
+      "name": "bundled runtime and native smoke-test exit cleanly",
+      "passed": true
+    },
+    {
+      "name": "native launcher reads the saved executable directory and supplies the backend port",
+      "passed": true
+    },
+    {
+      "name": "native launcher keeps the same backend through timeouts and logs its eventual exit",
+      "passed": true
+    }
+  ],
+  "tosu": {
+    "bundledVersion": "v4.26.3",
+    "asset": "tosu-windows-v4.26.3.zip",
+    "assetId": 668256958,
+    "url": "https://github.com/tosuapp/tosu/releases/download/v4.26.3/tosu-windows-v4.26.3.zip",
+    "sha256": "700063da6377c5f69985e09b0d30d575d27653519d7a3b1154bc11f1f9bd5752",
+    "sourceCommit": "1d811dd90af00c7f0d8551a0735d9ce779a6e773",
+    "sourceUrl": "https://codeload.github.com/tosuapp/tosu/zip/1d811dd90af00c7f0d8551a0735d9ce779a6e773",
+    "sourceSha256": "ff9fec00e962d1205e2f7393b23b272186745126b882a38ae9d5d846f810457d",
+    "note": "Version at packaging time; tosu auto-update may change the installed version."
+  },
+  "build": "f371c3873879f59aee96001acce234f64fd6ba0f381a7db39b5979a59c5bfee9",
+  "passed": true
+}

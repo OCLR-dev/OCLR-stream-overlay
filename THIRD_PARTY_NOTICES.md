@@ -75,3 +75,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 The Windows portable package includes the locked Go module inventory in `licenses/go-modules.json` and each dependency’s license and notices in `licenses/go/`. Microsoft Edge WebView2 Runtime is distributed by Microsoft under its own terms, separately from this package.
+
+## tosu (Windows portable distribution)
+
+Source and releases: https://github.com/tosuapp/tosu
+
+The Windows package redistributes the unmodified official tosu Windows executable as a separate program. The bundled release and source commit are recorded in `tosu/bundled-release.json`. The corresponding upstream source archive and its license are included in `licenses/tosu/source.zip` and `licenses/tosu/LICENSE`, with the GNU GPL v3 text in `licenses/tosu/GPL-3.0.txt`. tosu currently uses the GNU Lesser General Public License v3; upstream copyright and dependency notices are retained in the source archive. OCLR supplies a default configuration when the release has none. tosu auto-update may subsequently replace the installed executable.

@@ -1,12 +1,73 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestBundledTosuResolution(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "中文 程序")
+	if err := os.MkdirAll(filepath.Join(root, "tosu"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	bundled := filepath.Join(root, "tosu", "tosu.exe")
+	if err := os.WriteFile(bundled, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	launcher := filepath.Join(root, "OCLR.exe")
+	missing := filepath.Join(t.TempDir(), "old", "tosu.exe")
+	for _, selected := range []string{"", missing} {
+		if got := resolveTosuPath(selected, launcher); got != bundled {
+			t.Fatalf("got %q, want %q", got, bundled)
+		}
+	}
+	custom := filepath.Join(t.TempDir(), "tosu.exe")
+	if err := os.WriteFile(custom, []byte("custom"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveTosuPath(custom, launcher); got != custom {
+		t.Fatal("custom selection was replaced")
+	}
+	moved := root + " moved"
+	if err := os.Rename(root, moved); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveTosuPath("", filepath.Join(moved, "OCLR.exe")); got != filepath.Join(moved, "tosu", "tosu.exe") {
+		t.Fatal("moved package not resolved", got)
+	}
+	if got := resolveTosuPath(missing, launcher); got != missing {
+		t.Fatal("missing selection must remain visible for repair")
+	}
+	if got := resolveTosuPath("", "relative.exe"); got != "" {
+		t.Fatal("must not resolve relative to working directory")
+	}
+}
+
+func TestCompleteTosuEnvRemainsUnchanged(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "packaging", "tosu.env"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content = []byte(strings.ReplaceAll(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n", "\r\n") + "UNKNOWN_FUTURE_OPTION=keep me\r\n")
+	dir := t.TempDir()
+	env := filepath.Join(dir, "tosu.env")
+	if err := os.WriteFile(env, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	port, err := readTosuPort(filepath.Join(dir, "tosu.exe"))
+	if err != nil || port != "24050" {
+		t.Fatalf("port=%q err=%v", port, err)
+	}
+	after, err := os.ReadFile(env)
+	if err != nil || !bytes.Equal(after, content) {
+		t.Fatal("configuration was altered")
+	}
+}
 
 func TestTosuProcessMatchesFullPath(t *testing.T) {
 	current, err := os.Executable()

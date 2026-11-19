@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import urllib.request
 import zipfile
+from bundle_tosu import bundle_tosu
 
 ROOT = Path(__file__).resolve().parents[2]
 NODE_VERSION = '22.23.4'
@@ -40,6 +41,7 @@ def main():
         shutil.rmtree(stage)
     app = stage / 'app'
     app.mkdir(parents=True)
+    tosu = bundle_tosu(stage, out / 'tosu-cache')
     for folder in ['dist', 'server', 'src']:
         shutil.copytree(ROOT / folder, app / folder)
     shutil.copytree(ROOT / 'node_modules/rosu-pp-js', app / 'node_modules/rosu-pp-js')
@@ -55,6 +57,7 @@ def main():
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
     digest.update(NODE_SHA256.encode())
+    digest.update(json.dumps(tosu, sort_keys=True).encode())
     build = digest.hexdigest()
     (app / 'portable-build.json').write_text(json.dumps({'build': build, 'node': NODE_VERSION, 'architecture': 'x64'}, indent=2)+'\n')
     runtime = stage / 'runtime'
@@ -72,7 +75,7 @@ def main():
     shutil.copyfile(ROOT / 'LICENSE', stage / 'LICENSE')
     shutil.copyfile(ROOT / 'THIRD_PARTY_NOTICES.md', stage / 'THIRD_PARTY_NOTICES.md')
     license_dir = stage / 'licenses'
-    license_dir.mkdir()
+    license_dir.mkdir(exist_ok=True)
     for path in (ROOT / 'tools/packaging/licenses').glob('*'):
         shutil.copyfile(path, license_dir / path.name)
     shutil.copyfile(ROOT / 'node_modules/vue/LICENSE', license_dir / 'Vue-LICENSE')

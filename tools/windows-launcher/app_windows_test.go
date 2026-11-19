@@ -178,3 +178,21 @@ func TestNativeSelectionPreservesOtherToolAndDoesNotPublishFailedSave(t *testing
 		t.Fatal("failed save changed UI preferences")
 	}
 }
+
+func TestChoosingOsuDoesNotPersistDetectedBundledTosu(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	exe := filepath.Join(t.TempDir(), "osu!.exe")
+	if err := os.WriteFile(exe, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a := newLauncher(&diagnostics{})
+	a.state.TosuPath = filepath.Join(t.TempDir(), "tosu", "tosu.exe")
+	if err := a.saveTool("osu", exe); err != nil {
+		t.Fatal(err)
+	}
+	path, _ := launcherSettingsPath()
+	saved, err := loadLauncherSettings(path)
+	if err != nil || saved.TosuPath != "" || saved.OsuPath != exe {
+		t.Fatal("portable default was persisted", saved, err)
+	}
+}
