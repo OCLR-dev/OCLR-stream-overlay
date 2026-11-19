@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readWebsiteShowcase, replayLimit } from '../server/showcase-website.js';
 import { ShowcaseStore } from '../server/showcase.js';
 import { parseShowcasePool } from '../server/showcase-pool.js';
 import { SessionStore } from '../server/session/store.js';
 import { createOverlayServer } from '../server/app.js';
+import { replayFixture } from './showcase-replay-fixture.js';
 import { simulationSession } from '../tools/tosu-simulator/fixture.js';
 
 function setup(t, options) {
@@ -318,7 +320,7 @@ async function serveWebsiteShowcase(t, fetchImpl, file) {
     assert.equal((await response.json()).data.nextFixture, null);
     return status();
   }
-  return { session, get, send, snapshot, status, login };
+  return { session, base, get, getWithOptions: (path, options) => fetch(base + path, options), send, snapshot, status, login };
 }
 
 test('website list and preview are read-only without fixture assignments; explicit import persists only Showcase and rechecks protected artwork', async t => {
@@ -439,4 +441,112 @@ test('auth switches, invalid contract, versions and late reads cannot replace th
   another.finish();
   assert.equal((await concurrent).status, 409);
   assert.equal((await h.snapshot()).poolText, 'HD2 89898 My manual edit');
+});
+
+const openApiExample = {
+  poolId: 'a9ad1565-b323-4eba-8572-54a6258d05d2', version: 7,
+  entries: [
+    { entryId: 'b9ad1565-b323-4eba-8572-54a6258d05d2', slot: 'NM1', replays: [] },
+    { entryId: 'c9ad1565-b323-4eba-8572-54a6258d05d2', slot: 'HD1', replays: [
+      { replayId: 'd9ad1565-b323-4eba-8572-54a6258d05d2', filename: 'HD1-A.osr', playerName: 'Showcase A', mods: 8 },
+      { replayId: 'e9ad1565-b323-4eba-8572-54a6258d05d2', filename: 'HD1-B.osr', playerName: 'Showcase B', mods: 8 },
+    ] },
+  ],
+};
+
+test('replay list joins the confirmed version by stable entry ID, isolates metadata, clears access, and supports local files', async t => {
+  const pool = { ...authorizedPool, id: openApiExample.poolId, entryCount: 2 };
+  const details = privateEntries.slice(0, 2).map((entry, i) => ({ ...entry, coverUrl: null, entryId: openApiExample.entries[i].entryId }));
+  const detailPath = websitePath + '/' + pool.id;
+  let listResult;
+  const h = await serveWebsiteShowcase(t, url => {
+    assert.equal(url.search, '?version=7');
+    if (url.pathname === detailPath) return websiteJson({ pool, entries: details });
+    assert.equal(url.pathname, detailPath + '/replays');
+    return listResult();
+  });
+  const auth = await h.login();
+  const prior = await h.snapshot();
+  const imported = await h.send('/api/showcase', { type: 'import-website', ...auth, poolId: pool.id, version: pool.version, poolToken: prior.poolToken });
+  const { poolToken } = await imported.json();
+  const root = '/api/showcase/replays';
+  const action = (action, fields) => h.send(root, { action, poolToken, ...fields }).then(r => r.json());
+  const read = entries => websiteJson({ ...openApiExample, entries }, '1.42.0');
+  listResult = () => read(openApiExample.entries.map(row => ({ ...row, replays: [] })));
+  const empty = await action('refresh');
+  assert.equal(empty.status, 'ready');
+  assert.deepEqual(empty.rows.map(row => [row.slotId, row.options]), [['NM1', []], ['HD1', []]]);
+  const candidates = openApiExample.entries[1].replays;
+  listResult = () => read([openApiExample.entries[1], openApiExample.entries[0]]);
+  const multi = await action('refresh');
+  assert.equal(multi.rows[1].selectedId, null);
+  assert.deepEqual(multi.rows[1].options.map(option => [option.filename, option.playerName, option.mods]),
+    [['HD1-A.osr', 'Showcase A', 8], ['HD1-B.osr', 'Showcase B', 8]]);
+  const selected = await action('select', { slotId: 'HD1', replayId: candidates[1].replayId });
+  assert.equal(selected.rows[1].selectedId, candidates[1].replayId);
+  assert.equal((await h.snapshot()).replays, undefined);
+  const events = await h.get('/api/showcase/events');
+  const reader = events.body.getReader();
+  const { value } = await reader.read();
+  await reader.cancel();
+  assert.doesNotMatch(Buffer.from(value).toString(), /HD1-A\.osr|Showcase A|replayId/);
+  listResult = () => read([openApiExample.entries[0], { ...openApiExample.entries[1], replays: candidates.slice(0, 1) }]);
+  assert.equal((await action('refresh')).rows[1].selectedId, candidates[0].replayId);
+
+  listResult = () => Response.json({ error: { code: 'SHOWCASE_REPLAYS_FORBIDDEN' } }, { status: 403 });
+  const forbidden = await action('refresh');
+  assert.equal(forbidden.message, '请管理员在 Showcase 授权中开启回放读取');
+  assert.deepEqual(forbidden.rows[1].options, []);
+  assert.equal((await h.snapshot()).poolToken, poolToken);
+  listResult = () => read(openApiExample.entries);
+  await action('refresh');
+  listResult = () => new Response(null, { status: 409 });
+  const changed = await action('refresh');
+  assert.equal(changed.status, 'stale');
+  assert.match(changed.message, /重新选择图池/);
+  assert.deepEqual(changed.rows[1].options, []);
+
+  const manual = await h.send('/api/showcase', { type: 'pool-text', text: 'NM1 101 Local map', poolToken }).then(r => r.json());
+  const url = root + '/file?' + new URLSearchParams({ slotId: 'NM1', poolToken: manual.poolToken, filename: '本地.osr' });
+  const upload = (body, origin) => h.getWithOptions(url, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/octet-stream' }, body });
+  assert.equal((await upload(replayFixture(), 'https://example.org')).status, 403);
+  assert.equal((await upload(Buffer.alloc(8 * 1024 * 1024 + 1), h.base)).status, 413);
+  assert.equal((await upload(Buffer.from('not a replay'), h.base)).status, 409);
+  const attached = await upload(replayFixture(), h.base).then(r => r.json());
+  assert.equal(attached.status, 'local');
+  assert.equal(attached.rows[0].options[0].local, true);
+  assert.equal(attached.rows[0].options[0].playerName, 'Test player');
+  assert.equal(attached.rows[0].options[0].filename, '本地.osr');
+  assert.equal(attached.rows[0].selectedId, attached.rows[0].options[0].id);
+});
+
+test('website file requests use the confirmed version, binary response, and 8 MiB stream limit', async () => {
+  const replayId = openApiExample.entries[1].replays[0].replayId;
+  const { poolId, version } = openApiExample;
+  const backend = 'https://oclr.org';
+  const headers = { 'Content-Type': 'application/octet-stream', 'X-OCLR-Read-Contract': '1.42.0' };
+  let body = replayFixture();
+  let isCurrent = true;
+  const read = () => readWebsiteShowcase({
+    backend, edition: 's11', token: websiteToken, isCurrent: () => isCurrent,
+    fetchImpl: async (url, options) => {
+      assert.equal(url, `${backend}${websitePath}/${poolId}/replays/${replayId}?version=${version}`);
+      assert.deepEqual(options.headers, { Accept: 'application/octet-stream', Authorization: `Bearer ${websiteToken}` });
+      assert.equal(options.cache, 'no-store');
+      assert.equal(options.redirect, 'error');
+      if (typeof body === 'function') return body();
+      return new Response(body, { headers });
+    },
+  }, { poolId, version, replayId });
+  assert.deepEqual(await read(), replayFixture());
+  body = new Uint8Array(replayLimit + 1);
+  await assert.rejects(read(), { status: 502 });
+  body = () => new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(replayFixture());
+      isCurrent = false;
+      controller.close();
+    },
+  }), { headers });
+  await assert.rejects(read(), { status: 401 });
 });

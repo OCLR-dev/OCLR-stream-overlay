@@ -17,4 +17,11 @@ const desktopLogin = location.pathname === '/control' && window.parent === windo
   new URLSearchParams(location.search).has('desktop-login');
 createApp(desktopLogin ? DesktopLogin : location.pathname === '/control' ? OperatorConsole :
   coverDemo ? ShowcaseCoverDemo : coverOutput ? ShowcaseCoverOutput : location.pathname === '/showcase' ? ShowcasePage : App).mount('#app');
+if (window.parent !== window || (location.pathname === '/showcase' && !coverDemo && !coverOutput)) {
+  // The embedded Showcase rows handle files. Cancel the WebView's navigation default.
+  window.addEventListener('drop', event => {
+    const types = event.dataTransfer?.types;
+    if (types?.includes('Files') || types?.includes('text/uri-list')) event.preventDefault();
+  });
+}
 connectDesktopHost();

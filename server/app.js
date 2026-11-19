@@ -10,6 +10,7 @@ import { createPlayerArtHandler } from './player-art.js';
 import { createTeamArtHandler } from './team-art.js';
 import { obsHttp } from './obs/http.js';
 import { ShowcaseStore, showcaseHttp } from './showcase.js';
+import { ShowcaseReplayList } from './showcase-replay-list.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const UUID = '[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}';
@@ -113,7 +114,10 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
   const streaming = new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
     const store = config.session || session;
     if (store) { store.live.streaming = value; store.emit(); }
+    if (replays.connection !== streaming.showcaseConnection().connection) replays.emit();
   } });
+  const replays = new ShowcaseReplayList(showcase, streaming, config.prepareShowcaseReplay);
+  showcase.onChange = () => { replays.sync(); replays.emit(); };
   const server = createServer((req, res) => {
     void handleRequest(req, res).catch(() => {
       // A failed image/API request must not terminate the broadcast service.
@@ -146,7 +150,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
     showcase.attachSession(activeSession);
     if (await obsHttp(req, res, url, config.obs)) return;
-    if (await showcaseHttp(req, res, url, showcase, streaming)) return;
+    if (await showcaseHttp(req, res, url, showcase, streaming, replays)) return;
     if (await streamingHttp(req, res, url, streaming, activeSession)) return;
     if (await sessionHttp(req, res, url, activeSession)) return;
     if (await playerArt(req, res, url)) return;
@@ -197,6 +201,6 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
       clearTimeout(timeout);
     }
   };
-  server.on('close', () => { config.obs?.close(); streaming.disconnect(); (config.session || session)?.close?.(); });
+  server.on('close', () => { config.obs?.close(); replays.close(); streaming.disconnect(); (config.session || session)?.close?.(); });
   return server;
 }

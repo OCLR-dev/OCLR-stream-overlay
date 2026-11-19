@@ -19,9 +19,9 @@ const transitionStatus = computed(() => {
   if (state.error) return state.error;
   if (state.covered !== (state.phase === 'covered')) return '正在确认 OBS 遮罩…';
   return {
-    covered: '遮挡已确认，可以打开下一份 rep。',
+    covered: '遮挡已确认，可从演示图池播放。',
     playing: '回放正在播出。',
-    results: '正在展示本图成绩，等待遮挡后再打开下一份 rep。',
+    results: '正在展示本图成绩，结束后自动遮挡。',
     manual: '手动显示中。点「立即遮挡」恢复自动过场。',
   }[state.phase];
 });

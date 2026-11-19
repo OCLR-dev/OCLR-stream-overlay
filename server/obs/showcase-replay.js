@@ -47,7 +47,20 @@ export class ShowcaseReplay {
     this.change('covered');
   }
 
+  arm(map, frame, onWrong) {
+    this.manual(true, frame);
+    this.target = map;
+    this.onWrong = onWrong;
+  }
+
+  hold() {
+    this.target = '';
+    this.onWrong = null;
+    this.reset();
+  }
+
   manual(covered, frame) {
+    this.target = this.onWrong = null;
     this.reset();
     if (covered && frame?.status === 8 && frame.map && frame.time !== null) {
       this.blocked = { map: frame.map, time: frame.time };
@@ -62,7 +75,7 @@ export class ShowcaseReplay {
   }
 
   observe(frame, confirmedCover, v2State) {
-    if (this.phase === 'manual') return;
+    if (this.phase === 'manual' || (this.target === '' && this.phase === 'covered')) return;
     const { map, status, time } = frame;
     if (status === 32 && map) {
       this.blocked = this.candidate = null;
@@ -95,6 +108,10 @@ export class ShowcaseReplay {
       return;
     }
     if (confirmedCover !== true || time - this.candidate.time < 0.12) return;
+    if (this.target != null && map !== this.target) {
+      this.onWrong?.();
+      return;
+    }
     this.run = { map, time };
     this.candidate = null;
     this.change('playing');
