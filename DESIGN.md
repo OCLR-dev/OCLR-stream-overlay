@@ -37,3 +37,9 @@
 ## 查阅设计决策
 
 按主题查[项目待办与设计索引](docs/design/backlog.md)。需要定位某次样式调整、尺寸演变或当时的参考图，见[设计沿革](docs/history/broadcast-design.md)。
+
+## Windows 启动器
+
+Windows 启动窗口使用 Wails + Vue，提供概览、设置、日志和关于页面。Node 服务、比赛记录与浏览器控制台沿用当前主线；Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
+
+Go 管理子进程、设置与原生对话框；内嵌 Vue 仅调用固定操作，不接受任意 shell、URL 或程序路径。保留单实例、版本与 PID 核对、端口重启确认、等待保存以及原比赛目录。控制台继续在系统浏览器打开。

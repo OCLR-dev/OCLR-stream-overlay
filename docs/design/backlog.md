@@ -14,6 +14,10 @@
 
 图池排版先用已有的完整 MP5 小图池，需要更大规模时选明确赛季的完整历史图池。BP 在直播中实时进行，只展示已确认的谱面。局部文案或样式改动检查受影响画面；改动比赛流程或捕获区时，验证对应的状态转换或布局组合。
 
+## Windows 启动器替换（v0.3.0）
+
+Wails + Vue 已对齐主线原生启动器功能。每次使用独立的 WebView2 缓存，修复快速重开时的约 6.4 秒延迟，本机启动稳定性复测通过。全新 Windows／缺少 WebView2 及真实 tosu／osu!Tourney／OBS 联调待验收。[功能核对](../verification/wails-launcher/README.md) · [启动稳定性](../verification/wails-launcher/startup-stability.md)
+
 ## 查阅早期方案
 
 - 视觉与版式的历次调整见[直播画面设计沿革](../history/broadcast-design.md)。

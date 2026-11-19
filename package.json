@@ -1,6 +1,6 @@
 {
   "name": "oclr-stream-overlay",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -18,7 +18,8 @@
     "sim:test": "node --test test/tosu-websocket.test.js",
     "sim:timing": "node tools/tosu-diagnostics/result-timing.js",
     "tosu:record": "node tools/tosu-diagnostics/record.js",
-    "test": "node --experimental-strip-types --test test/*.test.js test/*.test.ts"
+    "test": "node --experimental-strip-types --test test/*.test.js test/*.test.ts",
+    "build:launcher": "npm run check && vite build --config tools/windows-launcher/frontend/vite.config.ts"
   },
   "dependencies": {
     "@lucide/vue": "1.73.0",

@@ -1,0 +1,568 @@
+{
+  "date": "2026-11-19",
+  "environment": {
+    "os": "Windows 11 Pro for Workstations 10.0.26300",
+    "cpu": "AMD Ryzen 9 7950X",
+    "compiler": "Go 1.26.5",
+    "node": "v22.23.4"
+  },
+  "build": "8e25291bf7509ca99c8531370c3d03873dfb00b5fca606aacf01db00da5b3d71",
+  "baselines": {
+    "win32": "d6f9df4",
+    "windigo": "0014963"
+  },
+  "diagnosis": {
+    "build": "7a8d7bc5bdfbd5b17ed45c1646e9257d5065096eeac04e19f0098b48d1c3ad5e",
+    "gapMs": 250,
+    "columns": [
+      "healthMs",
+      "frameMs",
+      "readyMs",
+      "environmentMs",
+      "runtimeStartMs",
+      "runtimeMs"
+    ],
+    "variants": [
+      {
+        "mode": "shared",
+        "firstProfile": {
+          "healthMs": 423,
+          "frameMs": 398,
+          "readyMs": 500,
+          "environmentMs": 75,
+          "runtimeMs": 266,
+          "runtimeStartMs": 67
+        },
+        "samples": [
+          [6340,6331,6467,37,29,6207],
+          [372,345,463,40,32,214],
+          [361,351,454,36,28,220],
+          [347,326,461,38,30,195],
+          [345,333,433,38,30,211],
+          [334,349,456,38,30,201],
+          [345,326,432,38,29,200],
+          [345,318,436,42,33,200],
+          [361,337,461,39,30,210],
+          [347,321,435,40,31,199],
+          [342,320,458,37,30,196],
+          [339,325,437,39,31,193],
+          [316,307,429,38,30,190],
+          [345,324,434,41,31,203],
+          [6366,6349,6456,36,28,6216],
+          [347,320,427,37,29,192],
+          [346,340,453,37,30,212],
+          [313,319,428,36,29,185],
+          [327,322,435,40,31,196],
+          [373,349,462,42,32,219],
+          [6259,6245,6359,36,28,6125],
+          [342,319,436,37,30,207],
+          [6384,6379,6494,44,34,6241],
+          [346,329,459,43,35,202]
+        ]
+      },
+      {
+        "mode": "fresh",
+        "firstProfile": {
+          "healthMs": 416,
+          "frameMs": 388,
+          "readyMs": 505,
+          "environmentMs": 45,
+          "runtimeMs": 259,
+          "runtimeStartMs": 37
+        },
+        "samples": [
+          [349,341,460,40,31,208],
+          [345,331,425,39,30,204],
+          [378,362,475,40,32,224],
+          [348,344,438,38,29,219],
+          [361,339,453,41,32,216],
+          [344,320,427,37,29,194],
+          [344,348,466,39,31,211],
+          [346,353,463,40,33,212],
+          [402,362,458,41,32,243],
+          [346,334,462,37,30,201],
+          [375,351,466,40,33,219],
+          [377,370,491,38,30,215],
+          [370,336,437,40,31,216],
+          [348,338,447,39,31,205],
+          [345,345,467,38,31,211],
+          [390,378,490,46,36,229],
+          [348,345,454,39,31,207],
+          [377,358,459,41,32,216],
+          [358,342,454,39,30,220],
+          [389,357,464,40,31,236],
+          [376,363,474,39,30,221],
+          [345,331,451,37,29,200],
+          [372,373,491,37,29,236],
+          [344,329,430,37,29,198]
+        ]
+      }
+    ]
+  },
+  "columns": [
+    "healthMs",
+    "frameMs",
+    "readyMs",
+    "webviewMs"
+  ],
+  "rounds": [
+    {
+      "name": "comparison",
+      "date": "2026-11-19T02:25:46.979Z",
+      "gapMs": 250,
+      "count": 20,
+      "exitMode": "normal save and shutdown",
+      "firstProfile": {
+        "win32": {
+          "healthMs": 754,
+          "frameMs": 320,
+          "readyMs": 756
+        },
+        "windigo": {
+          "healthMs": 729,
+          "frameMs": 322,
+          "readyMs": 731
+        },
+        "wails": {
+          "healthMs": 689,
+          "frameMs": 368,
+          "readyMs": 774,
+          "webviewMs": 169
+        }
+      },
+      "summary": {
+        "win32": {
+          "healthMs": {
+            "min": 205,
+            "median": 221,
+            "p95": 224,
+            "max": 251
+          },
+          "frameMs": {
+            "min": 83,
+            "median": 88,
+            "p95": 94,
+            "max": 94
+          },
+          "readyMs": {
+            "min": 248,
+            "median": 252.5,
+            "p95": 258,
+            "max": 259
+          }
+        },
+        "windigo": {
+          "healthMs": {
+            "min": 188,
+            "median": 190,
+            "p95": 191,
+            "max": 203
+          },
+          "frameMs": {
+            "min": 74,
+            "median": 80,
+            "p95": 84,
+            "max": 88
+          },
+          "readyMs": {
+            "min": 212,
+            "median": 214,
+            "p95": 220,
+            "max": 221
+          }
+        },
+        "wails": {
+          "healthMs": {
+            "min": 315,
+            "median": 345,
+            "p95": 360,
+            "max": 373
+          },
+          "frameMs": {
+            "min": 317,
+            "median": 330,
+            "p95": 347,
+            "max": 350
+          },
+          "readyMs": {
+            "min": 416,
+            "median": 432,
+            "p95": 443,
+            "max": 447
+          },
+          "webviewMs": {
+            "min": 162,
+            "median": 170.5,
+            "p95": 190,
+            "max": 192
+          }
+        }
+      },
+      "samples": {
+        "win32": [
+          [220,83,248],
+          [222,86,249],
+          [206,86,250],
+          [222,85,249],
+          [220,87,252],
+          [224,90,254],
+          [205,88,252],
+          [219,89,254],
+          [221,85,250],
+          [221,94,259],
+          [222,83,248],
+          [221,90,255],
+          [222,88,253],
+          [220,91,257],
+          [223,84,249],
+          [220,90,255],
+          [222,89,254],
+          [251,90,256],
+          [221,86,251],
+          [222,94,258]
+        ],
+        "windigo": [
+          [190,80,213],
+          [188,80,215],
+          [189,75,220],
+          [189,81,214],
+          [191,78,216],
+          [188,83,216],
+          [190,78,216],
+          [189,74,212],
+          [190,88,221],
+          [189,76,214],
+          [190,80,213],
+          [191,81,212],
+          [190,76,212],
+          [191,76,213],
+          [203,84,214],
+          [191,82,213],
+          [191,82,214],
+          [188,83,216],
+          [188,78,214],
+          [190,79,215]
+        ],
+        "wails": [
+          [344,320,431,164],
+          [341,329,424,162],
+          [346,329,418,167],
+          [345,320,442,170],
+          [345,343,433,184],
+          [346,336,429,188],
+          [345,334,447,178],
+          [330,320,421,171],
+          [330,332,443,172],
+          [330,333,424,164],
+          [345,334,431,186],
+          [341,320,437,166],
+          [373,347,442,192],
+          [330,322,416,164],
+          [360,350,436,190],
+          [315,317,425,162],
+          [346,321,442,169],
+          [346,331,435,166],
+          [345,327,435,175],
+          [345,338,426,182]
+        ]
+      }
+    },
+    {
+      "name": "rapid",
+      "date": "2026-11-19T02:26:27.512Z",
+      "gapMs": 0,
+      "count": 30,
+      "exitMode": "normal save and shutdown",
+      "firstProfile": {
+        "wails": {
+          "healthMs": 360,
+          "frameMs": 346,
+          "readyMs": 461,
+          "webviewMs": 173
+        }
+      },
+      "summary": {
+        "wails": {
+          "healthMs": {
+            "min": 342,
+            "median": 375.5,
+            "p95": 390,
+            "max": 391
+          },
+          "frameMs": {
+            "min": 318,
+            "median": 354.5,
+            "p95": 376,
+            "max": 385
+          },
+          "readyMs": {
+            "min": 434,
+            "median": 466.5,
+            "p95": 499,
+            "max": 500
+          },
+          "webviewMs": {
+            "min": 170,
+            "median": 185.5,
+            "p95": 201,
+            "max": 209
+          }
+        }
+      },
+      "samples": {
+        "wails": [
+          [379,356,446,200],
+          [378,355,467,187],
+          [384,359,469,201],
+          [376,361,470,201],
+          [384,353,460,182],
+          [348,345,468,186],
+          [359,318,439,172],
+          [390,372,494,200],
+          [390,370,470,192],
+          [349,333,437,171],
+          [378,351,458,177],
+          [384,356,477,191],
+          [356,353,469,179],
+          [356,348,462,184],
+          [358,345,468,190],
+          [382,370,466,183],
+          [342,345,435,176],
+          [353,357,463,193],
+          [375,354,465,185],
+          [391,376,499,191],
+          [380,371,467,193],
+          [384,373,476,209],
+          [379,356,463,190],
+          [361,347,467,180],
+          [387,385,500,189],
+          [358,339,463,170],
+          [366,344,464,176],
+          [346,330,434,171],
+          [350,368,477,176],
+          [357,344,462,180]
+        ]
+      }
+    },
+    {
+      "name": "repeat",
+      "date": "2026-11-19T02:26:44.120Z",
+      "gapMs": 250,
+      "count": 30,
+      "exitMode": "normal save and shutdown",
+      "firstProfile": {
+        "wails": {
+          "healthMs": 368,
+          "frameMs": 346,
+          "readyMs": 447,
+          "webviewMs": 170
+        }
+      },
+      "summary": {
+        "wails": {
+          "healthMs": {
+            "min": 320,
+            "median": 346,
+            "p95": 378,
+            "max": 407
+          },
+          "frameMs": {
+            "min": 312,
+            "median": 337,
+            "p95": 367,
+            "max": 396
+          },
+          "readyMs": {
+            "min": 425,
+            "median": 438,
+            "p95": 487,
+            "max": 490
+          },
+          "webviewMs": {
+            "min": 164,
+            "median": 171.5,
+            "p95": 199,
+            "max": 228
+          }
+        }
+      },
+      "samples": {
+        "wails": [
+          [373,344,450,182],
+          [360,334,427,167],
+          [348,343,450,186],
+          [344,332,428,167],
+          [344,328,449,166],
+          [332,338,457,169],
+          [346,343,444,175],
+          [347,343,436,176],
+          [344,314,428,164],
+          [346,334,437,168],
+          [378,367,490,191],
+          [345,343,452,169],
+          [377,350,459,199],
+          [346,328,436,170],
+          [348,339,427,171],
+          [346,331,445,176],
+          [347,324,425,172],
+          [346,337,428,182],
+          [346,337,453,176],
+          [345,322,428,170],
+          [343,339,451,169],
+          [346,340,429,186],
+          [347,353,453,187],
+          [347,330,434,167],
+          [407,396,487,228],
+          [341,312,432,166],
+          [360,354,467,189],
+          [320,335,430,164],
+          [345,329,432,169],
+          [374,337,439,192]
+        ]
+      }
+    },
+    {
+      "name": "forced",
+      "date": "2026-11-19T02:27:41.682Z",
+      "gapMs": 0,
+      "count": 20,
+      "exitMode": "terminate launcher and wait for Node stdin EOF",
+      "firstProfile": {
+        "wails": {
+          "healthMs": 337,
+          "frameMs": 332,
+          "readyMs": 421,
+          "webviewMs": 166
+        }
+      },
+      "summary": {
+        "wails": {
+          "healthMs": {
+            "min": 351,
+            "median": 364,
+            "p95": 390,
+            "max": 404
+          },
+          "frameMs": {
+            "min": 336,
+            "median": 359.5,
+            "p95": 382,
+            "max": 392
+          },
+          "readyMs": {
+            "min": 437,
+            "median": 473,
+            "p95": 481,
+            "max": 509
+          },
+          "webviewMs": {
+            "min": 172,
+            "median": 183.5,
+            "p95": 197,
+            "max": 201
+          }
+        }
+      },
+      "samples": {
+        "wails": [
+          [362,351,457,187],
+          [357,363,446,185],
+          [362,336,442,172],
+          [372,343,437,182],
+          [380,369,473,197],
+          [386,356,478,193],
+          [351,353,441,182],
+          [362,355,450,174],
+          [363,339,442,172],
+          [380,365,477,196],
+          [362,354,481,173],
+          [369,365,476,189],
+          [380,374,479,196],
+          [404,392,509,201],
+          [389,382,477,188],
+          [390,376,480,178],
+          [360,368,473,179],
+          [363,354,468,186],
+          [362,345,444,180],
+          [365,375,480,179]
+        ]
+      }
+    }
+  ],
+  "aggregateWailsReadyMs": {
+    "count": 100,
+    "median": 449.5,
+    "p95": 487,
+    "max": 509,
+    "atLeast1000ms": 0
+  },
+  "package": {
+    "win32ExeBytes": 7020032,
+    "windigoExeBytes": 7156224,
+    "wailsExeBytes": 11682304,
+    "wailsZipBytes": 38822349,
+    "sha256": "6cc75136e2e9a1ea2c9603c0fc63d1bcad740769503a21b2ecd59e83048615f9"
+  },
+  "portableVerification": {
+    "scope": "synthetic headless, unmodified production EXE",
+    "passed": true,
+    "results": [
+      {
+        "name": "distributable includes project and third-party licenses",
+        "passed": true
+      },
+      {
+        "name": "bundled WASM HR calculation works offline from a Unicode path",
+        "passed": true
+      },
+      {
+        "name": "native x64 first start from Chinese/spaced path; ready before control/overlay",
+        "passed": true
+      },
+      {
+        "name": "repeated native launch reuses one server without changing match",
+        "passed": true
+      },
+      {
+        "name": "controller and independent output SSE synchronize; closing controller leaves output alive",
+        "passed": true
+      },
+      {
+        "name": "portable artwork survives pool setup, initialization and undo without stopping the native service",
+        "passed": true
+      },
+      {
+        "name": "normal native exit releases service and fixed port",
+        "passed": true
+      },
+      {
+        "name": "restart from replacement program directory retains complete session and undo",
+        "passed": true
+      },
+      {
+        "name": "occupied port refuses start; other program remains alive",
+        "passed": true
+      },
+      {
+        "name": "old backend is not silently reused",
+        "passed": true
+      },
+      {
+        "name": "corrupt data refuses startup and preserves original bytes",
+        "passed": true
+      },
+      {
+        "name": "bundled runtime and native smoke-test exit cleanly",
+        "passed": true
+      },
+      {
+        "name": "native launcher reads the saved executable directory and supplies the backend port",
+        "passed": true
+      },
+      {
+        "name": "native launcher keeps the same backend through timeouts and logs its eventual exit",
+        "passed": true
+      }
+    ]
+  }
+}

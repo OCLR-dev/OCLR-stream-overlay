@@ -2,6 +2,8 @@
 
 这套工具把 OCLR 对阵和图池、tosu 读到的游戏数据、导播在本机记录的比赛进度合成一套 osu! 比赛画面。导播使用浏览器控制台，OBS 使用独立的 1920×1080 浏览器源。
 
+Windows 启动窗口使用 Wails + Vue，提供概览、设置、日志和关于页面。Node 服务、比赛记录与浏览器控制台沿用当前主线；Windows 需要 Microsoft Edge WebView2 Runtime。实现与验证见 [Wails 启动器](docs/verification/wails-launcher/README.md)。
+
 ## 开播
 
 1. Windows 直播机从 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 下载 `OCLR-Windows-x64.zip`，全部解压后双击 `OCLR.exe`。在启动窗口打开控制台。安装、接线与更新见 [Windows 直播员手册](docs/windows-portable.md)。

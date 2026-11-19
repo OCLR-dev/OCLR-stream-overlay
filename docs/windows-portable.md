@@ -4,6 +4,8 @@
 
 > 开播前在 OBS 节目画面核对捕获窗口，在混音器核对音量。下面的操作与本包对应；下载其他版本时请使用该包随附的《使用说明.txt》。
 
+Windows 启动窗口使用 Wails + Vue，需要 Microsoft Edge WebView2 Runtime。缺少时按安装提示完成后重开；离线机器请提前安装运行时。
+
 ## 1. 获取压缩包、解压、双击启动
 
 1. 在 [GitHub Releases](https://github.com/OCLR-dev/OCLR-stream-overlay/releases) 选择所需提交的 Pre-release，从 Assets 下载 `OCLR-Windows-x64.zip`，右键“全部解压”。可用旁边的 `.zip.sha256` 核对下载内容。
