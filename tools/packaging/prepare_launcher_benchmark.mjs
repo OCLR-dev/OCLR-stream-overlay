@@ -62,7 +62,36 @@ onMounted(()=>{void mark('frame');void poll();});`);
 await writeFile(vue, text);
 const bridge = join(source, 'frontend/src/bridge.ts');
 await writeFile(bridge, replace(await readFile(bridge, 'utf8'), 'interface Launcher {', 'interface Launcher {\n BenchmarkMark(stage:string):Promise<void>;'));
-await writeFile(join(source, 'benchmark_windows.go'), 'package main\nimport("os";"time";wruntime "github.com/wailsapp/wails/v2/pkg/runtime")\nfunc(a *Launcher) BenchmarkMark(stage string){if stage=="frame"||stage=="ready"{a.log.record("benchmark_%s",stage)};if stage=="ready"{go func(){for{if _,err:=os.Stat(os.Getenv("OCLR_BENCH_STOP"));err==nil{a.op.Lock();if a.service!=nil{a.service.stop("benchmark")};a.quitAllowed=true;a.op.Unlock();wruntime.Quit(a.ctx);return};time.Sleep(20*time.Millisecond)}}()}}\n');
+const appFile = join(source, 'app_windows.go');
+await writeFile(appFile, replace(await readFile(appFile, 'utf8'),
+  'func (a *Launcher) confirm(title, body string) bool {',
+  'func (a *Launcher) confirm(title, body string) bool {\n if title == "退出 OCLR" { return true }'));
+await writeFile(join(source, 'benchmark_windows.go'), `package main
+
+import (
+  "os"
+  "time"
+
+  wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+func (a *Launcher) BenchmarkMark(stage string) {
+  if stage == "frame" || stage == "ready" {
+    a.log.record("benchmark_%s", stage)
+  }
+  if stage == "ready" {
+    go func() {
+      for {
+        if _, err := os.Stat(os.Getenv("OCLR_BENCH_STOP")); err == nil {
+          wruntime.Quit(a.ctx)
+          return
+        }
+        time.Sleep(20 * time.Millisecond)
+      }
+    }()
+  }
+}
+`);
 run(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build', '--config', join(source, 'frontend/vite.config.ts')]);
 run('go', ['build', '-mod=readonly', '-tags', 'desktop,production', '-trimpath', '-ldflags', `-H=windowsgui -s -w -X main.buildID=${build} -X main.instanceMutex=Local\\OCLR.StreamOverlay.Benchmark -X main.autoOpenControl=false`, '-o', join(dir, 'wails/OCLR.exe'), '.'], source);
 await writeFile(join(dir, 'prepared.json'), JSON.stringify({ build, variants, wailsSource: execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim(), workingTreeMayDiffer: true }, null, 2));

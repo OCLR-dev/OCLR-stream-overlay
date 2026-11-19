@@ -25,7 +25,7 @@
 
 Go 暴露固定操作，不接受网页传入任意程序路径、shell 或 URL。文件路径来自原生选择器，并在 Go 再次校验。操作串行；关闭期间拒绝新操作。前端资源内嵌在 exe，CSP 限定本机资源，禁止拖入网页，生产关闭开发工具。
 
-WebView2 配置位于启动器设置目录，比赛仍使用原 `%LOCALAPPDATA%\OCLR\StreamOverlay`。WebView2 Runtime 由系统提供，不包含在 ZIP 中。
+每次启动在启动器设置目录的 `WebView2Sessions` 创建独立缓存。过期且未被使用的缓存会在后续启动后清理。端口、应用路径和比赛记录仍由原设置和数据文件保存。WebView2 Runtime 由系统提供，不包含在 ZIP 中。
 
 ## 构建与本次验证
 
@@ -46,6 +46,6 @@ python tools/packaging/build_windows.py
 
 ## 替换验收状态
 
-功能覆盖已对齐，替换验收仍为 **partial**。优化后完整 GUI 就绪中位数为 408 ms，原 Win32 为 249 ms，当前 Windigo 为 216 ms；但 7 次快速正常退出重开中有 1 次 Wails 达 6.4 秒，原因尚未确认。完整方法、全部样本和大小见 [性能比较](performance.md)。
+功能覆盖已对齐，本机启动稳定性复测通过。修复前共用 WebView2 目录时，24 次中 4 次重现超过 6 秒的延迟。改用每次启动独立的目录后，同机比较的 Wails 就绪中位数为 432 ms，原 Win32 为 252.5 ms，当前 Windigo 为 214 ms。定位过程与全部复测见 [启动稳定性](startup-stability.md)。
 
-正式替换前仍需：排查快速重开长尾、全新／缺少 WebView2 的 Windows 安装与离线提示，以及真实 tosu／osu!Tourney／OBS 直播机联调。本分支未推进 `release/windows` 或发布版本。
+全新／缺少 WebView2 的 Windows 安装和离线提示，以及真实 tosu／osu!Tourney／OBS 直播机联调，仍待正式替换验收。

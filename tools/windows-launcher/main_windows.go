@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"io"
 	"io/fs"
@@ -112,6 +113,14 @@ func runLauncher() int {
 		message("无法找到本机设置目录。")
 		return 1
 	}
+	cache := filepath.Join(filepath.Dir(prefs), "WebView2Sessions")
+	profile, lease, e := newWebviewProfile(cache)
+	if e != nil {
+		log.record("cannot prepare WebView2 cache: %v", e)
+		message("无法准备启动界面的缓存，请检查本机设置目录的写入权限后重试。")
+		return 1
+	}
+	defer lease.Close()
 	app := newLauncher(log)
 	messages := windows.DefaultMessages()
 	messages.InstallationRequired = "需要 Microsoft Edge WebView2"
@@ -119,13 +128,24 @@ func runLauncher() int {
 	messages.MissingRequirements = "启动界面需要 WebView2。请安装后重新打开 OCLR。"
 	messages.Webview2NotInstalled = "未找到 Microsoft Edge WebView2 Runtime。"
 	messages.DownloadPage = "即将打开 Microsoft 官方下载页面。"
+	webviewStarted := time.Now()
+	var schedulePrune sync.Once
 	e = wails.Run(&options.App{
 		Title: "OCLR 直播服务", Width: 940, Height: 680, MinWidth: 760, MinHeight: 560,
 		BackgroundColour: options.NewRGB(18, 16, 29), AssetServer: &assetserver.Options{Assets: assets},
 		EnableFraudulentWebsiteDetection: true,
 		DragAndDrop:                      &options.DragAndDrop{DisableWebViewDrop: true},
-		OnStartup:                        app.startup, OnBeforeClose: app.beforeClose, OnShutdown: app.shutdown, Bind: []interface{}{app},
-		Windows: &windows.Options{Theme: windows.Dark, WebviewUserDataPath: filepath.Join(filepath.Dir(prefs), "WebView2"),
+		OnStartup: func(ctx context.Context) {
+			log.record("WebView2 initialized elapsed_ms=%d", time.Since(webviewStarted).Milliseconds())
+			app.startup(ctx)
+		},
+		OnDomReady: func(context.Context) {
+			schedulePrune.Do(func() {
+				time.AfterFunc(5*time.Second, func() { pruneWebviewProfiles(cache, time.Now()) })
+			})
+		},
+		OnBeforeClose: app.beforeClose, OnShutdown: app.shutdown, Bind: []interface{}{app},
+		Windows: &windows.Options{Theme: windows.Dark, WebviewUserDataPath: profile,
 			Messages: messages},
 	})
 	if e != nil {

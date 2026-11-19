@@ -16,7 +16,7 @@
 
 ## Windows 启动器替换（当前开发分支，partial）
 
-Wails + Vue 已对齐主线原生启动器的功能，并通过本机 Go、580 项 Node 测试和 14 项便携包验收。优化后 GUI 就绪中位数为 408 ms；快速正常退出重开仍观察到一次 6.4 秒长尾，正式替换前需定位。全新 Windows／缺少 WebView2 及真实 tosu／osu!Tourney／OBS 联调待验收。[功能核对与证据](../verification/wails-launcher/README.md) · [启动性能](../verification/wails-launcher/performance.md)
+Wails + Vue 已对齐主线原生启动器功能。每次使用独立的 WebView2 缓存，修复快速重开时的约 6.4 秒延迟，本机启动稳定性复测通过。全新 Windows／缺少 WebView2 及真实 tosu／osu!Tourney／OBS 联调待验收。[功能核对](../verification/wails-launcher/README.md) · [启动稳定性](../verification/wails-launcher/startup-stability.md)
 
 ## 查阅早期方案
 
