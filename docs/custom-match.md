@@ -84,3 +84,9 @@ Mappool Ban／Pick 按钮可不选谱面直接设置服务器待执行动作，�
 旧 schema 1 会话首次读取时会先保留原文备份，再迁移到 schema 2，BO、阶段、规则、CA、连接地址与撤销历史均保留。损坏文件或非自定义赛文件仍拒绝打开。
 
 开发可使用 `npm run watch -- --simulate`。隔离端口必须同时指定独立会话：`npm run watch -- --simulate --app-port 3012 --ws-port 24055 --session-file /path/to/test-session.json`。
+
+## Showcase 回放清单
+
+1. 先启动普通 osu!stable，并在「游戏数据」连接相应的 tosu。回放使用系统默认的 osu!stable 安装路径，也可沿用主线桌面控制台已保存的普通 `osu!.exe`。请预先安装谱面。
+2. 在同端口 `/showcase` 录入或复制演示图池，将本地 `.osr` 拖到对应行，或点「选文件」。补入的回放保留到更换图池或退出服务。
+3. 在 Showcase 的 OBS 设置中创建场景并启用自动过场。将普通 osu! 游戏采集放在背景源与过场来源之间，将 Showcase 切到 OBS Program。看到「遮挡已确认」后点「播放下一张」。缺件可现场补入，或点其他已就绪行的「设为下一张」。已播的谱面可用「重播本张」再次播放。

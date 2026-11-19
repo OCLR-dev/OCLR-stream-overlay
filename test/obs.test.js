@@ -45,7 +45,7 @@ test('OBS WebSocket identifies using the v5 challenge, correlates RPCs and disca
   const socket = new ObsSocket({ port: 4455, password: 'supersecretpassword', WebSocketImpl: Transport,
     onEvent: (...args) => events.push(args), onClose() {} });
   wire.push(0, { authentication: { salt: 'lM1GncleQOaCu9lT1yeUZhFYnqhsLLP1G5lAGo3ixaI=', challenge: '+IxH4CnCiqpX1rM9scsNynZzbOe4KhDeYcTNS3PDaeY=' } });
-  assert.deepEqual(wire.sent[0], { op: 1, d: { rpcVersion: 1, eventSubscriptions: 70, authentication: '1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=' } });
+  assert.deepEqual(wire.sent[0], { op: 1, d: { rpcVersion: 1, eventSubscriptions: 198, authentication: '1Ct943GAT+6YQUUX47Ia/ncufilbe6+oD6lY+5kaCu4=' } });
   wire.push(2, { negotiatedRpcVersion: 1 }); await socket.ready;
   const one = socket.request('GetSceneList'), two = socket.request('GetCurrentProgramScene');
   const reply = (index, data) => wire.push(7, { requestId: wire.sent[index].d.requestId, requestStatus: { result: true }, responseData: data });

@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { newCustomSession, transition, targetOf, seriesOf, seriesComplete, currentRound, bpProgress } from '../server/session/model.js';
 import { SessionStore } from '../server/session/store.js';
+import { replayFixture } from './showcase-replay-fixture.js';
 import { startCustomMatch } from '../server/custom-match.js';
 
 const rule = 'ban ban-first\nban other-ban\nban ban-first\nban other-ban\nalternate pick-first';
@@ -190,6 +191,28 @@ test('custom runtime uses real isolated WebSocket, blocks OCLR and preserves cor
   await until(() => store.live.tosu.status === 'live', 'connected'); await delay(150);
   assert.equal(store.state.auto.left, 'TEST ROOM RED'); assert.equal(store.state.auto.right, 'TEST ROOM BLUE');
   assert.equal((await fetch(`${app.appUrl}/api/oclr/tournaments`)).status, 403);
+  const api = app.appUrl + '/api/showcase';
+  const prior = await fetch(api).then(response => response.json());
+  assert.equal(prior.websiteEnabled, false);
+  assert.equal((await fetch(api + '/website')).status, 403);
+  const state = structuredClone(store.state);
+  const headers = { Origin: app.appUrl, 'Content-Type': 'application/json' };
+  const blocked = await fetch(api, { method: 'POST', headers, body: JSON.stringify({ type: 'import-website', poolToken: prior.poolToken }) });
+  assert.equal(blocked.status, 403);
+  const recorded = await fetch(api, { method: 'POST', headers,
+    body: JSON.stringify({ type: 'pool-text', text: 'NM1 810000 Local map', poolToken: prior.poolToken }) });
+  assert.equal(recorded.status, 200);
+  const { poolToken } = await recorded.json();
+  const file = await fetch(api + '/replays/file?' + new URLSearchParams({ poolToken, slotId: 'NM1', filename: 'test.osr' }), {
+    method: 'POST', headers: { ...headers, 'Content-Type': 'application/octet-stream' }, body: replayFixture(),
+  });
+  assert.equal(file.status, 200);
+  const list = await file.json();
+  assert.equal(list.status, 'local');
+  assert.equal(list.rows[0].options[0].filename, 'test.osr');
+  assert.equal(list.rows[0].selectedId, list.rows[0].options[0].id);
+  assert.deepEqual(store.state, state);
+
   assert.equal((await fetch(`${app.appUrl}/.local/custom-match/session.json`)).status, 404);
   for (let i = 0; i < 5; i++) {
     simulator.set({ mapId: 810000 + i, ipcState: 1 });

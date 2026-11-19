@@ -109,6 +109,11 @@ export function normalizeTosuV2(raw) {
   if (!raw || typeof raw !== 'object' || !raw.state || !raw.beatmap || raw.error) throw new Error('INVALID_TOSU_FRAME');
   const tourney = raw.tourney;
   const map = raw.beatmap;
+  const result = raw.resultsScreen;
+  const scoreId = Number.isSafeInteger(result?.scoreId) && result.scoreId > 0 ? result.scoreId : null;
+  const resultTime = typeof result?.createdAt === 'string' ? number(Date.parse(result.createdAt)) : null;
+  const resultIdentity = raw.state.number === 7 && (scoreId || resultTime > 0)
+    ? JSON.stringify([scoreId, resultTime, number(result.score)]) : null;
   return {
     state: { number: number(raw.state.number), name: text(raw.state.name) },
     beatmap: {
@@ -119,7 +124,8 @@ export function normalizeTosuV2(raw) {
       tourneyStats: tourneyStatsSnapshot(raw),
     },
     play: playSnapshot(raw.play),
-    resultsScreen: playSnapshot(raw.resultsScreen),
+    resultsScreen: playSnapshot(result),
+    ...(resultIdentity && { resultIdentity }),
     tourney: tourney ? {
       ipcState: number(tourney.ipcState), bestOf: number(tourney.bestOF),
       scoreVisible: bool(tourney.scoreVisible), starsVisible: bool(tourney.starsVisible),
@@ -140,8 +146,8 @@ export function normalizeTosuV2(raw) {
 }
 
 export class TosuClient {
-  constructor({ url, onFrame, onStatus, WebSocketImpl = globalThis.WebSocket, staleMs = 5000, reconnectMs = 1000 }) {
-    Object.assign(this, { url, onFrame, onStatus, WebSocketImpl, staleMs, reconnectMs });
+  constructor({ url, onFrame, onStatus, WebSocketImpl = globalThis.WebSocket, staleMs = 5000, reconnectMs = 1000, normalize = normalizeTosuV2 }) {
+    Object.assign(this, { url, onFrame, onStatus, WebSocketImpl, staleMs, reconnectMs, normalize });
     this.running = false;
     this.socket = null;
   }
@@ -154,6 +160,7 @@ export class TosuClient {
 
   connect() {
     if (!this.running) return;
+    if (!this.url) { this.onStatus('idle'); return; }
     this.onStatus('connecting');
     let socket;
     try { socket = new this.WebSocketImpl(this.url); }
@@ -164,7 +171,7 @@ export class TosuClient {
     socket.onmessage = event => {
       if (!active()) return;
       let frame;
-      try { frame = normalizeTosuV2(JSON.parse(event.data)); }
+      try { frame = this.normalize(JSON.parse(event.data)); }
       catch { this.onStatus('invalid-data'); return; }
       this.watchForStale();
       this.onStatus('live');
@@ -184,6 +191,17 @@ export class TosuClient {
       this.retry();
     };
     this.watchForStale();
+  }
+
+  setUrl(url) {
+    if (url === this.url) return;
+    const replacing = Boolean(this.url);
+    this.url = url;
+    this.resetConnection();
+    if (this.running) {
+      if (replacing) this.onStatus('disconnected');
+      this.connect();
+    }
   }
 
   watchForStale() {
@@ -213,11 +231,15 @@ export class TosuClient {
     }
   }
 
-  stop() {
-    this.running = false;
+  resetConnection() {
     clearTimeout(this.staleTimer);
     clearTimeout(this.retryTimer);
     this.releaseSocket();
+  }
+
+  stop() {
+    this.running = false;
+    this.resetConnection();
     this.onStatus('stopped');
   }
 }
