@@ -65,7 +65,7 @@ python3 tools/packaging/build_windows.py
 
 开发机需要 Python 3、Go 1.27.3、Node 22.13+。脚本执行前端构建，下载固定版本的官方 Windows Node ZIP 并核对固定 SHA256，交叉编译 GUI exe，生成便携包。离线缓存可用 `--node-archive <zip>` 和 `--go <go可执行文件>`。Windows 使用 `python` 命令即可。
 
-Windows 图标嵌入 `OCLR.exe`，同时供文件资源管理器和启动窗口使用。替换 `tools/windows-launcher/assets/oclr-stream.ico` 后，在 `tools/windows-launcher` 重新生成资源并提交 ICO 与 `.syso`。常规打包直接链接已生成的资源。角色署名与授权随包提供，详见 [Liru 授权](../../../tools/packaging/licenses/Liru-CC-BY-4.0.txt)。
+Windows 图标嵌入 `OCLR.exe`，同时供文件资源管理器和启动窗口使用。Wails 从资源编号 `3` 读取窗口图标。替换 `tools/windows-launcher/assets/oclr-stream.ico` 后，在 `tools/windows-launcher` 重新生成资源并提交 ICO 与 `.syso`。常规打包直接链接已生成的资源。角色署名与授权随包提供，详见 [Liru 授权](../../../tools/packaging/licenses/Liru-CC-BY-4.0.txt)。
 
 ```sh
 go run github.com/tc-hib/go-winres@v0.3.3 make --in assets/winres.json --arch amd64 --out icon
