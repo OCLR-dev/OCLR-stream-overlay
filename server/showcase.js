@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { tosuRoomTeams } from '../src/tosu.js';
 import { parseShowcasePool, showcasePool, showcasePoolText } from './showcase-pool.js';
 import { restoredWebsitePool } from './showcase-website.js';
+import { replayHttp } from './showcase-replay-list.js';
 
 const poolToken = pool => createHash('sha256').update(JSON.stringify(pool)).digest('hex');
 const stageLabel = value => {
@@ -50,6 +51,11 @@ export class ShowcaseStore {
     }
   }
 
+  currentPoolToken() {
+    const { pool, website } = this.state;
+    return poolToken(website ? [pool, website] : pool);
+  }
+
   snapshot(envelope = this.session?.snapshot()) {
     const pool = this.state.pool.map(entry => ({ ...entry }));
     const loadedPool = envelope?.session?.pool || [];
@@ -71,7 +77,7 @@ export class ShowcaseStore {
       title: matched?.title || map.title || '', artist: matched?.artist || map.artist || '', difficulty: matched?.difficulty || map.difficulty || '',
     } : null;
     const snapshot = {
-      poolToken: poolToken(website ? [pool, website] : pool), pool,
+      poolToken: this.currentPoolToken(), pool,
       websitePool: website ? { ...website.pool, edition: website.edition } : null,
       ...(website && matched ? { websiteArtwork: cover ? `/api/showcase/cover/${website.pool.id}/${website.pool.version}/${cover.entryId}` : null } : {}),
       poolText: showcasePoolText(pool), stageLabel: this.state.stageLabel,
@@ -93,7 +99,8 @@ export class ShowcaseStore {
       if (serial && serial !== this.completedSerial) {
         this.completedSerial = serial;
         this.lastMap = transition.completed.map;
-        const completed = pool.filter(entry => String(entry.beatmapId) === this.lastMap);
+        const completed = pool.filter(entry => String(entry.beatmapId) === this.lastMap &&
+          (!transition.completed.slotId || transition.completed.slotId === entry.id));
         if (completed.length === 1) this.shown.add(completed[0].id);
       }
       // The first observed selection is a baseline, not evidence that the
@@ -109,7 +116,9 @@ export class ShowcaseStore {
   subscribe(listener) {
     const unsubscribe = this.session.subscribe(envelope => listener(this.snapshot(envelope)));
     const unsubscribeCover = this.obs()?.subscribeCover(() => listener(this.snapshot()));
-    return () => { unsubscribe(); unsubscribeCover?.(); };
+    this.listeners ||= new Set();
+    this.listeners.add(listener);
+    return () => { unsubscribe(); unsubscribeCover?.(); this.listeners.delete(listener); };
   }
 
   cover(poolId, version, entryId) {
@@ -157,6 +166,7 @@ export class ShowcaseStore {
         }
       }
       this.state = next;
+      this.onChange?.();
       // Notify Showcase listeners without emitting or modifying the match session.
       for (const listener of this.listeners || []) listener(this.snapshot());
       return this.snapshot();
@@ -166,7 +176,7 @@ export class ShowcaseStore {
   }
 }
 
-function stream(req, res, store) {
+function stream(res, snapshot, subscribe) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Content-Type-Options': 'nosniff' });
   let latest;
   let written;
@@ -181,20 +191,19 @@ function stream(req, res, store) {
   const receive = snapshot => { latest = JSON.stringify(snapshot); if (!written) write(); else if (latest !== written) schedule(); };
   const drain = () => { blocked = false; schedule(); };
   res.on('drain', drain);
-  store.listeners ||= new Set();
-  store.listeners.add(receive);
-  const unsubscribe = store.subscribe(receive);
+  const unsubscribe = subscribe(receive);
   const heartbeat = setInterval(() => {
     // Re-evaluate freshness even if a source has stopped emitting.
-    receive(store.snapshot());
+    receive(snapshot());
     if (!blocked && !res.destroyed) blocked = !res.write('event: heartbeat\ndata: {}\n\n');
   }, 1500);
-  res.on('close', () => { unsubscribe(); store.listeners.delete(receive); clearInterval(heartbeat); clearTimeout(pending); res.off('drain', drain); });
+  res.on('close', () => { unsubscribe(); clearInterval(heartbeat); clearTimeout(pending); res.off('drain', drain); });
 }
 
-export async function showcaseHttp(req, res, url, store, streaming) {
+export async function showcaseHttp(req, res, url, store, streaming, replays) {
   const coverRoute = url.pathname.startsWith('/api/showcase/cover/');
-  if (!coverRoute && !['/api/showcase', '/api/showcase/events', '/api/showcase/website'].includes(url.pathname)) return false;
+  const replayRoute = ['/api/showcase/replays', '/api/showcase/replays/file', '/api/showcase/replays/events'].includes(url.pathname);
+  if (!coverRoute && !replayRoute && !['/api/showcase', '/api/showcase/events', '/api/showcase/website'].includes(url.pathname)) return false;
   const send = (status, body) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
     res.end(JSON.stringify(body));
@@ -202,6 +211,7 @@ export async function showcaseHttp(req, res, url, store, streaming) {
   };
   if (!store.session) return send(503, { error: { message: '本机图池服务尚未就绪。' } });
   await store.ready;
+  if (replayRoute) return replayHttp(req, res, url, replays, stream, send);
   if (url.search) return send(400, { error: { code: 'INVALID_QUERY' } });
   if (coverRoute) {
     const [, , , , poolId, version, entryId, extra] = url.pathname.split('/');
@@ -220,7 +230,7 @@ export async function showcaseHttp(req, res, url, store, streaming) {
   const websiteRoute = url.pathname === '/api/showcase/website';
   if (req.method === 'GET') {
     if (websiteRoute) return send(200, streaming.showcaseConnection());
-    if (url.pathname.endsWith('/events')) { stream(req, res, store); return true; }
+    if (url.pathname.endsWith('/events')) { stream(res, () => store.snapshot(), listener => store.subscribe(listener)); return true; }
     return send(200, store.snapshot());
   }
   if (req.method !== 'POST' || (!websiteRoute && url.pathname !== '/api/showcase')) return send(405, { error: { code: 'METHOD_NOT_ALLOWED' } });

@@ -23,7 +23,7 @@ Windows 启动窗口使用 Wails + Vue，启动后直接显示直播控制台。
 ## 比赛与图池演示
 
 - **正赛**可以从到场、Roll 和 BP 开始，也可以中途接入正在 Playing 的房间。图池管理 Ban/Pick 和 TB，Playing 管理当局比分与成绩。Ranking 沿用 Playing 捕获布局。暂停、撤销和比赛纠错都在控制台。[现场操作与中途加入](docs/main-operator-contract.md)
-- **Showcase** 使用普通 osu! 客户端播放 rep。图池可手动录入、复制控制台已加载的图池，或导入网站授权的图池。开启自动过场后，等「遮挡已确认」再打开下一份 rep。[授权导入](docs/streaming-api.md#从网站导入-showcase-图池) · [OBS 过场操作](docs/windows-portable.md#showcase-回放过场)
+- **Showcase** 使用普通 osu! 客户端播放 rep。图池可手动录入、复制控制台已加载的图池，或导入网站授权的图池。在演示图池核对回放清单。开启自动过场后，等「遮挡已确认」再点「播放下一张」。[授权导入](docs/streaming-api.md#从网站导入-showcase-图池) · [OBS 过场操作](docs/windows-portable.md#showcase-回放过场)
 
 ## 本地开发
 

@@ -150,7 +150,6 @@ func runLauncher() int {
 		Title: "OCLR 直播服务", Width: 1280, Height: 840, MinWidth: 760, MinHeight: 560,
 		BackgroundColour: options.NewRGB(18, 16, 29), AssetServer: &assetserver.Options{Assets: assets},
 		EnableFraudulentWebsiteDetection: true,
-		DragAndDrop:                      &options.DragAndDrop{DisableWebViewDrop: true},
 		OnStartup: func(ctx context.Context) {
 			log.record("WebView2 initialized elapsed_ms=%d", time.Since(webviewStarted).Milliseconds())
 			app.startup(ctx)

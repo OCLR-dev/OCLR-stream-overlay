@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { ShowcaseStore } from '../server/showcase.js';
+import { ShowcaseReplayList } from '../server/showcase-replay-list.js';
+import { replayFixture } from './showcase-replay-fixture.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ObsController } from '../server/obs/controller.js';
 import { showcaseArtwork, showcaseBrowser, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
@@ -425,4 +429,111 @@ test('only the results timeout animates entry; early changes cover instantly', a
   assert.equal(obs.coverSnapshot().covered, true);
   assert.equal(obs.coverSnapshot().instant, true);
   assert.equal(obs.coverSnapshot().completed.serial, 1, 'cancellation does not invent a completed map');
+});
+
+test('replay list rechecks Program after download, opens once under the actual cover, retries and counts same-map completion once', async t => {
+  const { studio, obs, session, mask, v2, feed } = await setupReplay(t, 30);
+  const store = new ShowcaseStore(session, { obs: () => obs });
+  await store.command({ type: 'pool-text', text: 'NM1 101\nHD1 202', poolToken: store.currentPoolToken() });
+  const source = { edition: 's11', pool: { id: 'pool', version: 7 },
+    entriesById: [{ slot: 'NM1', entryId: 'a' }, { slot: 'HD1', entryId: 'b' }], covers: [] };
+  store.state.website = source;
+  const entered = Promise.withResolvers();
+  const download = Promise.withResolvers();
+  const option = { id: 'r1', filename: 'HD1.osr', playerName: 'Example', mods: 8 };
+  let failOpen = false;
+  let delayFile = true;
+  let fileStatus = 200;
+  let launches = 0;
+  const list = new ShowcaseReplayList(store, {
+    showcaseConnection: () => ({ connection: 'connected' }),
+    async readShowcase(input) {
+      assert.equal(input.version, 7);
+      assert.equal(input.connection, 'connected');
+      if (input.replays) return { isCurrent: () => true, data: new Map([
+        ['a', { slot: 'NM1', replays: [] }], ['b', { slot: 'HD1', replays: [option] }],
+      ]) };
+      assert.equal(input.replayId, option.id);
+      if (fileStatus !== 200) throw Object.assign(new Error('stale'), { status: fileStatus });
+      entered.resolve();
+      if (delayFile) await download.promise;
+      return { isCurrent: () => true, data: replayFixture() };
+    },
+  }, async path => {
+    assert.deepEqual(await readFile(path), replayFixture());
+    return async () => {
+      assert.equal(studio.program, showcaseScene);
+      assert.equal(mask().sceneItemEnabled, true);
+      launches++;
+      if (failOpen) throw new Error('打开失败');
+    };
+  });
+  t.after(() => list.close());
+  const command = (action, fields = {}, bytes) => list.command({ action, poolToken: store.currentPoolToken(), ...fields }, bytes);
+  const play = (action = 'play') => {
+    const { generation, nextSlot, playback, rows } = list.snapshot();
+    const slotId = action === 'repeat' ? playback.slotId : nextSlot;
+    return command(action, { generation, slotId, replayId: rows.find(row => row.slotId === slotId)?.selectedId });
+  };
+  await command('refresh');
+  studio.cut(showcaseScene);
+  await obs.tail;
+  await assert.rejects(play(), /NM1 尚未上传/);
+  await command('attach', { slotId: 'NM1', filename: 'NM1.osr' }, replayFixture());
+  await command('next', { slotId: 'HD1' });
+  const underway = play();
+  await entered.promise;
+  await assert.rejects(play(), /正在处理/);
+  studio.cut('休息');
+  download.resolve();
+  assert.match((await underway).playback.message, /节目场景已变化/);
+  assert.equal(launches, 0);
+  assert.equal(obs.coverSnapshot().covered, true, 'the rendering cover fallback alone cannot start a file');
+  delayFile = false;
+  studio.cut(showcaseScene);
+  await obs.tail;
+  failOpen = true;
+  assert.equal((await play()).playback.phase, 'failed');
+  assert.equal(mask().sceneItemEnabled, true);
+  failOpen = false;
+
+  assert.equal((await play()).playback.phase, 'waiting');
+  v2(2, 101);
+  feed.frame(8, 101, 0);
+  feed.frame(8, 101, 0.2);
+  assert.match(list.snapshot().playback.message, /其他谱面/);
+  await obs.tail;
+  assert.equal(mask().sceneItemEnabled, true);
+  assert.deepEqual(store.snapshot().transition.shown, []);
+
+  for (const action of ['play', 'repeat']) {
+    assert.equal((await play(action)).playback.phase, 'waiting');
+    v2(7, 202);
+    feed.frame(32, 202, 60);
+    assert.equal(list.snapshot().playback.phase, 'waiting', 'prior results cannot complete a launched replay');
+    assert.equal(mask().sceneItemEnabled, true);
+    v2(2, 202);
+    feed.frame(8, 202, 0);
+    feed.frame(8, 202, 0);
+    assert.equal(list.snapshot().playback.phase, 'waiting', 'frozen replay clock cannot reveal');
+    feed.frame(8, 202, 0.2);
+    await obs.tail;
+    assert.equal(mask().sceneItemEnabled, false);
+    assert.deepEqual(store.snapshot().transition.shown, action === 'play' ? [] : ['HD1']);
+    v2(7, 202);
+    feed.frame(32, 202, 60);
+    assert.equal(list.snapshot().playback.phase, 'completed');
+    assert.equal(list.snapshot().nextSlot, null);
+    assert.deepEqual(store.snapshot().transition.shown, ['HD1']);
+    await delay(45);
+    await obs.tail;
+  }
+  await assert.rejects(play(), /已到清单末尾/);
+  assert.equal(launches, 4);
+  fileStatus = 404;
+  const stale = await play('repeat');
+  assert.equal(stale.status, 'stale');
+  assert.equal(stale.rows[1].selectedId, null);
+  assert.equal(stale.rows[0].options[0].local, true);
+  assert.equal(launches, 4);
 });

@@ -44,7 +44,7 @@ Node 利用现有 `GET /api/v1/streaming/tournaments/{edition}/next?afterFixture
 
 1. 选择获准的图池，核对名称、轮次和谱面数量。「刷新图池」会重新读取网站资料。
 2. 点击「导入到 Showcase」替换独立的演示图池。确认时本机再次向网站读取同一授权版本。若授权、网站版本或本机图池已改变，刷新后重新确认。
-3. 在普通 osu! 客户端播放回放。tosu 提供具体难度 ID，Showcase 据此匹配 Slot。池外或多个 Slot 使用同一难度 ID 时，Slot 显示「—」。
+3. 在「演示图池」核对各 Slot 的回放。管理员须为已授权的图池另开回放读取权限。补传或删除回放后，请管理员授权新版并重新导入。也可把本地 `.osr` 补到对应 Slot。[回放清单与 OBS 操作](windows-portable.md#showcase-回放过场)
 
 读取列表、预览或刷新只读取网站资料。导入保留 Showcase 的 Stage 及本场比赛状态。导入版本和谱面随本机 Showcase 设置保存，手动录入及复制控制台图池仍是独立来源。`/showcase?clean=1` 继续作为播出画面。
 
