@@ -25,12 +25,7 @@ type launcherSettings struct {
 }
 
 func launcherSettingsPath() (string, error) {
-	local := os.Getenv("LOCALAPPDATA")
-	if !filepath.IsAbs(local) {
-		return "", errors.New("local app data directory is unavailable")
-	}
-	// Keep launcher preferences separate from the backend's match migration.
-	return filepath.Join(local, "OCLR", "StreamOverlayLauncher", "settings.json"), nil
+	return storage.settingsPath()
 }
 
 func loadLauncherSettings(path string) (launcherSettings, error) {
@@ -257,7 +252,7 @@ func savedTosuPort() string {
 	if err != nil {
 		return ""
 	}
-	selected := effectiveTosuPath(settings.TosuPath)
+	selected := effectiveTosuPath(storage.readTool(settings.TosuPath))
 	if !isExecutable(selected) {
 		return ""
 	}

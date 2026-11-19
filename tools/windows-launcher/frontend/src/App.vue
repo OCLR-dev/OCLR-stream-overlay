@@ -16,7 +16,7 @@ const pages = [
 ];
 const page = ref('control');
 const showcaseVisited = ref(false);
-const state = ref<LauncherState>({ status: 'starting', notice: '', port: '', address: '', build: '', busy: true, servicePID: 0, tosuPath: '', osuPath: '', tosuStatus: '正在检查', tosuPort: '', canStartTosu: false });
+const state = ref<LauncherState>({ status: 'starting', notice: '', port: '', address: '', build: '', busy: true, servicePID: 0, tosuPath: '', osuPath: '', tosuStatus: '正在检查', tosuPort: '', canStartTosu: false, portableStorage: false, storagePath: '' });
 const port = ref('');
 const portDirty = ref(false);
 const busy = ref(false);
@@ -63,6 +63,11 @@ async function act(action: () => Promise<unknown>, success = '') {
 async function restart() {
   await act(async () => { await launcher().Restart(port.value); const next = await launcher().Snapshot(); if (next.port === String(Number(port.value))) portDirty.value = false; });
 }
+async function changeStorage() {
+  await act(async () => {
+    if (await launcher().ChangeStorage(!state.value.portableStorage)) await launcher().Quit();
+  });
+}
 onMounted(poll);
 onUnmounted(() => { disposed = true; clearTimeout(timer); });
 </script>
@@ -103,6 +108,13 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); });
           <div class="tool-grid"><article class="card"><div class="tool-top"><span class="tool-icon">t</span><h3>tosu</h3></div><p>{{ state.tosuStatus }}</p><small>{{ state.tosuPort }}</small><button v-if="!state.tosuPath" @click="page = 'settings'">选择应用程序<ChevronRight :size="15" /></button><button v-else :disabled="locked || !state.canStartTosu" @click="act(() => launcher().StartTosu())"><Play :size="15" />打开 tosu</button></article><article class="card"><div class="tool-top"><span class="tool-icon pink">o!</span><h3>osu!Tourney</h3></div><p>{{ state.osuPath ? '已选择 osu!stable' : '先选择 osu!stable' }}</p><small>使用控制台当前授权赛季</small><button v-if="!state.osuPath" @click="page = 'settings'">选择应用程序<ChevronRight :size="15" /></button><button v-else :disabled="locked || !running" @click="act(() => launcher().Tourney(true))"><Play :size="15" />打开 osu!Tourney</button></article></div>
         </section>
         <section v-else-if="page === 'settings'" aria-label="启动器设置" class="stack">
+          <article class="card">
+            <h2>资料存储</h2>
+            <p>{{ state.portableStorage ? '完全便携：资料保存在 OCLR 程序目录。' : 'Windows 用户目录：更换程序目录时仍使用此电脑的资料。' }}</p>
+            <p v-if="state.storagePath" class="path">{{ state.storagePath }}</p>
+            <p>切换会保存比赛并退出，暂时中断 OBS 输出。请在方便时切换，再重新打开 OCLR。</p>
+            <button :disabled="locked" @click="changeStorage"><FolderOpen :size="16" />{{ state.portableStorage ? '切回 Windows 用户目录' : '启用完全便携模式' }}</button>
+          </article>
           <article class="card"><h2>直播服务</h2><p>修改端口后重新启动。比赛记录会保留，OBS 输出会短暂中断。</p><label for="port">本机端口</label><div class="input-row"><input id="port" v-model="port" inputmode="numeric" maxlength="5" :disabled="locked" @input="portDirty = true" /><button :disabled="locked" @click="restart"><RefreshCw :size="16" />重新启动</button></div><div class="address-row"><code>{{ state.address }}/overlay</code><button :disabled="locked" @click="act(() => launcher().CopyAddresses(true), '控制台、OBS 与 Showcase 地址已复制。')"><Copy :size="15" />复制全部地址</button></div></article>
           <article class="card"><h2>比赛工具</h2><div class="setting-tool"><label>tosu 应用程序</label><p class="path">{{ state.tosuPath || '尚未选择 tosu.exe' }}</p><button :disabled="locked" @click="act(() => launcher().ChooseTool('tosu'))"><FolderOpen :size="16" />选择 tosu.exe</button></div><div class="setting-tool"><label>osu!stable 应用程序</label><p class="path">{{ state.osuPath || '尚未选择 osu!.exe' }}</p><div class="actions"><button :disabled="locked" @click="act(() => launcher().ChooseTool('osu'))"><FolderOpen :size="16" />选择 osu!.exe</button><button :disabled="locked || !running || !state.osuPath" @click="act(() => launcher().Tourney(false))">生成比赛配置</button></div></div></article>
         </section>

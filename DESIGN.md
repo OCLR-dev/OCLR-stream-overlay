@@ -44,6 +44,8 @@ Windows 启动窗口使用 Wails + Vue。桌面将 Node 提供的 `/control` 和
 
 Go 管理子进程、设置与原生对话框。只有启动器外壳可调用桌面绑定，内嵌页面只能请求切换入口或打开固定用途的浏览器页面。OCLR 授权在同一 Node 地址的浏览器页面沿用网站握手，桌面通过 SSE 看到结果。见 [桌面控制台验收](docs/verification/desktop-control/README.md)。
 
+启动器在启动时选定存储位置。默认使用当前 Windows 用户目录；程序目录存在 `OCLR-portable` 标记时，使用同级 `OCLR-data`，并将比赛目录、回放临时目录及启动器设置位置传给受管的 Node 进程。完全便携模式首次启用时先关闭服务、复制资料，再写入标记。已有两份存储时只切换各自的资料，工具在程序目录内时保存相对路径。[存储与更新说明](docs/windows-portable.md#资料存储与更新)
+
 ## 启动器图标与随包 tosu
 
 Wails 顶部品牌区与关于页复用 Windows 应用的 `oclr-stream.ico`，按正方形尺寸等比显示。Windows CI 每次打包解析 tosu 最新正式 Windows release。启动器优先使用有效的明确选择路径，否则定位自身目录中的 `tosu/tosu.exe`；自动检测路径不保存为固定绝对路径。tosu 的配置与工作目录跟随实际程序位置，launcher 只读取端口，不改写其他设置。实现、测试与待验收项见 [验证记录](docs/verification/bundled-tosu/README.md)。

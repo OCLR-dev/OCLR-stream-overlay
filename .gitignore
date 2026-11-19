@@ -16,3 +16,5 @@ dist/
 
 # Offline Windows distributions and compiler cache
 /release/
+/OCLR-portable
+/OCLR-data/
