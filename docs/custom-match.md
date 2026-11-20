@@ -1,6 +1,6 @@
-# 自定义赛事本地测试
+# 自定义赛事配置
 
-仅用于 `test/custom-match`，工作区 `/Users/me/Documents/osu!tour/overlay-custom-match`。原工作区及 3007／24053 不参与隔离测试。本分支与 main 分开维护并同步到远端；Windows 启动与更新见 [便携包说明](custom-match-windows.md)。
+Custom-Match 支持主办方自行录入 osu! 赛事资料。通用 Windows 包首次启动进入待配置的本地会话，升级时恢复该电脑保存的比赛。 [Windows 便携包](custom-match-windows.md)
 
 ## 启动与地址
 
@@ -13,7 +13,7 @@ npm run custom -- --simulate
 
 控制台：http://127.0.0.1:3011/control 。只读输出：http://127.0.0.1:3011/overlay 。模拟器：http://127.0.0.1:24054/ ，仅在 `--simulate` 时存在。服务仅监听本机。若端口占用会拒绝启动，不抢占旧服务。工作区有独立运行租约，不与原工作区共用。
 
-独立会话为 `.local/custom-match/session.json`，初始化前存入同目录 `archive/`；撤销与刷新恢复沿用原实现。损坏或非自定义会话拒绝覆盖。代码不加载 `.env.local`、OCLR Key 或赛事 API；本机 OCLR 代理返回 `OCLR_DISABLED_CUSTOM_MATCH`。依赖沿用已有锁文件，当前 worktree 的 `node_modules` 链接到原项目已有依赖，未安装或升级依赖，也未复制原比赛。
+独立会话为 `.local/custom-match/session.json`，初始化前存入同目录 `archive/`；撤销与刷新恢复沿用原实现。损坏或非自定义会话拒绝覆盖。代码不加载 `.env.local`、OCLR Key 或赛事 API；本机 OCLR 代理返回 `OCLR_DISABLED_CUSTOM_MATCH`。
 
 ## 配置
 
@@ -35,7 +35,7 @@ Windows OBS 两套比赛预设共用 Client 0 应用音频。在「比赛配置 
 
 ## BP 格式
 
-本场 MP5 已采用“双方各一次 Ban → 自动交替 Pick（无二轮 Ban）”，直接在 Mappool 点击队伍 Ban／Pick 即可，不需文本配置。首次两项 Ban 完成后单独选择先 Pick 方，后续自动交替。没有有效 tosu 时保持等待，可用选谱面后的人工补做入口完成真实动作。已有两项首 Ban 可以直接采用此流程，不清空记录。
+采用「双方各一次 Ban → 自动交替 Pick（无二轮 Ban）」的赛事可直接选择这个 BP 预设，再在图池操作队伍的 Ban／Pick。首次两项 Ban 完成后单独选择先 Pick 方，后续自动交替。没有有效 tosu 时保持等待，可用选谱面后的人工补做入口完成真实动作。已有两项首 Ban 可以直接采用此流程，不清空记录。
 
 自定义规则从 Pick 开始时，若房间已经选好首图，确认先 Pick 后会在准备状态稳定时自动应用。
 

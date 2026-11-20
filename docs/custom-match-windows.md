@@ -1,8 +1,8 @@
 # Custom-Match Windows 使用说明
 
-全部解压后双击 **MP5-Xronicle-Test.exe**。Windows 10／11 x64 需要 Microsoft Edge WebView2 Runtime。启动器顶部可切换比赛控制台、Showcase、服务、设置、日志和关于。最小化后继续播出。
+下载 **OCLR-Custom-Match-Windows-x64.zip** 并完整解压，双击 **OCLR-Custom-Match.exe**。Windows 10／11 x64 需要 Microsoft Edge WebView2 Runtime。启动器顶部可切换比赛控制台、Showcase、服务、设置、日志和关于。最小化后继续播出。
 
-1. 在「比赛配置 → 本场资料」核对赛事名称、阶段、BO、队名、BP 和图池。MP5 包只在没有旧会话时使用随包模板。
+1. 在「比赛配置 → 本场资料」填写赛事名称、阶段、BO、队名、BP 和图池。当前支持 3v3 与 4v4 常规布局。首次启动会打开待配置的本地会话。
 2. 在桌面「设置」选择常用 `osu!.exe`，启动赛事客户端及 tosu。新会话默认跟随启动器检测的本机 tosu。现有会话沿用保存的地址；可在「比赛配置 → 游戏数据」切换连接方式。
 3. 在「比赛配置 → OBS」连接 OBS。默认浏览器控制台为 `http://127.0.0.1:3011/control`，比赛源为 `http://127.0.0.1:3011/overlay`，Showcase 源为 `http://127.0.0.1:3011/showcase?clean=1`。比赛源为 1920×1080，Playing 洞口透明。
 4. 端口冲突时在桌面「设置」修改服务端口。重新连接 OBS 后会迁移已识别的本机播出源地址，Program 仍由导播核对。
@@ -14,44 +14,18 @@
 - 可在桌面「设置 → 资料存储」启用完全便携模式。第一次复制现有资料后重新打开启动器。之后请连同程序旁的 `OCLR-portable` 和 `OCLR-data` 一起移动。启用后，程序目录中的工具路径使用相对地址。
 - 随包 tosu 位于 `tosu/`，有有效的自选路径时优先使用。保留该目录即可直接使用默认配置。若有旧的自选 `tosu.exe`，在桌面「设置」核对所用路径和端口。
 
-## R5 历史记录（2026-11-06）
+## 下载与定制打包
 
-Windows 10 / 11 x64。全部解压后双击 **MP5-Xronicle-Test.exe**，运行环境已随包提供。
+推送到 `test/custom-match` 后，GitHub Actions 按该次推送的提交构建通用包，并上传 ZIP、SHA-256 与原生验收报告。也可在 Actions 手动选择 `test/custom-match` 重新打包。GitHub Releases 中的 Main 便携包由 `release/windows` 发布。
 
-### 启动与更新
+维护者可在具备 Node.js、Python 和 Go 的环境打包：
 
-1. 在旧启动窗口点“退出直播服务”，将 `MP5-Xronicle-Windows-x64-20261106-r5.zip` 全部解压到新文件夹。
-2. 双击 `MP5-Xronicle-Test.exe`。保留启动窗口，可最小化；关闭控制台网页不影响播出。
-3. 控制台：<http://127.0.0.1:3011/control>。OBS 输出：<http://127.0.0.1:3011/overlay>。
-4. 比赛保存在 `%LOCALAPPDATA%\OCLR\CustomMatchTest`。更新后自动恢复已有比赛；首次启动才载入随包 MP5 资料。
-5. 启动 osu!tourney 和 tosu，在“开播前设置 → 房间连接与自动跟随”填写实际地址，例如 `ws://127.0.0.1:24050/websocket/v2`。左右队名自动读取。
-6. OBS 浏览器源设为 1920×1080、位置 (0,0)、缩放 1:1，放在游戏源上方。**停用 UI 浏览器源原有的扣绿滤镜**；新版 Playing 捕获区透明，游戏源坐标沿用原配置。
+```sh
+python tools/packaging/build_windows.py --custom-match
+```
 
-新建练习比赛时使用“初始化”，会先存档，可撤销。已有比赛要继续测试时直接使用。
+需要预装赛事配置时，传入 `--custom-config` 及所需 ZIP 名称。模板只用于首次创建会话。以下命令保留 MP5 演练入口：
 
-### 本次更新
-
-- 合入截至 `0033bd8` 的测试分支：透明捕获区、随机短条带背景、图池右上角状态、统一向右展开的 Ban/Pick 动画。
-- Warm-up 为持续开关：开启后保留实时队分，隐藏系列分与胜点，不推进 BP、不计胜、不自动切画面。可手动切画面；回到房间 Idle/Waiting 后关闭，再开始正式选图。
-- Playing 承载游戏和 Ranking，保留本图最终总分；独立 TieBreaker 入口用于决胜图。
-- 中止后回准备、观战恢复、中途加入、赛果撤回与修正均包含在本包中。
-
-### 今晚测试顺序
-
-1. 核对双方、阶段、BO、图池、人数与六路捕获坐标。首次资料为 MP5 Xronicle 瑞士轮 BO9、17 张图；实际场次不同则在设置中更改。
-2. 开启 Warm-up，打一张热身图并进入 Ranking；确认实时队分可见、系列分不增加。回到房间后关闭 Warm-up。
-3. 记录 Roll 和先 Ban／先 Pick，完成 Ban。Pick 后观察自动进入 Playing，实际开打、Ranking 后核对一次计胜；回图池继续下一张。
-4. 在练习局测试中止回准备和观战重载；确认保留当前图、比分与选图记录。
-5. 对一局撤回计胜并重新指定胜方，等待旧 Ranking，确认修正保留。关闭并重新打开控制台，确认输出继续。
-6. 在独立练习中将系列分校正至 4:4，点击 TieBreaker，打完 TB 后核对 5:4；点击 Winner 展示胜方。
-7. 在启动窗口退出，再次启动，确认比赛、图池、比分和撤销记录恢复。
-
-今晚重点核对：Ranking 后自动记下的胜方和游戏最终总分。完整旧分数快照过早进入 Ranking 时仍可能提前计胜；出现时使用撤回／修正，并保留当时比赛记录用于排查。
-
-### 数据与排障
-
-- 本包连接实际 tosu，不默认启动模拟器。自定义赛事资料由本机录入，不需要 OCLR 登录。
-- 首次红队“好麻烦啊......”、蓝队“我发现队友都玩osu”，NM5 / HD2 / HR2 / DT3 / FM2 / CA2 / TB1，单轮 Ban 后交替 Pick。
-- `app\match-template.json` 仅用于首次配置；不要用模板覆盖进行中的 `session.json`。
-- 服务不可用时保留启动窗口中的阶段与错误代码。地址被占用时先退出旧服务；不要通过删除比赛数据排障。
-- 验证记录见随包“验证状态.txt”；包内 `SHA256SUMS.json` 可用于核对文件。
+```sh
+python tools/packaging/build_windows.py --custom-config configs/mp5-xronicle-swiss-2.json --package-name MP5-Xronicle-Windows-x64
+```
