@@ -88,7 +88,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         if: failure() && hashFiles('release/windows-native.json') != ''
         with:
-          name: OCLR-Windows-x64-failure-${{ inputs.commit || github.sha }}
+          name: ${{ steps.bundle.outputs.name || 'windows' }}-failure-${{ inputs.commit || github.sha }}
           path: release/windows-native.json
           overwrite: true
 

@@ -126,7 +126,7 @@ try {
     assert.equal(session.match.bestOf, template.bestOf);
     assert.equal(session.auto.wsUrl, null);
     assert.equal(live.sources.launcherTosu, true);
-    for (const route of ['/api/streaming', '/api/oclr/tournaments', '/api/showcase/website', '/control?desktop-login=s11']) {
+    for (const route of ['/api/streaming', '/api/oclr/tournaments', '/api/showcase/website']) {
       assert.equal((await fetch(base + route)).status, 403);
     }
   });
@@ -153,7 +153,7 @@ try {
       assert.equal((await request(path, 'https://example.org/')).status, 403);
     }
     assert.equal((await request('/api/session?desktop=1', shell)).status, 403);
-    assert.equal((await fetch(base + '/control?desktop-login=s11')).status, 200);
+    assert.equal((await fetch(base + '/control?desktop-login=s11')).status, custom ? 403 : 200);
   });
   await check('repeated native launch reuses one server without changing match', async () => {
     const before = await readFile(data, 'utf8');
