@@ -718,7 +718,7 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
 <template>
   <main class="operator" :class="{ 'motion-ready': motionReady }">
     <header class="operator-header">
-      <div class="operator-brand"><span class="operator-kicker">{{ s?.match.custom ? 'CUSTOM MATCH / LOCAL TEST' : `OCLR ${s?.match.edition?.toUpperCase() || 'S11'}` }}</span><h1>直播控制台</h1></div>
+      <div class="operator-brand"><span class="operator-kicker">{{ s?.match.custom ? 'CUSTOM MATCH' : `OCLR ${s?.match.edition?.toUpperCase() || 'S11'}` }}</span><h1>直播控制台</h1></div>
       <div class="operator-match"><span>{{ names.a }}</span><strong>{{ s?.warmup ? 'Warm-up' : `${series.a} : ${series.b}` }}</strong><span>{{ names.b }}</span></div>
       <div class="operator-edition">{{ s?.match.title }}<br>{{ stageSummary }}</div>
     </header>

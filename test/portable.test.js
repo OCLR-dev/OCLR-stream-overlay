@@ -44,15 +44,15 @@ test('portable custom port binds the selected address and refuses occupied ports
     } finally { await running.stop(); }
   }
 });
-async function packageAt(dir, build) {
+async function packageAt(dir, build, manifest = {}) {
   await mkdir(dir, { recursive: true });
   for (const name of ['server', 'src', 'dist']) await cp(join(root, name), join(dir, name), { recursive: true });
   await cp(join(root, 'node_modules/rosu-pp-js'), join(dir, 'node_modules/rosu-pp-js'), { recursive: true });
   await writeFile(join(dir, 'package.json'), '{"type":"module"}');
-  await writeFile(join(dir, 'portable-build.json'), JSON.stringify({ build }));
+  await writeFile(join(dir, 'portable-build.json'), JSON.stringify({ build, ...manifest }));
 }
-function launch(app, dataDir, port = testPort) {
-  const child = spawn(process.execPath, [join(app, 'server/portable.js')], {
+function launch(app, dataDir, port = testPort, entry = 'portable.js') {
+  const child = spawn(process.execPath, [join(app, 'server', entry)], {
     cwd: tmpdir(), env: { ...process.env, OCLR_DATA_DIR: dataDir, OCLR_APP_PORT: String(port) }, stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stderr = '';
@@ -76,6 +76,60 @@ async function ready(running, build, address = base) {
   }
   throw new Error(`Portable server did not become ready (pid ${child.pid}): ${error().trim() || 'no stderr'}`);
 }
+
+test('Custom-Match opens a blank profile and upgrades a profile seeded by an older template package', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'oclr-community-portable-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const app = join(directory, 'app');
+  const newData = await fixtureDataDir(directory, 'new');
+  const legacyData = await fixtureDataDir(directory, 'legacy');
+  const generic = { build: 'd'.repeat(64), kind: 'custom-match', template: false };
+  const legacy = { build: 'e'.repeat(64), kind: 'custom-match' };
+  const manifestPath = join(app, 'portable-build.json');
+  const templatePath = join(app, 'match-template.json');
+  const launchCustom = dir => launch(app, dir, testPort, 'custom-portable.js');
+  const savedSession = dir => readFile(join(dir, 'session.json'), 'utf8').then(JSON.parse);
+  async function boot(dir, manifest, verify) {
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    const running = launchCustom(dir);
+    try {
+      await ready(running, manifest.build);
+      await verify(await savedSession(dir));
+    } finally {
+      assert.equal((await running.stop())[0], 0, running.error());
+    }
+  }
+
+  await packageAt(app, generic.build, generic);
+  await boot(newData, generic, session => {
+    assert.equal(session.match.custom, true);
+    assert.equal(session.match.title, '自定义赛事 · 待配置');
+    assert.equal(session.match.bestOf, null);
+    assert.equal(session.auto.wsUrl, null);
+    assert.deepEqual(session.pool, []);
+  });
+
+  await writeFile(manifestPath, JSON.stringify({ ...legacy, template: true }));
+  const missing = launchCustom(legacyData);
+  assert.equal((await missing.done)[0], 1);
+  assert.match(missing.error(), /match-template.json/);
+  await assert.rejects(access(join(legacyData, 'session.json')), { code: 'ENOENT' });
+
+  const template = JSON.parse(await readFile(join(root, 'configs/mp5-xronicle-swiss-2.json'), 'utf8'));
+  await writeFile(templatePath, JSON.stringify(template));
+  await boot(legacyData, legacy, session => assert.equal(session.match.title, template.title));
+  const previous = await savedSession(legacyData);
+  const staleTemplateData = await fixtureDataDir(directory, 'leftover-template');
+  await boot(staleTemplateData, generic, session => {
+    assert.equal(session.match.bestOf, null, 'a file left from an older install does not initialize the generic package');
+    assert.deepEqual(session.pool, []);
+  });
+  await boot(legacyData, generic, session => {
+    assert.equal(session.id, previous.id);
+    assert.equal(session.match.bestOf, template.bestOf);
+    assert.deepEqual(session.pool, previous.pool);
+  });
+});
 
 test('portable lifecycle: selected address, Unicode paths, SSE, repeated launch, restart, update and data recovery', { timeout: 30000 }, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'OCLR 中文 空格 '));

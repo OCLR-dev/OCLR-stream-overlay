@@ -15,7 +15,7 @@ const packageRoot = resolve(process.argv[2]);
 const reportFile = resolve(process.argv[3]);
 const manifest = JSON.parse(await readFile(join(packageRoot, 'app/portable-build.json'), 'utf8'));
 const custom = manifest.kind === 'custom-match';
-const executable = custom ? 'MP5-Xronicle-Test.exe' : 'OCLR.exe';
+const executable = custom ? 'OCLR-Custom-Match.exe' : 'OCLR.exe';
 const entryScript = custom ? 'custom-portable.js' : 'portable.js';
 const matchData = custom ? 'CustomMatchTest' : 'StreamOverlay';
 const defaultPort = custom ? 3011 : 3001;
@@ -118,12 +118,26 @@ try {
     assert.equal(h.build, JSON.parse(await readFile(join(first, 'app/portable-build.json'))).build);
     for (const page of ['/control', '/overlay']) assert.equal((await fetch(base+page)).status, 200);
   });
-  if (custom) await check('isolated Custom-Match template and website routes survive packaged startup', async () => {
-    const template = JSON.parse(await readFile(join(first, 'app/match-template.json'), 'utf8'));
+  if (custom) await check('Custom-Match starts with its configured local defaults and keeps website routes disabled', async () => {
     const { session, live } = await fetch(base + '/api/session').then(r => r.json());
     assert.equal(session.match.custom, true);
-    assert.equal(session.match.title, template.title);
-    assert.equal(session.match.bestOf, template.bestOf);
+    if (manifest.template) {
+      const template = JSON.parse(await readFile(join(first, 'app/match-template.json'), 'utf8'));
+      assert.equal(session.match.title, template.title);
+      assert.equal(session.match.bestOf, template.bestOf);
+      assert.equal(session.pool.length, template.pool.length);
+    } else {
+      for (const file of ['app/match-template.json', '比赛配置.json', '图池录入.txt']) {
+        await assert.rejects(access(join(first, file)), { code: 'ENOENT' });
+      }
+      assert.equal(session.match.title, '自定义赛事 · 待配置');
+      assert.equal(session.match.stageName, '');
+      assert.equal(session.match.bestOf, null);
+      assert.equal(session.match.bpPreset, null);
+      assert.equal(session.match.bpRule, '');
+      assert.deepEqual(session.pool, []);
+      assert.deepEqual(session.series, { a: 0, b: 0 });
+    }
     assert.equal(session.auto.wsUrl, null);
     assert.equal(live.sources.launcherTosu, true);
     for (const route of ['/api/streaming', '/api/oclr/tournaments', '/api/showcase/website']) {

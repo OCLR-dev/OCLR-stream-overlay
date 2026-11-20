@@ -1,6 +1,8 @@
 name: Windows portable validation
 on:
   workflow_dispatch:
+  push:
+    branches: [test/custom-match]
   pull_request:
     branches: [main, test/custom-match]
   workflow_call:
@@ -46,6 +48,7 @@ jobs:
         working-directory: tools/windows-launcher
         run: go test ./...
       - name: Build Windows package
+        if: github.event_name != 'pull_request' || github.base_ref != 'test/custom-match'
         id: bundle
         shell: pwsh
         env:
@@ -53,15 +56,18 @@ jobs:
         run: |
           $package = 'OCLR-Windows-x64'
           if ($env:OCLR_CUSTOM_BUILD -eq 'true') {
-            $package = 'MP5-Xronicle-Windows-x64'
-            python tools/packaging/build_windows.py --custom-config configs/mp5-xronicle-swiss-2.json
+            $package = 'OCLR-Custom-Match-Windows-x64'
+            python tools/packaging/build_windows.py --custom-match
           } else {
             python tools/packaging/build_windows.py
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "name=$package" >> $env:GITHUB_OUTPUT
+      - run: npm run build
+        if: github.event_name == 'pull_request' && github.base_ref == 'test/custom-match'
       - run: npm test
       - name: Verify and test the distributable ZIP
+        if: steps.bundle.outputs.name != ''
         shell: pwsh
         run: |
           $package = '${{ steps.bundle.outputs.name }}'
@@ -76,6 +82,7 @@ jobs:
           & (Join-Path $app 'runtime/node.exe') tools/packaging/verify_windows.mjs $app release/windows-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v6
+        if: steps.bundle.outputs.name != ''
         id: package
         with:
           name: ${{ steps.bundle.outputs.name }}-${{ inputs.commit || github.sha }}

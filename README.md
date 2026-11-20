@@ -1,20 +1,9 @@
-# 自定义赛事本地测试分支
+# OCLR Overlay · Custom-Match
 
-Showcase 已同步回放清单和 OBS 自动过场。自定义模式可逐 Slot 补入本地回放。自定义入口的 Showcase 为 `http://127.0.0.1:3011/showcase`，OBS 使用同端口 `/showcase?clean=1`；本机 OBS 设置和 Showcase 图池／Stage 分别保存在自定义会话目录的 `obs-settings.json`、`showcase.json`。自定义赛制、CA、七秒 Pick 与独立会话保留。
+面向社区自办 osu! 赛事的本地直播控制台。可配置赛事名称、阶段、奇数 BO、两队名单、图池与 BP，支持 tosu 跟随、OBS 播出和本地 Showcase 回放。
 
-控制台通用修复同步自主线 `532676a`。此前本分支已合入主线 `ecaeb16` 的通用实现：比赛记录与自动化恢复、BP 修正、暂停倒计时、EX 次数结算、实时队分、聊天和谱面图像，以及 Windows 启动器。保留自定义赛事标题、阶段/BO/BP、CA 分类、七秒 Pick 与独立会话，不接入 OCLR 登录任务。同步范围、行为调整和本次验证见 [main → custom-match 同步记录](docs/verification/main-custom-sync/README.md)。已有 Windows ZIP 未重新打包，不能代表此源码版本。
-
-正式 `/overlay` 的 Playing 游戏区域保持透明，OBS 旧色值键/色度键应停用；捕获坐标与尺寸不变。根路径演示仍以绿色标记捕获区域。此前 Windows R5 包包含 Warm-up、背景条带与图池角标更新，尚不包含本次通用实现同步；之前的 UI 验证见 [UI 同步记录](docs/verification/pr10-ui-sync/README.md)。
-
-本分支 `test/custom-match` 的独立工作区为 `overlay-custom-match`。使用 `npm run build` 后运行 **`npm run custom`**；需隔离 tosu 测试信号时运行 `npm run custom -- --simulate`。控制台为 `http://127.0.0.1:3011/control`，只读输出为同端口 `/overlay`。请勿用下方保留的 OCLR 启动／模拟命令操作这场测试。
-
-本场资料在「比赛配置」录入，阶段名称与 BO 独立；BP 没有默认规则，未明确时等待。会话独立保存在 `.local/custom-match/session.json`，不加载环境凭证，OCLR 接口禁用，不向 osu! 房间发送命令。
-
-比赛控制台支持 OBS 节目预览和录像自动打点。开打与重赛以 tosu 实际进入 Playing 为准，停录后可复制时间轴。[操作说明](docs/custom-match.md#obs-节目画面与录像打点)
-
-**Windows Custom-Match**：解压测试包后双击 `MP5-Xronicle-Test.exe`，在桌面窗口操作比赛和 Showcase。包内包含 tosu，默认仍使用 3011。详见 [Windows 使用说明](docs/custom-match-windows.md)。
-
-[配置步骤与 BP 格式](docs/custom-match.md) · [隔离验证与真实联调边界](docs/verification/custom-match/README.md)
+- **Windows**：从 [Actions](https://github.com/OCLR-dev/OCLR-stream-overlay/actions/workflows/windows-portable.yml?query=branch%3Atest%2Fcustom-match+event%3Apush) 下载最新成功运行的 `OCLR-Custom-Match-Windows-x64` 产物，完整解压后运行 `OCLR-Custom-Match.exe`。随包附带 tosu。首次使用，在「比赛配置 → 本场资料」录入本场数据。 [Windows 使用说明](docs/custom-match-windows.md)
+- **开发运行**：执行 `npm run build` 和 `npm run custom`。控制台默认在 `http://127.0.0.1:3011/control`，OBS 比赛源使用同端口的 `/overlay`，Showcase 播出源使用 `/showcase?clean=1`。 [配置步骤与 BP 格式](docs/custom-match.md)
 
 ---
 

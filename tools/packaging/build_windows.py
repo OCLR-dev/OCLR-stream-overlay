@@ -25,18 +25,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--node-archive', type=Path)
     parser.add_argument('--go', default='go')
+    parser.add_argument('--custom-match', action='store_true', help='Build a Custom-Match package for any event')
     parser.add_argument('--custom-config', type=Path, help='Build the isolated custom-match package with this template')
     parser.add_argument('--package-name', help='Explicit output folder and ZIP label')
     parser.add_argument('--verification-file', type=Path, help='Verification notes included in the distribution')
     args = parser.parse_args()
     if args.package_name and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,119}', args.package_name):
         raise RuntimeError('Invalid package name')
-    custom = bool(args.custom_config)
-    if custom:
+    custom = args.custom_match or bool(args.custom_config)
+    if args.custom_config:
         config = json.loads(args.custom_config.read_text(encoding='utf-8'))
         if config.get('format') != 'custom-match-config-v1':
             raise RuntimeError('Invalid custom match configuration')
-    package_name = args.package_name or ('MP5-Xronicle-Windows-x64' if custom else 'OCLR-Windows-x64')
+    package_name = args.package_name or ('OCLR-Custom-Match-Windows-x64' if custom else 'OCLR-Windows-x64')
     subprocess.run(['npm.cmd' if os.name == 'nt' else 'npm', 'run', 'build'], cwd=ROOT, check=True)
     subprocess.run(['npm.cmd' if os.name == 'nt' else 'npm', 'run', 'build:launcher'], cwd=ROOT, check=True)
     out = ROOT / 'release'
@@ -58,7 +59,7 @@ def main():
         shutil.copytree(ROOT / folder, app / folder)
     shutil.copytree(ROOT / 'node_modules/rosu-pp-js', app / 'node_modules/rosu-pp-js')
     (app / 'package.json').write_text('{"type":"module","private":true,"license":"MIT"}\n', encoding='utf-8')
-    if custom:
+    if args.custom_config:
         shutil.copyfile(args.custom_config, app / 'match-template.json')
     digest = hashlib.sha256()
     inputs = sorted(p for p in app.rglob('*') if p.is_file())
@@ -70,12 +71,14 @@ def main():
     for path in inputs:
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
+    if custom:
+        digest.update(b'custom-match')
     digest.update(NODE_SHA256.encode())
     digest.update(json.dumps(tosu, sort_keys=True).encode())
     build = digest.hexdigest()
     manifest = {'build': build, 'node': NODE_VERSION, 'architecture': 'x64'}
     if custom:
-        manifest.update(kind='custom-match', label=package_name)
+        manifest.update(kind='custom-match', label=package_name, template=bool(args.custom_config))
     (app / 'portable-build.json').write_text(json.dumps(manifest, indent=2)+'\n')
     runtime = stage / 'runtime'
     runtime.mkdir()
@@ -89,14 +92,19 @@ def main():
     executable = 'OCLR.exe'
     if custom:
         flags += ' -X main.servicePort=3011 -X main.entryScript=custom-portable.js -X main.dataSubdir=CustomMatchTest'
-        flags += r' -X main.instanceMutex=Local\OCLR.StreamOverlay.CustomMatchTest -X main.windowTitle=MP5-Xronicle-Test'
-        executable = 'MP5-Xronicle-Test.exe'
+        flags += r' -X main.instanceMutex=Local\OCLR.StreamOverlay.CustomMatchTest -X main.windowTitle=OCLR-Custom-Match'
+        executable = 'OCLR-Custom-Match.exe'
     subprocess.run([args.go, 'build', '-mod=readonly', '-tags', 'desktop,production', '-trimpath', '-ldflags', flags,
                     '-o', str(stage / executable), '.'], cwd=launcher_dir, env=env, check=True)
     shutil.copyfile(ROOT / ('docs/custom-match-windows.md' if custom else 'docs/windows-portable.md'), stage / '使用说明.txt')
-    verification = args.verification_file or ROOT / ('docs/verification/custom-match/README.md' if custom else 'docs/verification/windows-portable/README.md')
-    shutil.copyfile(verification, stage / '验证状态.txt')
-    if custom:
+    verification = args.verification_file
+    if not verification and not custom:
+        verification = ROOT / 'docs/verification/windows-portable/README.md'
+    if not verification and args.custom_config:
+        verification = ROOT / 'docs/verification/custom-match/README.md'
+    if verification:
+        shutil.copyfile(verification, stage / '验证状态.txt')
+    if args.custom_config:
         shutil.copyfile(args.custom_config, stage / '比赛配置.json')
         rows = [f"{entry['label']} {entry['beatmapId']} {entry.get('title', '')}".rstrip() for entry in config['pool']]
         (stage / '图池录入.txt').write_text('\n'.join(rows)+'\n', encoding='utf-8')
