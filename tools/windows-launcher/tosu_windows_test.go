@@ -1,18 +1,80 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestBundledTosuResolution(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "中文 程序")
+	if err := os.MkdirAll(filepath.Join(root, "tosu"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	bundled := filepath.Join(root, "tosu", "tosu.exe")
+	if err := os.WriteFile(bundled, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	launcher := filepath.Join(root, "OCLR.exe")
+	missing := filepath.Join(t.TempDir(), "old", "tosu.exe")
+	for _, selected := range []string{"", missing} {
+		if got := resolveTosuPath(selected, launcher); got != bundled {
+			t.Fatalf("got %q, want %q", got, bundled)
+		}
+	}
+	custom := filepath.Join(t.TempDir(), "tosu.exe")
+	if err := os.WriteFile(custom, []byte("custom"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveTosuPath(custom, launcher); got != custom {
+		t.Fatal("custom selection was replaced")
+	}
+	moved := root + " moved"
+	if err := os.Rename(root, moved); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveTosuPath("", filepath.Join(moved, "OCLR.exe")); got != filepath.Join(moved, "tosu", "tosu.exe") {
+		t.Fatal("moved package not resolved", got)
+	}
+	if got := resolveTosuPath(missing, launcher); got != missing {
+		t.Fatal("missing selection must remain visible for repair")
+	}
+	if got := resolveTosuPath("", "relative.exe"); got != "" {
+		t.Fatal("must not resolve relative to working directory")
+	}
+}
+
+func TestCompleteTosuEnvRemainsUnchanged(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("..", "packaging", "tosu.env"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content = []byte(strings.ReplaceAll(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n", "\r\n") + "UNKNOWN_FUTURE_OPTION=keep me\r\n")
+	dir := t.TempDir()
+	env := filepath.Join(dir, "tosu.env")
+	if err := os.WriteFile(env, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	port, err := readTosuPort(filepath.Join(dir, "tosu.exe"))
+	if err != nil || port != "24050" {
+		t.Fatalf("port=%q err=%v", port, err)
+	}
+	after, err := os.ReadFile(env)
+	if err != nil || !bytes.Equal(after, content) {
+		t.Fatal("configuration was altered")
+	}
+}
 
 func TestTosuProcessMatchesFullPath(t *testing.T) {
 	current, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := findTosu(current); got != tosuRunning {
+	if got := findExecutableProcess(current); got != processRunning {
 		image, imageErr := processImage(uint32(os.Getpid()))
 		t.Fatalf("running executable %q was not detected: %d (process image %q, %v)", current, got, image, imageErr)
 	}
@@ -23,30 +85,93 @@ func TestTosuProcessMatchesFullPath(t *testing.T) {
 	if err := os.WriteFile(other, []byte("fixture"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := findTosu(other); got != tosuStopped {
+	if got := findExecutableProcess(other); got != processStopped {
 		t.Fatalf("same name in another directory was mistaken for the selected program: %d", got)
 	}
 }
 
-func TestTosuPortCheck(t *testing.T) {
+func TestFindProcessByNameWithoutSelectedPath(t *testing.T) {
+	current, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findProcess(filepath.Base(current), ""); got != processRunning {
+		t.Fatalf("running process %q was not detected by name: %d", current, got)
+	}
+}
+
+func TestTosuProbeReadsPortFromSelectedDirectoryOnEveryCheck(t *testing.T) {
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer listener.Close()
 	address := listener.Addr().String()
-	if !tosuPortOpen(address) {
-		t.Fatal("expected the loopback port to be reachable")
+	_, port, err := net.SplitHostPort(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "tosu.exe")
+	if err := os.WriteFile(exe, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe := probeTosu(exe, 2)
+	if !errors.Is(probe.portErr, os.ErrNotExist) || probe.port != "" || probe.portOpen {
+		t.Fatalf("missing tosu.env should leave the port unknown: %+v", probe)
+	}
+	env := filepath.Join(dir, "tosu.env")
+	if err := os.WriteFile(env, []byte("SERVER_IP=127.0.0.1\r\nSERVER_PORT="+port+"\r\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe = probeTosu(exe, 2)
+	if probe.portErr != nil || probe.address() != address || !probe.portOpen || probe.selection != 2 {
+		t.Fatalf("expected the configured endpoint to be reachable: %+v", probe)
 	}
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if tosuPortOpen(address) {
-		t.Fatal("closed loopback port reported reachable")
+	probe = probeTosu(exe, 2)
+	if probe.portErr != nil || probe.address() != address || probe.portOpen {
+		t.Fatalf("closed port reported reachable: %+v", probe)
+	}
+	if err := os.WriteFile(env, []byte("SERVER_PORT=65536"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe = probeTosu(exe, 2)
+	if !errors.Is(probe.portErr, errTosuPortInvalid) || probe.port != "" || probe.portOpen {
+		t.Fatalf("invalid edited config should clear the old port: %+v", probe)
 	}
 }
 
-func TestTosuPreferenceSurvivesReloadAndInvalidSelection(t *testing.T) {
+func TestReadTosuPort(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		name, content, port string
+		err                 error
+	}{
+		{name: "provided format", content: "DEBUG_LOG=false\n\nSERVER_IP=127.0.0.1\nSERVER_PORT=24050\nALLOWED_IPS=127.0.0.1,localhost,absolute", port: "24050"},
+		{name: "BOM and Windows lines", content: "\uFEFF SERVER_PORT = \"25678\" # local\r\n", port: "25678"},
+		{name: "last assignment and highest port", content: "SERVER_PORT=24050\nSERVER_PORT='65535'\n", port: "65535"},
+		{name: "commented out", content: "# SERVER_PORT=24050\nOTHER_SERVER_PORT=26300", err: errTosuPortMissing},
+		{name: "empty", content: "SERVER_PORT= # missing value", err: errTosuPortInvalid},
+		{name: "non-numeric", content: "SERVER_PORT=localhost:24050", err: errTosuPortInvalid},
+		{name: "unmatched quote", content: "SERVER_PORT=\"24050", err: errTosuPortInvalid},
+		{name: "zero", content: "SERVER_PORT=0", err: errTosuPortInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(filepath.Join(dir, "tosu.env"), []byte(tc.content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			port, err := readTosuPort(filepath.Join(dir, "tosu.exe"))
+			if port != tc.port || !errors.Is(err, tc.err) {
+				t.Fatalf("got port %q, error %v; want %q, %v", port, err, tc.port, tc.err)
+			}
+		})
+	}
+}
+
+func TestLauncherPreferencesSurviveReloadAndOldSettings(t *testing.T) {
 	local := t.TempDir()
 	t.Setenv("LOCALAPPDATA", local)
 	settingsFile, err := launcherSettingsPath()
@@ -62,26 +187,28 @@ func TestTosuPreferenceSurvivesReloadAndInvalidSelection(t *testing.T) {
 	}
 	first := filepath.Join(bin, "tosu.exe")
 	second := filepath.Join(bin, "tosu 新版.EXE")
-	for _, path := range []string{first, second} {
+	osu := filepath.Join(bin, "osu!.exe")
+	for _, path := range []string{first, second, osu} {
 		if err := os.WriteFile(path, []byte("fixture"), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if err := saveTosuPath(settingsFile, path); err != nil {
+	}
+	for _, want := range []launcherSettings{{TosuPath: first}, {TosuPath: first, OsuPath: osu}, {TosuPath: second, OsuPath: osu}} {
+		if err := saveLauncherSettings(settingsFile, want); err != nil {
 			t.Fatal(err)
 		}
 		settings, err := loadLauncherSettings(settingsFile)
-		if err != nil || settings.TosuPath != path {
+		if err != nil || settings != want {
 			t.Fatalf("saved selection did not reload: %+v, %v", settings, err)
 		}
 	}
-	for _, path := range []string{"tosu.exe", bin, filepath.Join(bin, "missing.exe")} {
-		if err := saveTosuPath(settingsFile, path); err == nil {
-			t.Fatalf("saved invalid executable %q", path)
+	for _, path := range []string{"osu!.exe", bin, second, filepath.Join(local, "osu!.exe")} {
+		if isOsuExecutable(path) {
+			t.Fatalf("accepted invalid osu! executable %q", path)
 		}
 	}
-	settings, err := loadLauncherSettings(settingsFile)
-	if err != nil || settings.TosuPath != second {
-		t.Fatalf("invalid selection replaced a valid preference: %+v, %v", settings, err)
+	if !isOsuExecutable(osu) {
+		t.Fatal("a valid osu!.exe was rejected")
 	}
 	if _, err := os.Stat(filepath.Join(local, "OCLR", "StreamOverlay")); !os.IsNotExist(err) {
 		t.Fatalf("launcher preferences must not initialize the match directory: %v", err)

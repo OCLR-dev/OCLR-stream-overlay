@@ -23,13 +23,15 @@ const MODULES = ['index', 'oclr', 'tosu', 'broadcast'];
 const MAX_BYTES = 2 * 1024 * 1024;
 const UI_ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
 const UI_ASSET = /^\/assets\/[A-Za-z0-9_-]+\.(?:js|css|svg|webp|md|woff2?)$/;
+const UI_PAGES = ['/', '/index.html', '/overlay', '/control', '/showcase'];
+const DESKTOP_ORIGIN = 'http://wails.localhost';
 const MIME = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.webp': 'image/webp', '.md': 'text/markdown; charset=utf-8', '.woff': 'font/woff', '.woff2': 'font/woff2' };
 
 // Serve only the generated index and flat, named Vite assets. Never fall back
 // to the project directory, source files, .env files, or arbitrary SPA paths.
-export async function serveUi(pathname, res, uiRoot = UI_ROOT) {
-  if (!['/', '/index.html', '/overlay', '/control', '/showcase'].includes(pathname) && !UI_ASSET.test(pathname)) return false;
+export async function serveUi(pathname, res, uiRoot = UI_ROOT, desktop = false) {
+  if (!UI_PAGES.includes(pathname) && !UI_ASSET.test(pathname)) return false;
   const name = UI_ASSET.test(pathname) ? pathname.slice(1) : 'index.html';
   const filename = resolve(uiRoot, name);
   if (!filename.startsWith(resolve(uiRoot) + sep)) return false;
@@ -40,6 +42,7 @@ export async function serveUi(pathname, res, uiRoot = UI_ROOT) {
       'Content-Type': name === 'index.html' ? 'text/html; charset=utf-8' : MIME[extension],
       'Cache-Control': name === 'index.html' ? 'no-store' : 'public, max-age=31536000, immutable',
       'X-Content-Type-Options': 'nosniff',
+      ...(desktop ? { 'Content-Security-Policy': `frame-ancestors ${DESKTOP_ORIGIN}` } : {}),
     });
     res.end(body);
   } catch (error) {
@@ -125,20 +128,26 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     // Local-only reads. Other origins cannot use this service as an authenticated proxy.
     const hosts = [`localhost:${config.port}`, `127.0.0.1:${config.port}`];
     const origins = hosts.map(host => `http://${host}`);
-    // Opening the public UI from a link is a cross-site document navigation.
-    // Permit only that entry navigation; API and cross-site fetches stay blocked.
-    const uiNavigation = req.method === 'GET' &&
-      req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document' &&
-      ['/', '/index.html', '/overlay', '/control', '/showcase'].includes(req.url.split('?')[0]);
-    if (!hosts.includes(req.headers.host) ||
-        (req.headers.origin && !origins.includes(req.headers.origin)) ||
-        (req.headers['sec-fetch-site'] === 'cross-site' && !uiNavigation)) return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
+    if (!hosts.includes(req.headers.host) || (req.headers.origin && !origins.includes(req.headers.origin))) {
+      return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
+    }
     let url;
     try { url = new URL(req.url, 'http://localhost'); }
     catch { return fail(res, 400, 'INVALID_REQUEST'); }
+    const navigation = req.method === 'GET' && req.headers['sec-fetch-mode'] === 'navigate';
+    const uiNavigation = navigation && req.headers['sec-fetch-dest'] === 'document' && UI_PAGES.includes(url.pathname);
+    // The launcher can frame only these two pages. Their API requests are
+    // same-origin with Node and still subject to the normal API guards.
+    const desktop = navigation && req.headers['sec-fetch-dest'] === 'iframe' &&
+      req.headers.referer === DESKTOP_ORIGIN + '/' &&
+      ['/control', '/showcase'].includes(url.pathname) && url.search === '?desktop=1';
+    if (req.headers['sec-fetch-site'] === 'cross-site' && !uiNavigation && !desktop) {
+      return fail(res, 403, 'LOCAL_ORIGIN_REQUIRED');
+    }
     const activeSession = config.session || session;
     if (config.runtime && !config.runtime.ready && url.pathname !== '/api/health') return fail(res, 503, 'STARTING');
-    if (config.customMatch && (url.pathname.startsWith('/api/oclr/') || url.pathname === '/api/streaming')) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
+    if (config.customMatch && (url.pathname.startsWith('/api/oclr/') || url.pathname === '/api/streaming' ||
+        (url.pathname === '/control' && url.searchParams.has('desktop-login')))) return fail(res, 403, 'OCLR_DISABLED_CUSTOM_MATCH');
     showcase.attachSession(activeSession);
     if (await obsHttp(req, res, url, config.obs)) return;
     if (await showcaseHttp(req, res, url, showcase, streaming, replays)) return;
@@ -148,11 +157,12 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
     if (await artwork(req, res, url)) return;
     if (req.method !== 'GET') return fail(res, 405, 'READ_ONLY', { Allow: 'GET' });
     if (url.pathname === '/api/health') {
-      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(activeSession), ...(config.runtime || {}) });
+      return reply(res, 200, { project: 'oclr-stream-overlay', stage: 'operator-session', session: Boolean(activeSession),
+        ...(config.runtime || {}), authorizedEdition: streaming?.authorizedEdition() ?? null });
     }
-    if (await serveUi(url.pathname, res, uiRoot)) return;
+    if (await serveUi(url.pathname, res, uiRoot, desktop)) return;
     if (url.pathname === '/api/config') {
-      return reply(res, 200, { oclrBaseUrl: '/api/oclr', tosuWsUrl: activeSession?.state.match.custom ? activeSession.state.auto.wsUrl : config.wsUrl, authMode: config.mode });
+      return reply(res, 200, { oclrBaseUrl: '/api/oclr', tosuWsUrl: config.wsUrl, authMode: config.mode });
     }
     if (MODULES.some(name => url.pathname === `/src/${name}.js`)) {
       const body = await readFile(new URL(`../src/${url.pathname.split('/').pop()}`, import.meta.url));

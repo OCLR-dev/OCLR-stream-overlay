@@ -3,6 +3,7 @@
 !.env.example
 node_modules/
 coverage/
+__pycache__/
 dist/
 *.tsbuildinfo
 *.log
@@ -15,5 +16,7 @@ dist/
 
 # Offline Windows distributions and compiler cache
 /release/
+/OCLR-portable
+/OCLR-data/
 
 node_modules

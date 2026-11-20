@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { formatCounterScore, parseCounterScore, ScoreCounter } from '../scoreCounter';
+import { formatCounterScore } from '../scoreFormat';
+import { parseCounterScore, ScoreCounter } from '../scoreCounter';
 const props = defineProps<{ value: string; scope: string; enabled: boolean }>();
 const text = ref(props.value);
 const counter = new ScoreCounter();
 let frame = 0;
 let preference: MediaQueryList | undefined;
-const render = () => { text.value = counter.value === null ? props.value : formatCounterScore(counter.value, props.value); };
+const render = () => { text.value = counter.value === null ? props.value : formatCounterScore(counter.value); };
 const tick = (now: number) => {
   frame = 0;
   const active = counter.tick(now); render();

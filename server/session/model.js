@@ -410,7 +410,7 @@ export function tiebreakerProgress(s) {
     : round?.status === 'prepared' && !active ? '先作废误准备的普通选图，再单独准备 TB'
     : active && round.status !== 'prepared' ? 'TB 已开始；核对赛果或按裁判决定重赛'
     : active && round.status === 'prepared' ? 'TB 决胜图已准备，等待比赛开始；禁 Ban／EX'
-    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在开播前设置补齐本场 TB 谱面'
+    : !s.pool.some(e => e.mod === 'TB') ? '已到决胜比分，请在比赛配置补齐本场 TB 谱面'
     : exhibition ? '如裁判确认本场使用 TB，点击 TieBreaker 手动准备' : '已到决胜比分，按裁判确认点击 TieBreaker，直接准备本场决胜图';
   return { eligible, active, canPrepare: eligible && !s.paused && !s.incident && !unresolved &&
     (!round || round.status !== 'prepared' || active) && (!active || round.status === 'prepared') && s.pool.some(e => e.mod === 'TB'), reason };
@@ -1261,7 +1261,7 @@ function applyCommand(s, command) {
         requireValue(['unverified', 'stable-tourney'].includes(p.profile) && text(p.left, 80) && text(p.right, 80), '房间资料格式无效');
         Object.assign(s.auto, { profile: p.profile, left: p.left, right: p.right });
       }
-      if (s.match.custom && p.wsUrl !== undefined) s.auto.wsUrl = normalizeWsUrl(p.wsUrl);
+      if (s.match.custom && p.wsUrl !== undefined) s.auto.wsUrl = p.wsUrl === null ? null : normalizeWsUrl(p.wsUrl);
       s.auto = { ...s.auto, bp: p.bp, scenes: p.scenes, results: p.results ?? s.auto.results };
       requireValue(p.locked !== true, '已移除全局人工接管；人工修正直接生效，需要停住自动流程时请明确暂停');
       return '更新自动跟随设置；房间左右队名直接读取 tosu';

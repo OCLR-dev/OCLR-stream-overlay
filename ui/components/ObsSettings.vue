@@ -2,12 +2,12 @@
 import { computed, ref, watch } from 'vue';
 import type { ObsControl } from '../obsControl';
 import ControlSelect from './ControlSelect.vue';
+import ObsStreamChat from './ObsStreamChat.vue';
+import { PanelsTopLeft, Radio, Plug, Unplug } from '@lucide/vue';
 
-const props = defineProps<{ obs: ObsControl; showcaseOnly?: boolean }>();
+const props = defineProps<{ obs: ObsControl; showcaseOnly?: boolean; embedded?: boolean }>();
 const port = ref(4455);
 const password = ref<HTMLInputElement>();
-const chatCode = ref('');
-const chatHint = ref('');
 const layouts = [{ key: 'regular', label: '常规 4v4' }, { key: 'ex', label: 'EX 3v3' }] as const;
 const positions = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'];
 watch(() => props.obs.state?.port, value => { if (value) port.value = value; }, { immediate: true });
@@ -30,47 +30,30 @@ function connect() {
   if (password.value) password.value.value = '';
   void props.obs.act('connect', { port: port.value, password: value });
 }
-watch(() => props.obs.state?.collection, () => { chatCode.value = ''; chatHint.value = ''; });
-async function applyChat(retry = false) {
-  if (props.obs.pending) return;
-  const code = chatCode.value.trim();
-  if (!code && !retry) return;
-  if (code && !/^[0-9A-Z]{12,14}$/.test(code)) {
-    chatHint.value = '身份码由 12 至 14 位大写字母或数字组成，请核对后重新粘贴。';
-    return;
-  }
-  chatHint.value = '';
-  if (await props.obs.act('stream-chat', code ? { code } : {})) chatCode.value = '';
-}
-function editChat(event: Event) {
-  chatCode.value = (event.target as HTMLInputElement).value;
-  chatHint.value = '';
-  if ((event as InputEvent).inputType === 'insertFromPaste') void applyChat();
-}
 </script>
 
 <template>
-  <details class="operator-import obs-settings">
-    <summary>{{ showcaseOnly ? 'Showcase 的 OBS 设置' : 'OBS 场景联动' }}</summary>
-    <p role="status">{{ obs.status }}<template v-if="obs.state?.collection"> · 场景集合「{{ obs.state.collection }}」</template></p>
+  <component :is="embedded ? 'section' : 'details'" class="operator-import obs-settings">
+    <summary v-if="!embedded">{{ showcaseOnly ? 'Showcase 的 OBS 设置' : 'OBS 场景联动' }}</summary>
+    <div class="obs-program" role="status"><Radio :size="17" aria-hidden="true" /><div><strong>{{ obs.status }}</strong><p v-if="obs.state?.collection">场景集合 · {{ obs.state.collection }}</p></div></div>
     <p v-if="obs.error || obs.state?.error" class="operator-error" role="alert">{{ obs.error || obs.state?.error }}</p>
     <form v-if="obs.state?.phase !== 'ready'" @submit.prevent="connect">
       <p>在 OBS 的「工具 → WebSocket 服务器设置」中启用服务和密码认证，输入这台电脑的端口与密码。</p>
       <div class="setup-meta">
         <label>OBS 端口<input v-model.number="port" type="number" min="1" max="65535" required></label>
         <label>OBS 密码<input ref="password" type="password" autocomplete="off" maxlength="1024" :placeholder="obs.state?.hasPassword ? '已保存，留空可复用' : ''"></label>
-        <button type="submit" :disabled="!!obs.pending || obs.state?.phase === 'connecting'">连接本机 OBS</button>
-        <button v-if="obs.state?.enabled" type="button" :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
+        <button type="submit" :disabled="!!obs.pending || obs.state?.phase === 'connecting'"><Plug :size="16" aria-hidden="true" />连接本机 OBS</button>
+        <button v-if="obs.state?.enabled" type="button" :disabled="!!obs.pending" @click="obs.act('disconnect')"><Unplug :size="16" aria-hidden="true" />断开连接</button>
       </div>
     </form>
-    <template v-else>
+    <details v-else class="obs-layout-settings" :open="showcaseOnly"><summary><span class="obs-layout-label"><PanelsTopLeft :size="17" aria-hidden="true" />{{ showcaseOnly ? 'Showcase 场景' : '场景与捕获窗口' }}</span><span>{{ showcaseOnly ? (obs.state?.showcase ? '已配置' : '待配置') : (obs.state?.regular && obs.state?.ex ? '常规 / EX' : '待配置') }}</span></summary>
       <template v-if="showcaseOnly">
         <div class="operator-inline">
-          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 Showcase 场景…' : '创建 Showcase 场景' }}</button>
+          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 OCLR · Showcase…' : '创建 OCLR · Showcase 场景' }}</button>
           <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
         </div>
         <p>创建 1920×1080、位置 (0,0)、缩放 1 的独立 Showcase 浏览器源，铺满整个画布。osu! 回放采集自行放到它上方，在中央约 800px 高的区域等比居中，再在 OBS 切到 Showcase 场景。</p>
-        <p v-if="obs.state.showcase" role="status">Showcase 场景已就绪。</p>
+        <p v-if="obs.state.showcase" role="status">OCLR · Showcase 场景已就绪，请在 OBS 中切换到此场景播出。</p>
         <div v-if="obs.state.showcase" class="showcase-transition-controls">
           <h3>回放过场</h3>
           <p role="status">{{ transitionStatus }}</p>
@@ -136,34 +119,22 @@ function editChat(event: Event) {
         <label v-if="obs.measurement">本次 OBS 读数<textarea :value="obs.measurement" readonly rows="6" spellcheck="false"></textarea></label>
       </details>
       </template>
-    </template>
-    <section class="obs-stream-chat" aria-labelledby="obs-stream-chat-heading">
-      <h3 id="obs-stream-chat-heading">B 站直播间弹幕</h3>
-      <p>用主播账号登录 <a href="https://play-live.bilibili.com/" target="_blank" rel="noopener noreferrer">B 站互动玩法</a>，复制「身份码」。<a href="https://blive.chat/help" target="_blank" rel="noopener noreferrer">查看身份码图文教程 ↗</a></p>
-      <template v-if="obs.state?.phase === 'ready'">
-        <label>直播身份码<input v-model="chatCode" type="password" autocomplete="off" spellcheck="false"
-          :placeholder="obs.state.streamChat === 'off' ? '粘贴身份码' : '粘贴新身份码可更换直播间'"
-          aria-describedby="obs-chat-status" :aria-invalid="!!chatHint" :disabled="!!obs.pending"
-          @input="editChat" @blur="applyChat()" @keydown.enter.prevent="applyChat()"></label>
-        <p v-if="chatHint" role="alert" class="operator-error">{{ chatHint }}</p>
-        <p v-if="showcaseOnly" id="obs-chat-status" role="status">{{ obs.pending === 'stream-chat' ? '正在配置弹幕源…'
-          : obs.state.streamChat === 'configured' && obs.state.showcase ? '弹幕源已配置。可在 OBS 的 STREAM CHAT 查看观众消息。'
-          : obs.state.streamChat !== 'off' ? '身份码已保存，创建 Showcase 场景后会加入弹幕。'
-          : '粘贴身份码后自动配置，手动输入可按回车。' }}</p>
-        <p v-else id="obs-chat-status" role="status">{{ obs.pending === 'stream-chat' ? '正在配置弹幕源…'
-          : obs.state.streamChat === 'configured' ? '常规与 EX 已共用弹幕源。可在 OBS 右下角 STREAM CHAT 查看观众消息。'
-          : obs.state.streamChat === 'pending' ? (obs.state.regular && obs.state.ex ? '身份码已保存，弹幕源待配置。' : '身份码已保存。创建比赛场景，或绑定常规与 EX 两套场景后会自动加入弹幕。')
-          : '粘贴后自动配置到常规和 EX 场景的 STREAM CHAT。手动输入可按回车。' }}</p>
-        <button v-if="obs.state.streamChat === 'pending' && ((showcaseOnly && obs.state.showcase) || (obs.state.regular && obs.state.ex))" type="button" :disabled="!!obs.pending" @click="applyChat(true)">重试配置弹幕源</button>
-      </template>
-      <p v-else>连接本机 OBS 后即可粘贴身份码。</p>
-    </section>
-  </details>
+    </details>
+    <slot />
+    <ObsStreamChat :obs="obs" :showcase-only="showcaseOnly" />
+  </component>
 </template>
 
 <style scoped>
 .obs-settings > * + *, .obs-settings form > * + * { margin-top: 10px; }
 .obs-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 8px 16px; }
 .obs-slots label { min-width: 0; }
-.obs-stream-chat { display: grid; gap: 8px; }
+.obs-layout-settings > * + * { margin-top: 14px; }
+.obs-layout-settings summary span { color: var(--op-muted); font-size: 13px; margin-left: 8px; }
+.obs-program { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #291c3c; border-radius: 8px; }
+.obs-program > svg { color: var(--op-purple); flex-shrink: 0; }
+.obs-program strong { font-size: 14px; font-weight: 500; }
+.obs-program p { font-size: 12px; margin-top: 2px; }
+.obs-layout-settings summary .obs-layout-label { display: inline-flex; float: none; align-items: center; gap: 8px; margin-left: 0; color: #eadcfb; font-size: 14px; }
+.obs-settings button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 </style>

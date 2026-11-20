@@ -8,11 +8,15 @@ import { createOverlayServer } from '../server/app.js';
 
 // Node fetch rewrites Sec-Fetch-Mode to cors. Use raw HTTP to reproduce the
 // browser's actual document-navigation headers without changing the policy.
-function statusWithHeaders(url, headers) {
+function requestWithHeaders(url, headers) {
   return new Promise((resolve, reject) => {
-    get(url, { headers }, response => { response.resume(); resolve(response.statusCode); }).on('error', reject);
+    get(url, { headers }, response => {
+      response.resume();
+      resolve({ status: response.statusCode, headers: response.headers });
+    }).on('error', reject);
   });
 }
+const statusWithHeaders = async (...args) => (await requestWithHeaders(...args)).status;
 
 test('built UI serves only generated files and never exposes source, credentials or arbitrary paths', async t => {
   const fixture = await mkdtemp(join(tmpdir(), 'oclr-ui-'));
@@ -56,6 +60,18 @@ test('built UI serves only generated files and never exposes source, credentials
   assert.equal(await statusWithHeaders(`${base}/showcase`, navigation), 200);
   assert.equal(await statusWithHeaders(`${base}/api/config`, navigation), 403);
   assert.equal(await statusWithHeaders(`${base}/assets/index-Ab12.js`, navigation), 403);
+  const desktop = { ...navigation, 'Sec-Fetch-Dest': 'iframe', Referer: 'http://wails.localhost/' };
+  for (const page of ['control', 'showcase']) {
+    const frame = await requestWithHeaders(`${base}/${page}?desktop=1`, desktop);
+    assert.equal(frame.status, 200);
+    assert.equal(frame.headers['content-security-policy'], 'frame-ancestors http://wails.localhost');
+    assert.equal(await statusWithHeaders(`${base}/${page}?desktop=1`, { ...desktop, Referer: 'https://example.org/' }), 403);
+    assert.equal(await statusWithHeaders(`${base}/${page}`, desktop), 403);
+  }
+  assert.equal(await statusWithHeaders(`${base}/control?desktop-login=s11`, navigation), 200);
+  assert.equal(await statusWithHeaders(`${base}/control?desktop-login=s11`, desktop), 403);
+  assert.equal(await statusWithHeaders(`${base}/api/session?desktop=1`, desktop), 403);
+  assert.equal(await statusWithHeaders(`${base}/overlay?desktop=1`, desktop), 403);
   assert.equal(upstreamRequests, 0);
 });
 

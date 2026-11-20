@@ -1,4 +1,5 @@
 import { onMounted, onUnmounted, ref } from 'vue';
+import { inDesktopLauncher, openDesktopLink } from './desktopHost';
 
 export async function streamingRequest(input: Record<string, unknown>) {
   const response = await fetch('/api/streaming', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -19,6 +20,11 @@ export function useStreamingLogin(onConnected: () => void = () => {}, acceptStat
   function stopPopup() { clearInterval(popupTimer); popupTimer = undefined; handoff = null; popup?.close(); popup = null; }
   async function login(edition: string) {
     stopPopup();
+    if (inDesktopLauncher) {
+      openDesktopLink('streaming-login', edition);
+      message.value = '请在系统浏览器继续授权。完成后回到这里，直播资料会自动更新。';
+      return;
+    }
     popup = window.open('about:blank', 'oclr-streaming-login', 'popup,width=620,height=760');
     if (!popup) { message.value = '登录窗口被拦截，请允许弹出窗口，或使用手动复制授权。'; return; }
     pendingAction.value = 'login'; pending.value = true; message.value = '请在 OCLR 网站登录并授权。';

@@ -31,7 +31,7 @@ export interface Session {
   action: BpAction | null; queue: BpAction[]; planVerification?: string | null; bans: Record<Team, [string | null, string | null]>;
   emptyBans?: Record<Team, [boolean, boolean]>;
   bp?: { preset?: string | null; retract?: { canRetract: boolean; reason: string | null; actionId: string | null; selectionId: string | null }; phases?: BpPhase[]; current: BpAction | null; next: BpAction | null; waiting: string | null; stopped: boolean; mode: string; phase?: BpPhase | null; canStart?: boolean; canApply: boolean; canReplace: boolean; rollChanged: boolean; tiebreaker?: { eligible: boolean; active: boolean; canPrepare: boolean; reason: string } };
-  auto: { wsUrl?: string; bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
+  auto: { wsUrl?: string | null; bp: boolean; scenes: boolean; results: boolean; profile: string; left: string; right: string; mapDebounceMs: number; rankingDebounceMs: number };
   bpHistory?: { actionId: string; kind: string; retracted?: boolean }[];
   rounds: Round[]; currentRoundId: string | null; winner: Team | null;
   winnerPending?: { team: Team; endsAt: number } | null;
@@ -74,7 +74,7 @@ export interface Envelope {
       tasks?: { nextFixture: StreamingFixture }[];
       data: null | { nextFixture: StreamingFixture | null;
         stage: null | { roundName: string; playersPerTeam?: number | null; mode?: string; scoringRules?: SeriesRule | null }; mappools: { id: string; name: string }[] } };
-    sources?: { tosu: 'simulated' | 'live'; oclr: 'remote-read-only' | 'offline-fixture' | 'disabled-custom' };
+    sources?: { launcherTosu?: boolean; tosu: 'simulated' | 'live'; oclr: 'remote-read-only' | 'offline-fixture' | 'disabled-custom' };
     note: string;
     oclr: { status: string; updatedAt: string | null; error: string | null };
     tosu: { status: string; updatedAt: string | null; data: null | {

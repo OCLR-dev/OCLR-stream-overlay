@@ -4,6 +4,7 @@ import { currentPoolEntry, playingLayout } from '../../src/playing-layout.js';
 import { ObsError, ObsSocket } from './socket.js';
 import { ObsOutputs } from './outputs.js';
 import { RecordingTimeline } from './recording-timeline.js';
+import { syncBrowserAddresses } from './browser-addresses.js';
 import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
 import { buildShowcase, installShowcaseCover, installShowcaseArtwork, setShowcaseCover, showcaseScene } from './showcase.js';
 import { normalizeShowcaseTokens, ordinaryClient, ShowcaseReplay, showcaseTokensUrl } from './showcase-replay.js';
@@ -17,7 +18,7 @@ const changed = 'OBS 连接或场景集合已切换，请核对当前场景后�
 const safeMessage = error => error instanceof ObsError ? error.message : 'OBS 操作未完成，请核对本机存储和 OBS 后重试。';
 
 export class ObsController {
-  constructor({ file, overlayUrl, Socket = ObsSocket, retryMs = 3500, scanMs = 6000, tosuUrl = null, ReplayClient = TosuClient, resultsMs = 3500, replayStartMs = 20000, sessionTosu = false }) {
+  constructor({ file, overlayUrl, Socket = ObsSocket, retryMs = 3500, scanMs = 6000, tosuUrl = null, ReplayClient = TosuClient, resultsMs = 3500, replayStartMs = 20000, defaultPort = '3001' }) {
     this.file = file;
     this.overlayUrl = overlayUrl;
     this.Socket = Socket;
@@ -33,7 +34,7 @@ export class ObsController {
     this.coverListeners = new Set();
     this.completedReplay = null;
     this.replayStartMs = replayStartMs;
-    this.sessionTosu = sessionTosu;
+    this.defaultPort = defaultPort;
     this.replay = new ShowcaseReplay(() => {
       const attempt = this.showcaseAttempt;
       if (this.replay.phase === 'results') {
@@ -72,6 +73,13 @@ export class ObsController {
         if (error.code !== 'ENOENT') this.storageError = 'OBS 设置文件无法读取，请维护者检查 obs-settings.json 后重启服务。';
       }
     }
+    if (!this.storageError) {
+      try {
+        const port = new URL(this.overlayUrl()).port || '80';
+        const ports = Array.isArray(this.settings.overlayPorts) ? this.settings.overlayPorts.filter(p => typeof p === 'string') : [];
+        if (!ports.includes(port)) await this.save({ ...this.settings, overlayPorts: [...ports, port] });
+      } catch { this.storageError = 'OBS 地址设置无法保存，请检查本机存储后重启服务。'; }
+    }
     this.recording = new RecordingTimeline(store.file && join(dirname(store.file), 'recording-timelines'), () => {
       const socket = this.socket;
       return this.outputs.timestamp(socket, () => socket === this.socket && !socket.closed);
@@ -79,10 +87,6 @@ export class ObsController {
     this.unsubscribe = store.subscribe(({ session, live }) => {
       this.recording.observe(session, live?.tosu);
       this.observe(session);
-      if (this.sessionTosu && this.sessionTosuUrl !== session.auto.wsUrl) {
-        this.sessionTosuUrl = session.auto.wsUrl;
-        this.setTosuUrl(this.sessionTosuUrl);
-      }
       this.observeShowcaseClient(live?.tosu);
     });
     if (this.settings.enabled && !this.storageError) this.connect();
@@ -454,6 +458,7 @@ export class ObsController {
       this.setScenes(scenes);
       await this.readProgram(call);
       this.collection = currentSceneCollectionName;
+      await syncBrowserAddresses(call, this.overlayUrl(), this.settings.overlayPorts ?? [], this.profile, this.defaultPort);
       this.phase = 'ready';
       this.error = '';
       this.refreshShowcase();
@@ -660,6 +665,6 @@ export class ObsController {
 
 export async function attachObs(config, store) {
   config.obs = await new ObsController({ file: store.file && join(dirname(store.file), 'obs-settings.json'),
-    tosuUrl: config.customMatch ? null : config.wsUrl, sessionTosu: !!config.customMatch,
+    tosuUrl: config.wsUrl, defaultPort: config.customMatch ? '3011' : '3001',
     overlayUrl: () => `http://127.0.0.1:${config.port}/overlay` }).start(store);
 }

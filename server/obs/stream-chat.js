@@ -18,7 +18,7 @@ const scrollbarCss = `${legacyCss}
 yt-live-chat-renderer { --scrollbar-width: 0px !important; }
 #item-scroller { scrollbar-width: none !important; padding-right: 0 !important; }
 ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }`;
-const css = `${scrollbarCss}
+const baseCss = `${scrollbarCss}
 yt-live-chat-text-message-renderer { background: transparent !important; padding: 2px 2px !important; }
 #author-photo { display: inline-flex !important; width: 20px !important; height: 20px !important; min-width: 20px !important; margin: 0 6px 0 0 !important; border-radius: 50% !important; overflow: hidden !important; }
 #author-photo img { width: 100% !important; height: 100% !important; object-fit: cover; }
@@ -26,6 +26,22 @@ yt-live-chat-author-chip, #author-name { background: transparent !important; bor
 #author-name { padding: 0 !important; }
 #author-name, #message { text-shadow: none !important; }
 #message { overflow-wrap: anywhere; }`;
+// Match Chat animates each new row in Vue. blivechat already glides the list
+// upward with its own translateY, so this CSS only gives the new row the same
+// fade-in instead of changing the scroll source.
+const entryCss = `
+yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer { animation: oclr-chat-line-in 280ms cubic-bezier(.2, .7, .3, 1) backwards; }
+@keyframes oclr-chat-line-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer { animation: none; }
+}`;
+const css = `${baseCss}${entryCss}`;
+// Upgrade our own earlier presets once, but never overwrite operator CSS.
+const presets = [css, baseCss, scrollbarCss, legacyCss];
+const upgrades = [baseCss, scrollbarCss, legacyCss];
 
 export function chatIdentityCode(value) {
   const code = typeof value === 'string' ? value.trim() : '';
@@ -71,7 +87,7 @@ export async function ensureStreamChat(call, profile, save) {
       const inputSettings = await readSettings(saved);
       const knownItem = scenes.some(({ scene, sceneItems }) => sceneItems.some(item =>
         item.sourceName === saved.inputName && chat.items[scene]?.id === item.sceneItemId));
-      const hasPresetSettings = [css, scrollbarCss, legacyCss].includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
+      const hasPresetSettings = presets.includes(inputSettings.css) && /^https:\/\/blive\.chat\/room\/[0-9A-Z]{12,14}\?roomKeyType=2$/.test(inputSettings.url);
       if (knownItem || hasPresetSettings) input = saved;
     }
   }
@@ -101,7 +117,7 @@ export async function ensureStreamChat(call, profile, save) {
     const updates = {};
     if (inputSettings.url !== url) updates.url = url;
     // Upgrade only our original preset; retain CSS customized by the operator.
-    if ([legacyCss, scrollbarCss].includes(inputSettings.css)) updates.css = css;
+    if (upgrades.includes(inputSettings.css)) updates.css = css;
     if (Object.keys(updates).length) await call('SetInputSettings', { inputName: name, inputSettings: updates, overlay: true });
   }
   for (const { scene, target, item } of scenes) {

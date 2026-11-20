@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
-import { lstat, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, isAbsolute, join } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function localReplayMetadata(filename, bytes) {
   const invalid = () => new Error('请选择有效的 .osr 回放文件（最大 8 MiB）。');
@@ -40,7 +41,9 @@ export function localReplayMetadata(filename, bytes) {
 
 export async function stageReplayFile(bytes) {
   const unavailable = () => new Error('无法保存本机回放，请检查直播机存储空间后重试。');
-  const directory = await mkdtemp(join(tmpdir(), 'oclr-showcase-')).catch(() => { throw unavailable(); });
+  const temporaryRoot = process.env.OCLR_REPLAY_TEMP || tmpdir();
+  const directory = await mkdir(temporaryRoot, { recursive: true }).then(() => mkdtemp(join(temporaryRoot, 'oclr-showcase-')))
+    .catch(() => { throw unavailable(); });
   const path = join(directory, 'Replay.osr');
   const dispose = () => rm(directory, { recursive: true, force: true }).catch(() => {});
   try { await writeFile(path, bytes, { mode: 0o600 }); }
@@ -52,23 +55,30 @@ export async function prepareStableReplay(path) {
   if (process.platform !== 'win32') throw new Error('请在 Windows 直播机上使用 osu!stable 播放回放。');
   let executable;
   try {
-    const local = process.env.LOCALAPPDATA;
-    const settings = join(local, 'OCLR', 'StreamOverlayLauncher', 'settings.json');
+    const local = process.env.LOCALAPPDATA || '';
+    const portableSettings = process.env.OCLR_LAUNCHER_SETTINGS;
+    const settings = portableSettings || join(local, 'OCLR', 'StreamOverlayLauncher', 'settings.json');
     const prefs = await readFile(settings, 'utf8').then(JSON.parse, error => {
       if (error.code !== 'ENOENT') throw error;
       return {};
     });
-    const selected = prefs.osuPath || join(local, 'osu!', 'osu!.exe');
+    let selected = prefs.osuPath || join(local, 'osu!', 'osu!.exe');
+    if (portableSettings && selected.startsWith('.\\')) {
+      const root = fileURLToPath(new URL('../../', import.meta.url));
+      selected = resolve(root, selected);
+      const inside = relative(root, selected);
+      if (inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error();
+    }
     if (!isAbsolute(selected) || basename(selected).toLowerCase() !== 'osu!.exe') throw new Error();
     executable = await realpath(selected);
     if (basename(executable).toLowerCase() !== 'osu!.exe' || !(await stat(executable)).isFile()) throw new Error();
-  } catch { throw new Error('找不到 osu!stable。请检查默认安装目录，或在主线桌面控制台的设置中选择普通 osu!.exe。'); }
+  } catch { throw new Error('找不到 osu!stable，请在桌面控制台「设置」中选择普通客户端的 osu!.exe。'); }
   const cwd = dirname(executable);
   try {
     await lstat(join(cwd, 'tournament.cfg'));
     throw new Error();
   } catch (error) {
-    if (error.code !== 'ENOENT') throw new Error('所选 osu! 含有赛事配置，请改用普通 osu!stable 安装。');
+    if (error.code !== 'ENOENT') throw new Error('所选 osu! 含有赛事配置，请在「设置」中选择普通 osu!stable。');
   }
   return () => new Promise((resolve, reject) => {
     const child = spawn(executable, [path], { cwd, detached: true, stdio: 'ignore' });
