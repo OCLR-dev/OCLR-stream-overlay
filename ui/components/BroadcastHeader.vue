@@ -15,7 +15,7 @@ const { state, view, motionScope, motionReady, session } = useOverlay();
 // Playing crossfades the room total over the series score once both sides have
 // arrived; the series value stays beside the win pips as a small gilded number.
 // Every other scene keeps only the series score.
-const received = (value: string) => /^\d[\d']*$/.test(value);
+const received = (value: string) => /^\d[\d,]*$/.test(value);
 const roomTotals = computed(() => (state.scene === 'playing' || view.value.warmup) &&
   received(view.value.scoreA) && received(view.value.scoreB));
 // Interpolate only fresh Playing updates. Joining, reconnecting,
