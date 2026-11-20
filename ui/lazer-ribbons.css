@@ -1,32 +1,125 @@
-/* Lazer reference, integrated into the existing OCLR frame. Only decorations
-   are animated; content and capture ancestors keep their original geometry. */
-.broadcast-canvas:is([data-current-scene='roll'], [data-current-scene='playing'], [data-current-scene='mappool']) .broadcast-ambient { display: none; }
-.broadcast-canvas[data-current-scene='playing'] .spectrum-grid { opacity: .15; }
-.broadcast-canvas[data-current-scene='mappool'] .spectrum-grid { opacity: .22; }
-.broadcast-canvas[data-current-scene='roll'] .lazer-ribbon-edge { --ribbon-pace: 1.1; --ribbon-strength: .6; }
-.lazer-ribbon-edge { position: absolute; inset: 0; z-index: 0; overflow: hidden; contain: paint; pointer-events: none; --ribbon-pace: .83; --ribbon-strength: 1; }
+/* Skewed prism beams and three-layer depth, integrated into the OCLR frame.
+   Only background decorations animate; content and capture ancestors stay fixed. */
+.broadcast-canvas[data-current-scene='playing'] .spectrum-grid { opacity: .24; }
+.broadcast-canvas[data-current-scene='mappool'] .spectrum-grid { opacity: .32; }
+.broadcast-canvas[data-current-scene='roll'] .broadcast-ambient { opacity: .55; }
+.broadcast-canvas[data-current-scene='mappool'] .broadcast-ambient { opacity: .62; }
+.broadcast-canvas[data-current-scene='mappool'] .ambient-diamond:nth-child(3n) { display: none; }
+.broadcast-canvas[data-current-scene='playing'] .broadcast-ambient { opacity: .38; }
+.broadcast-canvas[data-current-scene='playing'] .ambient-diamond:nth-child(2n) { display: none; }
+
+.broadcast-canvas[data-current-scene='roll'] .lazer-ribbon-edge { --ribbon-pace: 1.1; --ribbon-strength: .65; }
+.lazer-ribbon-edge {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  contain: paint;
+  pointer-events: none;
+  --ribbon-pace: .83;
+  --ribbon-strength: 1;
+}
+
+/* Subtle wide diagonal backdrop pattern drifting slowly behind the prism beams. */
+.lazer-prism-wash {
+  position: absolute;
+  inset: -40px -220px;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    118deg,
+    rgba(216, 180, 254, 0.036) 0 68px,
+    transparent 68px 164px
+  );
+  animation: lazer-wash-drift 22s linear infinite;
+}
+@keyframes lazer-wash-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-186px, 0, 0); }
+}
+
 .lazer-ribbon-band { position: absolute; left: 0; right: 0; height: 178px; overflow: hidden; }
-/* The middle shares the same direction and colours as the edges, with a
-   soft vertical envelope instead of a separate panel or hard boundary. */
-.lazer-ribbon-band--field { top: 0; height: 1080px; mask-image: linear-gradient(to bottom, transparent 100px, #0009 220px, #000 440px, #000 800px, #0009 940px, transparent); }
-.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--field { opacity: .7; }
-.lazer-ribbon-band--top { top: 0; mask-image: linear-gradient(to bottom, transparent 118px, #000 134px, #000 164px, transparent 178px); }
-.lazer-ribbon-band--bottom { bottom: 0; mask-image: linear-gradient(to bottom, transparent, #000 30px); }
-.lazer-ribbon-foot { position: absolute; inset: 0; background: linear-gradient(90deg, #ff4d6d0f, transparent 35% 65%, #3d8bff12), repeating-linear-gradient(108deg, #d8b4fe0c 0 1px, transparent 1px 20px); mask-image: linear-gradient(to bottom, transparent, #000 52px); }
-.lazer-ribbon { position: absolute; z-index: 1; border-radius: 999px; transform-origin: left center; color: var(--purple-light); background: linear-gradient(to bottom, color-mix(in srgb, currentColor 78%, white), currentColor); opacity: calc(var(--ribbon-alpha) * var(--ribbon-strength)); transform: rotate(-28deg); animation: lazer-ribbon-drift calc(var(--ribbon-duration) * var(--ribbon-pace)) linear var(--ribbon-delay) infinite; }
-.lazer-ribbon[data-tone='pink'] { color: color-mix(in srgb, var(--team-a) 24%, #c084fc); }
-.lazer-ribbon[data-tone='ice'] { color: color-mix(in srgb, var(--team-b) 26%, #b7dfff); }
+.lazer-ribbon-band--field {
+  top: 0;
+  height: 1080px;
+  mask-image: linear-gradient(to bottom, transparent 100px, #000a 210px, #000 420px, #000 820px, #000a 940px, transparent);
+}
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--field { opacity: .78; }
+.lazer-ribbon-band--top {
+  top: 0;
+  mask-image: linear-gradient(to bottom, transparent 122px, #000 134px, #000 168px, transparent 180px);
+}
+.lazer-ribbon-band--bottom {
+  bottom: 0;
+  mask-image: linear-gradient(to bottom, transparent, #000 28px);
+}
+.lazer-ribbon-foot {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, #ff4d6d14, transparent 36% 64%, #3d8bff18),
+    repeating-linear-gradient(112deg, #d8b4fe0e 0 1px, transparent 1px 22px);
+  mask-image: linear-gradient(to bottom, transparent, #000 50px);
+}
+
+/* Sharp skewed prism beams: 1px bright leading edge feathering smoothly away. */
+.lazer-ribbon {
+  position: absolute;
+  z-index: 1;
+  border-radius: 0;
+  clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+  transform-origin: left center;
+  color: var(--purple-light);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, currentColor 85%, white) 0px,
+    color-mix(in srgb, currentColor 85%, white) 1px,
+    color-mix(in srgb, currentColor 42%, transparent) 2px,
+    color-mix(in srgb, currentColor 14%, transparent) 48%,
+    transparent 100%
+  );
+  opacity: calc(var(--ribbon-alpha) * var(--ribbon-strength));
+  transform: rotate(-28deg);
+  animation: lazer-ribbon-drift calc(var(--ribbon-duration) * var(--ribbon-pace)) linear var(--ribbon-delay) infinite;
+}
+.lazer-ribbon[data-tone='pink'] { color: color-mix(in srgb, var(--team-a) 34%, #c084fc); }
+.lazer-ribbon[data-tone='ice'] { color: color-mix(in srgb, var(--team-b) 36%, #b7dfff); }
+
+/* EX & TB atmosphere shifts for midground prism beams (pure CSS state linkage). */
+.broadcast-canvas[data-ex-layout='1'][data-ex-team='a'] .lazer-ribbon {
+  color: color-mix(in srgb, var(--team-a) 52%, #d8b4fe);
+}
+.broadcast-canvas[data-ex-layout='1'][data-ex-team='b'] .lazer-ribbon {
+  color: color-mix(in srgb, var(--team-b) 54%, #c4b5fd);
+}
+.broadcast-canvas[data-map-mod='TB'] .lazer-ribbon {
+  color: color-mix(in srgb, #ffcc22 52%, #c084fc);
+}
+.broadcast-canvas[data-map-mod='TB'] .lazer-ribbon[data-tone='pink'],
+.broadcast-canvas[data-map-mod='TB'] .lazer-ribbon[data-tone='ice'] {
+  color: color-mix(in srgb, #f59e0b 65%, #fde68a);
+}
+.broadcast-canvas[data-map-mod='TB'] .lazer-prism-wash {
+  background: repeating-linear-gradient(
+    118deg,
+    rgba(255, 204, 34, 0.04) 0 68px,
+    transparent 68px 164px
+  );
+}
+
 @keyframes lazer-ribbon-drift {
   0% { opacity: 0; transform: translate3d(-760px, 404px, 0) rotate(-28deg); }
   14%, 86% { opacity: calc(var(--ribbon-alpha) * var(--ribbon-strength)); }
   100% { opacity: 0; transform: translate3d(760px, -404px, 0) rotate(-28deg); }
 }
-.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-edge { --ribbon-pace: 1; --ribbon-strength: .75; }
+
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-edge { --ribbon-pace: 1; --ribbon-strength: .82; }
 .broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--top .lazer-ribbon:nth-of-type(n+7),
 .broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-band--bottom .lazer-ribbon:nth-of-type(n+13) { display: none; }
-.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-foot { opacity: .7; }
+.broadcast-canvas[data-current-scene='playing'] .lazer-ribbon-foot { opacity: .78; }
 .broadcast-canvas[data-current-scene='mappool'] .roster-footer { background: #1c1034b8; }
+
 @media (prefers-reduced-motion: reduce) {
-  .lazer-ribbon { animation: none !important; will-change: auto; transform: rotate(-28deg); }
+  .lazer-ribbon, .lazer-prism-wash { animation: none !important; will-change: auto; }
+  .lazer-ribbon { transform: rotate(-28deg); }
   .lazer-ribbon-edge { opacity: .75; }
 }
