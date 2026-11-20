@@ -10,11 +10,11 @@ const between = (min: number, max: number) => min + Math.random() * (max - min);
 function appearance(name: BandName, x = between(0, 100)) {
   return {
     x,
-    y: name === 'field' ? between(220, 940) : name === 'top' ? between(145, 198) : between(36, 210),
-    length: Math.round(120 + Math.random() ** 1.4 * 300),
-    thickness: name === 'top' ? between(6, 12) : name === 'field' ? between(20, 56) : between(7, 52),
-    tone: Math.random() < .45 ? 'violet' : x < 40 ? 'pink' : 'ice',
-    alpha: name === 'top' ? between(.09, .12) : name === 'field' ? between(.10, .13) : between(.16, .24),
+    y: name === 'field' ? between(200, 940) : name === 'top' ? between(132, 174) : between(24, 196),
+    length: Math.round(160 + Math.random() ** 1.35 * 320),
+    thickness: name === 'top' ? between(10, 18) : name === 'field' ? between(26, 68) : between(14, 58),
+    tone: Math.random() < .46 ? 'violet' : x < 45 ? 'pink' : 'ice',
+    alpha: name === 'top' ? between(.14, .22) : name === 'field' ? between(.14, .22) : between(.20, .30),
   };
 }
 const bands = reactive(([
@@ -40,6 +40,7 @@ function renew(event: AnimationEvent, name: BandName, ribbon: Ribbon) {
 
 <template>
   <div v-show="state.scene === 'roll' || state.scene === 'playing' || state.scene === 'mappool'" class="lazer-ribbon-edge" aria-hidden="true">
+    <div class="lazer-prism-wash"></div>
     <div v-for="band in bands" :key="band.name" class="lazer-ribbon-band" :class="`lazer-ribbon-band--${band.name}`">
       <div v-if="band.name === 'bottom'" class="lazer-ribbon-foot"></div>
       <span v-for="(ribbon, index) in band.ribbons" :key="index" class="lazer-ribbon" :data-tone="ribbon.tone"

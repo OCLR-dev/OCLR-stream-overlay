@@ -112,26 +112,74 @@
     repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 48px),
     var(--canvas);
 }
-/* Short straight accents pulse along the fixed grid, behind all content.
-   The baseline grid never bends, moves, or depends on match/audio input. */
-.spectrum-grid { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; overflow: hidden; contain: paint; pointer-events: none; opacity: .3; }
-.spectrum-segment { stroke: #b99be5; stroke-width: 1px; transform-origin: 0 0; opacity: 0; animation: spectrum-horizontal var(--spectrum-duration) ease-in-out var(--spectrum-delay) infinite; }
-.spectrum-segment[data-axis='vertical'] { animation-name: spectrum-vertical; }
-@keyframes spectrum-horizontal {
-  0%, 52%, 100% { transform: scaleX(.08); opacity: 0; }
-  12% { transform: scaleX(.75); opacity: .75; }
-  23% { transform: scaleX(.38); opacity: .35; }
-  35% { transform: scaleX(1); opacity: .8; }
+
+/* Reactive match-state atmosphere layer (Playing lead brightness gradient, EX accent, TB gilded violet).
+   Lives at z-index: 0 behind .scene-stack and capture cutouts. */
+.canvas-mood-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms ease-out;
 }
-@keyframes spectrum-vertical {
-  0%, 52%, 100% { transform: scaleY(.08); opacity: 0; }
-  12% { transform: scaleY(.75); opacity: .75; }
-  23% { transform: scaleY(.38); opacity: .35; }
-  35% { transform: scaleY(1); opacity: .8; }
+.broadcast-canvas[data-ex-layout='1'][data-ex-team='a'] .canvas-mood-glow {
+  opacity: 1;
+  background:
+    radial-gradient(1000px 320px at 36% 14%, rgba(255, 77, 109, 0.28), transparent 72%),
+    radial-gradient(960px 380px at 50% 100%, rgba(236, 72, 153, 0.2), transparent 72%);
+}
+.broadcast-canvas[data-ex-layout='1'][data-ex-team='b'] .canvas-mood-glow {
+  opacity: 1;
+  background:
+    radial-gradient(1000px 320px at 64% 14%, rgba(61, 139, 255, 0.28), transparent 72%),
+    radial-gradient(960px 380px at 50% 100%, rgba(56, 189, 248, 0.2), transparent 72%);
+}
+.broadcast-canvas[data-map-mod='TB'] .canvas-mood-glow {
+  opacity: 1;
+  background:
+    radial-gradient(1060px 340px at 50% 12%, rgba(255, 204, 34, 0.2), transparent 72%),
+    radial-gradient(1100px 420px at 50% 100%, rgba(168, 85, 247, 0.26), rgba(217, 119, 6, 0.1) 46%, transparent 74%);
+}
+/* Playing lead luminance gradient: scales continuously from 0 (tied) to 1 (250k+ lead). */
+.broadcast-canvas[data-current-scene='playing'][data-lead='equal'] .canvas-mood-glow {
+  opacity: 0;
+}
+.broadcast-canvas[data-current-scene='playing'][data-lead='left'] .canvas-mood-glow {
+  opacity: var(--lead-intensity, 0);
+  background:
+    radial-gradient(1260px 400px at 26% 12%, rgba(255, 77, 109, 0.48), rgba(163, 18, 58, 0.2) 46%, transparent 74%),
+    linear-gradient(90deg, rgba(255, 77, 109, 0.26) 0%, rgba(255, 77, 109, 0.08) 42%, transparent 76%),
+    radial-gradient(1320px 440px at 24% 100%, rgba(255, 77, 109, 0.46), rgba(163, 18, 58, 0.18) 52%, transparent 74%);
+}
+.broadcast-canvas[data-current-scene='playing'][data-lead='right'] .canvas-mood-glow {
+  opacity: var(--lead-intensity, 0);
+  background:
+    radial-gradient(1260px 400px at 74% 12%, rgba(61, 139, 255, 0.48), rgba(18, 63, 158, 0.2) 46%, transparent 74%),
+    linear-gradient(270deg, rgba(61, 139, 255, 0.26) 0%, rgba(61, 139, 255, 0.08) 42%, transparent 76%),
+    radial-gradient(1320px 440px at 76% 100%, rgba(61, 139, 255, 0.46), rgba(18, 63, 158, 0.18) 52%, transparent 74%);
+}
+
+/* Far-layer gliding light probes along the fixed 48px grid, behind all content.
+   The baseline grid never bends, moves, or depends on match/audio input. */
+.spectrum-grid { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; overflow: hidden; contain: paint; pointer-events: none; opacity: .34; }
+.spectrum-segment { opacity: 0; animation: spectrum-glide-h var(--spectrum-duration) cubic-bezier(.35, 0, .25, 1) var(--spectrum-delay) infinite; }
+.spectrum-segment[data-axis='vertical'] { animation-name: spectrum-glide-v; }
+@keyframes spectrum-glide-h {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  18% { opacity: .88; }
+  62% { opacity: .72; }
+  85%, 100% { transform: translate3d(var(--spectrum-travel, 144px), 0, 0); opacity: 0; }
+}
+@keyframes spectrum-glide-v {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  18% { opacity: .88; }
+  62% { opacity: .72; }
+  85%, 100% { transform: translate3d(0, var(--spectrum-travel, 144px), 0); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .spectrum-grid { display: none; } }
 
-/* Independent, clipped geometry behind all content and pure-green captures. */
+/* Independent, clipped micro-diamond layer behind all content and pure-green captures. */
 .broadcast-ambient { position: absolute; inset: 0; z-index: 0; overflow: hidden; contain: paint; pointer-events: none; }
 .broadcast-ambient[hidden] { display: none; }
 .ambient-diamond { position: absolute; border: 1px solid currentColor; color: #ba98ee; opacity: 0; transform: rotate(45deg); animation: ambient-diamond-drift var(--duration) linear var(--delay) infinite; }
@@ -145,25 +193,69 @@
 }
 @media (prefers-reduced-motion: reduce) { .ambient-diamond { animation: none !important; opacity: .3; } }
 
-/* A loose scatter of fading points fills only the empty header wings.
-   The fixed header clip keeps every particle and glow above the key surfaces. */
+/* Sub-banner luminous band (y=130-180) flanking the score bar / stage area.
+   Fixed header clip keeps every particle strictly above y=180 capture boundary. */
 .header-ambient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.header-ambient-wing { position: absolute; top: 8px; left: 10px; width: 240px; height: 148px; overflow: hidden; color: var(--team-a); }
-.header-ambient-wing[data-team='b'] { left: auto; right: 10px; color: var(--team-b); }
-.header-ambient-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; opacity: .25; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
+.header-ambient-wing {
+  position: absolute;
+  top: 130px;
+  left: 0;
+  width: 640px;
+  height: 50px;
+  overflow: hidden;
+  color: var(--team-a);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 84%, transparent);
+}
+.header-ambient-wing[data-team='b'] {
+  left: auto;
+  right: 0;
+  color: var(--team-b);
+  mask-image: linear-gradient(270deg, transparent, #000 10%, #000 84%, transparent);
+}
+.header-ambient-particle {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 0;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
+  opacity: 0;
+  animation: header-crystal-drift var(--duration) linear var(--delay) infinite;
+}
 .header-ambient-particle:nth-child(4n) { background: #f3eeff; }
-@keyframes header-diffuse {
-  0% { opacity: 0; transform: translate(0, 0) scale(.7); }
+@keyframes header-crystal-drift {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(45deg) scale(.72); }
   18% { opacity: var(--opacity); }
-  75% { opacity: var(--opacity); }
-  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.15); }
+  76% { opacity: var(--opacity); }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) rotate(45deg) scale(1.08); }
 }
 
-/* White motes inside the two team colour blocks; the block's clip-path and
-   stacking context keep them behind the header copy and inside the slanted edges. */
+/* Crisp 45-degree micro diamond crystals + subtle diagonal gloss inside team banners. */
 .team-particles { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-.team-particle { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: #fff; box-shadow: 0 0 8px #fff; opacity: 0; animation: header-diffuse var(--duration) linear var(--delay) infinite; }
-@media (prefers-reduced-motion: reduce) { .team-particle { animation: none; opacity: .18; } }
+.team-particles::before {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.032) 0 18px, transparent 18px 46px);
+  content: '';
+}
+.team-particle {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 0;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.65);
+  opacity: 0;
+  animation: header-crystal-drift var(--duration) linear var(--delay) infinite;
+}
+.team-particle.is-hollow {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-particle, .header-ambient-particle { animation: none; opacity: .2; transform: rotate(45deg); }
+}
 
 
 .roll-body { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px; }
@@ -194,7 +286,22 @@
   isolation: isolate;
   color: #fff;
 }
-.team-block::after { position: absolute; inset: auto 0 0; height: 4px; content: ''; background: #ffffff99; }
+.team-block::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  content: '';
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.62) 38%, rgba(255, 255, 255, 0.98) 50%, rgba(255, 255, 255, 0.62) 62%, rgba(255, 255, 255, 0.56) 100%);
+  background-size: 240% 100%;
+  animation: team-edge-sweep 7.2s ease-in-out infinite;
+}
+.team-block--b::after {
+  animation-direction: reverse;
+}
+@keyframes team-edge-sweep {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
 .team-block--a {
   left: 0;
   align-items: flex-end;
@@ -382,9 +489,56 @@
    host. Reserve native pixels with an unobstructed green capture surface. */
 /* Keep footer and score glows underneath the opaque capture surfaces. */
 .playing-body { display: flex; padding: 0; z-index: 1; }
-.playfield { position: relative; display: grid; flex: 1; grid-template-columns: repeat(2, var(--pov-width)) 0px repeat(2, var(--pov-width)); grid-template-rows: repeat(2, var(--pov-height)); gap: 0; min-height: 0; }
-.pov-cell { position: relative; display: flex; min-width: 0; min-height: 0; overflow: hidden; background: #10091e; }
-.pov-frame { display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: hidden; background: #0f091c; }
+.playfield {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, var(--pov-width)) 0px repeat(2, var(--pov-width));
+  grid-template-rows: repeat(2, var(--pov-height));
+  gap: 0;
+  min-height: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 77, 109, 0.055) 0%, transparent 28%, transparent 72%, rgba(61, 139, 255, 0.055) 100%),
+    radial-gradient(ellipse 75% 65% at 50% 50%, rgba(18, 10, 38, 0.16), rgba(10, 5, 24, 0.48));
+}
+/* Subtle x=960 confrontation divider visible only in non-capture dead zones. */
+.playfield::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 959px;
+  width: 2px;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 77, 109, 0.24) 24%,
+    rgba(183, 148, 255, 0.34) 50%,
+    rgba(61, 139, 255, 0.24) 76%,
+    transparent 100%
+  );
+  box-shadow: -12px 0 28px rgba(255, 77, 109, 0.12), 12px 0 28px rgba(61, 139, 255, 0.12);
+}
+.pov-cell { position: relative; display: flex; min-width: 0; min-height: 0; overflow: visible; background: transparent; }
+.pov-cell[data-team='a'] { --pov-team-color: var(--team-a); }
+.pov-cell[data-team='b'] { --pov-team-color: var(--team-b); }
+.pov-frame { position: relative; display: flex; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: visible; background: transparent; }
+/* 1px luminous outer frame around each capture window at z-index: 1; all capture
+   surfaces sit above it at z-index: 2 so zero pixels inside any cutout are touched. */
+.pov-frame::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  content: '';
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pov-team-color, var(--purple-light)) 42%, rgba(124, 58, 237, 0.45)),
+    0 0 18px color-mix(in srgb, var(--pov-team-color, var(--purple)) 18%, transparent);
+}
+.source-16x9 .pov-frame::before { top: 45px; bottom: 45px; }
 /* The demo review page marks capture rectangles in green so reviewers can see
    where the game windows land. The shared browser output instead carries real
    alpha: the page paints nothing behind the canvas and every capture rectangle
@@ -396,7 +550,7 @@
    keeps a sub-pixel sliver of whatever sits under it, which otherwise shows up
    as a thin green line around every game window. */
 body.is-shared-output [data-game-capture] { background: transparent; }
-.pov-source { display: flex; flex: none; width: var(--pov-width); height: var(--pov-height); overflow: hidden; }
+.pov-source { position: relative; z-index: 2; display: flex; flex: none; width: var(--pov-width); height: var(--pov-height); overflow: hidden; }
 .source-16x9 .pov-source { height: calc(var(--pov-width) * 9 / 16); }
 body.is-shared-output { background: transparent; }
 body.is-shared-output .canvas-stage { background: transparent; }
@@ -447,8 +601,20 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .playing-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, var(--team-a) 0 50%, var(--team-b) 50% 100%); pointer-events: none; content: ''; }
 .pause-footer::before { position: absolute; top: 14px; left: 30px; right: 30px; height: 2px; background: linear-gradient(90deg, #7c3aed66, #b794ff99 50%, #7c3aed66); pointer-events: none; content: ''; }
 .score-stage { position: absolute; top: -768px; left: 340px; width: 1240px; height: 40px; overflow: visible; }
-.score-stage::before { position: absolute; top: 28px; left: 0; right: 0; height: 8px; border-radius: 4px; background: #352547; content: ''; }
-.score-center-anchor { position: absolute; top: 25px; left: 50%; width: 2px; height: 14px; background: #c9a8ff; }
+.score-stage::before {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 62px),
+    linear-gradient(180deg, #211333 0%, #372452 100%);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(183, 148, 255, 0.2);
+  content: '';
+}
+.score-center-anchor { position: absolute; top: 25px; left: 50%; width: 2px; height: 14px; background: #dfd0ff; box-shadow: 0 0 6px rgba(201, 168, 255, 0.7); }
 .score-fill { position: absolute; top: 28px; left: 50%; width: 50%; height: 8px; border-radius: 4px; transform-origin: 0 50%; transition: transform 100ms linear; }
 .score-stage[data-lead^='left'] .score-fill { background: linear-gradient(90deg, #ff4d6d66, var(--team-a) 75%, #ffb3c3); box-shadow: 0 0 14px #ff4d6d66; }
 .score-stage[data-lead^='right'] .score-fill { background: linear-gradient(90deg, #3d8bff66, var(--team-b) 75%, #b8d7ff); box-shadow: 0 0 14px #3d8bff66; }
@@ -457,30 +623,120 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .score-tip::before { position: absolute; left: -2px; width: 4px; height: 16px; border-radius: 2px; background: #fff; content: ''; }
 .score-stage[data-lead^='left'] .score-tip::before { background: #ffe4eb; box-shadow: 0 0 6px #ffb3c3, 0 0 12px var(--team-a); }
 .score-stage[data-lead^='right'] .score-tip::before { background: #e4f0ff; box-shadow: 0 0 6px #b8d7ff, 0 0 12px var(--team-b); }
-.score-delta { position: absolute; top: 0; left: 50%; min-width: 180px; height: 24px; border-radius: 6px; padding: 0 12px; background: #1b0f3a; color: #e6d7fa; font-family: var(--display); font-size: 23px; font-weight: 700; line-height: 24px; text-align: center; white-space: nowrap; transform: translateX(-50%); }
-.score-stage[data-lead^='left'] .score-delta { color: #ff91a7; }
-.score-stage[data-lead^='right'] .score-delta { color: #8abaff; }
+.score-delta {
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  min-width: 184px;
+  height: 24px;
+  border: 1px solid rgba(201, 168, 255, 0.42);
+  border-radius: 6px;
+  padding: 0 14px;
+  background: linear-gradient(180deg, rgba(42, 24, 82, 0.94) 0%, rgba(20, 11, 44, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 12px rgba(124, 58, 237, 0.24);
+  color: #e6d7fa;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 22px;
+  letter-spacing: .03em;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.score-stage[data-lead^='left'] .score-delta {
+  border-color: rgba(255, 110, 140, 0.58);
+  background: linear-gradient(180deg, rgba(84, 18, 42, 0.94) 0%, rgba(28, 10, 32, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 210, 222, 0.22), 0 2px 12px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(255, 77, 109, 0.28);
+  color: #ffb3c3;
+}
+.score-stage[data-lead^='right'] .score-delta {
+  border-color: rgba(102, 159, 255, 0.58);
+  background: linear-gradient(180deg, rgba(16, 44, 96, 0.94) 0%, rgba(12, 16, 40, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(210, 230, 255, 0.22), 0 2px 12px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(61, 139, 255, 0.28);
+  color: #b8d7ff;
+}
 .score-caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* One full-card beatmap background, shaded behind the title and parameters. */
-.map-row { position: relative; isolation: isolate; display: grid; grid-template-columns: 118px minmax(0, 1fr) 118px; grid-template-rows: minmax(0, 1fr) 42px; width: 1000px; height: var(--stream-chat-height); min-height: 0; overflow: hidden; margin-top: var(--stream-chat-top); border: 0; background: #241349f0; box-shadow: 0 0 30px var(--pick-glow, #ffffff4d); }
-/* The whole card is framed and lit by the picking side's colour; unknown side (or TB) draws white. */
-.map-row[data-pick='a'] { --pick-edge: var(--team-a); --pick-glow: color-mix(in srgb, var(--team-a) 42%, transparent); }
-.map-row[data-pick='b'] { --pick-edge: var(--team-b); --pick-glow: color-mix(in srgb, var(--team-b) 42%, transparent); }
-.map-row::before { position: absolute; inset: 0; z-index: 2; border: 4px solid var(--pick-edge, transparent); border-radius: inherit; pointer-events: none; content: ''; }
-.map-row::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, #120a26b3, #120a2600 75%), linear-gradient(90deg, #120a26b3, #120a26b3 40%, #120a2699); pointer-events: none; content: ''; }
+.map-row {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr) 118px;
+  grid-template-rows: minmax(0, 1fr) 42px;
+  width: 1000px;
+  height: var(--stream-chat-height);
+  min-height: 0;
+  overflow: hidden;
+  margin-top: var(--stream-chat-top);
+  border: 0;
+  background: #241349f0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 28px var(--pick-glow, rgba(167, 139, 250, 0.22));
+}
+/* Refined 2px luminous team frame + center cover energy bar (avoids clashing with mod side blocks). */
+.map-row[data-pick='a'] { --pick-edge: var(--team-a); --pick-glow: color-mix(in srgb, var(--team-a) 38%, transparent); }
+.map-row[data-pick='b'] { --pick-edge: var(--team-b); --pick-glow: color-mix(in srgb, var(--team-b) 38%, transparent); }
+.map-row::before {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 2px solid color-mix(in srgb, var(--pick-edge, rgba(183, 148, 255, 0.5)) 84%, white 16%);
+  border-radius: inherit;
+  box-shadow: inset 0 0 14px color-mix(in srgb, var(--pick-edge, transparent) 20%, transparent);
+  pointer-events: none;
+  content: '';
+}
+.map-row::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(0deg, #100822d4 0%, #120a2633 64%, #120a2666 100%),
+    linear-gradient(90deg, #120a26c4, #120a26a6 45%, #120a26b8);
+  pointer-events: none;
+  content: '';
+}
 .map-row > :not(.map-artwork) { position: relative; z-index: 1; }
 .map-row > .map-artwork { opacity: 1; object-position: center 45%; }
 .map-row > .map-artwork[data-loaded='false'] { opacity: 0; }
 .map-artwork { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .8; }
 .map-artwork[data-loaded='false'] { opacity: 0; }
-.map-star-slot { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; background: var(--star-bg, #5f596b); color: var(--star-ink, #ffffff); }
-.map-star-slot b { max-width: 100%; position: relative; z-index: 1; overflow: hidden; padding-inline: 6px; font-family: var(--display); font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-star-slot {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  background-color: var(--star-bg, #5f596b);
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.22) 0%, transparent 48%, rgba(0, 0, 0, 0.34) 100%);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  color: var(--star-ink, #ffffff);
+}
+.map-star-slot b { max-width: 100%; position: relative; z-index: 1; overflow: hidden; padding-inline: 6px; font-family: var(--display); font-size: 42px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
 .map-star-slot[data-range] b { font-size: 22px; }
-.map-star-caption { position: relative; z-index: 1; font-size: 12px; font-weight: 700; letter-spacing: .04em; line-height: 1; opacity: .9; }
+.map-star-caption { position: relative; z-index: 1; font-size: 11px; font-weight: 700; letter-spacing: .12em; line-height: 1; opacity: .78; }
 .map-star-caption, .map-star-slot b,
 .map-slot > span, .map-slot > b { text-shadow: var(--slot-shadow, none); }
-.current-map { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 8px 18px 3px; text-align: center; text-shadow: 0 1px 4px #0008; }
+.current-map { position: relative; grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 10px 18px 2px; text-align: center; text-shadow: 0 1px 4px #0008; }
+/* Pick-team energy accent bar along the top of the center cover area. */
+.map-row[data-pick='a'] .current-map::before,
+.map-row[data-pick='b'] .current-map::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--pick-edge) 18%, color-mix(in srgb, var(--pick-edge) 72%, white) 50%, var(--pick-edge) 82%, transparent);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--pick-edge) 75%, transparent);
+  pointer-events: none;
+  content: '';
+}
 .map-chip { border: 1px solid #7c3aed99; padding: 2px 7px; background: #7c3aed26; color: #e0cdfa; font-size: 12px; font-weight: 700; }
 .map-chip[data-format='ex'] { color: var(--ex-ink); border-color: var(--ex-color); background: color-mix(in srgb, var(--ex-color) 12%, transparent); }
 [data-ex-team='a'] { --ex-color: var(--team-a); --ex-ink: #ffbdca; }
@@ -501,17 +757,49 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .scrolling-text.is-scrolling .scrolling-text-track { animation: scrolling-text-marquee var(--scrolling-text-duration, 12s) linear infinite; will-change: transform; }
 @keyframes scrolling-text-marquee { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .scrolling-text.is-scrolling .scrolling-text-track { animation: none; } }
-.map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 6px; padding: 0 18px 4px; }
-.map-params > span { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; border: 1px solid #7c3aed80; padding: 5px 11px; background: #120a2666; color: var(--ink); font-family: var(--display); font-size: 22px; line-height: 1; }
-.map-params > span b { color: #c9a8ff; font-weight: 700; }
+.map-params { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: 7px; padding: 0 18px 5px; }
+.map-params:not(:has(.map-status-slot)) { justify-content: center; }
+.map-params > span {
+  display: inline-flex;
+  align-items: baseline;
+  flex-shrink: 0;
+  gap: 5px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-left: 2px solid rgba(183, 148, 255, 0.78);
+  padding: 5px 10px 4px;
+  background: rgba(12, 7, 26, 0.78);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.map-params > span b { color: #b794ff; font-size: 13px; font-weight: 700; letter-spacing: .06em; opacity: .92; }
 .map-params[data-range='true'] > span { gap: 4px; padding-inline: 7px; white-space: nowrap; }
 .map-params[data-range='true'][data-compact='true'] > span { gap: 3px; padding-inline: 5px; font-size: 18px; }
+.map-params[data-range='true'][data-compact='true'] > span b { font-size: 12px; }
 /* Conditional map status sits at the bottom-right, opposite the CS/AR chips. */
 .map-status-slot { display: flex; align-items: center; gap: 8px; overflow: hidden; margin-left: auto; min-width: 0; }
 .map-status-slot .map-rule { max-width: 340px; flex-shrink: 1; }
-.map-slot { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; overflow: hidden; background: var(--mod-bg); color: var(--mod-ink); }
-.map-slot b { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 44px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
-.map-slot span { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.map-slot {
+  position: relative;
+  grid-column: 3;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  background-color: var(--mod-bg);
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.22) 0%, transparent 48%, rgba(0, 0, 0, 0.34) 100%);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  color: var(--mod-ink);
+}
+.map-slot b { position: relative; z-index: 1; max-width: 100%; overflow: hidden; padding-inline: 8px; font-family: var(--display); font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: .01em; text-overflow: ellipsis; white-space: nowrap; }
+.map-slot span { font-family: var(--display); font-size: 11px; font-weight: 700; letter-spacing: .1em; opacity: .78; }
 .map-slot > span { position: relative; z-index: 1; }
 
 /* Mappool keeps the S11 mod-grouped rows, cover tiles, mod colours, stronger
@@ -551,10 +839,41 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .mappool-columns { display: grid; flex: 1; grid-template-rows: repeat(var(--mappool-rows), minmax(0, 1fr)); gap: 8px; min-height: 0; margin-top: 0; }
 /* Mod colours arrive per element from ui/modColors.ts (--mod-bg / --mod-ink). */
 .mappool-column { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; min-width: 0; min-height: 0; }
-.map-group-head { display: grid; place-items: center; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); }
-.map-group-head strong { font-family: var(--display); font-size: 34px; font-weight: 800; }
+/* Dark glass mod header with glowing left energy bar (aligned with Showcase chips). */
+.map-group-head {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--mod-bg) 38%, rgba(255, 255, 255, 0.12));
+  background:
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--mod-bg) 28%, transparent), transparent 76%),
+    linear-gradient(180deg, rgba(28, 16, 54, 0.88), rgba(15, 8, 32, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 14px rgba(0, 0, 0, 0.32);
+  color: color-mix(in srgb, var(--mod-bg) 26%, #ffffff);
+}
+.map-group-head::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: var(--mod-bg);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--mod-bg) 78%, transparent);
+  content: '';
+}
+.map-group-head strong {
+  position: relative;
+  z-index: 1;
+  padding-left: 4px;
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--mod-bg) 50%, transparent), 0 2px 4px rgba(0, 0, 0, 0.65);
+}
 .map-list { display: grid; grid-template-columns: repeat(var(--pool-columns, 4), minmax(0, 1fr)); grid-template-rows: repeat(var(--group-rows, 1), minmax(0, 1fr)); grid-auto-flow: row; gap: 8px 14px; min-width: 0; min-height: 0; margin: 0; padding: 0; list-style: none; }
-.map-entry { --map-number-reserve: calc(50px + (var(--map-number-length, 1) - 1) * 10px); position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #7c3aed66; background: #241349e6; padding: 6px 8px 6px 0; }
+.map-entry { --map-number-reserve: calc(44px + (var(--map-number-length, 1) - 1) * 9px); position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #7c3aed66; background: #241349e6; padding: 6px 8px 6px 0; }
 .map-entry > .map-base-artwork { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; filter: saturate(.7) brightness(.55); transition: opacity 480ms ease; }
 .map-entry > .map-base-artwork[data-loaded='true'] { opacity: .7; }
 .map-entry::before { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, #100a22c7, #100a22a8 48%, #100a22e8); content: ''; }
@@ -564,7 +883,27 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry-media .map-artwork[data-loaded='true'] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .map-entry > .map-base-artwork, .map-entry-media .map-artwork { transition: none; } }
 .map-entry > .map-copy { position: relative; z-index: 3; flex: 1 1 auto; align-self: stretch; justify-content: flex-start; padding-top: 0; padding-right: 0; }
-.map-index { position: absolute; right: 8px; bottom: 8px; z-index: 4; display: inline-flex; align-items: center; overflow: hidden; padding: 2px 8px 4px; border-radius: 4px; background: color-mix(in srgb, var(--mod-bg) 60%, #000000); color: var(--mod-ink); font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.map-index {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 2px 7px 3px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--mod-bg) 62%, #0d071c);
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.2) 0%, transparent 55%, rgba(0, 0, 0, 0.28) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 2px 6px rgba(0, 0, 0, 0.45);
+  color: var(--mod-ink);
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
 /* Title and meta viewports clip to the space left of the #N reserve; long text
@@ -594,7 +933,21 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 @keyframes map-status-reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .map-state-label--corner { animation: none; } }
 .map-state-label:not(.map-state-label--corner) { top: 8px; right: 8px; }
-.map-state-label--corner .map-status { width: auto; min-width: 0; height: 24px; padding: 0 10px; border: 0; border-radius: var(--radius-card); background: var(--status-color); color: #fff; box-shadow: none; font-size: 15px; line-height: 24px; letter-spacing: .02em; }
+.map-state-label--corner .map-status {
+  width: auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--radius-card);
+  background-color: var(--status-color);
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.22) 0%, transparent 55%, rgba(0, 0, 0, 0.24) 100%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 2px 8px rgba(0, 0, 0, 0.48);
+  font-size: 14px;
+  line-height: 24px;
+  letter-spacing: .03em;
+}
 /* Every card uses full-bleed artwork, with title/difficulty over its lower-left corner.
    62px keeps the two text lines (25px + 22px) plus the 7px bottom inset and the
    2px border fully visible even when the pool needs many rows. */
@@ -628,8 +981,24 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .mappool-columns--large .map-entry[data-tight='true'] .map-index { padding: 1px 6px 2px; font-size: 15px; }
 /* Content-sized chips mirror the #N badge without competing with the
    bottom-right card number. The value's range colour is the background. */
-.map-stat { display: flex; align-items: baseline; gap: 4px; padding: 3px 4px 4px; border-radius: 3px; background: var(--stat-color, #5f596b); box-shadow: inset 0 0 0 1px #ffffff38; color: var(--stat-ink, #fff); font-family: var(--display); font-size: 15px; font-weight: 700; line-height: 16px; white-space: nowrap; text-shadow: 0 1px 2px #0009; }
-.map-stat-label { color: inherit; font-size: 14px; letter-spacing: .04em; }
+.map-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 2px 6px 3px;
+  border-radius: 3px;
+  background-color: var(--stat-color, #5f596b);
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.2) 0%, transparent 55%, rgba(0, 0, 0, 0.24) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.45);
+  color: var(--stat-ink, #fff);
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #0009;
+}
+.map-stat-label { color: inherit; font-size: 13px; letter-spacing: .04em; opacity: .9; }
 .mappool-columns--large .map-star { position: absolute; top: 8px; left: 8px; z-index: 5; pointer-events: none; }
 .map-stat-value { color: inherit; font-weight: 800; font-variant-numeric: tabular-nums; }
 /* Team ownership, rather than Ban/Pick kind, determines the frame color.
@@ -637,8 +1006,21 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .map-entry { --map-team-color: #92929f; --map-team-ink: #eeeef2; }
 .map-entry[data-team='a'] { --map-team-color: var(--team-a); --map-team-ink: #ffbdca; }
 .map-entry[data-team='b'] { --map-team-color: var(--team-b); --map-team-ink: #b7d3ff; }
+.map-entry[data-winner='a'] { --winner-color: var(--team-a); }
+.map-entry[data-winner='b'] { --winner-color: var(--team-b); }
 .map-entry:is(.is-banned, .is-picked) { border-width: 2px; border-color: var(--map-team-color); }
 .map-entry:is(.is-banned, .is-picked)::after { position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 2px var(--map-team-color); content: ''; }
+/* Completed maps recede with desaturated artwork and a soft winner-team vignette,
+   keeping 100% vivid artwork for open maps and the active pick. */
+.map-entry.has-winner .map-entry-media .map-artwork { filter: saturate(.56) brightness(.64); }
+.map-entry.has-winner > .map-base-artwork { filter: saturate(.45) brightness(.42); }
+.mappool-columns--large .map-entry.has-winner::before {
+  background:
+    radial-gradient(ellipse at 50% 28%, transparent 18%, color-mix(in srgb, var(--winner-color, var(--map-team-color)) 26%, rgba(12, 6, 26, 0.72)) 100%),
+    linear-gradient(0deg, #100a22fa 0%, #100a22ea 36%, #100a22ad 64%, #100a2233 100%);
+}
+.map-entry.has-winner .map-index,
+.map-entry.has-winner .map-star { opacity: .8; }
 /* A picked map keeps its team-tinted frame and adds a chasing light around the
    card while the pick still belongs to a red/blue selection state. The SVG
    normalises its perimeter to 100 units, so one dash cycle stays even on cards
@@ -686,8 +1068,55 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .chat-line-enter-active { transition: opacity 280ms cubic-bezier(.2, .7, .3, 1), transform 280ms cubic-bezier(.2, .7, .3, 1); }
 .chat-line-enter-from { opacity: 0; transform: translateY(8px); }
 .chat-line-move { transition: transform 280ms cubic-bezier(.2, .7, .3, 1); }
-.chat-box.chat-box--compact { display: block; min-inline-size: 0; margin: 0; padding: 0; background: transparent; }
-.chat-box-legend { margin-left: 10px; padding: 0 8px; color: var(--muted); font-family: var(--display); font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: .08em; }
+.chat-box.chat-box--compact {
+  position: relative;
+  display: block;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(154, 118, 224, 0.34);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(22, 12, 46, 0.44) 0%, rgba(13, 7, 28, 0.58) 100%);
+  box-shadow: inset 0 1px 0 rgba(196, 166, 255, 0.16), 0 4px 16px rgba(0, 0, 0, 0.28);
+}
+.chat-box.chat-box--compact[data-chat-source='stream'] {
+  border-color: rgba(132, 134, 232, 0.36);
+  background: linear-gradient(180deg, rgba(19, 15, 48, 0.44) 0%, rgba(12, 9, 30, 0.58) 100%);
+}
+/* Top-left and bottom-right sci-fi corner accents aligned with broadcast frame. */
+.chat-box.chat-box--compact::before,
+.chat-box.chat-box--compact::after {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: rgba(199, 168, 255, 0.78);
+  border-style: solid;
+  pointer-events: none;
+  content: '';
+}
+.chat-box.chat-box--compact::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: 4px;
+}
+.chat-box.chat-box--compact::after {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: 4px;
+}
+.chat-box-legend {
+  margin-left: 12px;
+  padding: 0 8px;
+  color: #cbb6f0;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: .1em;
+  text-shadow: 0 0 10px rgba(124, 58, 237, 0.48);
+}
 .chat-box--compact .chat-box-content { height: 100%; justify-content: flex-end; padding-top: 4px; }
 /* End-anchored messages keep the newest line visible; the waiting status
    stays at the top until the first message arrives. */
@@ -716,20 +1145,65 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .player-card-bg, .player-cover, .player-cover-fallback { position: absolute; inset: 0; width: 100%; height: 100%; }
 .player-cover-fallback { background: radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--team-tint) 42%, transparent), transparent 58%), linear-gradient(165deg, color-mix(in srgb, var(--team-dark) 55%, #211039), #140b26); }
 .player-cover { object-fit: cover; filter: saturate(.9) brightness(.72); }
-.player-card-bg::after { position: absolute; inset: 0; background: linear-gradient(180deg, #120a2600 28%, #120a2699 62%, #120a26e6 100%); content: ''; }
-.player-avatar { position: absolute; z-index: 1; top: 40%; left: 50%; display: grid; place-items: center; width: 52%; aspect-ratio: 1; overflow: hidden; border: 2px solid color-mix(in srgb, var(--team-tint) 75%, #fff 10%); border-radius: 50%; background: #241349; object-fit: cover; transform: translate(-50%, -50%); box-shadow: 0 5px 16px #0009; }
-.player-avatar-fallback { color: #fff; font-family: var(--display); font-size: 28px; font-weight: 800; }
+.player-card-bg::after { position: absolute; inset: 0; background: linear-gradient(180deg, #120a2600 22%, #120a2680 56%, #0c061ce6 100%); content: ''; }
+.player-avatar {
+  position: absolute;
+  z-index: 1;
+  top: 40%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 52%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--team-tint) 82%, #ffffff 18%);
+  border-radius: 50%;
+  background: #241349;
+  object-fit: cover;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 0 2px rgba(16, 8, 34, 0.72),
+    0 6px 16px rgba(0, 0, 0, 0.65),
+    0 0 14px color-mix(in srgb, var(--team-tint) 34%, transparent);
+}
+.player-avatar-fallback {
+  background: radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--team-tint) 56%, #5b3296), #1a0d36 78%);
+  color: #fff;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
 .player-identity > img.player-avatar { z-index: 2; }
-.player-name { position: relative; z-index: 2; width: calc(100% - 12px); margin: 0 6px 15px; overflow: hidden; color: #fff; font-size: 14px; font-weight: 800; line-height: 1.25; text-align: center; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 4px #000c; }
+.player-name {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin: 0;
+  padding: 5px 8px 6px;
+  border-top: 1px solid color-mix(in srgb, var(--team-tint) 36%, rgba(255, 255, 255, 0.14));
+  background: linear-gradient(180deg, rgba(16, 9, 34, 0.72) 0%, rgba(10, 5, 24, 0.94) 100%);
+  overflow: hidden;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px #000c;
+}
 .layout-3v3 .roster-grid .player-card:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 7px); }
 .layout-1v1 .roster-grid, .layout-2v2 .roster-grid { grid-template-rows: 1fr; align-items: center; }
 .layout-1v1 .roster-grid .player-card, .layout-2v2 .roster-grid .player-card { height: calc(50% - 7px); }
 /* Waiting, Roll and Mappool keep compact identity cards in the middle; the
-   shared chat panel sits over the empty side columns. */
-.roster-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 14px 30px; }
-.roster-footer-grid { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; min-height: 0; }
-.roster-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: center; gap: 8px; padding: 0; }
-.roster-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: center; width: 100%; height: auto; max-width: 152px; }
+   shared chat panel sits over the empty side columns. Padding aligns the card
+   top (y=938) and bottom (y=1066) flush with the compact chat box borders. */
+.roster-footer { grid-template-columns: 420px minmax(0, 1fr) 420px; gap: 10px; padding: 38px 30px 14px; }
+.roster-footer-grid { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; min-height: 0; height: 100%; }
+.roster-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: stretch; gap: 8px; padding: 0; height: 100%; }
+.roster-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: center; align-self: stretch; width: 100%; height: 100%; max-width: 152px; aspect-ratio: auto; }
 .readiness-column { display: flex; flex-direction: column; justify-content: center; min-height: 0; text-align: center; }
 .versus-bar { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; color: #d5c1ee; font-size: 15px; }
 .versus-bar b { color: #cba6ff; font-family: var(--display); font-size: 94px; font-weight: 800; font-style: italic; line-height: 1; text-shadow: 0 0 32px #7c3aed80; }
@@ -815,15 +1289,34 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 /* Totals update directly; the independent lead fill follows smoothly. */
 .shared-output .score-delta { transition: none; }
 @media (prefers-reduced-motion: reduce) {
-  .broadcast-canvas *, .broadcast-canvas::before { animation: none !important; transition: none !important; }
+  .broadcast-canvas *, .broadcast-canvas *::before, .broadcast-canvas *::after, .broadcast-canvas::before { animation: none !important; transition: none !important; }
 }
 
 /* Corner badges reserve title space only where short cards share their row. */
 .map-entry[data-has-state='true'][data-compact='true'] .map-title { padding-right: var(--state-label-reserve, 94px); }
 .map-entry[data-winner][data-compact='true'] .map-title { --state-label-reserve: 128px; }
 .map-entry.is-banned > .map-copy { z-index: 6; }
-.mappool-column[data-mod='TB'] .map-group-head { background: #000; box-shadow: inset 0 0 0 2px #ffcc22, 0 0 16px #ffcc2233; color: #ffcc22; }
-.map-entry[data-mod='TB'] .map-index { background: #000; color: #ffcc22; box-shadow: inset 0 0 0 1px #ffcc2299; }
+.mappool-column[data-mod='TB'] .map-group-head {
+  border-color: rgba(255, 204, 34, 0.62);
+  background:
+    radial-gradient(circle at 0% 50%, rgba(255, 204, 34, 0.26), transparent 76%),
+    linear-gradient(180deg, rgba(26, 18, 42, 0.94), rgba(10, 6, 18, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 232, 148, 0.25), 0 0 18px rgba(255, 204, 34, 0.22);
+  color: #ffcc22;
+}
+.mappool-column[data-mod='TB'] .map-group-head::before {
+  background: linear-gradient(180deg, #ffe885, #ffcc22 50%, #d97706);
+  box-shadow: 0 0 16px rgba(255, 204, 34, 0.85);
+}
+.mappool-column[data-mod='TB'] .map-group-head strong {
+  text-shadow: 0 0 18px rgba(255, 204, 34, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+.map-entry[data-mod='TB'] .map-index {
+  background-color: #140d22;
+  background-image: linear-gradient(155deg, rgba(255, 204, 34, 0.18) 0%, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
+  color: #ffcc22;
+  box-shadow: inset 0 0 0 1px rgba(255, 204, 34, 0.72), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
 
 /* Warm-up keeps only live totals; no hidden series placeholder is needed. */
 .broadcast-header[data-warmup='true'] .header-score--room { position: relative; }

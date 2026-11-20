@@ -28,9 +28,9 @@ export function exhibitionFormat(rule: SeriesRule | null | undefined) {
   return rule.type === 'first_to' ? `先赢 ${rule.wins} 图` : `固定 ${rule.count} 图`;
 }
 export const leadDemos = {
-  'left-small': ["1'050'000", "1'000'000"], 'left-large': ["1'400'000", "1'000'000"],
-  equal: ["1'000'000", "1'000'000"], 'right-small': ["1'000'000", "1'050'000"],
-  'right-large': ["1'000'000", "1'400'000"]
+  'left-small': ['105,0000', '100,0000'], 'left-large': ['140,0000', '100,0000'],
+  equal: ['100,0000', '100,0000'], 'right-small': ['100,0000', '105,0000'],
+  'right-large': ['100,0000', '140,0000']
 } as const;
 export const mapLabels = { open: '未选', banned: '禁用 · 示例A队', picked: '选用 · 示例B队' };
 export const mapIcons = { open: '○', banned: '×', picked: '✓' };

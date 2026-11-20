@@ -3,6 +3,7 @@ import { computed, provide } from 'vue';
 import { vSceneReveal } from './motion';
 import { createOverlay, overlayKey, useCanvasFit } from './useOverlay';
 import { sceneLabels } from './model';
+import { scoreDifference } from './scoreDifference';
 import ReviewControls from './components/ReviewControls.vue';
 import BroadcastHeader from './components/BroadcastHeader.vue';
 import BroadcastAmbient from './components/BroadcastAmbient.vue';
@@ -26,6 +27,25 @@ const { stage, scale } = useCanvasFit();
 // the same bottom chat and map layout as Playing.
 const chatScene = new Set(['waiting', 'roll', 'mappool', 'playing', 'victory', 'pause']);
 const chatVisible = computed(() => chatScene.has(state.scene));
+const playingScoreBar = computed(() => scoreDifference(view.value.scoreA, view.value.scoreB));
+const canvasLead = computed(() => {
+  if (state.scene !== 'playing') return 'equal';
+  if (!view.value.shared) {
+    if (state.lead.startsWith('left')) return 'left';
+    if (state.lead.startsWith('right')) return 'right';
+    return 'equal';
+  }
+  const delta = playingScoreBar.value.delta;
+  return delta === null || delta === 0 ? 'equal' : delta > 0 ? 'left' : 'right';
+});
+const leadIntensity = computed(() => {
+  if (state.scene !== 'playing' || canvasLead.value === 'equal') return 0;
+  return Number(Math.min(1, Math.abs(playingScoreBar.value.scale)).toFixed(3));
+});
+const activeMapMod = computed(() => {
+  if (view.value.shared) return view.value.currentMap?.mod || (state.mapType === 'tb' ? 'TB' : state.mapMod);
+  return state.mapType === 'tb' ? 'TB' : state.mapMod;
+});
 </script>
 
 <template>
@@ -35,9 +55,10 @@ const chatVisible = computed(() => chatScene.has(state.scene));
       <div class="canvas-sizer" id="canvasSizer" :style="{ width: `${1920 * scale}px`, height: `${1080 * scale}px` }">
         <div class="broadcast-canvas" id="broadcastCanvas"
           :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared, 'motion-ready': motionReady }]"
-          :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-current-scene="state.scene"
+          :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-ex-team="view.ex ? state.exTeam : 'none'" :data-lead="canvasLead" :data-map-mod="activeMapMod" :data-current-scene="state.scene"
           :aria-label="`1920×1080 OCLR ${view.season} ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
-          :style="{ transform: `scale(${scale})` }">
+          :style="{ transform: `scale(${scale})`, '--lead-intensity': leadIntensity }">
+          <div class="canvas-mood-glow" aria-hidden="true"></div>
           <SpectrumGrid />
           <BroadcastAmbient />
           <LazerRibbonEdge />

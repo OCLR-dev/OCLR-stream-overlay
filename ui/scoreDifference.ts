@@ -5,8 +5,8 @@ const FULL_SCALE_DIFFERENCE = 250_000;
 export function scoreDifference(left: string, right: string) {
   const parse = (value: string) => {
     const raw = value.trim();
-    if (!/^\d+(?:'\d{3})*$/.test(raw)) return null;
-    const score = Number(raw.replaceAll("'", ''));
+    if (!/^\d+(?:,\d{4})*$/.test(raw)) return null;
+    const score = Number(raw.replaceAll(',', ''));
     return Number.isSafeInteger(score) ? score : null;
   };
   const a = parse(left);
