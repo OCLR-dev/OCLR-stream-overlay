@@ -539,13 +539,12 @@ test('replay list rechecks Program after download, opens once under the actual c
   assert.equal(launches, 4);
 });
 
-test('custom Showcase follows the active session tosu URL across edits', async t => {
-  const { obs, session } = await setup(t, { ReplayClient: ReplayFeed, sessionTosu: true });
-  const setUrl = wsUrl => session.command({ id: crypto.randomUUID(), version: session.state.version, type: 'auto', payload: { ...session.state.auto, wsUrl } });
-  await setUrl('ws://127.0.0.1:4010/websocket/v2');
+test('Showcase updates its ordinary client token endpoint when the game source changes', async t => {
+  const { obs } = await setup(t, { ReplayClient: ReplayFeed });
+  obs.setTosuUrl('ws://127.0.0.1:4010/websocket/v2');
   assert.equal(obs.replayClient.url, 'ws://127.0.0.1:4010/tokens');
-  await setUrl('ws://127.0.0.1:4011/websocket/v2');
+  obs.setTosuUrl('ws://127.0.0.1:4011/websocket/v2');
   assert.equal(obs.replayClient.url, 'ws://127.0.0.1:4011/tokens');
-  await setUrl('');
+  obs.setTosuUrl('');
   assert.equal(obs.replayClient.url, null);
 });

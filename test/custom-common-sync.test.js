@@ -120,7 +120,7 @@ test('custom rules never acquire an OCLR phase plan or accept a streaming import
 test('custom HTTP rejects all OCLR entry points and reports the current source without loading credentials', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'oclr-custom-source-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const app = await startCustomMatch({ port: 0, guard: false, sessionFile: join(dir, 'session.json') }); t.after(() => app.stop());
-  for (const path of ['/api/oclr/tournaments', '/api/streaming']) assert.equal((await fetch(app.appUrl + path)).status, 403);
+  for (const path of ['/api/oclr/tournaments', '/api/streaming', '/control?desktop-login=s11']) assert.equal((await fetch(app.appUrl + path)).status, 403);
   const obs = await fetch(app.appUrl + '/api/obs');
   assert.equal(obs.status, 200, 'custom startup attaches its local OBS controller');
   assert.equal((await obs.json()).phase, 'off');
@@ -144,4 +144,41 @@ test('custom text-rule BP retraction restores the selection once without losing 
   s = send(send(s, 'start'), 'ranking');
   assert.equal(s.action.team, 'b'); assert.equal(s.action.kind, 'pick');
   assert.equal(s.match.bpRule, 'ban blue\npick red\nalternate blue');
+});
+
+test('launcher tosu is opt-in for restored sessions and leaves manual addresses and initialization intact', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-custom-launcher-tosu-'));
+  const sessionFile = join(dir, 'session.json');
+  const initialState = () => setup();
+  let app;
+  try {
+    app = await startCustomMatch({ port: 0, guard: false, launcherTosu: true, sessionFile, initialState });
+    const configUrl = async () => (await fetch(app.appUrl + '/api/config').then(r => r.json())).tosuWsUrl;
+    const select = wsUrl => app.store.command({ id: crypto.randomUUID(), version: app.store.state.version,
+      type: 'auto', payload: { ...app.store.state.auto, wsUrl } });
+    const localUrl = 'ws://127.0.0.1:1/websocket/v2';
+    // An existing session's manual address stays authoritative.
+    await select(localUrl);
+    await app.stop();
+    app = await startCustomMatch({ port: 0, guard: false, launcherTosu: true, sessionFile });
+    app.setLauncherTosuPort(2);
+    assert.equal(await configUrl(), localUrl);
+    assert.equal(app.store.state.match.bestOf, 9);
+    assert.equal(app.store.live.sources.launcherTosu, true);
+
+    await select(null);
+    assert.equal(await configUrl(), 'ws://127.0.0.1:2/websocket/v2');
+    app.setLauncherTosuPort(3);
+    assert.equal(await configUrl(), 'ws://127.0.0.1:3/websocket/v2');
+    assert.equal(app.store.state.auto.wsUrl, null);
+    app.setLauncherTosuPort(0);
+    assert.equal(await configUrl(), '');
+    app.setLauncherTosuPort(3);
+    await app.store.command({ id: crypto.randomUUID(), version: app.store.state.version, type: 'next-match' });
+    assert.equal(app.store.state.auto.wsUrl, '');
+    assert.equal(await configUrl(), '');
+  } finally {
+    await app?.stop();
+    await rm(dir, { recursive: true, force: true });
+  }
 });

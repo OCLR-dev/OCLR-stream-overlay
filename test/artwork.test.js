@@ -74,7 +74,7 @@ async function start(t, fetchImpl, { setId = 42, simulated = false } = {}) {
   config.port = server.address().port;
   t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
   const base = `http://127.0.0.1:${config.port}`;
-  return { store, request: (path = '/api/beatmaps/101/cover', options = {}) => fetch(`${base}${path}`, { redirect: 'manual', ...options }) };
+  return { store, config, request: (path = '/api/beatmaps/101/cover', options = {}) => fetch(`${base}${path}`, { redirect: 'manual', ...options }) };
 }
 
 test('cover URLs use official set IDs; only this match pool can request artwork and no credentials or arbitrary URLs are forwarded', async t => {
@@ -110,6 +110,24 @@ test('wrong-map, disconnected and simulated signals never serve a tosu backgroun
     const response = await request('/api/beatmaps/101/background');
     assert.equal(response.status, 302); assert.equal(response.headers.get('x-artwork-source'), 'osu-cover');
   }
+});
+
+test('switching tosu ports isolates backgrounds for the same map and drops an old in-flight image', async t => {
+  let release; let started;
+  const waiting = new Promise(resolve => { started = resolve; });
+  const { config, request } = await start(t, async url => {
+    const port = Number(new URL(url).port);
+    if (port === 24050) { started(); await new Promise(resolve => { release = resolve; }); }
+    return new Response(new Uint8Array([port === 24050 ? 1 : 2]), { headers: { 'Content-Type': 'image/png' } });
+  });
+  const previous = request('/api/beatmaps/101/background');
+  await waiting;
+  config.wsUrl = 'ws://127.0.0.1:27123/websocket/v2';
+  release();
+  assert.equal((await previous).status, 302);
+  const next = await request('/api/beatmaps/101/background');
+  assert.equal(next.headers.get('x-artwork-source'), 'tosu');
+  assert.deepEqual([...new Uint8Array(await next.arrayBuffer())], [2]);
 });
 
 test('a map change during background download and invalid image responses fall back without attaching another map artwork', async t => {
@@ -184,18 +202,4 @@ test('outside-pool backgrounds reject stale, simulated and changed maps, includi
   store.live.tosu.status = 'live'; store.live.sources = { tosu: 'simulated' }; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
   store.live.sources = { tosu: 'live' }; assert.equal((await request('/api/beatmaps/999/background')).status, 404);
   assert.equal(calls, 1);
-});
-
-test('custom artwork follows edited WebSocket origin and never reuses the previous server background', async t => {
-  const calls = [];
-  const { store, request } = await start(t, async url => {
-    calls.push(url);
-    return new Response(new Uint8Array([1, 2]), { headers: { 'Content-Type': 'image/png' } });
-  });
-  store.state.match.custom = true;
-  store.state.auto.wsUrl = 'ws://127.0.0.1:24500/websocket/v2';
-  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
-  store.state.auto.wsUrl = 'ws://127.0.0.1:24501/websocket/v2';
-  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
-  assert.deepEqual(calls, ['http://127.0.0.1:24500/files/beatmap/background', 'http://127.0.0.1:24501/files/beatmap/background']);
 });

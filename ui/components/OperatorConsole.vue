@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { useSession, type BpPhase, type PoolEntry, type Round } from '../session';
 import { matchFormat } from '../matchFormat';
+import { useSession, type BpPhase, type PoolEntry, type Round } from '../session';
 import { exhibitionFormat, sceneLabels, normalizeScene, stages, type Scene, type Team } from '../model';
 import { operatorNextStep } from '../operatorHints';
 import StreamingAccess from './StreamingAccess.vue';
+import { CalendarCheck, Gamepad2, Monitor, Settings2, ArrowRight, ArrowUpRight, PanelsTopLeft, TriangleAlert, Wifi, WifiOff, ListFilter, Trophy } from '@lucide/vue';
 import ObsSettings from './ObsSettings.vue';
 import ObsRecording from './ObsRecording.vue';
 import { useObsProgram } from '../obsProgram';
@@ -23,10 +24,13 @@ const { snapshot, connection, error, busy, command, presentationEpoch } = useSes
 const motionScope = computed(() => `${snapshot.value?.session.id}:${presentationEpoch.value}:${connection.value}`);
 const motionReady = useMotionReady(motionScope);
 const preview = ref<HTMLIFrameElement>();
+const setupPreview = ref<HTMLIFrameElement>();
 let previewHeartbeat: ReturnType<typeof setInterval>;
-const sharePreview = () => preview.value?.contentWindow?.postMessage({ type: 'oclr-session-preview', snapshot: snapshot.value, connection: connection.value }, location.origin);
+const sharePreview = () => {
+  for (const frame of [preview.value, setupPreview.value]) frame?.contentWindow?.postMessage({ type: 'oclr-session-preview', snapshot: snapshot.value, connection: connection.value }, location.origin);
+};
 const previewReady = (event: MessageEvent) => {
-  if (event.origin === location.origin && event.source === preview.value?.contentWindow && event.data?.type === 'oclr-preview-ready') sharePreview();
+  if (event.origin === location.origin && [preview.value?.contentWindow, setupPreview.value?.contentWindow].includes(event.source as Window) && event.data?.type === 'oclr-preview-ready') sharePreview();
 };
 watch([snapshot, connection], sharePreview, { flush: 'post' });
 const s = computed(() => snapshot.value?.session);
@@ -118,7 +122,7 @@ watch(resumeAt, () => { pauseClockNow.value = Date.now(); });
 const tb = computed(() => s.value?.bp?.tiebreaker);
 const tbEntries = computed(() => s.value?.pool.filter(e => e.mod === 'TB') || []);
 const obs = useObsControl();
-const tbButtonHint = computed(() => tbEntries.value.length > 1 ? '本场有多张 TB，请先在开播前设置确定唯一决胜图。' : tb.value?.reason || '先核对系列比分与赛制，再准备 TB。');
+const tbButtonHint = computed(() => tbEntries.value.length > 1 ? '本场有多张 TB，请先在比赛配置确定唯一决胜图。' : tb.value?.reason || '先核对系列比分与赛制，再准备 TB。');
 const roomReview = computed(() => connection.value === 'synced' ? snapshot.value?.roomReview : null);
 const tbAlreadyPlayed = computed(() => roomReview.value?.kind === 'tb' && roomReview.value.stage !== 'ready');
 const prepareTiebreaker = async (forReplay = false) => {
@@ -158,7 +162,7 @@ const rollForm = reactive({ a: '', b: '', winner: '', pickFirst: '', banFirst: '
 const regularRollFields = [['winner', 'Roll 胜方'], ['pickFirst', '先 Pick'], ['banFirst', '先 Ban']] as const;
 const rollFields = computed(() => exhibition.value ? regularRollFields.filter(([field]) => field !== 'banFirst') : regularRollFields);
 const rollSetting = (field: keyof typeof rollForm) => `roll-${field}`;
-const autoForm = reactive({ bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', wsUrl: '' });
+const autoForm = reactive({ bp: true, scenes: true, results: true, profile: 'unverified', left: '', right: '', wsUrl: '' as string | null });
 const actionForm = reactive({ kind: '', team: '', slot: -1 });
 const mapForm = reactive({ entryId: '', pickedBy: '' });
 const poolEntryId = ref('');
@@ -191,6 +195,9 @@ const resultRound = ref('');
 const reason = ref('');
 const localError = ref('');
 const settings = ref(false);
+const setupTab = ref<'match' | 'game' | 'obs'>('match');
+const titleBrand = computed(() => s.value?.match.custom ? s.value.match.title || '自定义赛事' : 'OCLR');
+watch([settings, titleBrand], ([open, brand]) => { document.title = `${brand} · ${open ? '比赛配置' : '直播员控制台'}`; }, { immediate: true });
 const startupDialog = ref<HTMLDialogElement>();
 const startupChoice = computed(() => snapshot.value?.startupChoice);
 watch([startupChoice, startupDialog], ([token, dialog]) => {
@@ -269,7 +276,6 @@ const roundStatusLabel = (r: Round) => r.resultSource === 'series-correction' ? 
   : r.status === 'recorded' && !r.winner ? '已记录平局' : roundStatus[r.status];
 watch(s, value => {
   if (!value) return;
-  document.title = `${value.match.custom ? value.match.title || '自定义赛事' : 'OCLR'} · 直播员控制台`;
   const nextIncidentRoundKey = `${value.id}:${value.currentRoundId}`;
   if (incidentRoundKey !== nextIncidentRoundKey) { incidentRoundKey = nextIncidentRoundKey; incidentReason.value = ''; incidentOpen.value = false; }
   const nextIncidentKey = value.incident?.at || '';
@@ -293,7 +299,8 @@ watch(s, value => {
   const nextMatchKey = JSON.stringify([value.id, value.match.stageName, value.match.bestOf, value.match.bpRule, value.match.title, value.match.teams, value.match.mode, value.match.source, value.pool]);
   if (nextMatchKey !== matchKey) {
     matchKey = nextMatchKey;
-    const fields = { stageName: value.match.stageName || '', bestOf: value.match.bestOf == null ? '' : String(value.match.bestOf), bpRule: value.match.bpRule || '', title: value.match.title, a: value.match.teams.a.name, b: value.match.teams.b.name,
+    const fields = { stageName: value.match.stageName || '', bestOf: value.match.bestOf == null ? '' : String(value.match.bestOf), bpRule: value.match.bpRule || '',
+      title: value.match.title, a: value.match.teams.a.name, b: value.match.teams.b.name,
       rosterA: formatRosterInput(value.match.teams.a.roster), rosterB: formatRosterInput(value.match.teams.b.roster),
       pool: value.pool.map(e => `${e.label} ${e.beatmapId} ${e.title}`).join('\n'), mode: value.match.mode, source: value.match.source };
     for (const [key, field] of Object.entries(fields)) {
@@ -645,15 +652,65 @@ function stepSeriesScore(team: Team, delta: number) {
 const latestResult = computed(() => [...(s.value?.rounds || [])].reverse().find(r => r.status === 'recorded'));
 const seriesPayload = (team: Team, value: number) => ({ ...s.value!.series, [team]: value, reason: note('直播员核对后直接校正系列比分') });
 const display = (scene: string) => run('display', { scene });
+const setupRoom = computed(() => liveRoom(snapshot.value, connection.value));
+const enabledFollows = computed(() => [s.value?.auto.bp, s.value?.auto.scenes, s.value?.auto.results].filter(Boolean).length);
+const setupSource = computed(() => s.value?.match.custom ? '本地赛事资料' : ({ 'oclr-streaming': 'OCLR 直播任务', 'oclr': 'OCLR 已发布资料', 'oclr-archive': 'OCLR 历史资料', 'manual': '人工资料' }[s.value?.match.provenance || ''] || '本场已载入资料'));
+const setupGameStatus = computed(() => connection.value !== 'synced' ? '控制台连接中断 · 等待更新' :
+  live.value?.tosu.status === 'live' && !setupRoom.value ? '已连接 · 等待有效比赛房间' : gameStatus.value);
+const setupTabs = computed(() => [
+  { id: 'match', label: '本场资料', status: setupSource.value, icon: CalendarCheck },
+  { id: 'game', label: '游戏数据', status: setupGameStatus.value, icon: Gamepad2 },
+  { id: 'obs', label: 'OBS', status: obs.status, icon: Monitor },
+] as const);
+function setupTabKey(event: KeyboardEvent) {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  const tabs = setupTabs.value;
+  const current = tabs.findIndex(tab => tab.id === setupTab.value);
+  let index: number;
+  switch (event.key) {
+    case 'ArrowLeft': index = (current + tabs.length - 1) % tabs.length; break;
+    case 'ArrowRight': index = (current + 1) % tabs.length; break;
+    case 'Home': index = 0; break;
+    case 'End': index = tabs.length - 1; break;
+    default: return;
+  }
+  const tab = tabs[index]!;
+  event.preventDefault();
+  setupTab.value = tab.id;
+  (event.currentTarget as HTMLElement).querySelector<HTMLButtonElement>(`#setup-tab-${tab.id}`)?.focus({ preventScroll: true });
+}
+const setupGameHint = computed(() => {
+  if (connection.value !== 'synced') return '控制台恢复连接后会自动更新状态。';
+  if (setupRoom.value) return '';
+  if (live.value?.tosu.status === 'live') return '请在 osu!Tourney 进入比赛房间。';
+  if (live.value?.tosu.status === 'stale' || live.value?.tosu.status === 'invalid-data') return '请检查 tosu 与 osu!Tourney 是否正常运行。';
+  if (s.value?.match.custom && autoForm.wsUrl !== null) return '填写赛事使用的 tosu 地址，再进入比赛房间。';
+  return '打开 tosu 与 osu!Tourney，进入比赛房间后会自动连接。';
+});
+const followOptions = [
+  { key: 'bp', label: '自动 Ban / Pick', description: '按当前 BP 动作跟随换图', icon: ListFilter },
+  { key: 'scenes', label: '自动切换画面', description: '跟随换图、开打与结算', icon: Monitor },
+  { key: 'results', label: '自动计胜', description: '正常结算后按最终队分加赢图', icon: Trophy },
+] as const;
+const setupAttention = computed(() => {
+  const items: string[] = [];
+  if (connection.value !== 'synced') items.push('控制台连接中断，等待重新同步');
+  if (!setupRoom.value) items.push(setupGameStatus.value);
+  if (obs.unreachable || obs.state?.phase !== 'ready') items.push(obs.status);
+  else if (!obs.state.regular || !obs.state.ex || !obs.state.scenes.includes(obs.state.regular) || !obs.state.scenes.includes(obs.state.ex)) items.push('OBS 比赛场景待配置');
+  if (obs.state?.streamChat === 'pending') items.push('弹幕源待配置');
+  if (!s.value?.pool.length) items.push('图池尚未载入，可稍后补充');
+  return items;
+});
 const onKey = (event: KeyboardEvent) => {
-  if (document.querySelector('dialog[open], [role="listbox"]') || event.ctrlKey || event.metaKey || !event.altKey || event.defaultPrevented || disabled.value) return;
+  if (event.isComposing || document.querySelector('dialog[open], [role="listbox"]') || event.ctrlKey || event.metaKey || !event.altKey || event.defaultPrevented || disabled.value) return;
   const element = event.target as HTMLElement;
   if (element?.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(element?.tagName || '')) return;
   const shortcuts: Record<string, string> = { '1': 'waiting', '2': 'roll', '3': 'mappool', '4': 'playing', '5': 'victory' };
   const key = event.code.startsWith('Digit') ? event.code.slice(5) : event.key;
   if (shortcuts[key]) { event.preventDefault(); void display(shortcuts[key]!); }
 };
-onMounted(() => { window.addEventListener('message', previewReady); previewHeartbeat = setInterval(sharePreview, 5000); pauseClockTimer = setInterval(() => { if (pauseTimer.value || resumeAt.value || winnerPending.value) pauseClockNow.value = Date.now(); }, 250); document.body.classList.add('is-control'); document.title = 'OCLR · 直播员控制台'; window.addEventListener('keydown', onKey); });
+onMounted(() => { window.addEventListener('message', previewReady); previewHeartbeat = setInterval(sharePreview, 5000); pauseClockTimer = setInterval(() => { if (pauseTimer.value || resumeAt.value || winnerPending.value) pauseClockNow.value = Date.now(); }, 250); document.body.classList.add('is-control'); window.addEventListener('keydown', onKey); });
 onUnmounted(() => { window.removeEventListener('message', previewReady); clearTimeout(feedbackTimer); clearInterval(previewHeartbeat); clearInterval(pauseClockTimer); for (const timer of settingTimers.values()) clearTimeout(timer); settingQueue.clear(); document.body.classList.remove('is-control'); window.removeEventListener('keydown', onKey); });
 const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-CN', { hour12: false });
 </script>
@@ -666,10 +723,14 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       <div class="operator-edition">{{ s?.match.title }}<br>{{ stageSummary }}</div>
     </header>
     <nav class="operator-tabs" aria-label="控制台页面">
-      <button :aria-pressed="!settings && !diagnostics" @click="settings = false; diagnostics = false">比赛现场</button>
-      <button :aria-pressed="settings" @click="settings = true; diagnostics = false">开播前设置</button>
-
-      <a href="/overlay" target="_blank" rel="noopener">打开观众画面 ↗</a>
+      <div class="operator-page-tabs">
+        <button :aria-pressed="!settings && !diagnostics" @click="settings = false; diagnostics = false">比赛现场</button>
+        <button :aria-pressed="settings" @click="settings = true; diagnostics = false">比赛配置</button>
+      </div>
+      <div class="operator-page-links">
+        <a class="operator-showcase-link" href="/showcase" data-desktop-page="showcase"><PanelsTopLeft :size="17" aria-hidden="true" /><span>Showcase · 图池演示</span><ArrowRight :size="16" aria-hidden="true" /></a>
+        <a class="operator-output-link" href="/overlay" data-desktop-link="overlay" target="_blank" rel="noopener"><Monitor :size="17" aria-hidden="true" /><span>观众画面</span><ArrowUpRight :size="16" aria-hidden="true" /></a>
+      </div>
     </nav>
     <p v-if="!s" class="operator-empty">正在连接本场比赛。连接恢复后会自动显示原有记录。</p>
     <template v-if="s">
@@ -683,16 +744,29 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
       </section>
       <section v-if="!settings && !diagnostics && s.match.custom && !s.warmup && !s.match.bpPreset && !s.match.bpRule" class="operator-warm-time" aria-label="接续自动 BP 流程">
         <label>自动 BP 流程<ControlSelect :value="''" :disabled="disabled || s.paused || !!s.incident" aria-label="接续自动 BP 流程" @change="value => value && run('set-bp-preset', { value })"><option value="">尚未选择；目前只跟随明确的下一动作</option><option value="single-ban-alternate">双方各一次 Ban → 自动交替 Pick（无二轮 Ban）</option></ControlSelect></label>
-        <span>选择本场规则后接续后续动作，已有 Ban、Pick、比分和正在进行的比赛保留。未观察到的开场不补造；其他规则在本场设置中填写。</span>
+        <span>选择本场规则后接续后续动作，已有 Ban、Pick、比分和正在进行的比赛保留。未观察到的开场不补造；其他规则在比赛配置中填写。</span>
       </section>
-      <div class="operator-notice" aria-label="操作反馈" :aria-busy="busy">
+      <div class="operator-notice" :class="{ 'operator-notice--setup': settings }" aria-label="操作反馈" :aria-busy="busy">
           <p v-show="error || localError" role="alert" class="operator-error">{{ localError || error }}</p>
           <p v-show="!error && !localError" class="operator-feedback" :class="{ 'operator-feedback--undo': feedbackKind === 'undo' }" role="status">{{ feedback }}</p>
       </div>
-      <section v-show="settings" class="operator-setup" aria-label="本场设置">
-        <div class="operator-section-head"><h2>本场设置</h2><span>修改后自动同步，无需保存；已有比赛记录保留</span></div>
-        <StreamingAccess v-if="snapshot && !s.match.custom" :snapshot="snapshot" :disabled="disabled" />
-        <ObsSettings :obs="obs" />
+      <section v-show="settings" class="operator-setup" aria-labelledby="match-configuration-heading">
+        <div class="operator-section-head setup-title"><h2 id="match-configuration-heading">比赛配置</h2><span>修改后自动同步</span></div>
+        <div class="setup-workspace">
+          <div class="setup-sections">
+            <div class="setup-health" role="tablist" aria-label="配置类别" @keydown="setupTabKey">
+              <button v-for="tab in setupTabs" :id="`setup-tab-${tab.id}`" :key="tab.id" type="button" role="tab"
+                :aria-selected="setupTab === tab.id" :tabindex="setupTab === tab.id ? 0 : -1"
+                :aria-controls="`setup-${tab.id}`" :aria-labelledby="`setup-label-${tab.id}`"
+                :aria-describedby="`setup-status-${tab.id}`" @click="setupTab = tab.id">
+                <component :is="tab.icon" aria-hidden="true" />
+                <span><b :id="`setup-label-${tab.id}`">{{ tab.label }}</b><small :id="`setup-status-${tab.id}`">{{ tab.status }}</small></span>
+              </button>
+            </div>
+            <section v-show="setupTab === 'match'" id="setup-match" class="setup-panel" role="tabpanel" aria-labelledby="setup-tab-match" tabindex="0">
+              <div class="operator-section-head"><h3><CalendarCheck aria-hidden="true" />本场比赛</h3><span class="setup-badge">{{ setupSource }}</span></div>
+              <StreamingAccess v-if="snapshot && !s.match.custom" :snapshot="snapshot" :disabled="disabled" />
+              <details><summary>编辑本场显示 <span>标题、阶段与人数</span></summary>
         <div class="setup-meta">
           <label>比赛标题<input v-model="form.title" aria-label="比赛标题" maxlength="160" @input="scheduleSetting('title')" @blur="dirtySettings.has('title') && scheduleSetting('title', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.title }}</span></label>
           <p v-if="exhibition">阶段：{{ stageSummary }}</p>
@@ -700,8 +774,8 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
           <label v-if="s.match.custom">比赛阶段名称<input v-model="form.stageName" aria-label="比赛阶段名称" maxlength="80" @input="scheduleSetting('stageName')" @blur="dirtySettings.has('stageName') && scheduleSetting('stageName', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.stageName || '名称独立于 BO，可自由填写' }}</span></label>
           <label v-if="s.match.custom">BO<input v-model="form.bestOf" aria-label="BO" type="number" min="1" max="31" step="2" @input="scheduleSetting('bestOf')" @blur="dirtySettings.has('bestOf') && scheduleSetting('bestOf', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.bestOf || '填写明确的奇数（1–31）；不明确请留空等待' }}</span></label>
           <label>常规人数<ControlSelect v-model="form.mode" aria-label="常规人数" @change="scheduleSetting('mode', true)"><option v-if="exhibition">1v1</option><option v-if="exhibition">2v2</option><option>3v3</option><option>4v4</option></ControlSelect><span class="operator-hint" aria-live="polite">{{ settingMessages.mode }}</span></label>
-          <label>游戏源比例<ControlSelect v-model="form.source" aria-label="游戏源比例" @change="scheduleSetting('source', true)"><option value="4x3">4:3</option><option value="16x9">16:9</option></ControlSelect><span class="operator-hint" aria-live="polite">{{ settingMessages.source }}</span></label>
         </div>
+              </details>
         <details v-if="!s.match.custom && !exhibition" class="operator-import"><summary>从 OCLR 已发布资料选择</summary>
           <div class="operator-inline"><label>赛季 slug<input v-model="selection.edition" maxlength="80" @input="scheduleSetting('edition')" @blur="dirtySettings.has('edition') && scheduleSetting('edition', true)"><span class="operator-hint" aria-live="polite">{{ settingMessages.edition }}</span></label></div>
           <p>只读已发布资料；空集合保持为空，不自动填入其他赛季。</p>
@@ -727,23 +801,65 @@ const operationTime = (value: string) => new Date(value).toLocaleTimeString('zh-
           <label>BP 顺序<textarea v-model="form.bpRule" aria-label="BP 顺序" rows="8" maxlength="4000" spellcheck="false" placeholder="等待赛事规则；此处没有默认顺序" @input="scheduleSetting('bpRule')" @blur="dirtySettings.has('bpRule') && scheduleSetting('bpRule', true)"></textarea><span class="operator-hint" aria-live="polite">{{ settingMessages.bpRule || '未填写时等待。每队沿用两个 Ban 槽及现有 Ban 校验；TB 单独准备。' }}</span></label>
           <p>开始真实 BP 前可修改规则；开始后保留实际进度，通过现有当前动作／后续顺序纠错或撤销。播出标记不改变 BP 进度。</p>
         </details>
-        <details class="operator-follow"><summary>房间连接与自动跟随 <span>{{ s.auto.bp || s.auto.scenes || s.auto.results ? '已启用' : '关闭' }}</span></summary>
-            <label v-if="s.match.custom">tosu WebSocket 地址<input v-model="autoForm.wsUrl" aria-label="tosu WebSocket 地址" maxlength="500" placeholder="ws://直播机地址:端口/websocket/v2" @input="scheduleSetting('auto')" @blur="dirtySettings.has('auto') && scheduleSetting('auto', true)"><span class="operator-hint">修改后重新连接；留空等待，保留自动化意图</span></label>
-            <p>房间左右队名直接读取 tosu，收到有效赛事数据后自动跟随，无需手动填写或确认。</p>
-            <p>当前读数：{{ live?.tosu.data?.tourney?.teams.left || '—' }} / {{ live?.tosu.data?.tourney?.teams.right || '—' }} · {{ gameStatus }}</p>
-            <label class="operator-check"><input v-model="autoForm.bp" type="checkbox" @change="scheduleSetting('auto', true)">按当前 BP 动作自动 Ban / Pick</label>
-            <label class="operator-check"><input v-model="autoForm.scenes" type="checkbox" @change="scheduleSetting('auto', true)">换图 / 比赛开始 / 结算时自动切换画面</label>
-            <label class="operator-check"><input v-model="autoForm.results" type="checkbox" @change="scheduleSetting('auto', true)">正常结算按最终队分自动加赢图</label><p role="status">{{ settingMessages.auto || '自动化默认开启；资料不足时等待，恢复后自动建立基线。明确暂停保留，普通人工修正立即生效。' }}</p>
-          </details>
-        <details class="operator-follow"><summary>可选：后续 BP 顺序</summary><p>只用于需要自动跟随已知顺序的比赛。可直接从当前局开始，之前未跟踪的 Ban／Pick 无需补录；这里仅修改后续动作。</p>
-          <div v-for="(row, i) in plan.rows" :key="i" class="operator-plan-row"><label>第 {{ i + 1 }} 项队伍<ControlSelect v-model="row.team" @change="scheduleSetting('plan', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><label>动作<ControlSelect v-model="row.kind" @change="scheduleSetting('plan', true)"><option value="">请选择</option><option value="ban">Ban</option><option value="pick">Pick</option></ControlSelect></label><label v-if="row.kind === 'ban'">Ban 槽<ControlSelect v-model="row.slot" @change="scheduleSetting('plan', true)"><option :value="-1">请选择</option><option :value="0">Ban 1</option><option :value="1">Ban 2</option></ControlSelect></label><button @click="plan.rows.splice(i, 1); scheduleSetting('plan', true)">删除第 {{ i + 1 }} 项</button></div>
-          <div class="operator-inline"><button :disabled="plan.rows.length >= 40" @click="plan.rows.push({ team: '', kind: '', slot: -1 }); scheduleSetting('plan', true)">添加一项</button><button @click="plan.rows = s.queue.map(a => ({ team: a.team, kind: a.kind, slot: a.slot ?? -1 }))">载入现有后续动作</button></div><label>核实来源 / 负责人（可选）<input v-model="plan.verifiedBy" maxlength="160" placeholder="可补充本场顺序的来源" @input="scheduleSetting('plan')" @blur="dirtySettings.has('plan') && scheduleSetting('plan', true)"></label><p role="status">{{ settingMessages.plan || '队伍与动作选全后自动生效；核实来源可选。' }}</p>
-        </details>
-        <details class="desk-management"><summary>管理比赛记录</summary><div class="operator-inline">
-          <button :disabled="disabled || !hasMatchRecords" :data-unavailable="connection !== 'synced' || !hasMatchRecords" @click="openClearRecords">全部撤销</button>
-        <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
-        </div></details>
-        <button @click="diagnostics = true; settings = false">查看维护详情</button>
+              <div class="setup-match-tools">
+                <details class="operator-follow"><summary>可选：后续 BP 顺序</summary><p>只用于需要自动跟随已知顺序的比赛。可直接从当前局开始，之前未跟踪的 Ban／Pick 无需补录；这里仅修改后续动作。</p>
+                  <div v-for="(row, i) in plan.rows" :key="i" class="operator-plan-row"><label>第 {{ i + 1 }} 项队伍<ControlSelect v-model="row.team" @change="scheduleSetting('plan', true)"><option value="">请选择</option><option value="a">{{ names.a }}</option><option value="b">{{ names.b }}</option></ControlSelect></label><label>动作<ControlSelect v-model="row.kind" @change="scheduleSetting('plan', true)"><option value="">请选择</option><option value="ban">Ban</option><option value="pick">Pick</option></ControlSelect></label><label v-if="row.kind === 'ban'">Ban 槽<ControlSelect v-model="row.slot" @change="scheduleSetting('plan', true)"><option :value="-1">请选择</option><option :value="0">Ban 1</option><option :value="1">Ban 2</option></ControlSelect></label><button @click="plan.rows.splice(i, 1); scheduleSetting('plan', true)">删除第 {{ i + 1 }} 项</button></div>
+                  <div class="operator-inline"><button :disabled="plan.rows.length >= 40" @click="plan.rows.push({ team: '', kind: '', slot: -1 }); scheduleSetting('plan', true)">添加一项</button><button @click="plan.rows = s.queue.map(a => ({ team: a.team, kind: a.kind, slot: a.slot ?? -1 }))">载入现有后续动作</button></div><label>核实来源 / 负责人（可选）<input v-model="plan.verifiedBy" maxlength="160" placeholder="可补充本场顺序的来源" @input="scheduleSetting('plan')" @blur="dirtySettings.has('plan') && scheduleSetting('plan', true)"></label><p role="status">{{ settingMessages.plan || '队伍与动作选全后自动生效；核实来源可选。' }}</p>
+                </details>
+                <details class="desk-management"><summary>管理比赛记录</summary><div class="operator-inline">
+                  <button :disabled="disabled || !hasMatchRecords" :data-unavailable="connection !== 'synced' || !hasMatchRecords" @click="openClearRecords">全部撤销</button>
+                  <button class="operator-reset" :disabled="disabled" :data-unavailable="connection !== 'synced'" @click="openInitialize">初始化</button>
+                </div></details>
+                <button @click="diagnostics = true; settings = false">查看维护详情</button>
+              </div>
+            </section>
+            <section v-show="setupTab === 'game'" id="setup-game" class="setup-panel" role="tabpanel" aria-labelledby="setup-tab-game" tabindex="0">
+              <div class="operator-section-head"><h3><Gamepad2 aria-hidden="true" />游戏连接</h3><span class="setup-badge">{{ live?.sources?.tosu === 'simulated' ? '模拟信号' : 'tosu' }}</span></div>
+              <div class="setup-game-connection" role="status">
+                <Wifi v-if="connection === 'synced' && live?.tosu.status === 'live'" :size="18" aria-hidden="true" /><WifiOff v-else :size="18" aria-hidden="true" />
+                <div><strong>{{ setupGameStatus }}</strong>
+                  <p v-if="setupRoom" class="setup-room"><span>左队 · <b>{{ setupRoom.teams.left }}</b></span><span>右队 · <b>{{ setupRoom.teams.right }}</b></span></p>
+                  <p v-else>{{ setupGameHint }}</p>
+                </div>
+              </div>
+              <label v-if="s.match.custom && live?.sources?.launcherTosu" class="operator-check">
+                <input type="checkbox" :checked="autoForm.wsUrl === null" @change="autoForm.wsUrl = ($event.target as HTMLInputElement).checked ? null : ''; scheduleSetting('auto', true)">
+                使用 Windows 启动器检测的本机 tosu
+              </label>
+              <label v-if="s.match.custom && (autoForm.wsUrl !== null || !live?.sources?.launcherTosu)">
+                tosu WebSocket 地址
+                <input :value="autoForm.wsUrl || ''" aria-label="tosu WebSocket 地址" maxlength="500" placeholder="ws://直播机地址:端口/websocket/v2" @input="autoForm.wsUrl = ($event.target as HTMLInputElement).value; scheduleSetting('auto')" @blur="dirtySettings.has('auto') && scheduleSetting('auto', true)">
+                <span class="operator-hint">修改后重新连接；留空等待，保留自动化意图。</span>
+              </label>
+              <div class="setup-follow-head"><h4><Settings2 :size="17" aria-hidden="true" />自动跟随</h4><span>{{ enabledFollows ? `${enabledFollows} / 3 已开启` : '全部关闭' }}</span></div>
+              <div class="setup-follow-options" role="group" aria-label="自动跟随">
+                <label v-for="option in followOptions" :key="option.key" class="setup-follow-option">
+                  <component :is="option.icon" :size="18" aria-hidden="true" />
+                  <span><strong>{{ option.label }}</strong><small :id="`follow-${option.key}-description`">{{ option.description }}</small></span>
+                  <input v-model="autoForm[option.key]" type="checkbox" role="switch" :aria-label="option.label" :aria-describedby="`follow-${option.key}-description`" @change="scheduleSetting('auto', true)">
+                </label>
+              </div>
+              <p v-if="s.paused || s.incident" class="setup-follow-notice" role="status"><TriangleAlert :size="16" aria-hidden="true" />{{ s.paused ? '播出已暂停，请到比赛现场结束暂停。' : '本局等待核对，请到比赛现场处理。' }}</p>
+              <p v-if="settingMessages.auto" class="operator-hint setup-follow-feedback" role="status">{{ settingMessages.auto }}</p>
+            </section>
+            <section v-show="setupTab === 'obs'" id="setup-obs" class="setup-panel" role="tabpanel" aria-labelledby="setup-tab-obs" tabindex="0">
+              <div class="operator-section-head"><h3><Monitor aria-hidden="true" />OBS 与播出画面</h3><span class="setup-badge">{{ obs.unreachable ? '状态待更新' : obs.state?.phase === 'ready' ? '已连接' : '待连接' }}</span></div>
+              <ObsSettings :obs="obs" embedded>
+                <div class="setup-source-row">
+          <label>游戏源比例<ControlSelect v-model="form.source" aria-label="游戏源比例" @change="scheduleSetting('source', true)"><option value="4x3">4:3</option><option value="16x9">16:9</option></ControlSelect><span class="operator-hint" aria-live="polite">{{ settingMessages.source }}</span></label>
+                </div>
+              </ObsSettings>
+            </section>
+          </div>
+          <aside class="setup-summary" aria-label="本场摘要">
+            <h3>本场摘要</h3><h2>{{ s.match.title || '尚未设置标题' }}</h2>
+            <div class="setup-versus"><strong>{{ names.a }}</strong><span>vs</span><strong>{{ names.b }}</strong></div>
+            <p>{{ stageSummary }}</p><div class="setup-facts"><span>{{ s.match.mode }}</span><span>{{ s.match.source === '4x3' ? '4:3' : '16:9' }}</span><span>图池 {{ s.pool.length }} 张</span></div>
+            <details class="setup-preview" open><summary>Overlay 预览</summary><iframe v-if="settings" ref="setupPreview" src="/overlay" title="比赛配置 Overlay 预览" @load="sharePreview"></iframe><a href="/overlay" data-desktop-link="overlay" target="_blank" rel="noopener">打开观众画面 ↗</a></details>
+            <div class="setup-attention"><h3><TriangleAlert v-if="setupAttention.length" aria-hidden="true" />{{ setupAttention.length ? '待处理' : '连接状态' }}</h3><ul v-if="setupAttention.length"><li v-for="item in setupAttention" :key="item">{{ item }}</li></ul><p v-else>已收到连接状态，请在 OBS 核对实际播出画面和声音。</p></div>
+            <button class="operator-primary" @click="settings = false; diagnostics = false">进入比赛现场 <ArrowRight aria-hidden="true" /></button>
+          </aside>
+        </div>
       </section>
 
       <section v-if="diagnostics" class="operator-records" aria-label="维护详情">

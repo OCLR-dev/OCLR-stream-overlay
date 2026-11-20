@@ -89,6 +89,10 @@ export class StreamingSource {
     const data = await readWebsiteShowcase({ backend: this.backend, edition, token, isCurrent, fetchImpl: this.fetch, readJson: this.readJson }, input);
     return { data, isCurrent };
   }
+  authorizedEdition() {
+    const { status, edition, updatedAt } = this.state;
+    return status === 'ready' && Date.now() - Date.parse(updatedAt) <= 30000 ? edition : null;
+  }
   publish(patch) { Object.assign(this.state, patch); this.notify(this.snapshot()); }
   beginAuthorization(edition, origin) {
     if (!slug(edition)) throw new Error('INVALID_EDITION');
@@ -185,8 +189,9 @@ export class StreamingSource {
     }
   }
   importCommand(input) {
-    const { data, edition, status, updatedAt } = this.state;
-    if (status !== 'ready' || Date.now() - Date.parse(updatedAt) > 30000 || !data?.nextFixture || input.fixtureId !== data.nextFixture.id) throw new Error('请等候有效的直播任务资料');
+    const { data } = this.state;
+    const edition = this.authorizedEdition();
+    if (!edition || !data?.nextFixture || input.fixtureId !== data.nextFixture.id) throw new Error('请等候有效的直播任务资料');
     const f = data.nextFixture, rules = data.stage?.scoringRules;
     if (!f.home || !f.away || f.home.id === f.away.id) throw new Error('对阵队伍尚未确认，请等待网站发布');
     // Missing scoring does not prevent selecting a task. Preserve the current

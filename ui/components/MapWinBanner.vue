@@ -3,7 +3,7 @@ import { onUnmounted, ref, watch } from 'vue';
 import { latestAutoWinAward, shortenWinTeamName } from '../autoWinAward';
 import type { Team } from '../model';
 import { useOverlay } from '../useOverlay';
-import TeamFlagPreview from './TeamFlagPreview.vue';
+import TeamFlag from './TeamFlag.vue';
 
 const { session, view, motionScope } = useOverlay();
 const DURATION = 5000;
@@ -60,7 +60,7 @@ onUnmounted(() => clearTimeout(hideTimer));
         <strong class="map-win-name">{{ banner.name }}</strong>
         <span class="map-win-suffix">赢得本图</span>
       </div>
-      <TeamFlagPreview class="map-win-flag" :team="banner.team" decorative />
+      <TeamFlag class="map-win-flag" :name="banner.name" decorative />
     </div>
   </div>
 </template>

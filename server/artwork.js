@@ -18,9 +18,9 @@ export function createSetIdResolver(fetchImpl = fetch, { gapMs = 1000, now = Dat
 }
 
 function matchingLive(snapshot, id) {
-  const { live } = snapshot;
-  const data = live.tosu.data;
-  return live.sources?.tosu !== 'simulated' && live.tosu.status === 'live' && data?.beatmap.id === id ? data.beatmap : null;
+  const { live, tosu } = snapshot;
+  const data = tosu.data;
+  return live.sources?.tosu !== 'simulated' && tosu.status === 'live' && data?.beatmap.id === id ? data.beatmap : null;
 }
 
 export function createArtworkHandler(config, fetchImpl, store, showcase = null) {
@@ -30,8 +30,8 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
   const snapshot = () => {
     // Portable startup binds the server before it restores the session.
     const current = config.session || store;
-    return current ? { session: { pool: [...current.state.pool, ...(showcase?.state.website ? [] : showcase?.state.pool || [])],
-      match: current.state.match, auto: current.state.auto }, live: current.live } : null;
+    return current ? { session: { pool: [...current.state.pool, ...(showcase?.state.website ? [] : showcase?.state.pool || [])] },
+      live: current.live, tosu: config.getTosuSource?.() || current.live.tosu } : null;
   };
   const backgrounds = new Map(); const pending = new Map();
   return async (req, res, url) => {
@@ -40,16 +40,6 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
     const id = Number(match?.[1]);
     const current = snapshot();
     const entry = current?.session.pool.find(item => item.beatmapId === id);
-    let tosuUrl = null;
-    try {
-      const url = new URL(current?.session.match.custom ? current.session.auto.wsUrl : config.wsUrl);
-      if (['ws:', 'wss:'].includes(url.protocol) && !url.username && !url.password && !url.search) {
-        url.protocol = url.protocol === 'ws:' ? 'http:' : 'https:';
-        url.pathname = '/files/beatmap/background'; url.hash = '';
-        tosuUrl = url.href;
-      }
-    } catch { /* A service without tosu can still use official covers. */ }
-
     const fail = status => { res.writeHead(status, { 'Cache-Control': 'no-store' }); res.end(); return true; };
     if (req.method !== 'GET') return fail(405);
     if (!match || url.search || !positiveId(id)) return fail(404);
@@ -65,8 +55,11 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff' });
       res.end(JSON.stringify(metadata)); return true;
     }
-    if (match[2] === 'background' && tosuUrl && liveMap) {
-      const key = JSON.stringify([tosuUrl, id, liveMap.checksum, liveMap.setId]);
+    const wsUrl = config.wsUrl;
+    const tosuUrl = match[2] === 'background' && liveMap ? backgroundUrl(wsUrl) : null;
+    if (tosuUrl) {
+      const backgroundKey = map => JSON.stringify([tosuUrl, id, map.checksum, map.setId]);
+      const key = backgroundKey(liveMap);
       let cached = backgrounds.get(key);
       if (!cached || cached.until <= Date.now()) {
         if (!pending.has(key)) pending.set(key, (async () => {
@@ -77,7 +70,7 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
             if (!response.ok || !IMAGE_TYPES.has(type)) throw new Error('INVALID_BACKGROUND');
             image = { type, bytes: await boundedBody(response, 8 * 1024 * 1024) };
             const latest = matchingLive(snapshot(), id);
-            if ((current.session.match.custom && snapshot().session.auto.wsUrl !== current.session.auto.wsUrl) || !latest || JSON.stringify([tosuUrl, id, latest.checksum, latest.setId]) !== key) image = null;
+            if (config.wsUrl !== wsUrl || !latest || backgroundKey(latest) !== key) image = null;
           } catch { /* Missing local artwork falls back to the verified official set. */ }
           const result = { image, until: Date.now() + (image ? HOUR : 10000) };
           remember(backgrounds, key, result, 8);
@@ -88,7 +81,7 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
       const latest = matchingLive(snapshot(), id);
       // The shortcut follows tosu's selected map. A map/room change while the
       // response is in flight must never attach its background to the old card.
-      if ((!current.session.match.custom || snapshot().session.auto.wsUrl === current.session.auto.wsUrl) && cached.image && latest && JSON.stringify([tosuUrl, id, latest.checksum, latest.setId]) === key) {
+      if (cached.image && config.wsUrl === wsUrl && latest && backgroundKey(latest) === key) {
         res.writeHead(200, { 'Content-Type': cached.image.type, 'Content-Length': cached.image.bytes.length,
           'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Artwork-Source': 'tosu' });
         res.end(cached.image.bytes); return true;
@@ -102,4 +95,14 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
       'Cache-Control': 'public, max-age=3600', 'X-Artwork-Source': 'osu-cover' });
     res.end(); return true;
   };
+}
+
+function backgroundUrl(wsUrl) {
+  try {
+    const url = new URL(wsUrl);
+    if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.search) return null;
+    url.protocol = url.protocol === 'ws:' ? 'http:' : 'https:';
+    url.pathname = '/files/beatmap/background'; url.hash = '';
+    return url.href;
+  } catch { return null; }
 }
