@@ -68,7 +68,7 @@ onUnmounted(() => {
     </div>
     <div class="workspace-view">
       <iframe ref="frame" :key="revision" :src="source" :title="title"
-        sandbox="allow-scripts allow-same-origin" allow="clipboard-write" referrerpolicy="origin"
+        sandbox="allow-scripts allow-same-origin allow-forms" allow="clipboard-write" referrerpolicy="origin"
         :class="{ 'workspace-pending': !loaded }" />
       <div v-if="!loaded" class="workspace-message" role="status">
         <p>{{ stalled ? '页面未能载入。请重新加载，或查看服务状态。' : '正在加载' + title + '…' }}</p>
