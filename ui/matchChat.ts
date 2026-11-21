@@ -10,7 +10,8 @@ export function formatChatTime(timestamp: unknown) {
   if (clock) {
     const [, hours, minutes, seconds] = clock;
     if (Number(hours) > 23 || Number(minutes) > 59 || (seconds !== undefined && Number(seconds) > 59)) return unknown;
-    return { text: `${hours!.padStart(2, '0')}:${minutes}:${seconds ?? '--'}`,
+    const hourMinute = `${hours!.padStart(2, '0')}:${minutes}`;
+    return { text: seconds === undefined ? hourMinute : `${hourMinute}:${seconds}`,
       title: seconds === undefined ? '来源仅提供时分，秒数未知' : '消息时间' };
   }
   // The simulator and other v2 sources may supply an ISO timestamp. Require an

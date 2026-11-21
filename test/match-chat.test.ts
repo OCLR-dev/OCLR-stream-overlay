@@ -70,7 +70,7 @@ test('ambiguous names stay neutral and nickname, message and source time are pre
 
 test('chat clocks retain real seconds and mark unavailable precision without using the arrival time', () => {
   for (const [source, expected] of [['00:00:00', '00:00:00'], ['9:08:07', '09:08:07'], ['[23:59:59]', '23:59:59'],
-    [' 12:34 ', '12:34:--'], ['[1:02]', '01:02:--']]) assert.equal(formatChatTime(source).text, expected);
+    [' 12:34 ', '12:34'], ['[1:02]', '01:02']]) assert.equal(formatChatTime(source).text, expected);
   assert.match(formatChatTime('12:34').title, /秒数未知/);
   for (const source of [null, undefined, '', 'invalid', '[12:34:56', '12:34:56]', '24:00:00', '12:60:00', '12:34:60', 123, '2026-11-09T12:34:56']) {
     assert.equal(formatChatTime(source).text, '--:--:--');
