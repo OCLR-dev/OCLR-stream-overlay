@@ -1009,20 +1009,36 @@ test('Windows migrates only its owned desktop items, leaves operator mixer sourc
   assert.deepEqual(obs.profile.preset.applicationAudio, saved, 'manual video binding cannot discard audio ownership');
 });
 
-test('missing or ambiguous Client 0 waits silently without falling back to another osu!.exe', async t => {
+test('application audio stays enabled and waits silently for a unique Client 0', async t => {
   const { obs, studio } = await setup(t);
   studio.kinds.push(applicationKind);
   studio.windows = studio.windows.filter(window => window.itemValue !== clientWindow(0).itemValue);
   await ready(obs); await obs.command({ action: 'create' });
   const assertWaiting = () => {
-    assert.equal(gameAudio(studio).inputSettings.window, '');
+    assert.deepEqual(gameAudio(studio).inputSettings, { window: '', priority: 2 });
     assert.equal(obs.snapshot().audio.bound, false);
-    for (const scene of [regular, ex]) assert.equal(studio.scenes.get(scene).find(item => item.sourceName === applicationAudio).sceneItemEnabled, false);
+    for (const scene of [regular, ex]) {
+      assert.equal(studio.scenes.get(scene)[0].sourceName, applicationAudio);
+      assert.equal(studio.scenes.get(scene)[0].sceneItemEnabled, true);
+    }
   };
   assertWaiting();
+  // A preset created by an older version may have disabled the unbound item.
+  const oldItem = studio.scenes.get(regular)[0];
+  await studio.request('SetSceneItemEnabled', { sceneName: regular, sceneItemId: oldItem.sceneItemId, sceneItemEnabled: false });
+  gameAudio(studio).inputSettings.priority = 1;
+  const before = studio.log.length;
+  await obs.command({ action: 'scan' });
+  assertWaiting();
+  assert.deepEqual(studio.log.slice(before).filter(r => /^(SetInputSettings|SetSceneItemEnabled)$/.test(r.type))
+    .map(r => r.type), ['SetInputSettings', 'SetSceneItemEnabled']);
+  const repaired = writes(studio).length;
+  await obs.command({ action: 'scan' });
+  assert.equal(writes(studio).length, repaired);
   studio.windows.push(clientWindow(0));
   await obs.command({ action: 'scan' });
-  assert.equal(gameAudio(studio).inputSettings.window, clientWindow(0).itemValue);
+  assert.deepEqual(gameAudio(studio).inputSettings, { window: clientWindow(0).itemValue, priority: 1 });
+  assert.equal(obs.snapshot().audio.bound, true);
   studio.windows.push(clientWindow(0, 'OtherClass'));
   await obs.command({ action: 'scan' }); assertWaiting();
   assert.match(obs.snapshot().audio.status, /重名/);

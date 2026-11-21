@@ -3,6 +3,10 @@ import { ensureDesktopAudio, presetScenes, windowOptions } from './presets.js';
 const kind = 'wasapi_process_output_capture';
 const name = 'OCLR · osu!tourney 音频';
 const layouts = Object.keys(presetScenes);
+const titlePriority = 1;
+// With an empty selection, title matching could capture an untitled window.
+// Executable matching with an empty executable cannot select a process.
+const unboundPriority = 2;
 const targetOf = (preset, layout) => preset.sceneIds[layout]
   ? { sceneUuid: preset.sceneIds[layout] } : { sceneName: presetScenes[layout] };
 const sourceOf = input => input.inputUuid ? { sourceUuid: input.inputUuid } : { sourceName: input.inputName };
@@ -62,7 +66,7 @@ export async function ensureTournamentAudio(call, preset, remember, { desktop = 
       if (shared) added = await call('CreateSceneItem', { ...scene.target, ...sourceOf(shared), sceneItemEnabled: false });
       else {
         added = await call('CreateInput', { ...scene.target, inputName, inputKind: kind,
-          inputSettings: { window: '', priority: 1 }, sceneItemEnabled: false });
+          inputSettings: { window: '', priority: unboundPriority }, sceneItemEnabled: false });
         shared = { inputName, inputUuid: added.inputUuid };
         saved = { name: inputName, uuid: added.inputUuid || null };
       }
@@ -78,13 +82,14 @@ export async function ensureTournamentAudio(call, preset, remember, { desktop = 
   const clients = choices.filter(window => window.index === 0);
   const selected = clients.length === 1 && windows.includes(clients[0]) ? clients[0] : null;
   const { inputSettings } = await call('GetInputSettings', { inputName: shared.inputName });
-  if (inputSettings.window !== (selected?.value || '') || inputSettings.priority !== 1) {
-    await call('SetInputSettings', { inputName: shared.inputName,
-      inputSettings: { window: selected?.value || '', priority: 1 }, overlay: true });
+  const window = selected?.value || '';
+  const priority = selected ? titlePriority : unboundPriority;
+  if (inputSettings.window !== window || inputSettings.priority !== priority) {
+    await call('SetInputSettings', { inputName: shared.inputName, inputSettings: { window, priority }, overlay: true });
   }
   for (const scene of scenes) {
-    if (scene.item.sceneItemEnabled !== !!selected) {
-      await call('SetSceneItemEnabled', { ...scene.target, sceneItemId: scene.item.sceneItemId, sceneItemEnabled: !!selected });
+    if (!scene.item.sceneItemEnabled) {
+      await call('SetSceneItemEnabled', { ...scene.target, sceneItemId: scene.item.sceneItemId, sceneItemEnabled: true });
     }
     // Migrate only our own old desktop items. The operator's global mixer and
     // sources in unrelated scenes are outside the preset's ownership.
