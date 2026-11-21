@@ -1,0 +1,29 @@
+name: Promote Windows v0.3.6
+on:
+  push:
+    branches: [codex/promote-windows-v0.3.6]
+    paths: [.github/workflows/promote-windows-v0.3.6.yml]
+permissions:
+  contents: write
+jobs:
+  promote:
+    if: github.repository == 'OCLR-dev/OCLR-stream-overlay'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Promote the verified Windows artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v0.3.6
+          RELEASE_COMMIT: ecf99699ce71cf038f47bc9470d6126a95ec2524
+        run: |
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
+          [[ "$tagged" == "$RELEASE_COMMIT" ]]
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+          jq -e --arg commit "$RELEASE_COMMIT" '
+            (.draft == false) and (.target_commitish == $commit) and
+            ([.assets[] | select(.state == "uploaded" and .size > 0) | .name] |
+              contains(["OCLR-Windows-x64.zip", "OCLR-Windows-x64.zip.sha256"]))
+          ' release.json > /dev/null
+          gh release edit "$RELEASE_TAG" --prerelease=false --latest --repo "$GITHUB_REPOSITORY"
