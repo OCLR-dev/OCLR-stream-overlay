@@ -4,7 +4,6 @@ import { vEmphasize } from '../motion';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
 import MapArtwork from './MapArtwork.vue';
-import MapCardMarquee from './MapCardMarquee.vue';
 import { MAP_METADATA_RETRY_MS, mapFileMetadata } from '../mapMetadata';
 import { mapStarDisplay } from '../mapStats';
 import { testModForCategory, type TestMapMetadata } from '../mapParameters';
@@ -156,7 +155,13 @@ onBeforeUnmount(() => {
           <MapArtwork class="map-base-artwork" :beatmap-id="entry.beatmapId" />
           <span class="map-entry-media"><MapArtwork :beatmap-id="entry.beatmapId" :variant="fullsizeCards.has(entry.id) ? 'fullsize' : 'cover'" /></span>
           <span v-if="entry.beatmapId > 0" class="map-stat map-star" :style="{ '--stat-color': starFor(entry).color || undefined, '--stat-ink': starFor(entry).ink }" :title="`星数 ${starFor(entry).value}`" :aria-label="`星数 ${starFor(entry).value}`"><span class="map-stat-label">★</span><span class="map-stat-value">{{ starFor(entry).value }}</span></span>
-          <span class="map-copy"><MapCardMarquee class="map-title" :text="entry.title || '标题未知'" /><MapCardMarquee v-if="artistFor(entry) || difficultyFor(entry)" class="map-meta" :text="metaText(entry)"><template v-if="artistFor(entry)"><span class="map-meta-artist">{{ artistFor(entry) }}</span><span class="map-meta-sep"> / </span></template><span class="map-meta-difficulty">{{ difficultyFor(entry) || '—' }}</span></MapCardMarquee></span>
+          <span class="map-copy">
+            <span class="map-title" :title="entry.title || '标题未知'">{{ entry.title || '标题未知' }}</span>
+            <span v-if="artistFor(entry) || difficultyFor(entry)" class="map-meta" :title="metaText(entry)">
+              <template v-if="artistFor(entry)"><span class="map-meta-artist">{{ artistFor(entry) }}</span><span class="map-meta-sep"> / </span></template>
+              <span class="map-meta-difficulty">{{ difficultyFor(entry) || '—' }}</span>
+            </span>
+          </span>
           <span class="map-index" :title="entry.label">#{{ cardNumber(entry, index) }}</span>
         </li>
       </ol>
