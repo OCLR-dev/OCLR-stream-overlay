@@ -905,19 +905,6 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 }
 .map-copy { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; max-height: 100%; overflow: hidden; text-shadow: 0 1px 4px #0008; }
 .map-title { display: block; max-height: 33px; overflow: hidden; padding-right: var(--map-number-reserve); font-size: 25.5px; font-weight: 700; line-height: 33px; text-overflow: ellipsis; white-space: nowrap; }
-/* Title and meta viewports clip to the space left of the #N reserve; long text
-   scrolls there instead of running under the card number. Keep the 40px gap in
-   sync with MapCardMarquee.vue's GAP. */
-.map-card-marquee-viewport { display: block; overflow: hidden; white-space: nowrap; }
-.map-card-marquee-track { display: inline-flex; white-space: nowrap; }
-.map-card-marquee-copy { display: inline-block; flex: none; }
-.map-card-marquee-viewport.is-scrolling .map-card-marquee-copy { padding-right: 40px; }
-.map-card-marquee-viewport.is-scrolling .map-card-marquee-track { will-change: transform; }
-/* Soften the cut edge while the text moves; the left edge stays sharp so the
-   beginning remains fully readable during the hold. */
-.map-card-marquee-viewport.is-scrolling {
-  mask-image: linear-gradient(90deg, #000, #000 calc(100% - 14px), transparent);
-}
 .map-meta { overflow: hidden; max-width: 100%; padding-right: var(--map-number-reserve); color: var(--muted); font-size: 21px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
 .map-status { --status-color: var(--map-team-color); --status-ink: var(--map-team-ink); position: relative; z-index: 3; display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; justify-content: center; box-sizing: border-box; width: 78px; height: 30px; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent); border-radius: 2px; background: color-mix(in srgb, var(--status-color) 10%, #120a26); color: var(--status-ink); font-size: 16px; font-weight: 700; line-height: 22px; white-space: nowrap; }
 /* Ban darkens the artwork; its title and corner badge remain legible. */
