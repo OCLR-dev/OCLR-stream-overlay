@@ -13,17 +13,23 @@ const state = computed(() => ({ exTeam: props.source.exTeam || 'none' }));
 const mapLabel = computed(() => view.value.shared ? view.value.currentMap?.label || '—' : view.value.mod);
 const mapMod = computed(() => view.value.shared ? view.value.currentMap?.mod : view.value.mod);
 const metadata = ref<TestMapMetadata | null>(null);
+const mapDifficulty = computed(() => view.value.currentMap?.difficulty?.trim() || metadata.value?.difficulty?.trim());
 const mapTitle = computed(() => {
   if (!view.value.shared) return '谱面标题占位';
   const map = view.value.currentMap;
-  return map?.title || metadata.value?.title || map?.label || view.value.emptyTitle || '尚未准备谱面';
+  const title = map?.title || metadata.value?.title || '';
+  const difficulty = mapDifficulty.value;
+  const marker = difficulty ? `[${difficulty}]` : '';
+  const index = marker ? title.indexOf(marker) : -1;
+  const songTitle = index < 0 ? title : [
+    title.slice(0, index).trimEnd(), title.slice(index + marker.length).trimStart(),
+  ].filter(Boolean).join(' ');
+  return songTitle || map?.label || view.value.emptyTitle || '尚未准备谱面';
 });
 const mapSubtitle = computed(() => {
   if (!view.value.shared) return '难度';
   const map = view.value.currentMap;
-  const difficulty = map?.difficulty?.trim() || metadata.value?.difficulty?.trim();
-  if (difficulty && mapTitle.value.includes(`[${difficulty}]`)) return '';
-  return difficulty || map?.artist || metadata.value?.artist || '—';
+  return mapDifficulty.value || map?.artist || metadata.value?.artist || '—';
 });
 watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod, () => view.value.metadataEnabled], ([id, mod, enabled], _, cleanup) => {
   metadata.value = null;
@@ -68,7 +74,7 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
     </div>
     <div class="current-map">
       <strong :title="mapTitle">{{ mapTitle }}</strong>
-      <div v-if="mapSubtitle" class="map-subline">
+      <div class="map-subline">
         <span class="map-sub" :title="mapSubtitle">{{ mapSubtitle }}</span>
       </div>
     </div>
