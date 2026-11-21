@@ -85,13 +85,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
-      group: windows-prerelease-${{ inputs.commit }}
+      group: windows-release-${{ inputs.commit }}
       cancel-in-progress: false
     steps:
       - uses: actions/download-artifact@v6
         with:
           artifact-ids: ${{ needs.windows.outputs.artifact-id }}
-      - name: Publish commit-specific prerelease
+      - name: Publish commit-specific Windows release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -120,24 +120,26 @@ jobs:
 
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
             --json isDraft,isPrerelease,targetCommitish,assets > release.json 2>release-error; then
-            jq -e '.isPrerelease' release.json > /dev/null
             if jq -e '.isDraft == false' release.json > /dev/null; then
               [[ "$tagged" == "$RELEASE_COMMIT" ]]
               jq -e --arg zip "$zip" --arg checksum "$checksum" \
                 '([.assets[].name] | contains([$zip, $checksum]))' release.json > /dev/null
-              echo "Windows prerelease already published for $RELEASE_COMMIT"
+              if jq -e '.isPrerelease' release.json > /dev/null; then
+                gh release edit "$tag" --prerelease=false --latest --repo "$GITHUB_REPOSITORY"
+              fi
+              echo "Windows release already published for $RELEASE_COMMIT"
               exit 0
             fi
             jq -e --arg commit "$RELEASE_COMMIT" '.targetCommitish == $commit' release.json > /dev/null
             gh release upload "$tag" "$zip" "$checksum" --clobber --repo "$GITHUB_REPOSITORY"
-            gh release edit "$tag" --draft=false --prerelease --latest=false --repo "$GITHUB_REPOSITORY"
+            gh release edit "$tag" --draft=false --prerelease=false --latest --repo "$GITHUB_REPOSITORY"
           elif grep -qx 'release not found' release-error; then
             printf 'Windows x64 便携版\n\n源码提交：%s\n\n[打包与原生启动验证](%s/%s/actions/runs/%s)\n' \
               "$RELEASE_COMMIT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > release-notes.md
             gh release create "$tag" "$zip" "$checksum" \
               --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
               --title "$tag · Windows x64" \
-              --notes-file release-notes.md --prerelease --latest=false
+              --notes-file release-notes.md --latest
           else
             cat release-error >&2
             exit 1
