@@ -74,9 +74,8 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
     </div>
     <div class="map-params" :data-source="parameters.source" :data-range="parameters.rangeMode" :data-compact="compactParameters" :aria-label="parameters.rangeMode ? '谱面参数：各选手实际数值范围，相同值合并显示' : '谱面参数'">
       <span v-for="param in parameterRows" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
-      <div v-if="view.ex || parameters.rangeMode || view.mapRule" class="map-status-slot">
+      <div v-if="view.ex || view.mapRule" class="map-status-slot">
         <span v-if="view.ex" class="map-chip" data-map-ex data-format="ex" :data-ex-team="state.exTeam" :title="view.exLabel" :aria-label="view.exLabel">{{ view.exLabel }}</span>
-        <span v-if="parameters.rangeMode" class="map-range-note">选手参数范围</span>
         <ScrollingText v-if="view.mapRule" class="map-rule" data-map-rule :text="view.mapRule" :title="view.mapRule" />
       </div>
     </div>

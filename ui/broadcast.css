@@ -745,7 +745,6 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .current-map strong { max-width: 100%; overflow: hidden; color: #fff; font-size: 30px; font-weight: 800; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 .map-subline { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 100%; min-width: 0; }
 .map-sub { min-width: 0; overflow: hidden; color: var(--muted); font-size: 20px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
-.map-range-note { flex-shrink: 0; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .map-rule { flex: 0 1 auto; min-width: 0; max-width: 60%; color: #e6cbff; font-size: 13px; line-height: 1.2; }
 /* A long map rule becomes a seamless two-copy ticker; short rules stay put.
    Keep the 28px gap in sync with ScrollingText.vue's GAP. */
