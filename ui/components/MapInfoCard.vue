@@ -18,10 +18,12 @@ const mapTitle = computed(() => {
   const map = view.value.currentMap;
   return map?.title || metadata.value?.title || map?.label || view.value.emptyTitle || '尚未准备谱面';
 });
-const mapDifficulty = computed(() => {
+const mapSubtitle = computed(() => {
   if (!view.value.shared) return '难度';
   const map = view.value.currentMap;
-  return map?.difficulty || metadata.value?.difficulty || map?.artist || metadata.value?.artist || '—';
+  const difficulty = map?.difficulty?.trim() || metadata.value?.difficulty?.trim();
+  if (difficulty && mapTitle.value.includes(`[${difficulty}]`)) return '';
+  return difficulty || map?.artist || metadata.value?.artist || '—';
 });
 watch([() => view.value.currentMap?.beatmapId, () => view.value.currentMap?.mod, () => view.value.metadataEnabled], ([id, mod, enabled], _, cleanup) => {
   metadata.value = null;
@@ -66,16 +68,15 @@ const compactParameters = computed(() => parameters.value.rangeMode && parameter
     </div>
     <div class="current-map">
       <strong :title="mapTitle">{{ mapTitle }}</strong>
-      <div class="map-subline">
-        <span class="map-sub" :title="mapDifficulty">{{ mapDifficulty }}</span>
+      <div v-if="mapSubtitle" class="map-subline">
+        <span class="map-sub" :title="mapSubtitle">{{ mapSubtitle }}</span>
       </div>
     </div>
     <div class="map-params" :data-source="parameters.source" :data-range="parameters.rangeMode" :data-compact="compactParameters" :aria-label="parameters.rangeMode ? '谱面参数：各选手实际数值范围，相同值合并显示' : '谱面参数'">
       <span v-for="param in parameterRows" :key="param.label" :data-map-param="param.label"><b>{{ param.label }}</b> {{ param.value }}</span>
-      <div v-if="view.ex || parameters.rangeMode || view.mapRule || parameters.source === 'official-preview'" class="map-status-slot">
+      <div v-if="view.ex || parameters.rangeMode || view.mapRule" class="map-status-slot">
         <span v-if="view.ex" class="map-chip" data-map-ex data-format="ex" :data-ex-team="state.exTeam" :title="view.exLabel" :aria-label="view.exLabel">{{ view.exLabel }}</span>
         <span v-if="parameters.rangeMode" class="map-range-note">选手参数范围</span>
-        <span v-if="parameters.source === 'official-preview'" class="map-range-note">{{ parameters.mod }} 参数预览</span>
         <ScrollingText v-if="view.mapRule" class="map-rule" data-map-rule :text="view.mapRule" :title="view.mapRule" />
       </div>
     </div>
