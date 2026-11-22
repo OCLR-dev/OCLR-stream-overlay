@@ -334,3 +334,50 @@ test('streaming accepts absent/null image versions and rejects malformed image k
     assert.throws(() => validateStreaming(body), /INVALID_RESPONSE/);
   }
 });
+
+test('streaming task import automatically matches full registered team rosters from the same edition public teams list', async () => {
+  const publicTeams = {
+    meta: { apiVersion: '1' },
+    data: [
+      {
+        id: id(4),
+        name: 'Red',
+        members: [
+          { osuId: 1001, username: 'Red_Captain' },
+          { osuId: 1002, username: 'Red_Two' },
+          { osuId: 1003, username: 'Red_Three' },
+          { osuId: 1004, username: 'Red_Four' },
+          { osuId: 1005, username: 'Red_Five' },
+          { osuId: 1006, username: 'Red_Six' },
+        ],
+      },
+      {
+        id: id(5),
+        name: 'Blue',
+        members: [
+          { osuId: 2001, username: 'Blue_Captain' },
+          { osuId: 2002, username: 'Blue_Two' },
+          { osuId: 2003, username: 'Blue_Three' },
+          { osuId: 2004, username: 'Blue_Four' },
+          { osuId: 2005, username: 'Blue_Five' },
+        ],
+      },
+    ],
+  };
+  const { s } = source(async url => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/api/v1/tournaments/s11/teams') return response(publicTeams);
+    return response(parsed.search ? empty() : fixture());
+  });
+  await s.connect({ edition: 's11', token });
+  const store = new SessionStore();
+  await store.command(await s.importTaskCommand({ id: 'import-with-rosters', version: store.state.version, fixtureId: id(1) }));
+  assert.equal(store.state.match.teams.a.roster.length, 6);
+  assert.equal(store.state.match.teams.b.roster.length, 5);
+  assert.deepEqual(store.state.match.teams.a.roster[0], { name: 'Red_Captain', osuId: 1001 });
+  assert.deepEqual(store.state.match.teams.a.roster[5], { name: 'Red_Six', osuId: 1006 });
+  assert.deepEqual(store.state.match.teams.b.roster[4], { name: 'Blue_Five', osuId: 2005 });
+  s.disconnect();
+  store.close();
+});
+

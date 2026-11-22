@@ -111,7 +111,7 @@ export function createOverlayServer(config, fetchImpl = fetch, uiRoot = UI_ROOT,
   const artwork = createArtworkHandler(config, fetchImpl, config.session || session, showcase);
   const playerArt = createPlayerArtHandler(fetchImpl);
   const teamArt = createTeamArtHandler(config);
-  const streaming = new StreamingSource({ backend: config.backend || 'https://oclr.org', fetchImpl, readJson: readBoundedJson, notify: value => {
+  const streaming = new StreamingSource({ backend: config.backend || 'https://oclr.org', origin: config.origin, key: config.key, fetchImpl, readJson: readBoundedJson, notify: value => {
     const store = config.session || session;
     if (store) { store.live.streaming = value; store.emit(); }
     if (replays.connection !== streaming.showcaseConnection().connection) replays.emit();
