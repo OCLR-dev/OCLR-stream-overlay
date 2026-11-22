@@ -24,8 +24,8 @@ test('EX reduces both teams, excludes Captain/T1, preserves counters and result 
       assert.equal(view.count, mode === '3v3' ? 2 : 3);
       assert.equal(view.players.length, view.count * 2);
       assert.ok(view.players.every(p => !['Captain', 'T1'].includes(p.role)));
-      assert.equal(view.resultA, mode === '3v3' ? '67,0000' : '97,0000');
-      assert.equal(view.resultB, mode === '3v3' ? '64,0000' : '93,0000');
+      assert.equal(view.resultA, mode === '3v3' ? "670'000" : "970'000");
+      assert.equal(view.resultB, mode === '3v3' ? "640'000" : "930'000");
       const result = changeField(state, 'scene', 'map-result');
       assert.equal(result.exA, 1);
       assert.equal(result.exB, 0);
