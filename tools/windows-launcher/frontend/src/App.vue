@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { LayoutDashboard, Settings2, ScrollText, Info, ExternalLink, Copy, Play, FolderOpen, RefreshCw, Power, ChevronRight, Monitor, PanelsTopLeft, ListMusic } from '@lucide/vue';
 import appIcon from '../../assets/oclr-stream.ico';
 import { launcher } from './bridge';
-import type { LauncherState } from './bridge';
+import type { LauncherState, OverlayRendering } from './bridge';
 import ServiceFrame from './ServiceFrame.vue';
 
 const pages = [
@@ -22,6 +22,8 @@ const portDirty = ref(false);
 const busy = ref(false);
 const feedback = ref('');
 const error = ref('');
+const overlayRendering = ref<OverlayRendering>();
+const overlayRenderingReadError = ref('');
 const log = ref('');
 const logElement = ref<HTMLElement>();
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -35,6 +37,19 @@ watch(page, value => {
   if (value === 'showcase') showcaseVisited.value = true;
   error.value = '';
   feedback.value = '';
+});
+watch([page, () => state.value.status, () => state.value.servicePID], async ([currentPage, status], _old, onCleanup) => {
+  overlayRendering.value = undefined;
+  overlayRenderingReadError.value = '';
+  if (currentPage !== 'settings' || status !== 'ready') return;
+  let current = true;
+  onCleanup(() => { current = false; });
+  try {
+    const settings = await launcher().GetOverlayRendering();
+    if (current) overlayRendering.value = settings;
+  } catch (reason) {
+    if (current) overlayRenderingReadError.value = reason instanceof Error ? reason.message : String(reason);
+  }
 });
 const statusLabel = computed(() => ({ starting: '正在启动服务', ready: '直播服务已就绪', waiting: '等待服务响应', stopped: '服务已停止', failed: '服务启动失败', stopping: '正在保存比赛' }[state.value.status] || '正在检查服务'));
 const title = computed(() => pages.find(item => item.id === page.value)?.label);
@@ -67,6 +82,14 @@ async function changeStorage() {
   await act(async () => {
     if (await launcher().ChangeStorage(!state.value.portableStorage)) await launcher().Quit();
   });
+}
+async function changeOverlayRendering(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const highResolution = input.checked;
+  input.checked = overlayRendering.value?.highResolution ?? false;
+  await act(async () => {
+    overlayRendering.value = await launcher().SetOverlayRendering(highResolution);
+  }, '比赛画面设置已保存。');
 }
 onMounted(poll);
 onUnmounted(() => { disposed = true; clearTimeout(timer); });
@@ -116,6 +139,17 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); });
             <button :disabled="locked" @click="changeStorage"><FolderOpen :size="16" />{{ state.portableStorage ? '切回 Windows 用户目录' : '启用完全便携模式' }}</button>
           </article>
           <article class="card"><h2>直播服务</h2><p>修改端口后重新启动。比赛记录会保留，OBS 输出会短暂中断。</p><label for="port">本机端口</label><div class="input-row"><input id="port" v-model="port" inputmode="numeric" maxlength="5" :disabled="locked" @input="portDirty = true" /><button :disabled="locked" @click="restart"><RefreshCw :size="16" />重新启动</button></div><div class="address-row"><code>{{ state.address }}/overlay</code><button :disabled="locked" @click="act(() => launcher().CopyAddresses(true), '控制台、OBS 与 Showcase 地址已复制。')"><Copy :size="15" />复制全部地址</button></div></article>
+          <article class="card">
+            <h2>比赛画面</h2>
+            <label class="setting-checkbox">
+              <input type="checkbox" :checked="overlayRendering?.highResolution ?? false" :disabled="locked || !overlayRendering"
+                aria-describedby="overlay-rendering-help" @change="changeOverlayRendering" />
+              高分辨率渲染
+            </label>
+            <p id="overlay-rendering-help">开启后，OCLR 比赛浏览器源以 3840×2160 渲染，OBS 画布仍为 1920×1080。切换时浏览器源会短暂刷新。</p>
+            <p v-if="overlayRenderingReadError || overlayRendering?.error" role="alert">{{ overlayRenderingReadError || overlayRendering?.error }}</p>
+            <p v-else-if="overlayRendering?.highResolution && !overlayRendering.applied" role="status">已保存，连接 OCLR 管理的比赛场景后应用。</p>
+          </article>
           <article class="card"><h2>比赛工具</h2><div class="setting-tool"><label>tosu 应用程序</label><p class="path">{{ state.tosuPath || '尚未选择 tosu.exe' }}</p><button :disabled="locked" @click="act(() => launcher().ChooseTool('tosu'))"><FolderOpen :size="16" />选择 tosu.exe</button></div><div class="setting-tool"><label>osu!stable 应用程序</label><p class="path">{{ state.osuPath || '尚未选择 osu!.exe' }}</p><div class="actions"><button :disabled="locked" @click="act(() => launcher().ChooseTool('osu'))"><FolderOpen :size="16" />选择 osu!.exe</button><button :disabled="locked || !running || !state.osuPath" @click="act(() => launcher().Tourney(false))">生成比赛配置</button></div></div></article>
         </section>
         <section v-else-if="page === 'logs'" class="logs-page" aria-label="本机日志"><div class="section-heading"><h2>最近运行记录</h2><button :disabled="locked" @click="act(() => launcher().OpenLog())"><ExternalLink :size="15" />打开完整日志</button></div><p>遇到启动或连接问题时，可在这里查看原因。</p><pre ref="logElement" tabindex="0" aria-label="最近日志">{{ log || '暂无日志记录。' }}</pre></section>

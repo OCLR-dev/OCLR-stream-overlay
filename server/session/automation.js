@@ -1,5 +1,6 @@
 import { resultFacts } from './room-facts.js';
 import { competitionScore } from './scoring.js';
+import { exRosterMissing } from './ex-scoring.js';
 import { randomUUID } from 'node:crypto';
 import { observedTransition, observation, currentRound, entryOf, seriesComplete, SessionRejection } from './model.js';
 import { tosuRoomTeams } from '../../src/tosu.js';
@@ -80,7 +81,7 @@ export class RoomAutomation {
     return { state, note: reason };
   }
 
-  ingest(state, frame, now = Date.now()) {
+  ingest(state, frame, now = Date.now(), exScoreEvidence) {
     const teams = tosuRoomTeams(frame);
     const bindingChanged = teams && (state.auto.profile !== 'stable-tourney' || state.auto.left !== teams.left || state.auto.right !== teams.right);
     const namesChanged = teams && (state.match.teams.a.name !== teams.left || state.match.teams.b.name !== teams.right);
@@ -100,7 +101,7 @@ export class RoomAutomation {
     // Presentation can join a live room mid-map. It never creates a round,
     // seeds an observed run or supplies evidence for result recording.
     const previous = this.presentation;
-    const result = this.ingestProgress(state, frame, now);
+    const result = this.ingestProgress(state, frame, now, exScoreEvidence);
     const config = result.state.auto;
     const room = frame?.tourney;
     const bound = config.scenes && tosuRoomTeams(frame) && config.profile === 'stable-tourney' && config.left && config.right &&
@@ -129,7 +130,7 @@ export class RoomAutomation {
     return result;
   }
 
-  ingestProgress(state, frame, now = Date.now()) {
+  ingestProgress(state, frame, now, exScoreEvidence) {
     const config = state.auto;
     if (currentRound(state)?.identityUnresolved) {
       this.reset(); return { state, note: '旧比赛记录关联不明确，请人工处理该图；实时画面继续跟随' };
@@ -161,23 +162,24 @@ export class RoomAutomation {
     if (this.lastAt !== null && (now - this.lastAt > 5000 || now < this.lastAt)) return this.hold(state, '观战数据连续性中断，请核对比赛是否仍在进行');
     this.lastAt = now;
     const counted = currentRound(state);
-    const calculation = competitionScore(state, frame);
+    const calculation = competitionScore(state, frame, exScoreEvidence);
+    const fixedEx = calculation.rule === 'ex-slots';
     const totals = calculation.totalScore;
     // osu!tourney hides and clears aggregate scores after showing results,
     // while its clients still retain the verified final scores and IPC stays 4.
     const clients = room.players.filter(p => p.osuId > 0);
     const confirmed = this.confirmedPlayers?.roundId === counted?.id ? this.confirmedPlayers : null;
-    const sameClients = confirmed && clients.length === confirmed.scores.size &&
+    const sameClients = !fixedEx && confirmed?.scores && clients.length === confirmed.scores.size &&
       clients.every(p => confirmed.scores.has(`${p.side}:${p.osuId}`));
     // Resetting a client to zero is display cleanup. A changed positive score
     // from the same confirmed clients is new evidence, even if totals are hidden.
     const changedClientScore = sameClients && clients.some(p => Number.isSafeInteger(p.score) && p.score > 0 &&
       p.score !== confirmed.scores.get(`${p.side}:${p.osuId}`));
-    const clearedDisplay = counted?.finalScore && room.scoreVisible === false &&
+    const clearedDisplay = !fixedEx && counted?.finalScore && room.scoreVisible === false &&
       room.totalScore.left === 0 && room.totalScore.right === 0 && !changedClientScore;
     if (confirmed && !clearedDisplay && ipc === 4 && counted?.status === 'recorded' && counted.resultSource === 'tosu' && !counted.autoProtected &&
       entryOf(state, counted.entryId)?.beatmapId === mapId &&
-      (room.totalScore.left !== confirmed.totalScore.left || room.totalScore.right !== confirmed.totalScore.right ||
+      (!fixedEx && confirmed.totalScore && (room.totalScore.left !== confirmed.totalScore.left || room.totalScore.right !== confirmed.totalScore.right) ||
         totals.left !== null && totals.right !== null && (totals.left !== counted.finalScore?.a || totals.right !== counted.finalScore?.b))) {
       const next = observedTransition(state, observation(state, 'review-result', { reason: '自动计胜后成绩仍有变化，请人工核对胜方' }, counted), '成绩仍在变化：撤回本局自动计胜，等待人工核对', randomUUID());
       this.reset();
@@ -214,8 +216,9 @@ export class RoomAutomation {
     if (['playing', 'ranking'].includes(active?.status) && (this.observedRun || this.endRun || this.ranking)) {
       if (mapId !== entryOf(state, active.entryId)?.beatmapId && active.status === 'playing') return this.hold(state, '本局尚未正常结算但房间谱面已变化，请核对 abort 或重赛');
       if (active.status === 'playing' && ![3, 4].includes(ipc)) return this.hold(state, '观战已离开 Playing，原因待核对；不能据此宣布本局结束或重赛');
-      const players = playerKeys(room);
-      if (this.runPlayers?.some(key => !players.includes(key))) return this.hold(state, '本局观战选手或窗口缺失，请区分选手掉线与观战故障');
+      const players = fixedEx ? null : playerKeys(room);
+      const rosterMissing = fixedEx ? exRosterMissing(room, exScoreEvidence) : this.runPlayers?.some(key => !players.includes(key));
+      if (rosterMissing) return this.hold(state, '本局观战选手或窗口缺失，请区分选手掉线与观战故障');
     }
     let next = state;
     let note = this.notice || '自动跟随房间';
@@ -258,7 +261,7 @@ export class RoomAutomation {
     const sameMap = round && entryOf(next, round.entryId)?.beatmapId === mapId;
     if (ipc === 4 && sameMap) {
       const scores = totals;
-      const signature = JSON.stringify(calculation);
+      const signature = JSON.stringify(fixedEx ? [totals, calculation.players] : calculation);
       if (!this.scoreCandidate || this.scoreCandidate.signature !== signature) {
         this.scoreCandidate = { ...scores, calculation, signature, at: now, frames: 1 };
       } else this.scoreCandidate.frames++;
@@ -269,13 +272,13 @@ export class RoomAutomation {
       if (ipc === 3 && this.playEdge === mapId && round.status === 'prepared' && next.phase === 'bp' && !next.action && !seriesComplete(next)) {
         next = observedTransition(next, observation(next, 'start-attempt', {}, round), 'tosu Playing → 本局开始', randomUUID());
         this.observedRun = currentRound(next).runId;
-        this.runPlayers = playerKeys(room);
+        this.runPlayers = fixedEx ? null : playerKeys(room);
         this.playEdge = null;
         this.preparedStart = null;
       } else if (ipc === 3 && round.status === 'playing') {
         // This also arms a manual start, but only on a continuous live Playing frame.
         this.observedRun = round.runId;
-        this.runPlayers ||= playerKeys(room);
+        if (!fixedEx) this.runPlayers ||= playerKeys(room);
         this.ranking = null;
       } else if (ipc === 4 && this.observedRun === round.runId && round.status === 'playing') {
         if (this.baseline.ipc === 3) this.ranking = { at: now, frames: 0, runId: round.runId };
@@ -292,7 +295,7 @@ export class RoomAutomation {
     // Keep observing a known continuous finish if totals arrive after Ranking.
     // A fresh connection at Ranking has no endRun and can never backfill a win.
     const finished = currentRound(next);
-    const evidence = resultFacts(room);
+    const evidence = resultFacts(fixedEx ? { players: calculation.players, totalScore: totals } : room);
     if (config.results && ipc === 4 && sameMap && this.endRun?.roundId === finished.id && this.endRun.runId === finished.runId && finished.status === 'ranking' && !['manual', 'retracted', 'series-correction'].includes(finished.resultSource)) {
       const score = this.scoreCandidate;
       const ready = score && score.frames >= 2 && now - score.at >= config.rankingDebounceMs &&
@@ -304,8 +307,8 @@ export class RoomAutomation {
           this.baseline.ipc = ipc;
           return { state: next, note: '本图分数或赛制尚不满足自动计胜条件' };
         }
-        this.confirmedPlayers = { roundId: finished.id, totalScore: { ...room.totalScore },
-          scores: new Map(room.players.filter(p => p.osuId > 0).map(p => [`${p.side}:${p.osuId}`, p.score])) };
+        this.confirmedPlayers = fixedEx ? { roundId: finished.id } : { roundId: finished.id, totalScore: { ...room.totalScore },
+          scores: new Map(clients.map(p => [`${p.side}:${p.osuId}`, p.score])) };
         this.endRun = null;
         note = '本局已按最终队分自动计胜；可撤回、修正胜方或人工校正系列分';
         this.notice = note;

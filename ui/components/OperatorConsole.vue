@@ -70,6 +70,9 @@ watch([snapshot, connection, () => s.value?.scene], ([envelope, link, scene]) =>
 const roomScoreHint = computed(() => {
   const source = snapshot.value?.live.tosu;
   const scoring = source?.status === 'live' ? source.data?.tourney?.competitionScore : null;
+  if (scoring?.rule === 'ex-slots' && [3, 4].includes(source?.data?.tourney?.ipcState ?? -1)) {
+    return scoring.reason || (scoring.fm ? 'EX 六路队分，已计入 FM 的 EZ 加成。' : 'EX 六路队分，空槽分数已排除。');
+  }
   const hasScores = scoring?.rawTotalScore?.left != null || scoring?.rawTotalScore?.right != null;
   if (scoring && playingScores.value && (['left', 'right'] as const).some(side =>
     scoring.totalScore[side] === null && playingScores.value?.[side] != null)) return '队分同步中，暂时显示最近核对的分数。';

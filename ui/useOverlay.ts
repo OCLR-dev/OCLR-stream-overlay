@@ -135,6 +135,7 @@ export function createOverlay(shared = false) {
       pauseTimer, pauseClock, pauseTimerEnded: !!pauseTimer && pauseSecondsLeft === 0,
       pickTeam: playingPickTeam(s, currentMap),
       showPlayingScores: !shared || !!scores,
+      fixedExScores: envelope?.live.tosu.data?.tourney?.competitionScore?.rule === 'ex-slots',
       parameterMode: mapParameterMode(envelope?.live.sources?.tosu === 'simulated', bound?.ipcState, currentMap?.mod),
       winner: s?.winner ? names[s.winner] : null,
       drawnExhibition: !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner,

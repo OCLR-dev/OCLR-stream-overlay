@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import * as model from '../server/session/model.js';
 import { SessionStore } from '../server/session/store.js';
+import { exFrame } from './ex-frame-fixture.js';
 
 async function harness(custom = false, start = true) {
   let state = custom ? model.newCustomSession() : model.newSession();
@@ -14,6 +15,7 @@ async function harness(custom = false, start = true) {
   let store = new SessionStore({ state }); let time = 1000;
   const h = { get store() { return store; }, restart() { store.close(); store = new SessionStore({ state: structuredClone(store.state) }); }, get s() { return store.state; },
     cmd(type, payload = {}) { return store.command({ id: randomUUID(), version: store.state.version, type, payload }); },
+    exFrame(ipc) { return store.frame(exFrame(1, ipc, { left: 'L', right: 'R' }), time += 500); },
     frame(ipc, options = {}, ms = 500) {
       const { id = 1, left = 900, right = 800, teams = { left: 'L', right: 'R' },
         players = [{ side: 'left', osuId: 1, score: left }, { side: 'right', osuId: 2, score: right }] } = options;
@@ -110,13 +112,13 @@ test('EX belongs to one Pick across abort, result correction and explicit replay
   const h = await harness(false, false); t.after(() => h.store.close());
   await h.cmd('ex', { team: 'a', remaining: { a: 2, b: 2 } });
   const selection = round(h).selectionId;
-  await h.frame(3); const first = round(h).id;
+  await h.exFrame(1); await h.exFrame(3); const first = round(h).id;
   assert.equal(h.s.ex.remaining.a, 2);
   await h.frame(1); await h.frame(1);
   assert.equal(round(h).selectionId, selection); assert.notEqual(round(h).id, first);
   await h.frame(4); await h.frame(4);
   assert.deepEqual(model.seriesOf(h.s), { a: 0, b: 0 }); assert.equal(h.s.ex.remaining.a, 2);
-  await h.frame(1); await h.frame(3); await h.frame(4); await h.frame(4);
+  await h.exFrame(1); await h.exFrame(3); await h.exFrame(4); await h.exFrame(4);
   assert.deepEqual(model.seriesOf(h.s), { a: 1, b: 0 }); assert.equal(h.s.ex.remaining.a, 1);
   const finished = round(h).id;
   await h.cmd('correct-result', { roundId: finished, winner: 'b', reason: '裁判修正胜方' });
@@ -127,7 +129,7 @@ test('EX belongs to one Pick across abort, result correction and explicit replay
   assert.equal(round(h).selectionId, selection); assert.equal(h.s.ex.remaining.a, 2);
   assert.deepEqual(model.seriesOf(h.s), { a: 0, b: 0 });
   await h.frame(4); assert.equal(round(h).status, 'prepared');
-  await h.frame(1); await h.frame(3); await h.frame(4); await h.frame(4);
+  await h.exFrame(1); await h.exFrame(3); await h.exFrame(4); await h.exFrame(4);
   assert.deepEqual(model.seriesOf(h.s), { a: 1, b: 0 }); assert.equal(h.s.ex.remaining.a, 1);
   assert.notEqual(round(h).id, finished);
 });

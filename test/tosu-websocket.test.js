@@ -309,8 +309,17 @@ test('return to ready automatically restores the same map after dropout and cont
   assert.equal(stack.store.state.rounds.filter(r => r.resultSource === 'manual').length, 0);
 });
 
-test('an explicit console Pick can enable EX and settle once from observed game frames', async t => {
+test('an explicit console Pick settles EX once even when a retained slot reverses the native lead', async t => {
   const stack = await boot(t);
+  const wire = stack.simulator.wire.bind(stack.simulator);
+  stack.simulator.wire = () => {
+    const frame = JSON.parse(wire());
+    if (frame.tourney?.ipcState === 4) {
+      frame.tourney.clients.find(client => client.ipcId === 7).play.score = 1_000_000;
+      frame.tourney.totalScore.right = 1_825_000;
+    }
+    return JSON.stringify(frame);
+  };
   await operator(stack, 'choose-pool-map', { entryId: 'sim-nm2', team: 'b', kind: 'pick' });
   const prepared = current(stack);
   assert.equal(prepared.status, 'prepared');
@@ -324,6 +333,8 @@ test('an explicit console Pick can enable EX and settle once from observed game 
   await delay(650);
   assert.equal(current(stack).id, prepared.id);
   assert.equal(current(stack).resultSource, 'tosu');
+  assert.deepEqual(current(stack).finalScore, { a: 900_000, b: 825_000 });
+  assert.deepEqual(current(stack).scoreCalculation.rawTotalScore, { left: 1_200_000, right: 1_825_000 });
   assert.deepEqual(snapshot(stack).session.series, { a: 1, b: 0 });
   assert.deepEqual(stack.store.state.ex.remaining, { a: 1, b: 2 });
 });
