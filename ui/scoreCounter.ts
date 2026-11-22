@@ -1,8 +1,8 @@
 // Presentation-only interpolation. The target always remains the exact shared
 // score; no intermediate value is ever used for results or match automation.
 export const parseCounterScore = (text: string) => {
-  if (!/^\d+(?:,\d{4})*$/.test(text)) return null;
-  const value = Number(text.replaceAll(',', ''));
+  if (!/^\d+(?:'\d{3})*$/.test(text)) return null;
+  const value = Number(text.replaceAll("'", ''));
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
 export class ScoreCounter {

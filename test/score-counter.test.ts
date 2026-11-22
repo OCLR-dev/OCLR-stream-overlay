@@ -25,10 +25,9 @@ test('Ranking, reduced motion, new context, corrections, unknown and resets snap
   c.update(1800,30,true); assert.equal(c.value,1800,'any downward target correction is exact, even if above the interpolated value');
   c.update(null,40,true);c.update(3000,50,true);assert.equal(c.value,3000,'rejoining unknown is a silent baseline');
 });
-test('preserves exact zero, unknown, safe integers and four-digit comma grouping', () => {
-  assert.equal(parseCounterScore('0'),0);assert.equal(parseCounterScore('105,0000'),1050000);
-  for(const text of ['—','-1','NaN','1.5','9007199254740992','105,000'])assert.equal(parseCounterScore(text),null);
-  assert.equal(formatCounterScore(1050123.8),'105,0123');
-  assert.equal(formatCounterScore(9999),'9999');
-  assert.equal(formatCounterScore(10000),'1,0000');
+test('preserves exact zero, unknown, safe integers and three-digit apostrophe grouping', () => {
+  assert.equal(parseCounterScore('0'),0);assert.equal(parseCounterScore("1'050'000"),1050000);
+  for(const text of ['—','-1','NaN','1.5','9007199254740992',"105'0000"])assert.equal(parseCounterScore(text),null);
+  assert.equal(formatCounterScore(1050123.8),"1'050'123");
+  assert.equal(formatCounterScore(9999),"9'999");
 });
