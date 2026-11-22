@@ -148,17 +148,39 @@ export function changeBan(state: OverlayState, team: Team, index: 0 | 1, value: 
   next.banSlots[team][index] = value as Ban;
   return { state: next, feedback: `${teamNames[team]} Ban ${index + 1}：${banLabel(value as Ban)}${value === 'unknown' ? '。' : '（本地演示）。'}` };
 }
+export interface RosterMember {
+  team: Team;
+  id: string;
+  slot: number;
+  role: string;
+  syntheticEx: boolean;
+  placeholder?: boolean;
+  name: string | null;
+  osuId: number | null;
+}
+
+const demoRosterNames: Record<Team, string[]> = {
+  a: ['Crimson_Cap', 'Red_Aegis', 'Scarlet_Pulse', 'Valkyrie_R', 'Blaze_Note', 'Ruby_Burst'],
+  b: ['Azure_Cap', 'Cobalt_Stream', 'Cyan_Nova', 'Sapphire_B', 'Frost_Beat', 'Indigo_Arc']
+};
+
 export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) {
   const stage = state.stage;
   const exhibition = stage === 'exhibition';
   const target = exhibitionRule?.type === 'first_to' ? exhibitionRule.wins : 0;
   const meta = exhibition ? { label: '表演赛', format: exhibitionFormat(exhibitionRule), target: target <= 7 ? target : 0 } : stages[stage];
   const { format, ex, count } = playingLayout(state.mode, state.exTeam, state.mapType === 'tb');
-  const roster = (team: Team) => Array.from({ length: count }, (_, i) => ({
+  const roster = (team: Team): RosterMember[] => Array.from({ length: count }, (_, i) => ({
     team, id: `${team.toUpperCase()}${i + (ex ? 3 : 1)}`, slot: i + 1,
     role: ex ? `T${i + 2}` : ['Captain', 'T1', 'T2', 'T3'][i]!, syntheticEx: ex, name: null as string | null,
     osuId: null as number | null
   }));
+  const fullRoster = (team: Team): RosterMember[] => demoRosterNames[team].map((name, i) => ({
+    team, id: `${team.toUpperCase()}-full-${i + 1}`, slot: i + 1,
+    role: i === 0 ? 'Captain' : `Member #${i + 1}`, syntheticEx: false, placeholder: false,
+    name, osuId: null
+  }));
+  const hasRoster = (_team: Team) => true;
   const arrived = (team: Team) => state.arrival === 'both' || state.arrival === team;
   const orderLabel = (value: 'unknown' | Team) => value === 'unknown' ? '未确认' : teamNames[value];
   const rematchLabel = (value: OverlayState['rematchA']) => value === 'used' ? '已用' : value === 'available' ? '可确认' : '未确认';
@@ -170,7 +192,8 @@ export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) 
     mod: state.mapType === 'tb' ? 'TB' : state.mapMod,
     exLabel: state.mapType === 'tb' ? 'TB · 禁 EX' : state.exTeam === 'none' ? 'EX 未开启' : `EX · ${teamNames[state.exTeam]}开启`,
     mapRule: state.mapType !== 'tb' && state.mapMod === 'FM' ? 'FM · 每队至少 1 名单HD（含 EZ/HDEZ） + 1 名单HR' : '',
-    players: teams.flatMap(roster), roster, arrived, orderLabel,
+    players: teams.flatMap(roster), roster, fullRoster, hasRoster, arrived, orderLabel,
+    poolName: `${meta.label}图池`,
     arrivalCount: (state.arrival === 'both' ? 2 : state.arrival === 'a' ? 1 : 0) * count,
     readiness: state.arrival === 'both' ? '双方选手已到场' : state.arrival === 'a' ? '示例A队已到场' : '等待选手到场',
     readinessCopy: state.arrival === 'both' ? '等待就绪确认。' : state.arrival === 'a' ? '示例B队等待中。' : '等待双方选手入场。',
