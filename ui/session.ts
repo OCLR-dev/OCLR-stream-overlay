@@ -54,9 +54,10 @@ export interface BeatmapStats {
 export interface RoomChatLine { team?: string; name?: string; message?: string; timestamp?: string }
 export interface RoomPlayer { ipcId: number | null; side: 'left' | 'right' | null; osuId: number | null; name: string | null }
 export interface CompetitionScore {
-  rule: 'client' | 'unknown' | 'fm-ez-v1';
+  rule: 'client' | 'unknown' | 'fm-ez-v1' | 'ex-slots';
+  fm?: boolean;
   entryId?: string;
-  players?: { osuId: number; side: 'left' | 'right' | null; mods: string | null; rawScore: number | null; score: number | null }[];
+  players?: { ipcId?: number; osuId: number; side: 'left' | 'right' | null; mods: string | null; rawScore: number | null; score: number | null }[];
   totalScore: { left: number | null; right: number | null };
   rawTotalScore: { left: number | null; right: number | null };
   reason: string | null;

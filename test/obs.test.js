@@ -160,6 +160,65 @@ test('presets share inputs, exactly match both capture aspects, and preserve adj
   assert.equal(measurements.find(row => row.scene === ex && row.input === capture('B3')).y, 226);
 });
 
+test('desktop rendering preference persists offline and fits a shared 4K source in both 1080p layouts', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-obs-rendering-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, 'obs-settings.json');
+  const { obs, studio } = await setup(t, { file });
+  studio.useUuids = true;
+  assert.deepEqual(obs.snapshot().overlayRendering, { highResolution: false, applied: false, error: '' });
+  const pending = await obs.command({ action: 'overlay-rendering', highResolution: true });
+  assert.deepEqual(pending.overlayRendering, { highResolution: true, applied: false, error: '' });
+  assert.equal(JSON.parse(await readFile(file, 'utf8')).overlayHighResolution, true);
+  assert.equal(studio.connections, 0);
+  await ready(obs);
+  await obs.command({ action: 'create' });
+  await obs.tail;
+
+  const browser = 'OCLR · 比赛画面';
+  const setting = studio.inputs.get(browser).inputSettings;
+  assert.deepEqual([setting.width, setting.height], [3840, 2160]);
+  for (const scene of [regular, ex]) {
+    const { transform } = studio.scenes.get(scene).find(item => item.sourceName === browser);
+    assert.deepEqual([transform.positionX, transform.positionY, transform.boundsWidth, transform.boundsHeight], [0, 0, 1920, 1080]);
+    assert.equal(transform.boundsType, 'OBS_BOUNDS_SCALE_INNER');
+  }
+  const transform = structuredClone(current(studio, ex, 'B3').transform);
+  const resized = studio.log.filter(item => item.type === 'SetInputSettings' && 'width' in item.inputSettings);
+  assert.equal(resized.length, 1);
+  assert.equal(resized[0].inputUuid, studio.inputs.get(browser).inputUuid);
+  assert.deepEqual(obs.snapshot().overlayRendering, { highResolution: true, applied: true, error: '' });
+  const saved = await obs.command({ action: 'overlay-rendering', highResolution: false });
+  assert.deepEqual(saved.overlayRendering, { highResolution: false, applied: true, error: '' });
+  assert.deepEqual([setting.width, setting.height], [1920, 1080]);
+  assert.deepEqual(current(studio, ex, 'B3').transform, transform);
+  assert.deepEqual([studio.canvas.baseWidth, studio.canvas.baseHeight], [1920, 1080]);
+});
+
+test('an interrupted resize can be reapplied after reconnect without touching an external browser source', async t => {
+  const { obs, studio } = await setup(t);
+  await ready(obs);
+  await obs.command({ action: 'create' });
+  await obs.tail;
+  const browser = 'OCLR · 比赛画面';
+  const unrelated = { width: 1920, height: 1080 };
+  studio.inputs.set('导播独立源', { inputName: '导播独立源', inputKind: 'browser_source', inputSettings: unrelated });
+  const item = studio.scenes.get(ex).find(item => item.sourceName === browser);
+  item.transform.boundsWidth = 960;
+  studio.failNext = 'SetSceneItemTransform';
+  const failed = await obs.command({ action: 'overlay-rendering', highResolution: true });
+  assert.equal(failed.overlayRendering.highResolution, true);
+  assert.equal(failed.overlayRendering.applied, false);
+  assert.ok(failed.overlayRendering.error);
+  assert.equal(studio.inputs.get(browser).inputSettings.width, 1920);
+  await obs.command({ action: 'disconnect' });
+  await ready(obs); await obs.tail;
+  assert.equal(item.transform.boundsWidth, 1920);
+  assert.equal(studio.inputs.get(browser).inputSettings.width, 3840);
+  assert.deepEqual(unrelated, { width: 1920, height: 1080 });
+  assert.deepEqual(obs.snapshot().overlayRendering, { highResolution: true, applied: true, error: '' });
+});
+
 test('a saved video-only preset gains shared desktop audio on retry and yields to either global desktop slot', async t => {
   const { obs, studio } = await setup(t);
   studio.useUuids = true;

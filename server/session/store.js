@@ -43,7 +43,7 @@ export class SessionStore extends SessionApplication {
     // Keep the regular cursor internally so correcting the score can resume it.
     const suspended = bp.stopped && bp.tiebreaker.eligible && !exhibition;
     return structuredClone({ roomReview: this.roomReview(), startupChoice: this.startupChoice, session: { ...session, ...(suspended ? { action: null, poolChoice: null } : {}), bp, series: seriesOf(this.state),
-      ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: scoringLive(this.state, this.live), persistence: this.persistence, catalog: this.catalog || null });
+      ...(exhibition ? { exhibition } : {}), canUndo: undo.length > 0 }, live: scoringLive(this.state, this.live, this.exScoreEvidence), persistence: this.persistence, catalog: this.catalog || null });
   }
   subscribe(listener) { this.listeners.add(listener); listener(this.snapshot()); return () => this.listeners.delete(listener); }
   emit() { const value = this.snapshot(); for (const listener of this.listeners) listener(value); }

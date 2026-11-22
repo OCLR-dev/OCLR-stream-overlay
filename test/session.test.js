@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { newSession, transition, currentRound, seriesOf } from '../server/session/model.js';
 import { SessionStore } from '../server/session/store.js';
 import { RoomAutomation } from '../server/session/automation.js';
+import { observeExScores } from '../server/session/ex-scoring.js';
+import { exFrame } from './ex-frame-fixture.js';
 import { catalogue, attachBroadcast } from '../server/session/data.js';
 import { BroadcastData } from '../src/index.js';
 
@@ -27,12 +29,20 @@ const frame = (mapId = 999, ipc = 1, extra = {}) => {
   return { beatmap: { id: mapId }, tourney: { ipcState: ipc, teams: { left: 'Red room', right: 'Blue room' },
     players: [{ side: 'left', osuId: 1, score: totalScore.left, mods: 'NF' }, { side: 'right', osuId: 2, score: totalScore.right, mods: 'NF' }], totalScore, ...extra } };
 };
-function simulate(state) {
+function simulate(state, buildFrame = frame) {
   const observer = new RoomAutomation();
   let s = state;
   let time = 0;
+  let exEvidence = null;
   return { get state() { return s; }, observer,
-    feed(map, ipc = 1, ms = 500, extra) { time += ms; const result = observer.ingest(s, frame(map, ipc, extra), time); s = result.state; return result; },
+    feed(map, ipc = 1, ms = 500, extra) {
+      time += ms;
+      const sample = buildFrame(map, ipc, extra);
+      exEvidence = observeExScores(exEvidence, s, sample, time);
+      const result = observer.ingest(s, sample, time, exEvidence);
+      s = result.state;
+      return result;
+    },
     manual(type, payload) { s = command(s, type, payload); observer.reset(); },
     change(map, ipc = 1) { this.feed(map, ipc); return this.feed(map, ipc); },
   };
@@ -301,8 +311,15 @@ test('referee replay after Ranking restores the next Pick and EX, then counts on
   let s = action(ready(), 'pick', 'a', 0, [{ kind: 'pick', team: 'b' }]);
   s = command(s, 'apply-bp', { entryId: 'nm1' });
   s = command(s, 'ex', { team: 'a', remaining: { a: 1, b: 2 } });
-  const sim = simulate(s); sim.feed(103, 1); sim.feed(103, 3); const old = currentRound(sim.state);
-  sim.feed(103, 4); sim.feed(103, 4); assert.equal(sim.state.action.team, 'b');
+  const sim = simulate(s, (map, ipc, final = true) => {
+    const sample = exFrame(map, ipc, { left: 'Red room', right: 'Blue room' });
+    if (!final) sample.tourney.players[0].judgements = 1;
+    return sample;
+  });
+  sim.feed(103, 1); sim.feed(103, 3); const old = currentRound(sim.state);
+  sim.feed(103, 4, 500, false);
+  sim.feed(103, 4, 500, false);
+  assert.equal(sim.state.action.team, 'b');
   const bpHistory = structuredClone(sim.state.bpHistory);
   sim.manual('incident', { kind: 'player-disconnect', reason: '裁判核实选手掉线，待判重赛' });
   sim.manual('replay', { reason: '裁判确认本图重赛' });
@@ -312,8 +329,7 @@ test('referee replay after Ranking restores the next Pick and EX, then counts on
   assert.deepEqual(sim.state.bpHistory, bpHistory); assert.equal(sim.state.ex.team, 'a'); assert.equal(sim.state.ex.remaining.a, 1);
   sim.feed(103, 4); sim.feed(103, 4); assert.equal(currentRound(sim.state).status, 'prepared');
   sim.feed(103, 1); sim.feed(103, 3); assert.notEqual(currentRound(sim.state).runId, old.runId);
-  sim.feed(103, 4, 500, { totalScore: { left: 900, right: 800 } });
-  sim.feed(103, 4, 500, { totalScore: { left: 900, right: 800 } });
+  sim.feed(103, 4); sim.feed(103, 4);
   assert.deepEqual(seriesOf(sim.state), { a: 1, b: 0 }); assert.equal(sim.state.action.team, 'b');
 });
 
