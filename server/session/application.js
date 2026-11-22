@@ -2,6 +2,7 @@ import { migrateSession, validateSessionV2 } from './records.js';
 import { randomUUID } from 'node:crypto';
 import { observedTransition, observation, tiebreakerProgress, canShowWinner, currentRound, entryOf, newSession, requireValue, SessionRejection, restoreAutomation, transition } from './model.js';
 import { RoomAutomation } from './automation.js';
+import { observeExScores } from './ex-scoring.js';
 import { rankingMapParameters } from './map-parameters.js';
 import { PickSceneDelay } from './pick-scene-delay.js';
 import { SeriesCorrectionTracker } from './series-correction.js';
@@ -29,6 +30,7 @@ export class SessionApplication {
     if (this.state.winnerPending && (!['a', 'b'].includes(this.state.winnerPending.team) || !Number.isSafeInteger(this.state.winnerPending.endsAt))) this.state.winnerPending = null;
     if (this.state.winnerPending === undefined) this.state.winnerPending = null;
     this.parameterHold = null;
+    this.exScoreEvidence = null;
     // Remember when the room itself changed map, so "use the current room map"
     // cannot silently consume a selection that has been sitting there for long.
     this.roomMap = { id: null, at: 0 };
@@ -284,6 +286,7 @@ export class SessionApplication {
     this.pickScene.cancel();
     this.seriesCorrection.reset(); this.spectatorRecovery.reset(); this.readyReturn.reset();
     this.parameterHold = null; this.automation.reset(); this.roomMap = { id: null, at: 0 };
+    this.exScoreEvidence = null;
     this.live.tosu = { status, updatedAt: null, data: null };
     this.live.note = ['connecting', 'error', 'disconnected'].includes(status)
       ? '尚未连接 tosu，请确认 tosu 已启动并核对 WebSocket 地址。程序会自动重连，比赛资料与自动化设置已保留。'
@@ -316,7 +319,8 @@ export class SessionApplication {
       }
       const recovered = spectatorRecovery.recover(returned, frame, now);
       if (recovered !== returned) automation.rebase(recovered, frame, now);
-      const result = automation.ingest(recovered, frame, now);
+      const exScoreEvidence = observeExScores(this.exScoreEvidence, recovered, frame, now);
+      const result = automation.ingest(recovered, frame, now, exScoreEvidence);
       spectatorRecovery.observe(result.state, frame, now);
       readyReturn.observe(result.state, frame, now, automation.observedRun);
       seriesCorrection.observe(result.state, frame, now);
@@ -324,6 +328,7 @@ export class SessionApplication {
       if (result.state !== this.state) await this.save(result.state, { allowPickScene: !restoredReady });
       [automation, readyReturn, spectatorRecovery, seriesCorrection].forEach((observer, index) => originals[index].restoreEvidence(observer.checkpoint()));
       this.parameterHold = display.hold; this.roomMap = roomMap; this.receivedAt = receivedAt;
+      this.exScoreEvidence = exScoreEvidence;
       this.live.tosu = { status: 'live', updatedAt: new Date(now).toISOString(), data: display.frame };
       const review = this.roomReview();
       const ipc = frame.tourney?.ipcState;

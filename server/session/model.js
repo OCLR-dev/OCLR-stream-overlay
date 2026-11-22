@@ -486,6 +486,7 @@ function startRound(s, source = 'manual') {
   requireValue(!seriesComplete(s), '系列已达到目标，请核对 Winner 或人工修正比分');
   requireValue(!bpStopReason(s), bpStopReason(s));
   round.status = 'playing'; round.runId = newId(s); round.startedBy = source; round.exTeam = s.ex.team;
+  if (round.exTeam) round.exMode = s.match.mode;
   delete round.autoProtected;
   s.phase = 'playing'; s.scene = 'playing';
 }
@@ -1226,14 +1227,14 @@ export function observedTransition(state, operation, message, eventId, options =
       case 'finish-attempt':
         requireValue(round.status === 'playing' && !round.autoProtected, '本次比赛不接受自动结束');
         round.status = 'ranking'; round.finalScore = p.scores || null;
-        if (p.scoring?.rule === 'fm-ez-v1') round.scoreCalculation = p.scoring;
+        if (['fm-ez-v1', 'ex-slots'].includes(p.scoring?.rule)) round.scoreCalculation = p.scoring;
         releaseRoundBp(draft, round);
         if (round.id === draft.currentRoundId) followScene(draft, 'playing');
         break;
       case 'confirm-result':
         requireValue(!round.autoProtected && !['manual', 'retracted', 'series-correction'].includes(round.resultSource), '赛果受人工保护');
         awardTosuResult(draft, round.id, p.scores);
-        if (p.scoring?.rule === 'fm-ez-v1') round.scoreCalculation = p.scoring;
+        if (['fm-ez-v1', 'ex-slots'].includes(p.scoring?.rule)) round.scoreCalculation = p.scoring;
         break;
       case 'room-return':
         requireValue(!round || round.id === draft.currentRoundId && ['prepared', 'ranking', 'recorded'].includes(round.status), '返回房间的比赛目标已变化');

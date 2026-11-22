@@ -105,6 +105,12 @@ function playSnapshot(play) {
   };
 }
 
+function standardJudgements(hits) {
+  const counts = ['0', '50', '100', '300'].map(key => hits?.[key]);
+  return counts.every(value => Number.isSafeInteger(value) && value >= 0)
+    ? counts.reduce((sum, value) => sum + value, 0) : null;
+}
+
 export function normalizeTosuV2(raw) {
   if (!raw || typeof raw !== 'object' || !raw.state || !raw.beatmap || raw.error) throw new Error('INVALID_TOSU_FRAME');
   const tourney = raw.tourney;
@@ -140,6 +146,7 @@ export function normalizeTosuV2(raw) {
         score: number(client.play?.score), accuracy: number(client.play?.accuracy),
         combo: number(client.play?.combo?.current), maxCombo: number(client.play?.combo?.max),
         misses: number(client.play?.hits?.['0']), mods: text(client.play?.mods?.name),
+        judgements: standardJudgements(client.play?.hits),
       })) : [],
     } : null,
   };

@@ -9,6 +9,11 @@ const desktopName = 'OCLR · 桌面音频';
 export const capture = slot => `OCLR · 捕获 ${slot}`;
 const sources = [...slots.map(capture), browser];
 const layouts = Object.keys(presetScenes);
+const overlayFit = {
+  alignment: 5, positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotation: 0,
+  boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: 1920, boundsHeight: 1080,
+  cropLeft: 0, cropTop: 0, cropRight: 0, cropBottom: 0,
+};
 
 export function captureTransform(position, source, ex) {
   const n = Number(position[1]) - 1;
@@ -60,11 +65,41 @@ function sceneTarget(layout, ids) {
   return ids[layout] ? { sceneUuid: ids[layout] } : { sceneName: presetScenes[layout] };
 }
 
+export async function applyOverlayRendering(call, preset, highResolution) {
+  const video = await call('GetVideoSettings');
+  if (video.baseWidth !== 1920 || video.baseHeight !== 1080) throw new ObsError('请使用 1920×1080 OBS 基础画布后重试。');
+  const knownId = preset.inputIds?.[browser];
+  const items = await Promise.all(layouts.map(async layout => {
+    const scene = sceneTarget(layout, preset.sceneIds);
+    const { sceneItems } = await call('GetSceneItemList', scene);
+    const sceneItemId = itemId(sceneItems, browser);
+    const { sourceUuid, inputKind } = sceneItems.find(item => item.sceneItemId === sceneItemId);
+    if (inputKind !== 'browser_source' || (knownId && sourceUuid !== knownId)) throw new ObsError('请核对比赛场景中的 OCLR 浏览器源。');
+    return { sourceUuid, target: { ...scene, sceneItemId } };
+  }));
+  const inputId = items[0].sourceUuid;
+  if (items.some(item => item.sourceUuid !== inputId)) throw new ObsError('常规和 EX 场景需共用同一个比赛浏览器源。');
+  const input = inputId ? { inputUuid: inputId } : { inputName: browser };
+  const { inputSettings } = await call('GetInputSettings', input);
+  const size = highResolution ? { width: 3840, height: 2160 } : { width: 1920, height: 1080 };
+  // Install fixed bounds first so either viewport size fits throughout a resize.
+  for (const { target } of items) {
+    const { sceneItemTransform } = await call('GetSceneItemTransform', target);
+    if (Object.entries(overlayFit).some(([key, value]) => sceneItemTransform[key] !== value)) {
+      await call('SetSceneItemTransform', { ...target, sceneItemTransform: overlayFit });
+    }
+  }
+  if (inputSettings.width !== size.width || inputSettings.height !== size.height) {
+    await call('SetInputSettings', { ...input, inputSettings: size, overlay: true });
+  }
+}
+
 // The previous portable package recorded scene IDs only. If both scenes were
 // deleted, an input may still be in use elsewhere; verify its preset settings before reusing it.
 async function matchesLegacyInput(call, input, overlayUrl) {
   const { inputSettings } = await call('GetInputSettings', { inputName: input.inputName });
-  if (input.inputName === browser) return inputSettings.url === overlayUrl && inputSettings.width === 1920 && inputSettings.height === 1080;
+  if (input.inputName === browser) return inputSettings.url === overlayUrl &&
+    ((inputSettings.width === 1920 && inputSettings.height === 1080) || (inputSettings.width === 3840 && inputSettings.height === 2160));
   return inputSettings.priority === 1 && inputSettings.capture_cursor === false && inputSettings.cursor === false &&
     (input.inputKind !== 'game_capture' || inputSettings.capture_mode === 'window');
 }
@@ -151,7 +186,7 @@ export async function buildPreset(call, preset, overlayUrl, source, checkpoint) 
     }
     const { sceneItems: items } = await call('GetSceneItemList', target);
     const overlay = { ...target, sceneItemId: itemId(items, browser) };
-    await call('SetSceneItemTransform', { ...overlay, sceneItemTransform: { alignment: 5, positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' } });
+    await call('SetSceneItemTransform', { ...overlay, sceneItemTransform: overlayFit });
     await call('SetSceneItemIndex', { ...overlay, sceneItemIndex: items.length - 1 });
     await call('SetSceneItemEnabled', { ...overlay, sceneItemEnabled: true });
     await arrangeCaptures(call, { ...preset, sceneIds }, source, [layout]);

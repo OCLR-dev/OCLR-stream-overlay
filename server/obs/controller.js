@@ -9,7 +9,7 @@ import { chatIdentityCode, ensureStreamChat } from './stream-chat.js';
 import { buildShowcase, installShowcaseCover, installShowcaseArtwork, setShowcaseCover, showcaseScene } from './showcase.js';
 import { normalizeShowcaseTokens, ordinaryClient, ShowcaseReplay, showcaseTokensUrl } from './showcase-replay.js';
 import { TosuClient } from '../../src/tosu.js';
-import { arrangeCaptures, buildPreset, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
+import { applyOverlayRendering, arrangeCaptures, buildPreset, exPositions, inspectWindows, measureScenes, newPreset, presetScenes } from './presets.js';
 import { ensureTournamentAudio } from './audio.js';
 
 const defaults = () => ({ enabled: false, port: 4455, password: '', profiles: [] });
@@ -306,6 +306,9 @@ export class ObsController {
       stream: this.outputs.stream, record: this.outputs.record, recordingError: this.recording?.status(),
       regular: p.regular, ex: p.ex, follow: p.follow, target: this.target ?? null,
       managed: !!this.managed, lineup: this.managed ? p.preset.lineup : [], ...this.captures,
+      overlayRendering: { highResolution: this.settings.overlayHighResolution === true,
+        applied: this.phase === 'ready' && !!this.managed && this.overlayRenderingApplied,
+        error: this.overlayRenderingError },
       streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
       showcase: this.showcaseConfigured,
       showcaseTransition: { configured: !!p.showcase?.transition?.ready, artwork: !!p.showcase?.transition?.artwork?.ready, active: !!this.showcaseActive,
@@ -338,6 +341,8 @@ export class ObsController {
     this.latestReplay = null;
     this.showcaseConfirmed = null;
     this.showcaseError = '';
+    this.overlayRenderingError = '';
+    this.overlayRenderingApplied = false;
     this.replayClient.stop();
     this.collection = null;
     this.replay.reset();
@@ -461,6 +466,7 @@ export class ObsController {
       this.phase = 'ready';
       this.error = '';
       this.refreshShowcase();
+      await this.syncOverlayRendering();
       const profile = this.profile;
       if (profile.streamChat?.code && ((profile.regular && profile.ex && !this.missing(profile)) || this.snapshot().showcase)) {
         try { await this.placeStreamChat(call); }
@@ -512,6 +518,20 @@ export class ObsController {
     await this.saveProfile({ ...profile, preset: { ...preset, appliedSource: source, lineupDirty: false } });
   }
 
+  async syncOverlayRendering() {
+    this.overlayRenderingError = '';
+    this.overlayRenderingApplied = false;
+    if (typeof this.settings.overlayHighResolution !== 'boolean' || this.phase !== 'ready' || !this.managed) return;
+    const epoch = this.epoch;
+    try {
+      await applyOverlayRendering(this.caller(epoch), this.profile.preset, this.settings.overlayHighResolution);
+      this.guard(epoch);
+      this.overlayRenderingApplied = true;
+    } catch (error) {
+      if (epoch === this.epoch) this.overlayRenderingError = safeMessage(error);
+    }
+  }
+
   scheduleScan(delay = this.scanMs) {
     clearTimeout(this.scanTimer);
     if (!this.managed) return;
@@ -542,6 +562,7 @@ export class ObsController {
       ...(profile.streamChat?.code && { streamChat: { ...profile.streamChat, pending: true } }) });
     const { scenes } = await call('GetSceneList');
     this.setScenes(scenes);
+    await this.syncOverlayRendering();
     if (this.profile.streamChat?.code) await this.placeStreamChat(call);
     await this.scan(call, preset, { useDesktopAudio: true });
     this.scheduleSync();
@@ -585,6 +606,12 @@ export class ObsController {
       } else if (input.action === 'disconnect') {
         await this.save({ ...this.settings, enabled: false });
         this.disconnect();
+      } else if (input.action === 'overlay-rendering') {
+        if (typeof input.highResolution !== 'boolean') throw new ObsError('请选择有效的比赛画面分辨率。');
+        if (input.highResolution !== this.settings.overlayHighResolution) {
+          await this.save({ ...this.settings, overlayHighResolution: input.highResolution });
+        }
+        await this.syncOverlayRendering();
       } else {
         this.guard(epoch);
         if (this.phase !== 'ready') throw new ObsError('请先连接本机 OBS，再操作场景。');
@@ -622,6 +649,7 @@ export class ObsController {
               input.name === p[input.layout === 'ex' ? 'regular' : 'ex']) throw new ObsError('请为常规与 EX 选择两个不同的现有场景。');
           await this.saveProfile({ ...p, [input.layout]: input.name, sceneIds: { ...p.sceneIds, [input.layout]: this.sceneIds.get(input.name) || null },
             ...(p.streamChat?.code && { streamChat: { ...p.streamChat, pending: true } }) });
+          await this.syncOverlayRendering();
           if (this.profile.streamChat?.code && this.profile.regular && this.profile.ex) await this.placeStreamChat(call);
           this.captures = { windows: [], rows: [] };
           if (this.managed) this.scheduleScan(0);

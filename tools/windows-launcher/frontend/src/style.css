@@ -353,6 +353,19 @@ input {
   border-radius:8px;
   color:inherit
 }
+.setting-checkbox {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:14px
+}
+.setting-checkbox input {
+  width:16px;
+  height:16px;
+  min-height:0;
+  margin:0;
+  accent-color:#b294ff
+}
 .address-row {
   display:flex;
   align-items:center;
