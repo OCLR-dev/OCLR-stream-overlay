@@ -17,7 +17,7 @@ const { state, view, motionScope, motionReady, session } = useOverlay();
 // Every other scene keeps only the series score.
 const received = (value: string) => /^\d[\d']*$/.test(value);
 const roomTotals = computed(() => (state.scene === 'playing' || view.value.warmup) &&
-  received(view.value.scoreA) && received(view.value.scoreB));
+  (view.value.fixedExScores && view.value.showPlayingScores || received(view.value.scoreA) && received(view.value.scoreB)));
 // Interpolate only fresh Playing updates. Joining, reconnecting,
 // Ranking, corrections and a new run establish a silent exact-score baseline.
 const scoreMotion = computed(() => roomTotals.value && motionReady.value &&

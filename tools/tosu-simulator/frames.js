@@ -1,7 +1,6 @@
 import { SIM_POOL, SIM_TEAMS, WARMUP } from './fixture.js';
 
 export const IPC_LABELS = ['Initialising', 'Idle', 'WaitingForClients', 'Playing', 'Ranking'];
-const hits = { '0': 0, '50': 0, '100': 2, '300': 320, geki: 0, katu: 0, sliderBreaks: 0, sliderEndHits: 80, smallTickHits: 80, largeTickHits: 0 };
 const stats = {
   stars: { live: 6.2, total: 6.2 }, ar: { original: 9.3, converted: 9.3 },
   cs: { original: 4, converted: 4 }, od: { original: 8.5, converted: 8.5 }, hp: { original: 5, converted: 5 },
@@ -22,9 +21,9 @@ export const MAP_PARAM_PRESETS = {
   zero: { stats: { stars: { total: 0 }, cs: { converted: 0 }, ar: { converted: 0 },
     od: { converted: 0 }, bpm: { common: 0 } }, time: { lastObject: 0 } },
 };
-const play = (name, score, time) => ({
+const play = (name, score, time, judged) => ({
   failed: false, playerName: name, mode: { number: 0, name: 'osu!' }, score, accuracy: 98.65,
-  healthBar: { normal: 100, smooth: 100 }, hits, hitErrorArray: [],
+  healthBar: { normal: 100, smooth: 100 }, hits: { '0': 0, '50': 0, '100': 0, '300': judged }, hitErrorArray: [],
   combo: { current: Math.min(800, Math.floor(time / 200)), max: 800 }, mods,
   rank: { current: 'A', maxThisPlay: 'A' }, pp: { current: 120, fc: 150, maxAchieved: 120, maxAchievable: 160 }, unstableRate: 90,
 });
@@ -42,6 +41,9 @@ export function makeV2Frame(room, maps = [WARMUP, ...SIM_POOL]) {
   const entry = maps.find(e => e.beatmapId === room.mapId) || {
     title: '模拟池外谱面', artist: '模拟艺术家', difficulty: '模拟难度', mod: 'NM',
   };
+  const ranking = room.ipcState === 4;
+  const objects = params.stats?.objects?.total ?? 0;
+  const judged = ranking ? objects : Math.min(objects, Math.max(0, Math.floor(room.time * objects / (params.time.lastObject || 180000))));
   const clients = Array.from({ length: 8 }, (_, index) => {
     const left = index < 4;
     const slot = index % 4;
@@ -50,9 +52,8 @@ export function makeV2Frame(room, maps = [WARMUP, ...SIM_POOL]) {
     const name = `SIM-${left ? 'A' : 'B'}${slot + 1}`;
     return { ipcId: index, team: left ? 'left' : 'right', settings: { mania: { scrollSpeed: 28 } },
       user: { id: 900001 + (left ? 0 : 10) + slot, name, country: 'CN', accuracy: 98.65, rankedScore: 0, playCount: 1000, globalRank: 20000, totalPP: 5000 },
-      beatmap: { stats: params.stats }, play: play(name, score, room.time) };
+      beatmap: { stats: params.stats }, play: play(name, score, room.time, judged) };
   });
-  const ranking = room.ipcState === 4;
   return {
     simulation: true, game: { focused: true, paused: false }, client: 'stable', server: 'bancho',
     state: { number: ranking ? 7 : room.ipcState === 3 ? 2 : 5, name: ranking ? 'ResultsScreen' : room.ipcState === 3 ? 'Playing' : 'SongSelect' },
