@@ -22,7 +22,7 @@ export async function streamingHttp(req, res, url, source, store) {
     else if (input.action === 'page') await source.page(input.afterFixtureId ?? null);
     else if (input.action === 'connect') await source.connect(input);
     else if (input.action === 'disconnect') source.disconnect();
-    else if (input.action === 'import' && store) await store.command(source.importCommand(input));
+    else if (input.action === 'import' && store) await store.command(await source.importTaskCommand(input, store.catalog));
     else throw new Error('INVALID_INPUT');
     send(res, 200, source.snapshot());
   } catch (error) {

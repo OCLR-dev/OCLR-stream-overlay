@@ -76,3 +76,14 @@ test('old backend command rejection explains the service update rather than sugg
   assert.equal(commandErrorMessage('该图已经 Ban'), '该图已经 Ban');
   assert.equal(commandErrorMessage(undefined), '操作未应用');
 });
+
+test('fullRoster preserves all team members independently of active playing slot count or EX reductions', () => {
+  const state = parseLocation('', 'mode=3v3&exTeam=a&stage=elimination');
+  const view = derive(state);
+  assert.equal(view.count, 2);
+  assert.equal(view.roster('a').length, 2);
+  assert.equal(view.fullRoster('a').length, 6);
+  assert.equal(view.fullRoster('b').length, 6);
+  assert.equal(view.hasRoster('a'), true);
+  assert.equal(view.poolName, '淘汰赛图池');
+});

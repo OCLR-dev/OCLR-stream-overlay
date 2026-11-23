@@ -113,6 +113,15 @@ export function normalizePool(entries) {
   });
 }
 
+function normalizeRoster(roster) {
+  requireValue(Array.isArray(roster) && roster.length <= 20, '名单格式无效');
+  return roster.map(p => {
+    requireValue(p && text(p.name, 80) && p.name.trim(), '选手姓名无效');
+    requireValue(p.osuId == null || (Number.isSafeInteger(p.osuId) && p.osuId > 0), '选手 ID 无效');
+    return { name: p.name.trim(), osuId: p.osuId ?? null };
+  });
+}
+
 function normalizeTeams(teams) {
   const result = {};
   for (const team of SIDES) {
@@ -120,12 +129,10 @@ function normalizeTeams(teams) {
     requireValue(value && text(value.name, 300) && value.name.trim(), '请填写双方队名');
     requireValue(value.id == null || text(value.id, 100), '队伍 ID 无效');
     requireValue(value.avatarKey == null || (validTeamImageId(value.id) && validTeamImageId(value.avatarKey)), '队伍图片标识无效');
-    requireValue(Array.isArray(value.roster) && value.roster.length <= 20, '名单格式无效');
-    result[team] = { id: value.id || null, name: value.name.trim(), avatarKey: value.avatarKey ?? null, roster: value.roster.map(p => {
-      requireValue(p && text(p.name, 80) && p.name.trim(), '选手姓名无效');
-      requireValue(p.osuId == null || (Number.isSafeInteger(p.osuId) && p.osuId > 0), '选手 ID 无效');
-      return { name: p.name.trim(), osuId: p.osuId ?? null };
-    }) };
+    result[team] = { id: value.id || null, name: value.name.trim(), avatarKey: value.avatarKey ?? null,
+      roster: normalizeRoster(value.roster),
+      ...(value.registeredRoster != null ? { registeredRoster: normalizeRoster(value.registeredRoster) } : {}),
+    };
   }
   requireValue(!result.a.id || result.a.id !== result.b.id, '左右队伍不能相同');
   return result;

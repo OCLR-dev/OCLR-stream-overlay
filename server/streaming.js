@@ -9,6 +9,28 @@ const text = value => typeof value === 'string' && value.length <= 500;
 const check = value => { if (!value) throw new Error('INVALID_RESPONSE'); };
 const stages = ['group', 'knockout', 'exhibition'];
 
+function normalizeRoster(members) {
+  if (!Array.isArray(members)) return [];
+  const roster = [];
+  for (const member of members) {
+    const rawName = typeof member?.username === 'string' ? member.username : typeof member?.name === 'string' ? member.name : '';
+    const name = rawName.trim();
+    if (!name || name.length > 80) continue;
+    const osuId = Number.isSafeInteger(member?.osuId) && member.osuId > 0 ? member.osuId : null;
+    roster.push({ name, osuId });
+    if (roster.length >= 20) break;
+  }
+  return roster;
+}
+
+function projectFixtureTeam(team) {
+  if (!team) return null;
+  const registeredRoster = normalizeRoster(team.members);
+  return { id: team.id, name: team.name, avatarKey: team.avatarKey ?? null, roster: [],
+    ...(registeredRoster.length ? { registeredRoster } : {}),
+  };
+}
+
 export function validateStreaming(body) {
   check(body?.meta?.apiVersion === '1');
   const d = body.data;
@@ -60,8 +82,7 @@ export function validateStreaming(body) {
   // Project explicit fields rather than copying arbitrary upstream properties.
   return { nextFixture: { id: f.id, label: f.label, roundName: f.roundName, scheduledAt: f.scheduledAt,
     ...(exhibition ? { exhibition: true } : {}),
-    home: f.home.team ? { id: f.home.team.id, name: f.home.team.name, avatarKey: f.home.team.avatarKey ?? null, roster: [] } : null,
-    away: f.away.team ? { id: f.away.team.id, name: f.away.team.name, avatarKey: f.away.team.avatarKey ?? null, roster: [] } : null },
+    home: projectFixtureTeam(f.home.team), away: projectFixtureTeam(f.away.team) },
     stage: s === null ? null : { kind: s.kind, roundName: s.round.name, playersPerTeam: s.round.scoringRules?.playersPerTeam ?? null, scoringRules: rules == null ? null :
       rules.type === 'first_to' ? { type: rules.type, wins: rules.wins } :
         { type: rules.type, count: rules.count, ...(exhibition ? { allowDraw: rules.allowDraw } : {}) },
@@ -71,10 +92,10 @@ export function validateStreaming(body) {
 
 export class StreamingSource {
   #token = ''; #timer; #controller; #generation = 0; #failures = 0; #authorization = null; #connection = '';
-  constructor({ backend, fetchImpl, readJson, notify = () => {}, schedule = setTimeout, cancel = clearTimeout }) {
+  constructor({ backend, origin = null, key = '', fetchImpl, readJson, notify = () => {}, schedule = setTimeout, cancel = clearTimeout }) {
     const url = new URL(backend);
     if (url.protocol !== 'https:' || url.href !== `${url.origin}/`) throw new Error('INVALID_BACKEND_ORIGIN');
-    this.backend = url.origin; this.fetch = fetchImpl; this.readJson = readJson;
+    this.backend = url.origin; this.origin = origin; this.key = key; this.fetch = fetchImpl; this.readJson = readJson;
     this.notify = notify; this.schedule = schedule; this.cancel = cancel;
     this.state = { status: 'disconnected', edition: null, afterFixtureId: null, updatedAt: null, error: null, data: null, tasks: [], hasMore: false };
   }
@@ -190,7 +211,7 @@ export class StreamingSource {
       }
     }
   }
-  importCommand(input) {
+  importCommand(input, rosters = null) {
     const { data } = this.state;
     const edition = this.authorizedEdition();
     if (!edition || !data?.nextFixture || input.fixtureId !== data.nextFixture.id) throw new Error('请等候有效的直播任务资料');
@@ -206,11 +227,63 @@ export class StreamingSource {
       roundName: data.stage?.roundName ?? f.roundName, series: rules ?? null,
       tiedMapPolicy: data.stage?.tiedMapPolicy ?? null, autoResults: data.stage?.autoResults ?? false,
     } : null;
+    const withRegisteredRoster = team => {
+      const registeredRoster = rosters?.get(team.id) ?? team.registeredRoster;
+      return { ...team, ...(registeredRoster ? { registeredRoster } : {}) };
+    };
     return { id: input.id, version: input.version, type: 'import-streaming', payload: {
       title: `${edition.toUpperCase()} · ${f.label}`.slice(0,160), edition, fixtureId: f.id,
-      mode: players ? `${players}v${players}` : null, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming', teams: { a: f.home, b: f.away },
+      mode: players ? `${players}v${players}` : null, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming',
+      teams: { a: withRegisteredRoster(f.home), b: withRegisteredRoster(f.away) },
       pool: data.mappools[0]?.entries || [], stage: exhibition ? 'exhibition' : rules ? rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination' : null,
       ...(exhibition ? { exhibition } : {}),
     } };
+  }
+  async resolveEditionRosters(edition, catalog = null) {
+    const rosters = new Map();
+    if (catalog?.edition === edition && Array.isArray(catalog.teams)) {
+      for (const team of catalog.teams) {
+        if (uuid(team?.id) && Array.isArray(team.roster)) {
+          const members = normalizeRoster(team.roster);
+          if (members.length) rosters.set(team.id, members);
+        }
+      }
+    }
+    const f = this.state.data?.nextFixture;
+    const needed = [f?.home?.id, f?.away?.id].filter(Boolean);
+    if (!needed.some(id => !rosters.has(id)) || typeof this.fetch !== 'function') return rosters;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const headers = { Accept: 'application/json' };
+      if (this.origin) headers.Origin = this.origin;
+      if (this.key) headers.Authorization = `Bearer ${this.key}`;
+      const response = await this.fetch(`${this.backend}/api/v1/tournaments/${edition}/teams`, {
+        method: 'GET', headers, credentials: 'omit', redirect: 'error', cache: 'no-store', signal: controller.signal,
+      });
+      if (response?.ok && /^1\.(?:[1-9][0-9]*)\.[0-9]+$/.test(response.headers?.get?.('x-oclr-read-contract') || '')) {
+        const body = await this.readJson(response);
+        if (body?.meta?.apiVersion === '1' && Array.isArray(body.data)) {
+          for (const team of body.data) {
+            if (uuid(team?.id) && Array.isArray(team.members)) {
+              const members = normalizeRoster(team.members);
+              if (members.length) rosters.set(team.id, members);
+            }
+          }
+        }
+      } else {
+        await response?.body?.cancel?.();
+      }
+    } catch {
+      // Public team roster lookup is best-effort enrichment and must not block task import.
+    } finally {
+      clearTimeout(timeout);
+    }
+    return rosters;
+  }
+  async importTaskCommand(input, catalog = null) {
+    const base = this.importCommand(input);
+    const rosters = await this.resolveEditionRosters(base.payload.edition, catalog);
+    return this.importCommand(input, rosters);
   }
 }

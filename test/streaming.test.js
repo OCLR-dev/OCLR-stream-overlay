@@ -334,3 +334,61 @@ test('streaming accepts absent/null image versions and rejects malformed image k
     assert.throws(() => validateStreaming(body), /INVALID_RESPONSE/);
   }
 });
+
+test('streaming import keeps registered rosters after the operator changes the playing lineup', async () => {
+  const publicTeams = {
+    meta: { apiVersion: '1' },
+    data: [
+      {
+        id: id(4),
+        name: 'Red',
+        members: [
+          { osuId: 1001, username: 'Red_Captain' },
+          { osuId: 1002, username: 'Red_Two' },
+          { osuId: 1003, username: 'Red_Three' },
+          { osuId: 1004, username: 'Red_Four' },
+          { osuId: 1005, username: 'Red_Five' },
+          { osuId: 1006, username: 'Red_Six' },
+        ],
+      },
+      {
+        id: id(5),
+        name: 'Blue',
+        members: [
+          { osuId: 2001, username: 'Blue_Captain' },
+          { osuId: 2002, username: 'Blue_Two' },
+          { osuId: 2003, username: 'Blue_Three' },
+          { osuId: 2004, username: 'Blue_Four' },
+          { osuId: 2005, username: 'Blue_Five' },
+        ],
+      },
+    ],
+  };
+  const { s } = source(async url => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/api/v1/tournaments/s11/teams') return response(publicTeams);
+    return response(parsed.search ? empty() : fixture());
+  });
+  await s.connect({ edition: 's11', token });
+  const store = new SessionStore();
+  await store.command(await s.importTaskCommand({ id: 'import-with-rosters', version: store.state.version, fixtureId: id(1) }));
+  const { a, b } = store.snapshot().session.match.teams;
+  assert.deepEqual(a.roster, []);
+  assert.deepEqual(b.roster, []);
+  assert.equal(a.registeredRoster.length, 6);
+  assert.equal(b.registeredRoster.length, 5);
+  assert.deepEqual(a.registeredRoster[0], { name: 'Red_Captain', osuId: 1001 });
+  assert.deepEqual(a.registeredRoster[5], { name: 'Red_Six', osuId: 1006 });
+  assert.deepEqual(b.registeredRoster[4], { name: 'Blue_Five', osuId: 2005 });
+
+  const lineup = a.registeredRoster.slice(2);
+  await store.command({ id: 'confirm-lineup', version: store.state.version, type: 'setting',
+    payload: { field: 'roster', team: 'a', value: lineup } });
+  const restored = new SessionStore({ state: JSON.parse(JSON.stringify(store.state)) });
+  assert.deepEqual(restored.state.match.teams.a.roster, lineup);
+  assert.deepEqual(restored.state.match.teams.a.registeredRoster, a.registeredRoster);
+  assert.deepEqual(restored.state.match.teams.b.registeredRoster, b.registeredRoster);
+  restored.close();
+  s.disconnect();
+  store.close();
+});
