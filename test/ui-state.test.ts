@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLocation, serializeState, changeField, changeBan, derive } from '../ui/model.ts';
+import type { Session } from '../ui/session.ts';
 
 test('old links retain zero, unknown, hash priority and invalid S11 safeguards', () => {
   const state = parseLocation('?scene=playing&mode=3v3&starA=4', '#scene=map-result&starA=0&starB=unknown&exA=0&banA1=HD&banA2=HD');
@@ -75,4 +76,30 @@ test('old backend command rejection explains the service update rather than sugg
   assert.doesNotMatch(commandErrorMessage('未知会话命令'), /手动调整/);
   assert.equal(commandErrorMessage('该图已经 Ban'), '该图已经 Ban');
   assert.equal(commandErrorMessage(undefined), '操作未应用');
+});
+
+test('fullRoster preserves all team members independently of active playing slot count or EX reductions', () => {
+  const state = parseLocation('', 'mode=3v3&exTeam=a&stage=elimination');
+  const view = derive(state);
+  assert.equal(view.count, 2);
+  assert.equal(view.roster('a').length, 2);
+  assert.equal(view.fullRoster('a').length, 6);
+  assert.equal(view.fullRoster('b').length, 6);
+  assert.equal(view.hasRoster('a'), true);
+  assert.equal(view.poolName, '淘汰赛图池');
+});
+
+test('custom waiting pool shows known rules for its actual BP and configured TB', async () => {
+  const { customWaitingPoolRule } = await import('../ui/poolDisplay.ts');
+  const rules = (bestOf: number | null, mods: string[], preset: string | null, mode = 'rule') =>
+    customWaitingPoolRule({ match: { bestOf, bpPreset: preset }, pool: mods.map(mod => ({ mod })), bp: { mode } } as Session);
+  const preset = 'single-ban-alternate';
+
+  assert.equal(rules(null, ['NM'], null), '');
+  assert.equal(rules(1, ['NM'], preset), '每队 1 Ban');
+  assert.equal(rules(1, ['NM', 'TB'], preset), '每队 1 Ban');
+  assert.equal(rules(5, ['NM', 'TB'], preset), '每队 1 Ban · 决胜图 TB');
+  assert.equal(rules(5, ['NM', 'TB'], preset, 'manual'), '决胜图 TB');
+  assert.equal(rules(5, ['NM', 'TB'], null), '决胜图 TB');
+  assert.equal(rules(5, ['NM', 'TB', 'TB'], null), '');
 });

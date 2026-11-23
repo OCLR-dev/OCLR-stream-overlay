@@ -1,5 +1,5 @@
 import { computed, inject, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, watch, type InjectionKey } from 'vue';
-import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, normalizeScene, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type Team, type Scene } from './model';
+import { banLabel, changeBan, changeField, derive, mapIcons, mapLabels, mapMods, normalizeScene, parseLocation, scenes, serializeState, teamNames, urlKeys, type Field, type RosterMember, type Team, type Scene } from './model';
 import { useSession } from './session';
 import { useMotionReady } from './motion';
 import { poolDisplay, poolWinner } from './poolDisplay';
@@ -80,6 +80,29 @@ export function createOverlay(shared = false) {
       name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null,
       osuId: s?.ex.team ? null : s?.match.teams[team].roster[i]?.osuId ?? null
     })) : base.roster(team);
+    const fullRoster = (team: Team): RosterMember[] => {
+      if (!shared) return base.fullRoster(team);
+      const list = s?.match.teams[team].roster || [];
+      if (list.length > 0) {
+        return list.map((member, i) => ({
+          team, id: `${team}-full-${i + 1}`, slot: i + 1,
+          role: '', syntheticEx: false, placeholder: false,
+          name: member.name?.trim() || (member.osuId != null ? String(member.osuId) : '未知'),
+          osuId: member.osuId ?? null,
+        }));
+      }
+      const regularCount = Number.parseInt(state.mode, 10) || 4;
+      return Array.from({ length: regularCount }, (_, i) => ({
+        team, id: `${team}-slot-${i + 1}`, slot: i + 1,
+        role: '', syntheticEx: false, placeholder: true,
+        name: null, osuId: null,
+      }));
+    };
+    const hasRoster = (team: Team) => !shared || (s?.match.teams[team].roster.length || 0) > 0;
+    const meta = s?.match.custom ? matchFormat(s.match) : base.meta;
+    const poolName = shared
+      ? (s?.match.poolId && envelope?.catalog?.pools?.find(p => p.id === s.match.poolId)?.name) || `${meta.label}图池`
+      : base.poolName;
     const arrived = (team: Team) => shared ? s?.arrived[team] || false : base.arrived(team);
     const bound = liveRoom(envelope, sessionClient?.connection.value);
     const liveMap = state.scene === 'playing' || bound ? liveBeatmap(envelope, sessionClient?.connection.value) : null;
@@ -112,8 +135,7 @@ export function createOverlay(shared = false) {
         .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
       return pool.find(e => e.id === ids[index]) || null;
     };
-    const meta = s?.match.custom ? matchFormat(s.match) : base.meta;
-    return { ...base, meta, brand: s?.match.custom ? s.match.title : null, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', shared, warmup: !!s?.warmup, names, roster, players: (['a', 'b'] as const).flatMap(roster), arrived,
+    return { ...base, meta, brand: s?.match.custom ? s.match.title : null, seriesTarget: meta.target ? `${meta.format} · 先 ${meta.target}` : '先赢目标待配置', shared, warmup: !!s?.warmup, names, roster, fullRoster, hasRoster, poolName, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {
@@ -145,8 +167,6 @@ export function createOverlay(shared = false) {
         envelope?.live.tosu.data?.tourney?.players || [], base.count * 2) : [],
       sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',
       arrivalCount: shared ? (['a', 'b'] as const).filter(arrived).length * base.count : base.arrivalCount,
-      readiness: shared ? (s?.ready.a && s?.ready.b ? '双方已就绪' : '等待到场 / 就绪确认') : base.readiness,
-      readinessCopy: shared ? '状态由直播员人工核对。' : base.readinessCopy,
       commentary: shared ? '本机播出记录 · 实际名单由直播员核对' : base.commentary,
       exLabel: shared && s?.ex.team ? `EX · ${names[s.ex.team]}开启` : base.exLabel,
       roomIpc: bound?.ipcState ?? null,

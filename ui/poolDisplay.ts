@@ -1,5 +1,12 @@
 import type { Session } from './session';
 
+export function customWaitingPoolRule(session: Session) {
+  const { match, bp, pool } = session;
+  const singleBan = match.bpPreset === 'single-ban-alternate' && bp?.mode !== 'manual';
+  const hasTiebreaker = (match.bestOf ?? 0) > 1 && pool.filter(entry => entry.mod === 'TB').length === 1;
+  return [singleBan ? '每队 1 Ban' : '', hasTiebreaker ? '决胜图 TB' : ''].filter(Boolean).join(' · ');
+}
+
 // Manual broadcast marks take precedence over the automatic BP display.
 // Clearing a mark explicitly keeps a card open without deleting old results.
 export function poolDisplay(s: Session, entryId: string) {
