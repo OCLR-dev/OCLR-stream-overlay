@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { playingLayout } from '../../src/playing-layout.js';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
 import type { RosterMember, Team } from '../model';
 
 const { state, view } = useOverlay();
 
+const lineupMode = computed(() => {
+  const { mode } = state;
+  if (view.value.exhibition) return `${mode} 标准模式`;
+  const { count } = playingLayout(mode, 'a', false);
+  return `常规 ${mode} · EX ${count}v${count}`;
+});
+
+const rosterRole = (player: RosterMember) => player.slot === 1 ? 'Captain' : `T${player.slot - 1}`;
 const displayName = (player: RosterMember) =>
   player.placeholder ? '阵容待公布' : player.name?.trim() || (player.osuId != null ? String(player.osuId) : '未知');
 const avatarUrl = (player: RosterMember) =>
@@ -96,7 +105,7 @@ const poolGroups = computed(() => {
               :class="[view.arrived('a') ? 'is-arrived' : 'is-waiting', { 'is-placeholder': player.placeholder }]"
               data-team="a" :data-slot="player.slot" :data-player-id="player.id"
               :data-arrival-state="view.arrived('a') ? 'arrived' : 'waiting'"
-              :aria-label="`${view.names.a}，${displayName(player)}，#${player.slot}，${teamStatusLabel('a')}`">
+              :aria-label="`${view.names.a}，${displayName(player)}，${rosterRole(player)}，${teamStatusLabel('a')}`">
               <Transition name="player-swap" mode="out-in">
                 <div class="waiting-player-identity" :key="`${player.osuId ?? 'anonymous'}:${displayName(player)}`">
                   <div class="player-card-bg" aria-hidden="true">
@@ -111,7 +120,7 @@ const poolGroups = computed(() => {
                   </div>
                   <div class="waiting-player-copy">
                     <div class="waiting-player-meta">
-                      <span class="waiting-player-slot">#{{ String(player.slot).padStart(2, '0') }}</span>
+                      <span class="waiting-player-role">{{ rosterRole(player) }}</span>
                       <span v-if="player.osuId != null" class="waiting-player-uid">UID {{ player.osuId }}</span>
                       <span v-else-if="player.placeholder" class="waiting-player-uid is-muted">待录入</span>
                     </div>
@@ -123,15 +132,7 @@ const poolGroups = computed(() => {
           </div>
         </section>
 
-        <aside class="readiness-column" aria-label="赛前对阵与就绪信息">
-          <div class="versus-bar">
-            <span class="waiting-event-kicker" :title="view.title">{{ view.title }}</span>
-            <b>VS</b>
-            <span class="waiting-readiness-pill" :data-ready="view.ready('a') && view.ready('b')">
-              {{ view.warmup ? 'WARM-UP · 热身模式' : view.readiness }}
-            </span>
-          </div>
-
+        <aside class="readiness-column" aria-label="赛制与就绪信息">
           <section class="waiting-specs-card" aria-label="本场赛制规格">
             <div class="waiting-card-head">
               <span class="readiness-kicker">MATCH FORMAT · 本场规格</span>
@@ -147,7 +148,7 @@ const poolGroups = computed(() => {
               </div>
               <div class="waiting-spec-row">
                 <dt>上场模式</dt>
-                <dd>{{ view.exhibition ? `${state.mode} 标准模式` : `常规 ${state.mode} · EX ${state.exA}/${state.exB}` }}</dd>
+                <dd>{{ lineupMode }}</dd>
               </div>
               <div class="waiting-spec-row">
                 <dt>先后手</dt>
@@ -168,7 +169,6 @@ const poolGroups = computed(() => {
                 <strong class="waiting-arrival-state">{{ teamStatusLabel(team) }}</strong>
               </div>
             </div>
-            <p class="readiness-copy">{{ view.readinessCopy }}</p>
           </section>
         </aside>
 
@@ -189,7 +189,7 @@ const poolGroups = computed(() => {
               :class="[view.arrived('b') ? 'is-arrived' : 'is-waiting', { 'is-placeholder': player.placeholder }]"
               data-team="b" :data-slot="player.slot" :data-player-id="player.id"
               :data-arrival-state="view.arrived('b') ? 'arrived' : 'waiting'"
-              :aria-label="`${view.names.b}，${displayName(player)}，#${player.slot}，${teamStatusLabel('b')}`">
+              :aria-label="`${view.names.b}，${displayName(player)}，${rosterRole(player)}，${teamStatusLabel('b')}`">
               <Transition name="player-swap" mode="out-in">
                 <div class="waiting-player-identity" :key="`${player.osuId ?? 'anonymous'}:${displayName(player)}`">
                   <div class="player-card-bg" aria-hidden="true">
@@ -204,7 +204,7 @@ const poolGroups = computed(() => {
                   </div>
                   <div class="waiting-player-copy">
                     <div class="waiting-player-meta">
-                      <span class="waiting-player-slot">#{{ String(player.slot).padStart(2, '0') }}</span>
+                      <span class="waiting-player-role">{{ rosterRole(player) }}</span>
                       <span v-if="player.osuId != null" class="waiting-player-uid">UID {{ player.osuId }}</span>
                       <span v-else-if="player.placeholder" class="waiting-player-uid is-muted">待录入</span>
                     </div>

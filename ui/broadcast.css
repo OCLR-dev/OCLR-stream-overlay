@@ -1305,8 +1305,10 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
   gap: 8px;
   min-width: 0;
 }
-.waiting-player-slot {
+.waiting-player-role {
   display: inline-flex;
+  flex: none;
+  white-space: nowrap;
   align-items: center;
   justify-content: center;
   height: 22px;
@@ -1386,7 +1388,7 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .waiting-roster-grid[data-density='ultra'] .waiting-avatar-shell { flex-basis: 38px; width: 38px; height: 38px; }
 .waiting-roster-grid[data-density='ultra'] .waiting-avatar-shell .player-avatar-fallback { font-size: 16px; }
 .waiting-roster-grid[data-density='ultra'] .waiting-player-copy { gap: 2px; }
-.waiting-roster-grid[data-density='ultra'] .waiting-player-slot { height: 18px; padding: 0 6px; font-size: 12px; }
+.waiting-roster-grid[data-density='ultra'] .waiting-player-role { height: 18px; padding: 0 6px; font-size: 12px; }
 .waiting-roster-grid[data-density='ultra'] .waiting-player-uid { font-size: 11px; }
 .waiting-roster-grid[data-density='ultra'] .waiting-player-name { font-size: 14px; }
 
@@ -1465,72 +1467,14 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 .roster-footer .roster-grid { grid-template-columns: repeat(var(--roster-count), minmax(0, 1fr)); grid-template-rows: 1fr; align-items: stretch; gap: 8px; padding: 0; height: 100%; }
 .roster-footer .roster-grid .player-card:nth-child(n) { grid-column: auto; justify-self: center; align-self: stretch; width: 100%; height: 100%; max-width: 152px; aspect-ratio: auto; }
 
-/* Waiting center matchup hub (VS, match specs, and arrival status). */
+/* Waiting match format and arrival status. */
 .readiness-column {
   display: flex;
   flex-direction: column;
-  justify-content: stretch;
+  justify-content: center;
   gap: 16px;
   min-width: 0;
   min-height: 0;
-  text-align: center;
-}
-.versus-bar {
-  position: relative;
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 18px 14px;
-  border: 1px solid rgba(167, 139, 250, 0.34);
-  border-radius: var(--radius-panel);
-  background:
-    radial-gradient(circle at 50% 48%, rgba(124, 58, 237, 0.28), transparent 72%),
-    linear-gradient(180deg, rgba(34, 18, 68, 0.86) 0%, rgba(18, 10, 38, 0.92) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.36);
-}
-.waiting-event-kicker {
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--purple-light);
-  font-family: var(--display);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.versus-bar b {
-  color: #e9d8ff;
-  font-family: var(--display);
-  font-size: 84px;
-  font-weight: 800;
-  font-style: italic;
-  line-height: .94;
-  text-shadow: -6px 0 22px rgba(255, 77, 109, 0.45), 6px 0 22px rgba(61, 139, 255, 0.45), 0 0 28px rgba(124, 58, 237, 0.65);
-}
-.waiting-readiness-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  padding: 5px 14px;
-  border: 1px solid rgba(183, 148, 255, 0.42);
-  border-radius: var(--radius-card);
-  background: rgba(24, 13, 48, 0.88);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  white-space: nowrap;
-}
-.waiting-readiness-pill[data-ready='true'] {
-  border-color: #4ade80;
-  background: rgba(20, 83, 45, 0.78);
-  color: #dcfce7;
-  box-shadow: 0 0 16px rgba(74, 222, 128, 0.28);
 }
 
 .waiting-specs-card,
@@ -1559,13 +1503,10 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
   font-weight: 700;
   letter-spacing: .16em;
 }
-.waiting-specs-card { flex: 1 1 0; }
 .waiting-spec-list {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  justify-content: space-evenly;
-  gap: 9px;
+  gap: 12px;
   margin: 0;
 }
 .waiting-spec-row {
@@ -1629,13 +1570,6 @@ body.is-shared-output .broadcast-canvas[data-current-scene='playing'].layout-2v2
 }
 .waiting-arrival-row[data-status='arrived'] .waiting-arrival-state { color: #fde68a; }
 .waiting-arrival-row[data-status='ready'] .waiting-arrival-state { color: #86efac; }
-.readiness-copy {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-  text-align: center;
-}
 
 /* Waiting bottom bar: 1000×138 Mappool Overview card flanked by the two 420×138 chat boxes. */
 .waiting-footer {
