@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { playingLayout } from '../../src/playing-layout.js';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
 import { customWaitingPoolRule } from '../poolDisplay';
@@ -11,6 +12,15 @@ const poolRule = computed(() => {
   const current = session.value;
   if (current?.match.custom) return customWaitingPoolRule(current);
   return current || !view.value.shared ? '每队 2 Ban · 决胜图 TB' : '';
+});
+
+const lineupMode = computed(() => {
+  const { mode } = state;
+  if (view.value.exhibition) return `${mode} 标准模式`;
+  const current = session.value;
+  if (view.value.shared && (!current || (current.match.custom && !view.value.ex))) return `常规 ${mode}`;
+  const { count } = playingLayout(mode, 'a', false);
+  return `常规 ${mode} · EX ${count}v${count}`;
 });
 
 const displayName = (player: RosterMember) =>
@@ -126,15 +136,7 @@ const poolGroups = computed(() => {
           </div>
         </section>
 
-        <aside class="readiness-column" aria-label="赛前对阵与就绪信息">
-          <div class="versus-bar">
-            <span class="waiting-event-kicker" :title="view.title">{{ view.title }}</span>
-            <b>VS</b>
-            <span class="waiting-readiness-pill" :data-ready="view.ready('a') && view.ready('b')">
-              {{ view.warmup ? 'WARM-UP · 热身模式' : view.readiness }}
-            </span>
-          </div>
-
+        <aside class="readiness-column" aria-label="赛制与就绪信息">
           <section class="waiting-specs-card" aria-label="本场赛制规格">
             <div class="waiting-card-head">
               <span class="readiness-kicker">MATCH FORMAT · 本场规格</span>
@@ -150,7 +152,7 @@ const poolGroups = computed(() => {
               </div>
               <div class="waiting-spec-row">
                 <dt>上场模式</dt>
-                <dd>{{ view.exhibition ? `${state.mode} 标准模式` : `常规 ${state.mode} · EX ${state.exA}/${state.exB}` }}</dd>
+                <dd>{{ lineupMode }}</dd>
               </div>
               <div class="waiting-spec-row">
                 <dt>先后手</dt>
@@ -171,7 +173,6 @@ const poolGroups = computed(() => {
                 <strong class="waiting-arrival-state">{{ teamStatusLabel(team) }}</strong>
               </div>
             </div>
-            <p class="readiness-copy">{{ view.readinessCopy }}</p>
           </section>
         </aside>
 

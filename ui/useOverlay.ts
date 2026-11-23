@@ -166,8 +166,6 @@ export function createOverlay(shared = false) {
         envelope?.live.tosu.data?.tourney?.players || [], base.count * 2) : [],
       sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',
       arrivalCount: shared ? (['a', 'b'] as const).filter(arrived).length * base.count : base.arrivalCount,
-      readiness: shared ? (s?.ready.a && s?.ready.b ? '双方已就绪' : '等待到场 / 就绪确认') : base.readiness,
-      readinessCopy: shared ? '状态由直播员人工核对。' : base.readinessCopy,
       commentary: shared ? '本机播出记录 · 实际名单由直播员核对' : base.commentary,
       exLabel: shared && s?.ex.team ? `EX · ${names[s.ex.team]}开启` : base.exLabel,
       roomIpc: bound?.ipcState ?? null,

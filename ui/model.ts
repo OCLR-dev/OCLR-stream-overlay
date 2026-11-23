@@ -195,8 +195,6 @@ export function derive(state: OverlayState, exhibitionRule?: SeriesRule | null) 
     players: teams.flatMap(roster), roster, fullRoster, hasRoster, arrived, orderLabel,
     poolName: `${meta.label}图池`,
     arrivalCount: (state.arrival === 'both' ? 2 : state.arrival === 'a' ? 1 : 0) * count,
-    readiness: state.arrival === 'both' ? '双方选手已到场' : state.arrival === 'a' ? '示例A队已到场' : '等待选手到场',
-    readinessCopy: state.arrival === 'both' ? '等待就绪确认。' : state.arrival === 'a' ? '示例B队等待中。' : '等待双方选手入场。',
     commentary: state.arrival === 'both' ? '双方选手已到场，等待就绪。' : state.arrival === 'a' ? '示例A队已到场，示例B队等待中。' : '等待双方选手入场。',
     scoreA: leadDemos[state.lead][0], scoreB: leadDemos[state.lead][1],
     resultA: resultTotal([350000, 320000, 300000, 280000]), resultB: resultTotal([330000, 310000, 290000, 260000]),
