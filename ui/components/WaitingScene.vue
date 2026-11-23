@@ -2,9 +2,16 @@
 import { computed } from 'vue';
 import { useOverlay } from '../useOverlay';
 import { modColorStyle } from '../modColors';
+import { customWaitingPoolRule } from '../poolDisplay';
 import type { RosterMember, Team } from '../model';
 
-const { state, view } = useOverlay();
+const { state, view, session } = useOverlay();
+const poolRule = computed(() => {
+  if (view.value.exhibition) return view.value.seriesTarget;
+  const current = session.value;
+  if (current?.match.custom) return customWaitingPoolRule(current);
+  return current || !view.value.shared ? '每队 2 Ban · 决胜图 TB' : '';
+});
 
 const displayName = (player: RosterMember) =>
   player.placeholder ? '阵容待公布' : player.name?.trim() || (player.osuId != null ? String(player.osuId) : '未知');
@@ -57,11 +64,7 @@ const poolGroups = computed(() => {
   ];
   return ordered.map(mod => {
     const labels = buckets.get(mod) || [];
-    const range = mod === 'TB'
-      ? (labels.length === 1 ? `${labels[0]} · 决胜图` : `${labels[0]} – ${labels[labels.length - 1]}`)
-      : labels.length === 1
-        ? labels[0]!
-        : `${labels[0]} – ${labels[labels.length - 1]}`;
+    const range = labels.length === 1 ? labels[0]! : `${labels[0]} – ${labels[labels.length - 1]}`;
     return { mod, count: labels.length, labels, range };
   });
 });
@@ -227,7 +230,7 @@ const poolGroups = computed(() => {
           </div>
           <div class="waiting-pool-badges">
             <span class="waiting-pool-badge">{{ view.pool.length ? `共 ${view.pool.length} 张谱面` : '图池待载入' }}</span>
-            <span class="waiting-pool-badge is-subtle">{{ view.exhibition ? view.seriesTarget : '每队 2 Ban · 决胜图 TB' }}</span>
+            <span v-if="poolRule" class="waiting-pool-badge is-subtle">{{ poolRule }}</span>
           </div>
         </div>
         <div v-if="poolGroups.length" class="waiting-pool-mods" :style="{ '--pool-mod-count': poolGroups.length }">
@@ -241,7 +244,7 @@ const poolGroups = computed(() => {
           </div>
         </div>
         <div v-else class="waiting-pool-empty">
-          <p>尚未载入本场图池 · 请在控制台选择已发布图池或手动录入</p>
+          <p>尚未载入本场图池 · 请在控制台录入本场图池</p>
         </div>
       </div>
     </footer>
