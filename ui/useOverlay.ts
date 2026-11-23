@@ -79,9 +79,13 @@ export function createOverlay(shared = false) {
       name: s?.ex.team ? null : s?.match.teams[team].roster[i]?.name || null,
       osuId: s?.ex.team ? null : s?.match.teams[team].roster[i]?.osuId ?? null
     })) : base.roster(team);
+    const waitingRoster = (team: Team) => {
+      const matchTeam = s?.match.teams[team];
+      return matchTeam?.registeredRoster?.length ? matchTeam.registeredRoster : matchTeam?.roster ?? [];
+    };
     const fullRoster = (team: Team): RosterMember[] => {
       if (!shared) return base.fullRoster(team);
-      const list = s?.match.teams[team].roster || [];
+      const list = waitingRoster(team);
       if (list.length > 0) {
         return list.map((member, i) => ({
           team, id: `${team}-full-${i + 1}`, slot: i + 1,
@@ -97,7 +101,7 @@ export function createOverlay(shared = false) {
         name: null, osuId: null,
       }));
     };
-    const hasRoster = (team: Team) => !shared || (s?.match.teams[team].roster.length || 0) > 0;
+    const hasRoster = (team: Team) => !shared || waitingRoster(team).length > 0;
     const poolName = shared
       ? (s?.match.poolId && (envelope?.catalog?.pools?.find(p => p.id === s.match.poolId)?.name ||
         envelope?.live.streaming?.data?.mappools?.find(p => p.id === s.match.poolId)?.name)) || `${base.meta.label}图池`

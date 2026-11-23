@@ -7,7 +7,14 @@ export function commandErrorMessage(message: unknown) {
 }
 
 export interface PoolEntry { id: string; beatmapId: number; setId?: number; mod: string; label: string; title: string; artist: string; difficulty: string }
-export interface MatchTeam { id: string | null; name: string; avatarKey?: string | null; roster: { name: string; osuId: number | null }[] }
+type TeamMember = { name: string; osuId: number | null };
+export interface MatchTeam {
+  id: string | null;
+  name: string;
+  avatarKey?: string | null;
+  roster: TeamMember[];
+  registeredRoster?: TeamMember[];
+}
 export type SeriesRule = { type: 'first_to'; wins: number } | { type: 'fixed_maps'; count: number; allowDraw?: boolean };
 export interface ExhibitionRules {
   roundName: string; series: SeriesRule | null; tiedMapPolicy: 'require_replay' | 'count_as_draw' | null; autoResults: boolean;

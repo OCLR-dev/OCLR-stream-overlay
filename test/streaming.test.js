@@ -335,7 +335,7 @@ test('streaming accepts absent/null image versions and rejects malformed image k
   }
 });
 
-test('streaming task import automatically matches full registered team rosters from the same edition public teams list', async () => {
+test('streaming import keeps registered rosters after the operator changes the playing lineup', async () => {
   const publicTeams = {
     meta: { apiVersion: '1' },
     data: [
@@ -372,12 +372,23 @@ test('streaming task import automatically matches full registered team rosters f
   await s.connect({ edition: 's11', token });
   const store = new SessionStore();
   await store.command(await s.importTaskCommand({ id: 'import-with-rosters', version: store.state.version, fixtureId: id(1) }));
-  assert.equal(store.state.match.teams.a.roster.length, 6);
-  assert.equal(store.state.match.teams.b.roster.length, 5);
-  assert.deepEqual(store.state.match.teams.a.roster[0], { name: 'Red_Captain', osuId: 1001 });
-  assert.deepEqual(store.state.match.teams.a.roster[5], { name: 'Red_Six', osuId: 1006 });
-  assert.deepEqual(store.state.match.teams.b.roster[4], { name: 'Blue_Five', osuId: 2005 });
+  const { a, b } = store.snapshot().session.match.teams;
+  assert.deepEqual(a.roster, []);
+  assert.deepEqual(b.roster, []);
+  assert.equal(a.registeredRoster.length, 6);
+  assert.equal(b.registeredRoster.length, 5);
+  assert.deepEqual(a.registeredRoster[0], { name: 'Red_Captain', osuId: 1001 });
+  assert.deepEqual(a.registeredRoster[5], { name: 'Red_Six', osuId: 1006 });
+  assert.deepEqual(b.registeredRoster[4], { name: 'Blue_Five', osuId: 2005 });
+
+  const lineup = a.registeredRoster.slice(2);
+  await store.command({ id: 'confirm-lineup', version: store.state.version, type: 'setting',
+    payload: { field: 'roster', team: 'a', value: lineup } });
+  const restored = new SessionStore({ state: JSON.parse(JSON.stringify(store.state)) });
+  assert.deepEqual(restored.state.match.teams.a.roster, lineup);
+  assert.deepEqual(restored.state.match.teams.a.registeredRoster, a.registeredRoster);
+  assert.deepEqual(restored.state.match.teams.b.registeredRoster, b.registeredRoster);
+  restored.close();
   s.disconnect();
   store.close();
 });
-

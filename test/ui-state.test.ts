@@ -87,4 +87,3 @@ test('fullRoster preserves all team members independently of active playing slot
   assert.equal(view.hasRoster('a'), true);
   assert.equal(view.poolName, '淘汰赛图池');
 });
-

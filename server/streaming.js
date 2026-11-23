@@ -23,6 +23,14 @@ function normalizeRoster(members) {
   return roster;
 }
 
+function projectFixtureTeam(team) {
+  if (!team) return null;
+  const registeredRoster = normalizeRoster(team.members);
+  return { id: team.id, name: team.name, avatarKey: team.avatarKey ?? null, roster: [],
+    ...(registeredRoster.length ? { registeredRoster } : {}),
+  };
+}
+
 export function validateStreaming(body) {
   check(body?.meta?.apiVersion === '1');
   const d = body.data;
@@ -74,8 +82,7 @@ export function validateStreaming(body) {
   // Project explicit fields rather than copying arbitrary upstream properties.
   return { nextFixture: { id: f.id, label: f.label, roundName: f.roundName, scheduledAt: f.scheduledAt,
     ...(exhibition ? { exhibition: true } : {}),
-    home: f.home.team ? { id: f.home.team.id, name: f.home.team.name, avatarKey: f.home.team.avatarKey ?? null, roster: normalizeRoster(f.home.team.members) } : null,
-    away: f.away.team ? { id: f.away.team.id, name: f.away.team.name, avatarKey: f.away.team.avatarKey ?? null, roster: normalizeRoster(f.away.team.members) } : null },
+    home: projectFixtureTeam(f.home.team), away: projectFixtureTeam(f.away.team) },
     stage: s === null ? null : { kind: s.kind, roundName: s.round.name, playersPerTeam: s.round.scoringRules?.playersPerTeam ?? null, scoringRules: rules == null ? null :
       rules.type === 'first_to' ? { type: rules.type, wins: rules.wins } :
         { type: rules.type, count: rules.count, ...(exhibition ? { allowDraw: rules.allowDraw } : {}) },
@@ -220,15 +227,14 @@ export class StreamingSource {
       roundName: data.stage?.roundName ?? f.roundName, series: rules ?? null,
       tiedMapPolicy: data.stage?.tiedMapPolicy ?? null, autoResults: data.stage?.autoResults ?? false,
     } : null;
-    const withRoster = team => {
-      const matched = rosters instanceof Map ? rosters.get(team.id) : rosters?.[team.id];
-      const roster = normalizeRoster(Array.isArray(matched) && matched.length ? matched : team.roster);
-      return { ...team, roster };
+    const withRegisteredRoster = team => {
+      const registeredRoster = rosters?.get(team.id) ?? team.registeredRoster;
+      return { ...team, ...(registeredRoster ? { registeredRoster } : {}) };
     };
     return { id: input.id, version: input.version, type: 'import-streaming', payload: {
       title: `${edition.toUpperCase()} · ${f.label}`.slice(0,160), edition, fixtureId: f.id,
       mode: players ? `${players}v${players}` : null, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming',
-      teams: { a: withRoster(f.home), b: withRoster(f.away) },
+      teams: { a: withRegisteredRoster(f.home), b: withRegisteredRoster(f.away) },
       pool: data.mappools[0]?.entries || [], stage: exhibition ? 'exhibition' : rules ? rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination' : null,
       ...(exhibition ? { exhibition } : {}),
     } };
