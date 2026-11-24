@@ -197,6 +197,16 @@ const { state, view, feedback, update, select, ban, toggleClean, cycleMap, mapLa
                 <span class="control-readout" id="mapReadout" aria-live="polite">{{ mapLabels[state.map] }}</span>
               </div>
             </div>
+
+            <div class="control-group control-group--wide">
+              <span class="control-label">结算演示 <em>仅全场胜利</em></span>
+              <div class="demo-buttons" role="group" aria-label="全场结算胜方演示">
+                <button class="demo-button" type="button" data-winner-demo="pending" :class="{ 'is-active': state.winnerDemo === 'pending' }" :aria-pressed="state.winnerDemo === 'pending'" @click="update('winnerDemo', 'pending')">待确认</button>
+                <button class="demo-button" type="button" data-winner-demo="a" :class="{ 'is-active': state.winnerDemo === 'a' }" :aria-pressed="state.winnerDemo === 'a'" @click="update('winnerDemo', 'a')">示例A队胜</button>
+                <button class="demo-button" type="button" data-winner-demo="b" :class="{ 'is-active': state.winnerDemo === 'b' }" :aria-pressed="state.winnerDemo === 'b'" @click="update('winnerDemo', 'b')">示例B队胜</button>
+                <button class="demo-button" type="button" data-winner-demo="draw" :class="{ 'is-active': state.winnerDemo === 'draw' }" :aria-pressed="state.winnerDemo === 'draw'" @click="update('winnerDemo', 'draw')">表演赛平局</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>

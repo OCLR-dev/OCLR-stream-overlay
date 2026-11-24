@@ -7,8 +7,11 @@
 .broadcast-canvas[data-current-scene='mappool'] .ambient-diamond:nth-child(3n) { display: none; }
 .broadcast-canvas[data-current-scene='playing'] .broadcast-ambient { opacity: .38; }
 .broadcast-canvas[data-current-scene='playing'] .ambient-diamond:nth-child(2n) { display: none; }
+.broadcast-canvas[data-current-scene='victory'] .spectrum-grid { opacity: .28; }
+.broadcast-canvas[data-current-scene='victory'] .broadcast-ambient { opacity: .72; }
 
 .broadcast-canvas[data-current-scene='roll'] .lazer-ribbon-edge { --ribbon-pace: 1.1; --ribbon-strength: .65; }
+.broadcast-canvas[data-current-scene='victory'] .lazer-ribbon-edge { --ribbon-pace: 1.28; --ribbon-strength: .72; }
 .lazer-ribbon-edge {
   position: absolute;
   inset: 0;
@@ -102,6 +105,19 @@
   background: repeating-linear-gradient(
     118deg,
     rgba(255, 204, 34, 0.04) 0 68px,
+    transparent 68px 164px
+  );
+}
+.broadcast-canvas[data-current-scene='victory'][data-winner-team='a'] .lazer-ribbon {
+  color: color-mix(in srgb, var(--team-a) 48%, #fde68a);
+}
+.broadcast-canvas[data-current-scene='victory'][data-winner-team='b'] .lazer-ribbon {
+  color: color-mix(in srgb, var(--team-b) 50%, #fde68a);
+}
+.broadcast-canvas[data-current-scene='victory'][data-championship='1'] .lazer-prism-wash {
+  background: repeating-linear-gradient(
+    118deg,
+    rgba(255, 204, 34, 0.045) 0 68px,
     transparent 68px 164px
   );
 }

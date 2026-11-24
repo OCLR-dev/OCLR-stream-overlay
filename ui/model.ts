@@ -59,6 +59,7 @@ export interface OverlayState {
   tacticalB: 'available' | 'used';
   rematchA: 'unknown' | 'available' | 'used';
   rematchB: 'unknown' | 'available' | 'used';
+  winnerDemo: 'pending' | 'a' | 'b' | 'draw';
 }
 export type Field = Exclude<keyof OverlayState, 'banSlots'>;
 export const urlKeys = {
@@ -66,7 +67,8 @@ export const urlKeys = {
   arrival: 'arrival', map: 'map', stage: 'stage', mapType: 'maptype', mapMod: 'mod',
   exTeam: 'exTeam', exA: 'exA', exB: 'exB', seriesA: 'starA', seriesB: 'starB',
   pickFirst: 'pickFirst', banFirst: 'banFirst', pauseType: 'pauseType',
-  tacticalA: 'tacticalA', tacticalB: 'tacticalB', rematchA: 'rematchA', rematchB: 'rematchB'
+  tacticalA: 'tacticalA', tacticalB: 'tacticalB', rematchA: 'rematchA', rematchB: 'rematchB',
+  winnerDemo: 'winner'
 } satisfies Record<Field, string>;
 
 function known<T extends string>(value: string | null, options: readonly T[], fallback: T): T {
@@ -120,7 +122,8 @@ export function parseLocation(search = '', hash = ''): OverlayState {
     tacticalA: known(get('tacticalA'), ['available', 'used'], 'available'),
     tacticalB: known(get('tacticalB'), ['available', 'used'], 'available'),
     rematchA: known(get('rematchA'), ['unknown', 'available', 'used'], 'unknown'),
-    rematchB: known(get('rematchB'), ['unknown', 'available', 'used'], 'unknown')
+    rematchB: known(get('rematchB'), ['unknown', 'available', 'used'], 'unknown'),
+    winnerDemo: known(get('winner'), ['pending', 'a', 'b', 'draw'], 'pending')
   };
 }
 export function serializeState(state: OverlayState): string {
