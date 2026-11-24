@@ -74,13 +74,13 @@ async function copy() {
 
 <template>
   <div class="operator-recording">
-    <div class="operator-inline">
+    <div v-if="supported || feedback" class="operator-inline">
       <button v-if="supported" type="button" :disabled="!!obs.pending" @click="mark">标记精彩时刻</button>
       <span v-if="feedback" role="status">{{ feedback }}</span>
     </div>
     <p v-if="markingError" class="operator-error" role="alert">{{ markingError }}</p>
-    <details @toggle="open = ($event.target as HTMLDetailsElement).open">
-      <summary>录像打点</summary>
+    <details class="operator-recording-details" @toggle="open = ($event.target as HTMLDetailsElement).open">
+      <summary>录像打点 <span>{{ supported ? '录制中自动记录' : '停录后复制时间轴' }}</span></summary>
       <template v-if="open">
         <p v-if="unavailable" class="operator-error" role="alert">暂时读不到录像打点</p>
         <p v-if="(!timeline && !unavailable) || timeline?.loading" role="status">正在读取录像打点</p>
