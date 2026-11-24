@@ -55,7 +55,7 @@ const activeMapMod = computed(() => {
       <div class="canvas-sizer" id="canvasSizer" :style="{ width: `${1920 * scale}px`, height: `${1080 * scale}px` }">
         <div class="broadcast-canvas" id="broadcastCanvas"
           :class="[`mode-${state.mode}`, `layout-${view.count}v${view.count}`, `source-${state.source}`, { 'shared-output': shared, 'motion-ready': motionReady }]"
-          :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-ex-team="view.ex ? state.exTeam : 'none'" :data-lead="canvasLead" :data-map-mod="activeMapMod" :data-current-scene="state.scene"
+          :data-mode="state.mode" :data-base-mode="state.mode" :data-active-mode="`${view.count}v${view.count}`" :data-ex-layout="view.ex ? '1' : '0'" :data-ex-team="view.ex ? state.exTeam : 'none'" :data-lead="canvasLead" :data-map-mod="activeMapMod" :data-current-scene="state.scene" :data-winner-team="view.winnerTeam || (view.drawnExhibition ? 'draw' : 'none')" :data-championship="view.isChampionship ? '1' : '0'"
           :aria-label="`1920×1080 ${view.brand || `OCLR ${view.season}`}  ${shared ? '共享直播输出' : '直播布局示意画布'}，当前场景：${sceneLabels[state.scene]}，常规 ${state.mode}，当前 ${view.modeLabel}`"
           :style="{ transform: `scale(${scale})`, '--lead-intensity': leadIntensity }">
           <div class="canvas-mood-glow" aria-hidden="true"></div>
