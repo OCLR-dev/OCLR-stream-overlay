@@ -89,11 +89,23 @@ test('explicit import copies authoritative scoring, no roster/result guesses; po
   assert.equal(store.state.match.fixtureId, null);
   await store.command(s.importCommand({ id: 'import-1', version: store.state.version, fixtureId: id(1) }));
   assert.equal(store.state.match.stage, 'final'); assert.equal(store.state.match.provenance, 'oclr-streaming');
+  assert.equal(store.state.match.roundName, 'Literal round');
   assert.deepEqual(store.state.match.teams.a.roster, []); assert.equal(store.state.rounds.length, 0);
   const before = structuredClone(store.state);
   await assert.rejects(store.command(s.importCommand({ id: 'import-2', version: store.state.version, fixtureId: id(1) })), /初始化/);
   assert.deepEqual(store.state, before);
   s.disconnect(); assert.deepEqual(store.state, before);
+  const restored = new SessionStore({ state: JSON.parse(JSON.stringify(store.state)) });
+  assert.equal(restored.snapshot().session.match.roundName, 'Literal round');
+  const { roundName, ...match } = restored.state.match;
+  await restored.command({ id: 'same-fixture', version: restored.state.version, type: 'update-setup',
+    payload: { ...match, pool: [] } });
+  assert.equal(restored.snapshot().session.match.roundName, roundName);
+  await restored.command({ id: 'different-fixture', version: restored.state.version, type: 'update-setup',
+    payload: { ...match, fixtureId: id(99), pool: [] } });
+  assert.equal(restored.snapshot().session.match.roundName, undefined);
+  restored.close();
+  store.close();
 });
 
 test('unknown scoring preserves manual setup while fixed-map scoring cannot import', async () => {

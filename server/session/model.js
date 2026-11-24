@@ -769,10 +769,13 @@ function applyCommand(s, command) {
       const validStage = exhibition || ['group', 'elimination', 'final'].includes(p.stage);
       const modes = exhibition ? ['1v1', '2v2', '3v3', '4v4'] : ['3v3', '4v4'];
       requireValue(text(p.title) && validStage && modes.includes(p.mode) && ['4x3', '16x9'].includes(p.source), '本场设置无效');
+      requireValue(p.roundName == null || text(p.roundName, 500), '赛事轮次名称无效');
+      const sameFixture = p.fixtureId && p.fixtureId === s.match.fixtureId && p.edition === s.match.edition;
+      const roundName = p.fixtureId ? p.roundName?.trim() || (sameFixture ? s.match.roundName : null) : null;
       updatePool(s, p.pool);
       s.match = { title: p.title, edition: p.edition || null, fixtureId: p.fixtureId || null, poolId: p.poolId || null,
         provenance: ['oclr', 'oclr-archive', 'oclr-streaming'].includes(p.provenance) ? p.provenance : 'manual', stage: p.stage, mode: p.mode, source: p.source, teams: normalizeTeams(p.teams),
-        ...(exhibition ? { exhibition } : {}) };
+        ...(roundName ? { roundName } : {}), ...(exhibition ? { exhibition } : {}) };
       if (exhibition) {
         s.bpFlow = null;
         s.ex = { team: null, remaining: { a: 0, b: 0 } };

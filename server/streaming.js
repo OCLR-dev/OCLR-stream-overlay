@@ -232,7 +232,7 @@ export class StreamingSource {
       return { ...team, ...(registeredRoster ? { registeredRoster } : {}) };
     };
     return { id: input.id, version: input.version, type: 'import-streaming', payload: {
-      title: `${edition.toUpperCase()} · ${f.label}`.slice(0,160), edition, fixtureId: f.id,
+      title: `${edition.toUpperCase()} · ${f.label}`.slice(0,160), edition, fixtureId: f.id, roundName: data.stage?.roundName || f.roundName,
       mode: players ? `${players}v${players}` : null, poolId: data.mappools[0]?.id || null, provenance: 'oclr-streaming',
       teams: { a: withRegisteredRoster(f.home), b: withRegisteredRoster(f.away) },
       pool: data.mappools[0]?.entries || [], stage: exhibition ? 'exhibition' : rules ? rules.wins === 7 ? 'final' : data.stage.kind === 'group' ? 'group' : 'elimination' : null,
