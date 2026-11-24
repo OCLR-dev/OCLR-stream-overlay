@@ -56,7 +56,7 @@ export function attachBroadcast(store, data) {
     requireValue(!fixture?.exhibition, '表演赛请从 OCLR 直播任务导入，以使用本轮实际赛制');
     requireValue(a && b && a.id !== b.id && pool && (!p.fixtureId || fixture), '请明确选择本场队伍、场次和图池');
     return store.command({ ...command, type: 'update-setup', payload: {
-      title: p.title, edition: p.edition, fixtureId: fixture?.id || null, poolId: pool.id, provenance: catalog.kind === 'historical_archive' ? 'oclr-archive' : 'oclr',
+      title: p.title, edition: p.edition, fixtureId: fixture?.id || null, roundName: fixture?.roundName, poolId: pool.id, provenance: catalog.kind === 'historical_archive' ? 'oclr-archive' : 'oclr',
       teams: { a, b }, pool: pool.entries, stage: p.stage, mode: p.mode, source: p.source,
     } });
   };

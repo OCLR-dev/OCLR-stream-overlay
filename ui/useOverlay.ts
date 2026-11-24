@@ -8,6 +8,7 @@ import { retainRankingScores, type RankingScoreHold } from './rankingScoreHold';
 import { formatTeamScore } from './scoreFormat';
 import { presentMatchChat } from './matchChat';
 import { mapParameterMode } from './mapParameters';
+import { buildDemoRecapRounds, buildRecapRounds, isChampionshipRound } from './victoryDisplay';
 import { currentPoolEntry } from '../src/playing-layout.js';
 
 export function createOverlay(shared = false) {
@@ -65,7 +66,17 @@ export function createOverlay(shared = false) {
   });
   const view = computed(() => {
     const s = session.value;
-    const base = derive(state, s?.match.exhibition?.series);
+    const winnerDemo = !shared && state.scene === 'victory' ? state.winnerDemo : 'pending';
+    const recapRounds = shared ? buildRecapRounds(s?.rounds ?? [], s?.pool ?? []) : buildDemoRecapRounds(winnerDemo, state.stage);
+    const demoDraw = winnerDemo === 'draw';
+    const base = demoDraw
+      ? derive({ ...state, stage: 'exhibition' }, { type: 'fixed_maps', count: recapRounds.length, allowDraw: true })
+      : derive(state, s?.match.exhibition?.series);
+    const winnerTeam = shared ? s?.winner ?? null : winnerDemo === 'a' || winnerDemo === 'b' ? winnerDemo : null;
+    const series = !shared && recapRounds.length
+      ? { a: recapRounds.filter(item => item.winner === 'a').length, b: recapRounds.filter(item => item.winner === 'b').length }
+      : { a: state.seriesA, b: state.seriesB };
+    const season = s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11';
     const envelope = sessionClient?.snapshot.value;
     const remembered = automaticPanicGap.value && lastScores.value?.key === (s ? `${s.id}:${s.currentRoundId || ''}` : '')
       ? lastScores.value : null;
@@ -138,7 +149,7 @@ export function createOverlay(shared = false) {
         .filter(id => pool.some(e => e.id === id && e.status === 'banned' && e.actionTeam === team));
       return pool.find(e => e.id === ids[index]) || null;
     };
-    return { ...base, shared, warmup: !!s?.warmup, names, roster, fullRoster, hasRoster, poolName, players: (['a', 'b'] as const).flatMap(roster), arrived,
+    return { ...base, rosterSlots: false, brand: `OCLR ${season}`, shared, warmup: !!s?.warmup, names, roster, fullRoster, hasRoster, poolName, players: (['a', 'b'] as const).flatMap(roster), arrived,
       ready: (team: Team) => shared ? s?.ready[team] || false : false,
       orderLabel: (value: string) => value === 'a' || value === 'b' ? names[value] : '未确认',
       banText: (team: Team, index: 0 | 1) => {
@@ -161,10 +172,13 @@ export function createOverlay(shared = false) {
       showPlayingScores: !shared || !!scores,
       fixedExScores: envelope?.live.tosu.data?.tourney?.competitionScore?.rule === 'ex-slots',
       parameterMode: mapParameterMode(envelope?.live.sources?.tosu === 'simulated', bound?.ipcState, currentMap?.mod),
-      winner: s?.winner ? names[s.winner] : null,
-      drawnExhibition: !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner,
+      winnerTeam, winner: winnerTeam ? names[winnerTeam] : null,
+      drawnExhibition: shared ? !!s?.exhibition?.draw && s.phase === 'winner' && !s.winner : demoDraw,
+      isChampionship: !base.exhibition && !s?.warmup && (shared ? isChampionshipRound(s?.match.roundName) : state.stage === 'final'),
+      recapRounds, series,
+      hasSeriesAdjustment: shared ? ((s?.seriesAdjustment?.a || 0) !== 0 || (s?.seriesAdjustment?.b || 0) !== 0) : false,
       roll: s?.roll || null, title: s?.match.title || 'OCLR S11',
-      season: s?.match.edition?.match(/^s\d+$/) ? s.match.edition.toUpperCase() : 'S11',
+      season,
       chat: shared ? presentMatchChat(liveRoomChat(envelope, sessionClient?.connection.value).slice(-100),
         envelope?.live.tosu.data?.tourney?.players || [], base.count * 2) : [],
       sourceStatus: shared ? envelope?.live.tosu.status || '未连接' : 'demo',

@@ -25,7 +25,7 @@ const scoreMotion = computed(() => roomTotals.value && motionReady.value &&
 const scoreScope = computed(() => JSON.stringify([motionScope.value, session.value?.currentRoundId,
   session.value?.rounds.find(r => r.id === session.value?.currentRoundId)?.runId,
   view.value.currentMap?.beatmapId, view.value.warmup]));
-const seriesScore = (team: 'a' | 'b') => (team === 'a' ? state.seriesA : state.seriesB) ?? '—';
+const seriesScore = (team: 'a' | 'b') => view.value.series[team] ?? '—';
 // Ban/EX status sits under each team title in every scene so the header keeps
 // the same two-line structure instead of changing between scenes.
 const banBadge = (team: 'a' | 'b', index: 0 | 1) => view.value.banMap(team, index);
@@ -68,7 +68,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       </div>
       <div v-if="!view.warmup" class="series-row">
         <span class="series-mini" :class="{ 'is-visible': roomTotals }" data-series-mini="a" :aria-hidden="!roomTotals" :aria-label="`系列赢图 ${seriesScore('a')}`">{{ seriesScore('a') }}</span>
-        <span class="win-stars" data-series-stars="a" :aria-label="state.seriesA === null ? '赢图未知' : `已赢 ${state.seriesA} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesA ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesA !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesA ?? 0) }" aria-hidden="true"></i></span>
+        <span class="win-stars" data-series-stars="a" :aria-label="view.series.a === null ? '赢图未知' : `已赢 ${view.series.a} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (view.series.a ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && view.series.a !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (view.series.a ?? 0) }" aria-hidden="true"></i></span>
       </div>
     </section>
 
@@ -104,7 +104,7 @@ const banBadgeText = (team: 'a' | 'b', index: 0 | 1) => {
       </div>
       <div v-if="!view.warmup" class="series-row">
         <span class="series-mini" :class="{ 'is-visible': roomTotals }" data-series-mini="b" :aria-hidden="!roomTotals" :aria-label="`系列赢图 ${seriesScore('b')}`">{{ seriesScore('b') }}</span>
-        <span class="win-stars" data-series-stars="b" :aria-label="state.seriesB === null ? '赢图未知' : `已赢 ${state.seriesB} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (state.seriesB ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && state.seriesB !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (state.seriesB ?? 0) }" aria-hidden="true"></i></span>
+        <span class="win-stars" data-series-stars="b" :aria-label="view.series.b === null ? '赢图未知' : `已赢 ${view.series.b} 图`"><i v-for="n in view.meta.target" :key="n" v-emphasize="{ value: n <= (view.series.b ?? 0), scope: `${motionScope}:${view.meta.target}`, enabled: motionReady && view.series.b !== null, kind: 'pip' }" class="win-pip" :class="{ 'is-filled': n <= (view.series.b ?? 0) }" aria-hidden="true"></i></span>
       </div>
     </section>
     <MapWinBanner v-if="!view.warmup" />

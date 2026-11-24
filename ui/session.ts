@@ -28,7 +28,7 @@ export interface Round { id: string; replayOf?: string; entryId: string; pickedB
 export interface PoolMark { entryId: string; status: 'open' | 'banned' | 'picked'; team: Team | null }
 export interface Session {
   schema: number; id: string; version: number; warmup?: boolean;
-  match: { title: string; edition: string | null; fixtureId: string | null; poolId: string | null; provenance: string;
+  match: { title: string; edition: string | null; fixtureId: string | null; roundName?: string; poolId: string | null; provenance: string;
     stage: MatchStage; mode: MatchMode; source: '4x3' | '16x9'; teams: Record<Team, MatchTeam>; exhibition?: ExhibitionRules };
   exhibition?: { limit: number; played: number; complete: boolean; winner: Team | null; draw: boolean };
   poolChoice?: { team: Team; kind: 'ban' | 'pick' } | null;
