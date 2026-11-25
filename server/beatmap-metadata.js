@@ -3,11 +3,12 @@ import { calculateBeatmap, TEST_MODS } from './beatmap-calculation.js';
 
 const positiveId = value => Number.isSafeInteger(value) && value > 0;
 
-export async function boundedBody(response, limit) {
+export async function boundedBody(response, limit, onBytes) {
   if (Number(response.headers.get('content-length')) > limit) throw new Error('BEATMAP_TOO_LARGE');
   const chunks = []; let size = 0;
   for await (const chunk of response.body) {
     size += chunk.length;
+    onBytes?.(size);
     if (size > limit) throw new Error('BEATMAP_TOO_LARGE');
     chunks.push(chunk);
   }

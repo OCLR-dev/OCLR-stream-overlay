@@ -109,6 +109,8 @@ export async function readWebsiteShowcase({ backend, edition, token, isCurrent, 
   const path = poolPath(edition) + (poolId ? `/${poolId}${resource}?version=${version}` : '');
   const timeout = AbortSignal.timeout(replayId ? replayDownloadTimeoutMs : 8000);
   const signal = cancellation ? AbortSignal.any([timeout, cancellation]) : timeout;
+  let received = 0;
+  const countBytes = size => { received = size; };
   let response;
   try {
     response = await fetchImpl(backend + path, {
@@ -139,14 +141,14 @@ export async function readWebsiteShowcase({ backend, edition, token, isCurrent, 
       if (response.headers.get('content-type')?.split(';')[0] !== 'application/octet-stream') {
         await response.body?.cancel(); throw invalid();
       }
-      result = await boundedBody(response, replayLimit);
+      result = await boundedBody(response, replayLimit, countBytes);
       if (!result.length) throw invalid();
     } else if (entryId) {
       const type = response.headers.get('content-type')?.split(';')[0];
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) {
         await response.body?.cancel(); throw invalid();
       }
-      result = { type, bytes: await boundedBody(response, limit) };
+      result = { type, bytes: await boundedBody(response, limit, countBytes) };
       if (!result.bytes.length) throw invalid();
     } else {
       const body = await readJson(response);
@@ -165,11 +167,15 @@ export async function readWebsiteShowcase({ backend, edition, token, isCurrent, 
     if (cancellation?.aborted) throw cancellation.reason;
     if (!isCurrent()) throw authChanged();
     if (error instanceof WebsitePoolError) throw error;
-    if (replayId) {
+    if (replayId || entryId) {
       const requestId = response?.headers.get('x-request-id');
       const reason = timeout.aborted ? 'timeout' : !response ? 'request_failed' : response.ok ? 'body_failed' : 'http_error';
       const status = response ? ` http=${response.status}` : '';
-      console.warn(`[Showcase replay download] ${reason}${status}${uuid(requestId) ? ` request_id=${requestId}` : ''}`);
+      const length = response?.headers.get('content-length');
+      const expected = length && /^\d{1,12}$/.test(length) ? ` content_length=${length}` : '';
+      console.warn(`[Showcase ${replayId ? 'replay' : 'cover'} download] ${reason}${status} received=${received}${expected}${uuid(requestId) ? ` request_id=${requestId}` : ''}`);
+    }
+    if (replayId) {
       const message = timeout.aborted ? '从网站下载回放超时' : '暂时无法下载网站回放';
       throw new WebsitePoolError('SHOWCASE_UNAVAILABLE', `${message}，请重试或为当前 Slot 选择本地 .osr。`, 502);
     }

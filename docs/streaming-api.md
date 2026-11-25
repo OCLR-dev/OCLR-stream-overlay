@@ -48,4 +48,4 @@ Node 利用现有 `GET /api/v1/streaming/tournaments/{edition}/next?afterFixture
 
 读取列表、预览或刷新只读取网站资料。导入保留 Showcase 的 Stage 及本场比赛状态。导入版本和谱面随本机 Showcase 设置保存，手动录入及复制控制台图池仍是独立来源。`/showcase?clean=1` 继续作为播出画面。
 
-Node 使用同一赛季的内存凭证访问 [网站 Showcase 契约](https://github.com/OCLR-dev/OCLR-website/blob/main/docs/streaming-api.md)，要求 saved-read 1.37.0 或后续兼容版本。列表及逐池读取限制为 2 MiB。保护封面通过本机 Showcase 专用地址回源，每次由网站执行当前权限检查。封面不可用时显示占位，不经公开谱面代理降级。已明确导入的图池在读取失败、断开或重启后保留。如需继续读取受保护的封面，请重新连接当前赛季的有效授权。
+Node 使用同一赛季的内存凭证访问 [网站 Showcase 契约](https://github.com/OCLR-dev/OCLR-website/blob/main/docs/streaming-api.md)，要求 saved-read 1.37.0 或后续兼容版本。列表及逐池读取限制为 2 MiB。Showcase 底部谱面卡优先使用 tosu 当前谱面的本机背景，其次通过本机地址读取网站受保护的封面。网站每次执行当前权限检查。两项均不可用时显示占位。已明确导入的图池在读取失败、断开或重启后保留。如需继续读取受保护的封面，请重新连接当前赛季的有效授权。

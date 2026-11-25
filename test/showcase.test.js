@@ -610,7 +610,7 @@ test('website file requests use the confirmed version and report download failur
   const requestId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
   body = () => new Response('private upstream response', { status: 503, headers: { 'X-Request-Id': requestId } });
   await assert.rejects(read(), { status: 502, code: 'SHOWCASE_UNAVAILABLE', message: /选择本地 \.osr/ });
-  assert.deepEqual(warnings.mock.calls[0].arguments, [`[Showcase replay download] http_error http=503 request_id=${requestId}`]);
+  assert.deepEqual(warnings.mock.calls[0].arguments, [`[Showcase replay download] http_error http=503 received=0 request_id=${requestId}`]);
   const timeout = new AbortController();
   timeouts.mock.mockImplementationOnce(() => timeout.signal);
   body = () => {
@@ -618,7 +618,13 @@ test('website file requests use the confirmed version and report download failur
     throw timeout.signal.reason;
   };
   await assert.rejects(read(), { status: 502, code: 'SHOWCASE_UNAVAILABLE', message: /下载回放超时/ });
-  assert.deepEqual(warnings.mock.calls[1].arguments, ['[Showcase replay download] timeout']);
+  assert.deepEqual(warnings.mock.calls[1].arguments, ['[Showcase replay download] timeout received=0']);
+  body = () => new Response(new ReadableStream({
+    start(controller) { controller.enqueue(new Uint8Array(3)); },
+    pull(controller) { controller.error(new Error('connection closed in the body')); },
+  }), { headers: { ...headers, 'Content-Length': '8', 'X-Request-Id': requestId } });
+  await assert.rejects(read(), { status: 502, code: 'SHOWCASE_UNAVAILABLE' });
+  assert.deepEqual(warnings.mock.calls[2].arguments, [`[Showcase replay download] body_failed http=200 received=3 content_length=8 request_id=${requestId}`]);
   body = new Uint8Array(replayLimit + 1);
   await assert.rejects(read(), { status: 502 });
   body = () => new Response(new ReadableStream({

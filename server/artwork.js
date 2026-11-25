@@ -36,7 +36,7 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
   const backgrounds = new Map(); const pending = new Map();
   return async (req, res, url) => {
     if (!url.pathname.startsWith('/api/beatmaps/')) return false;
-    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|list|fullsize|background|metadata)(?:\/(NM|HD|HR|DT))?$/);
+    const match = url.pathname.match(/^\/api\/beatmaps\/([1-9]\d*)\/(cover|list|fullsize|background|local-background|metadata)(?:\/(NM|HD|HR|DT))?$/);
     const id = Number(match?.[1]);
     const current = snapshot();
     const entry = current?.session.pool.find(item => item.beatmapId === id);
@@ -45,9 +45,11 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
     if (!match || url.search || !positiveId(id)) return fail(404);
     if (!current) return fail(404);
     const liveMap = matchingLive(current, id);
+    const localOnly = match[2] === 'local-background';
+    const liveBackground = localOnly || match[2] === 'background';
     // The selected live map can be displayed before it belongs to a pool.
     // Keep metadata/calculation and arbitrary map requests restricted to the pool.
-    if (!entry && !(match[2] === 'background' && liveMap)) return fail(404);
+    if (localOnly ? !liveMap : !entry && !(liveBackground && liveMap)) return fail(404);
     if (match[3] && (match[2] !== 'metadata' || !current.session.pool.some(item => item.beatmapId === id && testModForCategory(item.mod) === match[3]))) return fail(404);
     if (match[2] === 'metadata') {
       const metadata = await resolveMetadata(id, match[3] || null);
@@ -56,7 +58,7 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
       res.end(JSON.stringify(metadata)); return true;
     }
     const wsUrl = config.wsUrl;
-    const tosuUrl = match[2] === 'background' && liveMap ? backgroundUrl(wsUrl) : null;
+    const tosuUrl = liveBackground && liveMap ? backgroundUrl(wsUrl) : null;
     if (tosuUrl) {
       const backgroundKey = map => JSON.stringify([tosuUrl, id, map.checksum, map.setId]);
       const key = backgroundKey(liveMap);
@@ -87,6 +89,7 @@ export function createArtworkHandler(config, fetchImpl, store, showcase = null) 
         res.end(cached.image.bytes); return true;
       }
     }
+    if (localOnly) return fail(404);
     const setId = positiveId(entry?.setId) ? entry.setId : positiveId(liveMap?.setId) ? liveMap.setId : (await resolveMetadata(id))?.setId;
     const latest = snapshot();
     if (!setId || !(latest.session.pool.some(item => item.beatmapId === id) || match[2] === 'background' && matchingLive(latest, id))) return fail(404);
