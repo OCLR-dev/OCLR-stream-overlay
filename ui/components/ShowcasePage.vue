@@ -20,6 +20,7 @@ const { snapshot, connection, busy, error, command } = useShowcase();
 const { list, busy: replayBusy, online: replayOnline, error: replayError, replayCommand } = useShowcaseReplays(!clean);
 const replays = computed(() => list.value?.poolToken === snapshot.value?.poolToken ? list.value : null);
 const rows = computed(() => new Map(replays.value?.rows.map(row => [row.slotId, row])));
+const replayCache = computed(() => replays.value?.cache);
 const replayLocked = computed(() => !replays.value || !replayOnline.value || replayBusy.value || busy.value ||
   replays.value.status === 'refreshing' || ['loading', 'waiting', 'playing'].includes(replays.value.playback.phase));
 const slotLabel = (id: string | null | undefined) => snapshot.value?.pool.find(slot => slot.id === id)?.label;
@@ -209,8 +210,12 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
             <button class="showcase-play-next" :disabled="replayLocked || replays?.gate !== 'ready' || !replays?.nextSlot" @click="playReplay('play')">播放下一张</button>
             <button :disabled="replayLocked || replays?.gate !== 'ready' || !replays?.playback.slotId" @click="playReplay('repeat')">重播本张</button>
             <button v-if="snapshot.websitePool" :disabled="replayLocked || replays?.status === 'stale'" @click="replayCommand('refresh')">刷新回放</button>
+            <button v-if="snapshot.websitePool" :disabled="replayLocked || replays?.status !== 'ready' || !replayCache || replayCache.running || replayCache.ready >= replayCache.total" @click="replayCommand('cache')">{{ replayCache?.running ? '正在缓存…' : '提前缓存回放' }}</button>
           </div>
           <p class="showcase-help" role="status">{{ replayStatus }}</p>
+          <p v-if="replayCache?.total" class="showcase-help" role="status">
+            网站回放已缓存 {{ replayCache.ready }}/{{ replayCache.total }}<template v-if="replayCache.failed"> · {{ replayCache.failed }} 份失败，可重试</template>
+          </p>
           <p v-if="replays?.status === 'refreshing'" class="showcase-help" role="status">正在读取网站回放…</p>
           <p v-if="replayError || replays?.message" class="showcase-error" role="alert">{{ replayError || replays?.message }}</p>
           <ul ref="poolList" class="showcase-maps" aria-label="演示图池与回放">
@@ -232,6 +237,8 @@ onUnmounted(() => { clearTimeout(pending); clearTimeout(pendingStage); document.
                 <p v-else class="showcase-help">{{ snapshot.websitePool && replays?.status !== 'ready' ? '网站回放未读取' : '尚未上传' }}</p>
                 <div class="showcase-replay-row-actions">
                   <span v-if="snapshot.transition?.shown.includes(map.id)">已播</span>
+                  <span v-if="rows.get(map.id)?.cached">已缓存</span>
+                  <span v-else-if="rows.get(map.id)?.cacheError" :title="rows.get(map.id)?.cacheError">缓存失败</span>
                   <span v-if="replays?.nextSlot === map.id">下一张</span>
                   <button v-else-if="rows.get(map.id)?.selectedId" :disabled="replayLocked" :aria-label="`将 ${map.label} 设为下一张`" @click="replayCommand('next', { slotId: map.id })">设为下一张</button>
                   <button :disabled="replayLocked" :aria-label="`为 ${map.label} 选择本地回放`" @click="chooseFile">选文件</button>

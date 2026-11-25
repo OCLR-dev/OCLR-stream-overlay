@@ -431,7 +431,7 @@ test('only the results timeout animates entry; early changes cover instantly', a
   assert.equal(obs.coverSnapshot().completed.serial, 1, 'cancellation does not invent a completed map');
 });
 
-test('replay list rechecks Program after download, opens once under the actual cover, retries and counts same-map completion once', async t => {
+test('playback shares the pending cache download, rechecks Program and authorization, and counts same-map completion once', async t => {
   const { studio, obs, session, mask, v2, feed } = await setupReplay(t, 30);
   const store = new ShowcaseStore(session, { obs: () => obs });
   await store.command({ type: 'pool-text', text: 'NM1 101\nHD1 202', poolToken: store.currentPoolToken() });
@@ -442,21 +442,26 @@ test('replay list rechecks Program after download, opens once under the actual c
   const download = Promise.withResolvers();
   const option = { id: 'r1', filename: 'HD1.osr', playerName: 'Example', mods: 8 };
   let failOpen = false;
-  let delayFile = true;
-  let fileStatus = 200;
+  let listStatus = 200;
+  let listReads = 0;
+  let fileReads = 0;
   let launches = 0;
   const list = new ShowcaseReplayList(store, {
     showcaseConnection: () => ({ connection: 'connected' }),
     async readShowcase(input) {
       assert.equal(input.version, 7);
       assert.equal(input.connection, 'connected');
-      if (input.replays) return { isCurrent: () => true, data: new Map([
-        ['a', { slot: 'NM1', replays: [] }], ['b', { slot: 'HD1', replays: [option] }],
-      ]) };
+      if (input.replays) {
+        listReads++;
+        if (listStatus !== 200) throw Object.assign(new Error('website list failed'), { status: listStatus });
+        return { isCurrent: () => true, data: new Map([
+          ['a', { slot: 'NM1', replays: [] }], ['b', { slot: 'HD1', replays: [option] }],
+        ]) };
+      }
       assert.equal(input.replayId, option.id);
-      if (fileStatus !== 200) throw Object.assign(new Error('stale'), { status: fileStatus });
+      fileReads++;
       entered.resolve();
-      if (delayFile) await download.promise;
+      await download.promise;
       return { isCurrent: () => true, data: replayFixture() };
     },
   }, async path => {
@@ -481,15 +486,17 @@ test('replay list rechecks Program after download, opens once under the actual c
   await assert.rejects(play(), /NM1 尚未上传/);
   await command('attach', { slotId: 'NM1', filename: 'NM1.osr' }, replayFixture());
   await command('next', { slotId: 'HD1' });
-  const underway = play();
+  assert.deepEqual((await command('cache')).cache, { running: true, total: 1, ready: 0, failed: 0 });
   await entered.promise;
+  const underway = play();
   await assert.rejects(play(), /正在处理/);
   studio.cut('休息');
   download.resolve();
   assert.match((await underway).playback.message, /节目场景已变化/);
   assert.equal(launches, 0);
   assert.equal(obs.coverSnapshot().covered, true, 'the rendering cover fallback alone cannot start a file');
-  delayFile = false;
+  assert.equal(list.snapshot().rows[1].cached, true);
+  assert.equal(fileReads, 1, 'playback joins the cache download already in progress');
   studio.cut(showcaseScene);
   await obs.tail;
   failOpen = true;
@@ -530,9 +537,18 @@ test('replay list rechecks Program after download, opens once under the actual c
   }
   await assert.rejects(play(), /已到清单末尾/);
   assert.equal(launches, 4);
-  fileStatus = 404;
+  assert.equal(listReads, 5, 'reuse checks website authorization through the list');
+  assert.equal(fileReads, 1, 'cached playback and repeat do not download the .osr again');
+  listStatus = 503;
+  const failed = await play('repeat');
+  assert.equal(failed.playback.phase, 'failed');
+  assert.equal(failed.status, 'ready', 'an unavailable file does not invalidate the replay list');
+  assert.equal(failed.rows[1].selectedId, option.id);
+  assert.equal(launches, 4);
+  listStatus = 404;
   const stale = await play('repeat');
   assert.equal(stale.status, 'stale');
+  assert.deepEqual(stale.cache, { running: false, total: 0, ready: 0, failed: 0 });
   assert.equal(stale.rows[1].selectedId, null);
   assert.equal(stale.rows[0].options[0].local, true);
   assert.equal(launches, 4);

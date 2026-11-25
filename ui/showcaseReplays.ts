@@ -16,8 +16,9 @@ interface ReplayList {
   gate: 'off' | 'cover' | 'ready';
   status: 'local' | 'unread' | 'refreshing' | 'ready' | 'stale' | 'error';
   message: string;
+  cache?: { running: boolean; total: number; ready: number; failed: number };
   playback: { phase: 'idle' | 'loading' | 'waiting' | 'playing' | 'completed' | 'failed'; slotId: string | null; message: string };
-  rows: { slotId: string; options: ReplayOption[]; selectedId: string | null }[];
+  rows: { slotId: string; options: ReplayOption[]; selectedId: string | null; cached?: boolean; cacheError?: string }[];
 }
 
 const mods = ['NF', 'EZ', 'TD', 'HD', 'HR', 'SD', 'DT', 'RX', 'HT', 'NC', 'FL', 'AT', 'SO', 'AP', 'PF',
@@ -55,11 +56,12 @@ export function useShowcaseReplays(enabled: boolean) {
     error.value = '';
     try {
       const url = file ? root + '/file?' + new URLSearchParams({ poolToken, slotId: String(fields.slotId), filename: file.name }) : root;
+      const timeout = action === 'play' || action === 'repeat' ? 45_000 : 20_000;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': file ? 'application/octet-stream' : 'application/json' },
         body: file || JSON.stringify({ poolToken, action, ...fields }),
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(timeout),
       });
       const value = await response.json();
       if (value.snapshot) apply(value.snapshot);
