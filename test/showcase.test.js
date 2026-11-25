@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { readWebsiteShowcase, replayLimit } from '../server/showcase-website.js';
 import { ShowcaseStore } from '../server/showcase.js';
 import { parseShowcasePool } from '../server/showcase-pool.js';
@@ -304,7 +305,7 @@ async function serveWebsiteShowcase(t, fetchImpl, file) {
     assert.equal(options.credentials, 'omit');
     assert.equal(options.redirect, 'error');
     return url.pathname.endsWith('/next') ?
-      websiteJson({ nextFixture: null, stage: null, mappools: [] }) : fetchImpl(url);
+      websiteJson({ nextFixture: null, stage: null, mappools: [] }) : fetchImpl(url, options);
   }, undefined, session);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   config.port = server.address().port;
@@ -520,7 +521,73 @@ test('replay list joins the confirmed version by stable entry ID, isolates metad
   assert.equal(attached.rows[0].selectedId, attached.rows[0].options[0].id);
 });
 
-test('website file requests use the confirmed version, binary response, and 8 MiB stream limit', async () => {
+test('pre-cache skips unselected options, retries only missing files, and cancels on pool replacement', async t => {
+  const [nm, hd] = openApiExample.entries;
+  const [first, alternate] = hd.replays;
+  const nmReplay = { ...first, replayId: 'f9ad1565-b323-4eba-8572-54a6258d05d2', filename: 'NM1.osr' };
+  const entries = [{ ...nm, replays: [nmReplay] }, hd];
+  const pool = { ...authorizedPool, id: openApiExample.poolId, entryCount: entries.length };
+  const details = privateEntries.slice(0, 2).map((entry, i) => ({ ...entry, coverUrl: null, entryId: entries[i].entryId }));
+  const detailPath = websitePath + '/' + pool.id;
+  const reads = [];
+  const failed = new Set([first.replayId]);
+  const entered = Promise.withResolvers();
+  const h = await serveWebsiteShowcase(t, (url, { signal }) => {
+    assert.equal(url.search, '?version=7');
+    if (url.pathname === detailPath) return websiteJson({ pool, entries: details });
+    if (url.pathname === detailPath + '/replays') return websiteJson({ ...openApiExample, entries }, '1.42.0');
+    const id = url.pathname.split('/').at(-1);
+    reads.push(id);
+    if (id === alternate.replayId) {
+      entered.resolve(signal);
+      return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+    }
+    if (failed.has(id)) return new Response(null, { status: 503 });
+    return new Response(replayFixture(), { headers: { 'Content-Type': 'application/octet-stream', 'X-OCLR-Read-Contract': '1.42.0' } });
+  });
+  const auth = await h.login();
+  const prior = await h.snapshot();
+  const imported = await h.send('/api/showcase', { type: 'import-website', ...auth, poolId: pool.id, version: pool.version, poolToken: prior.poolToken });
+  const { poolToken } = await imported.json();
+  const root = '/api/showcase/replays';
+  const action = (action, fields) => h.send(root, { action, poolToken, ...fields }).then(r => r.json());
+  const state = () => h.get(root).then(r => r.json());
+  const settled = async () => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const value = await state();
+      if (!value.cache.running) return value;
+      await delay(10);
+    }
+    assert.fail('cache did not finish');
+  };
+  await action('refresh');
+  await action('cache');
+  assert.deepEqual((await settled()).cache, { running: false, total: 1, ready: 1, failed: 0 });
+  assert.deepEqual(reads, [nmReplay.replayId]);
+  await action('select', { slotId: 'HD1', replayId: first.replayId });
+  await action('cache');
+  const incomplete = await settled();
+  assert.deepEqual(incomplete.cache, { running: false, total: 2, ready: 1, failed: 1 });
+  assert.match(incomplete.rows[1].cacheError, /暂时无法下载/);
+  failed.clear();
+  await action('cache');
+  assert.deepEqual((await settled()).cache, { running: false, total: 2, ready: 2, failed: 0 });
+  assert.deepEqual(reads, [nmReplay.replayId, first.replayId, first.replayId]);
+  await action('select', { slotId: 'HD1', replayId: alternate.replayId });
+  assert.equal((await action('cache')).cache.running, true);
+  const signal = await entered.promise;
+  const manual = await h.send('/api/showcase', { type: 'pool-text', text: 'NM1 101 Local map', poolToken });
+  assert.equal(manual.status, 200);
+  assert.equal(signal.aborted, true);
+  const replacement = await state();
+  assert.equal(replacement.status, 'local');
+  assert.equal(replacement.cache, undefined);
+  assert.equal(replacement.rows[0].cached, undefined);
+});
+
+test('website file requests use the confirmed version and report download failures without logging credentials', async t => {
+  const warnings = t.mock.method(console, 'warn', () => {});
+  const timeouts = t.mock.method(AbortSignal, 'timeout');
   const replayId = openApiExample.entries[1].replays[0].replayId;
   const { poolId, version } = openApiExample;
   const backend = 'https://oclr.org';
@@ -539,6 +606,19 @@ test('website file requests use the confirmed version, binary response, and 8 Mi
     },
   }, { poolId, version, replayId });
   assert.deepEqual(await read(), replayFixture());
+  assert.deepEqual(timeouts.mock.calls[0].arguments, [30_000]);
+  const requestId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+  body = () => new Response('private upstream response', { status: 503, headers: { 'X-Request-Id': requestId } });
+  await assert.rejects(read(), { status: 502, code: 'SHOWCASE_UNAVAILABLE', message: /选择本地 \.osr/ });
+  assert.deepEqual(warnings.mock.calls[0].arguments, [`[Showcase replay download] http_error http=503 request_id=${requestId}`]);
+  const timeout = new AbortController();
+  timeouts.mock.mockImplementationOnce(() => timeout.signal);
+  body = () => {
+    timeout.abort(new DOMException('Timed out', 'TimeoutError'));
+    throw timeout.signal.reason;
+  };
+  await assert.rejects(read(), { status: 502, code: 'SHOWCASE_UNAVAILABLE', message: /下载回放超时/ });
+  assert.deepEqual(warnings.mock.calls[1].arguments, ['[Showcase replay download] timeout']);
   body = new Uint8Array(replayLimit + 1);
   await assert.rejects(read(), { status: 502 });
   body = () => new Response(new ReadableStream({

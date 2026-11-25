@@ -2,6 +2,7 @@ import { boundedBody } from './beatmap-metadata.js';
 import { showcasePool } from './showcase-pool.js';
 
 export const replayLimit = 8 * 1024 * 1024;
+const replayDownloadTimeoutMs = 30_000;
 const limit = 2 * 1024 * 1024;
 const uuidPattern = '[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}';
 const uuid = value => typeof value === 'string' && new RegExp(`^${uuidPattern}$`, 'i').test(value);
@@ -99,17 +100,20 @@ function readReplayList(value, poolId, version) {
 /** The credential is owned by StreamingSource. A read never falls back to the public API. */
 export async function readWebsiteShowcase({ backend, edition, token, isCurrent, fetchImpl, readJson }, request) {
   if (!isCurrent()) throw authChanged();
-  const { poolId, version, entryId, replays, replayId } = request;
+  const { poolId, version, entryId, replays, replayId, signal: cancellation } = request;
   const replayRoute = replays || replayId;
   if (poolId !== undefined && (!uuid(poolId) || !versionOk(version))) throw invalid();
   if (entryId !== undefined && (!poolId || !uuid(entryId))) throw invalid();
   if (replayRoute && (!poolId || entryId || (replayId !== undefined && !uuid(replayId)))) throw invalid();
   const resource = entryId ? `/covers/${entryId}` : replayRoute ? '/replays' + (replayId ? `/${replayId}` : '') : '';
   const path = poolPath(edition) + (poolId ? `/${poolId}${resource}?version=${version}` : '');
+  const timeout = AbortSignal.timeout(replayId ? replayDownloadTimeoutMs : 8000);
+  const signal = cancellation ? AbortSignal.any([timeout, cancellation]) : timeout;
+  let response;
   try {
-    const response = await fetchImpl(backend + path, {
+    response = await fetchImpl(backend + path, {
       method: 'GET', headers: { Accept: replayId ? 'application/octet-stream' : entryId ? 'image/jpeg, image/png, image/webp' : 'application/json', Authorization: `Bearer ${token}` },
-      credentials: 'omit', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(8000),
+      credentials: 'omit', redirect: 'error', cache: 'no-store', signal,
     });
     if (!isCurrent() || !response.ok) {
       if (isCurrent() && replayRoute && response.status === 403) {
@@ -158,8 +162,17 @@ export async function readWebsiteShowcase({ backend, edition, token, isCurrent, 
     if (!isCurrent()) throw authChanged();
     return result;
   } catch (error) {
+    if (cancellation?.aborted) throw cancellation.reason;
     if (!isCurrent()) throw authChanged();
     if (error instanceof WebsitePoolError) throw error;
-    throw new WebsitePoolError('SHOWCASE_UNAVAILABLE', replayRoute ? '暂时无法读取网站回放，请稍后重试。' : '暂时无法读取网站图池，请稍后重试。', 502);
+    if (replayId) {
+      const requestId = response?.headers.get('x-request-id');
+      const reason = timeout.aborted ? 'timeout' : !response ? 'request_failed' : response.ok ? 'body_failed' : 'http_error';
+      const status = response ? ` http=${response.status}` : '';
+      console.warn(`[Showcase replay download] ${reason}${status}${uuid(requestId) ? ` request_id=${requestId}` : ''}`);
+      const message = timeout.aborted ? '从网站下载回放超时' : '暂时无法下载网站回放';
+      throw new WebsitePoolError('SHOWCASE_UNAVAILABLE', `${message}，请重试或为当前 Slot 选择本地 .osr。`, 502);
+    }
+    throw new WebsitePoolError('SHOWCASE_UNAVAILABLE', replays ? '暂时无法读取网站回放，请稍后重试。' : '暂时无法读取网站图池，请稍后重试。', 502);
   }
 }
