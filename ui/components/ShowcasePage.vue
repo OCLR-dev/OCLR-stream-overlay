@@ -97,11 +97,16 @@ let pending: ReturnType<typeof setTimeout>;
 let pendingStage: ReturnType<typeof setTimeout>;
 watch(() => snapshot.value?.poolText, value => { if (!dirty.value && value !== undefined) poolDraft.value = value; }, { immediate: true });
 watch(() => snapshot.value?.stageLabel, value => { if (!stageDirty.value && value !== undefined) stageDraft.value = value; }, { immediate: true });
-const source = computed<MapInfoSource>(() => ({ shared: true, emptyTitle: '等待客户端谱面',
-  currentMap: connection.value === 'synced' ? snapshot.value?.currentMap || null : null,
-  metadataEnabled: !!snapshot.value?.matchedId && !snapshot.value?.websitePool,
-  artworkUrl: connection.value === 'synced' ? snapshot.value?.websiteArtwork : undefined,
-  parameterMode: 'tosu', mapParameters: connection.value === 'synced' ? snapshot.value?.mapParameters || null : null }));
+const source = computed<MapInfoSource>(() => {
+  const state = connection.value === 'synced' ? snapshot.value : null;
+  const currentMap = state?.currentMap || null;
+  const websiteArtwork = state?.websiteArtwork;
+  return { shared: true, emptyTitle: '等待客户端谱面', currentMap,
+    metadataEnabled: !!state?.matchedId && !state.websitePool,
+    artworkUrl: websiteArtwork !== undefined && currentMap ? `/api/beatmaps/${currentMap.beatmapId}/local-background` : websiteArtwork,
+    artworkFallbackUrl: websiteArtwork,
+    parameterMode: 'tosu', mapParameters: state?.mapParameters || null };
+});
 const playbackStatus = computed(() => {
   if (connection.value !== 'synced') return '正在连接本机 Showcase…';
   const s = snapshot.value;

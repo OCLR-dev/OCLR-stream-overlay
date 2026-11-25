@@ -7,6 +7,7 @@ export interface MapInfoSource {
   emptyTitle?: string;
   metadataEnabled?: boolean;
   artworkUrl?: string | null;
+  artworkFallbackUrl?: string | null;
   currentMap: PoolEntry | null;
   mod?: string;
   parameterMode: ParameterMode;

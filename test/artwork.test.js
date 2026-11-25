@@ -96,7 +96,11 @@ test('matching live tosu backgrounds are bounded, cached, use the configured ser
   const first = await request('/api/beatmaps/101/background');
   assert.equal(first.status, 200); assert.equal(first.headers.get('x-artwork-source'), 'tosu');
   assert.deepEqual([...new Uint8Array(await first.arrayBuffer())], [255, 216, 255]);
-  assert.equal((await request('/api/beatmaps/101/background')).status, 200);
+  const local = await request('/api/beatmaps/101/local-background');
+  assert.equal(local.status, 200);
+  assert.equal(local.headers.get('x-artwork-source'), 'tosu');
+  assert.deepEqual([...new Uint8Array(await local.arrayBuffer())], [255, 216, 255]);
+  assert.equal((await request('/api/beatmaps/999/local-background')).status, 404);
   assert.equal(calls.length, 1); assert.equal(calls[0].url, 'http://127.0.0.1:24050/files/beatmap/background');
   assert.equal(calls[0].options.headers.Authorization, undefined); assert.equal(calls[0].options.redirect, 'error');
 });
@@ -142,6 +146,9 @@ test('a map change during background download and invalid image responses fall b
   store.live.tosu.data.beatmap.id = 101;
   assert.equal((await server.request('/api/beatmaps/101/background')).status, 302);
   store.live.tosu.data.beatmap = { id: 101, setId: 42, checksum: 'map-b' }; invalid = true;
+  const local = await server.request('/api/beatmaps/101/local-background');
+  assert.equal(local.status, 404);
+  assert.equal(local.headers.get('location'), null, 'local-only artwork never redirects to a public cover');
   assert.equal((await server.request('/api/beatmaps/101/background')).status, 302);
 });
 
