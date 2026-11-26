@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readWebsiteShowcase, replayLimit } from '../server/showcase-website.js';
 import { ShowcaseStore } from '../server/showcase.js';
+import { ShowcaseReplayList } from '../server/showcase-replay-list.js';
 import { parseShowcasePool } from '../server/showcase-pool.js';
 import { SessionStore } from '../server/session/store.js';
 import { createOverlayServer } from '../server/app.js';
@@ -640,4 +641,75 @@ test('website file requests use the confirmed version and report download failur
     },
   }), { headers });
   await assert.rejects(read(), { status: 401 });
+});
+
+test('website replay cache survives reopening and requires a current authorized catalog before use', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'oclr-replay-cache-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const replay = { id: 'f9ad1565-b323-4eba-8572-54a6258d05d2', filename: 'NM1.osr' };
+  const row = { slot: 'NM1', replays: [replay] };
+  let authorized = true;
+  let connection = 'first';
+  let downloads = 0;
+  let launched = null;
+  const streaming = {
+    showcaseConnection: () => ({ connection }),
+    async readShowcase({ replays, replayId, connection: current }) {
+      if (!authorized || current !== connection) throw Object.assign(new Error('forbidden'), { status: 403 });
+      if (replayId) downloads++;
+      assert.ok(replays || replayId === replay.id);
+      return { data: replayId ? replayFixture() : new Map([['entry', row]]),
+        isCurrent: () => authorized && current === connection };
+    },
+  };
+  const obs = {
+    replayLaunchGate: () => 'ready',
+    holdShowcaseReplay() {},
+    async launchShowcaseReplay({ launch, validate, notify }) {
+      validate();
+      await launch();
+      notify('completed');
+    },
+  };
+  const store = {
+    file: join(dir, 'showcase.json'),
+    currentPoolToken: () => String(store.state.website.pool.version),
+    obs: () => obs,
+    state: {
+      pool: [{ id: 'NM1', label: 'NM1', beatmapId: 101 }],
+      website: { edition: 's11', pool: { id: 'pool', version: 7 }, entriesById: [{ slot: 'NM1', entryId: 'entry' }] },
+    },
+  };
+  const open = () => new ShowcaseReplayList(store, streaming, async path => () => { launched = path; });
+  const command = (list, action, fields) => list.command({ poolToken: store.currentPoolToken(), action, ...fields });
+  let list = open();
+  await command(list, 'refresh');
+  await list.cacheSelected(store.state.website);
+  assert.equal(downloads, 1);
+  assert.equal(list.snapshot().cache.ready, 1);
+  list.close();
+
+  list = open();
+  connection = 'second';
+  assert.equal(list.snapshot().cache.ready, 0);
+  await command(list, 'refresh');
+  assert.equal(list.snapshot().cache.ready, 1);
+  authorized = false;
+  const play = () => command(list, 'play', { slotId: 'NM1', replayId: replay.id, generation: list.generation });
+  assert.equal((await play()).playback.phase, 'failed');
+  assert.equal(launched, null);
+  assert.equal(list.snapshot().cache.ready, 0);
+
+  authorized = true;
+  connection = 'third';
+  await command(list, 'refresh');
+  assert.equal(list.snapshot().cache.ready, 1);
+  await play();
+  assert.match(launched, /showcase-replay-cache/);
+  assert.deepEqual(await readFile(launched), replayFixture());
+  assert.equal(downloads, 1);
+  store.state.website.pool.version++;
+  await command(list, 'refresh');
+  assert.equal(list.snapshot().cache.ready, 0);
+  list.close();
 });

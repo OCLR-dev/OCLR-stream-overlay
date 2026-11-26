@@ -5,12 +5,24 @@ export const showcaseScene = 'OCLR · Showcase';
 export const showcaseBrowser = 'OCLR · Showcase 画面';
 
 export const showcaseCapture = 'OCLR · Showcase osu! 捕获';
+export const showcaseAudio = 'OCLR · Showcase osu! 音频';
+const audioKind = 'wasapi_process_output_capture';
+// Executable priority with an empty executable prevents matching untitled windows.
+const unboundAudio = { window: '', priority: 2 };
 const captureKinds = ['game_capture', 'window_capture'];
 const captureTransform = { alignment: 5, positionX: 160, positionY: 100, scaleX: 1, scaleY: 1,
   boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: 1600, boundsHeight: 800 };
 const captureError = () => new ObsError('Showcase osu! 捕获同名、已改名或已被替换，请在 OBS 核对来源后重试。');
 const captureSettings = kind => ({ ...(kind === 'game_capture' ? { capture_mode: 'window' } : {}),
   window: '', priority: 1, capture_cursor: false, cursor: false, capture_audio: false });
+
+async function stableWindow(call, inputName) {
+  const { propertyItems } = await call('GetInputPropertiesListPropertyItems', { inputName, propertyName: 'window' });
+  const { choices, windows } = windowOptions(propertyItems || []);
+  const matches = choices.filter(w => w.label.toLowerCase() === 'osu!');
+  const candidate = matches.length === 1 && windows.includes(matches[0]) ? matches[0] : null;
+  return { candidate, status: candidate ? 'bound' : matches.length ? 'ambiguous' : 'missing' };
+}
 
 async function installShowcaseCapture(call, target, previous, input, kind, browserId, save) {
   if (!kind && !input) {
@@ -23,7 +35,7 @@ async function installShowcaseCapture(call, target, previous, input, kind, brows
     await save(state);
   };
   let { sceneItems } = await call('GetSceneItemList', target);
-  let captureItems = sceneItems.filter(item => item.sourceName === showcaseCapture);
+  const captureItems = sceneItems.filter(item => item.sourceName === showcaseCapture);
   if (captureItems.length > 1) throw captureError();
   let itemId = captureItems[0]?.sceneItemId;
   if (!itemId) {
@@ -34,23 +46,23 @@ async function installShowcaseCapture(call, target, previous, input, kind, brows
     itemId = added.sceneItemId;
     await checkpoint({ inputUuid: input?.inputUuid || added.inputUuid || null });
   }
+  const item = { ...target, sceneItemId: itemId };
   if (!state.ready || state.itemId !== itemId) {
-    const item = { ...target, sceneItemId: itemId };
     await call('SetSceneItemTransform', { ...item, sceneItemTransform: captureTransform });
     ({ sceneItems } = await call('GetSceneItemList', target));
     const otherItems = sceneItems.filter(i => i.sceneItemId !== itemId);
     const browserIndex = otherItems.findIndex(i => i.sceneItemId === browserId);
     if (browserIndex < 0) throw captureError();
     await call('SetSceneItemIndex', { ...item, sceneItemIndex: browserIndex + 1 });
-    await call('SetSceneItemEnabled', { ...item, sceneItemEnabled: true });
+  }
+  if (!captureItems[0]?.sceneItemLocked) await call('SetSceneItemLocked', { ...item, sceneItemLocked: true });
+  if (!captureItems[0]?.sceneItemEnabled) await call('SetSceneItemEnabled', { ...item, sceneItemEnabled: true });
+  if (!state.ready || state.itemId !== itemId) {
     await checkpoint({ ready: true, itemId, inputUuid: state.inputUuid || input?.inputUuid || captureItems[0]?.sourceUuid || null });
   }
   const { inputSettings } = await call('GetInputSettings', { inputName: showcaseCapture });
-  const { propertyItems } = await call('GetInputPropertiesListPropertyItems', { inputName: showcaseCapture, propertyName: 'window' });
-  const { choices, windows } = windowOptions(propertyItems || []);
-  const matches = choices.filter(w => w.label.toLowerCase() === 'osu!');
-  const candidate = matches.length === 1 && windows.includes(matches[0]) ? matches[0] : null;
-  let status = matches.length && !candidate ? 'ambiguous' : 'missing';
+  const { candidate, status: detected } = await stableWindow(call, showcaseCapture);
+  let status = detected === 'bound' ? 'missing' : detected;
   if (!inputSettings.window && candidate) {
     await call('SetInputSettings', { inputName: showcaseCapture, inputSettings: { window: candidate.value, priority: 1 }, overlay: true });
     status = 'bound';
@@ -61,8 +73,49 @@ async function installShowcaseCapture(call, target, previous, input, kind, brows
   if (status !== state.status) await checkpoint({ status });
 }
 
-// The Showcase capture belongs only to its scene. Browser and game stay below
-// the transition layers, and a subsequent create preserves operator adjustments.
+const audioCollision = () => new ObsError('Showcase osu! 音频同名、已改名或已被替换，请在 OBS 核对来源后重试。');
+
+async function installShowcaseAudio(call, target, previous, input, supported, save) {
+  if (!supported && !input) {
+    if (previous?.status !== 'unsupported') await save({ status: 'unsupported' });
+    return;
+  }
+  let state = previous || {};
+  const checkpoint = async change => {
+    state = { ...state, ...change };
+    await save(state);
+  };
+  const { sceneItems } = await call('GetSceneItemList', target);
+  const matches = sceneItems.filter(item => item.sourceName === showcaseAudio);
+  const existing = matches[0];
+  if (matches.length > 1 || (existing && input?.inputUuid && existing.sourceUuid !== input.inputUuid)) throw audioCollision();
+  let itemId = existing?.sceneItemId;
+  if (!existing) {
+    await checkpoint({ ready: false, itemId: null, inputUuid: input?.inputUuid || null });
+    const added = input
+      ? await call('CreateSceneItem', { ...target, ...(input.inputUuid ? { sourceUuid: input.inputUuid } : { sourceName: showcaseAudio }), sceneItemEnabled: false })
+      : await call('CreateInput', { ...target, inputName: showcaseAudio, inputKind: audioKind, inputSettings: unboundAudio, sceneItemEnabled: false });
+    itemId = added.sceneItemId;
+    await checkpoint({ inputUuid: input?.inputUuid || added.inputUuid || null });
+  }
+  const item = { ...target, sceneItemId: itemId };
+  if (!state.ready || state.itemId !== itemId) await call('SetSceneItemIndex', { ...item, sceneItemIndex: 0 });
+  if (!existing?.sceneItemLocked) await call('SetSceneItemLocked', { ...item, sceneItemLocked: true });
+
+  const { candidate, status } = await stableWindow(call, showcaseAudio);
+  const settings = candidate ? { window: candidate.value, priority: 1 } : unboundAudio;
+  const { inputSettings } = await call('GetInputSettings', { inputName: showcaseAudio });
+  if (inputSettings.window !== settings.window || inputSettings.priority !== settings.priority) {
+    await call('SetInputSettings', { inputName: showcaseAudio, inputSettings: settings, overlay: true });
+  }
+  if (!existing?.sceneItemEnabled) await call('SetSceneItemEnabled', { ...item, sceneItemEnabled: true });
+  if (!state.ready || state.itemId !== itemId || state.status !== status) {
+    await checkpoint({ ready: true, itemId, inputUuid: state.inputUuid || input?.inputUuid || existing?.sourceUuid || null, status });
+  }
+}
+
+// Browser and game stay below the transition layers. Updating an existing
+// scene restores the managed items' enable/lock defaults without repositioning them.
 export async function buildShowcase(call, previous, url, save) {
   const { baseWidth, baseHeight } = await call('GetVideoSettings');
   if (baseWidth !== 1920 || baseHeight !== 1080) throw new ObsError('请先将 OBS 基础画布设为 1920×1080，再创建 Showcase 场景。');
@@ -76,6 +129,16 @@ export async function buildShowcase(call, previous, url, save) {
   const input = inputs.find(i => i.inputName === showcaseBrowser);
   const capture = inputs.find(i => i.inputName === showcaseCapture);
   const previousCapture = state.capture;
+  const audio = inputs.find(i => i.inputName === showcaseAudio);
+  const previousAudio = state.audio;
+  if (groups.includes(showcaseAudio) || scenes.some(s => s.sceneName === showcaseAudio) ||
+      (audio && (!previousAudio || previousAudio.status === 'unsupported' || audio.inputKind !== audioKind ||
+        (previousAudio.inputUuid && previousAudio.inputUuid !== audio.inputUuid))) ||
+      (!audio && previousAudio?.inputUuid && inputs.some(i => i.inputUuid === previousAudio.inputUuid))) throw audioCollision();
+  if (audio && !previousAudio.inputUuid && !previousAudio.ready) {
+    const { inputSettings } = await call('GetInputSettings', { inputName: showcaseAudio });
+    if (!Object.entries(unboundAudio).every(([key, value]) => inputSettings[key] === value)) throw audioCollision();
+  }
   const kind = captureKinds.find(name => inputKinds.includes(name));
   if (groups.includes(showcaseCapture) || scenes.some(s => s.sceneName === showcaseCapture) ||
       (capture && (!previousCapture || previousCapture.status === 'unsupported' || !captureKinds.includes(capture.inputKind) ||
@@ -132,6 +195,7 @@ export async function buildShowcase(call, previous, url, save) {
     await checkpoint({ ready: true, itemId, pendingPlacement: false });
   }
   await installShowcaseCapture(call, target, state.capture, capture, kind, itemId, value => checkpoint({ capture: value }));
+  await installShowcaseAudio(call, target, state.audio, audio, inputKinds.includes(audioKind), value => checkpoint({ audio: value }));
   return state;
 }
 
