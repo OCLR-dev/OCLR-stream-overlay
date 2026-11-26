@@ -41,6 +41,19 @@
 .showcase-controls .obs-settings { border-top: 1px solid var(--review-line); padding-top: 16px; }
 .showcase-controls .obs-settings summary { cursor: pointer; min-height: 44px; }
 .showcase-controls .obs-settings :is(.setup-meta, .operator-inline) { display: grid; gap: 8px; }
+.showcase-controls .obs-settings > form > .setup-meta { display: flex; flex-wrap: wrap; }
+.showcase-controls .obs-settings > form > .setup-meta > label { flex: 1 1 calc((100% - 8px) / 2); min-width: min(100%, 120px); }
+.showcase-controls .obs-settings > form > .setup-meta > button {
+  flex: 1 0 auto;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.showcase-controls .obs-settings > form > .setup-meta > button > svg { flex: none; }
+.showcase-controls .obs-stream-chat .operator-section-head { flex-wrap: wrap; gap: 8px; }
+.showcase-controls .obs-stream-chat h3 { display: flex; align-items: center; gap: 8px; }
 .showcase-app .canvas-stage { min-width: 0; border: 0; }
 .showcase-app:not(.showcase-clean) .canvas-stage { position: relative; align-items: flex-start; padding-top: 72px; }
 .showcase-preview-status { position: absolute; top: 18px; left: 22px; right: 22px; min-height: 40px; margin: 0; padding: 8px 14px; overflow: hidden; border: 1px solid var(--review-line); border-radius: 4px; background: #1a0d2e; color: var(--muted); font-size: 14px; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
