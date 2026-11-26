@@ -48,7 +48,7 @@ func TestTosuStartupAdviceAndModalRecheck(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checks, prompts := 0, 0
-			ok, err := allowTosuStart("selected tosu", "selected osu", func(path string) processStatus {
+			ok, err := allowTosuStart("selected tosu", func(path string) processStatus {
 				if path != "selected tosu" {
 					t.Fatal("wrong executable")
 				}
@@ -57,14 +57,11 @@ func TestTosuStartupAdviceAndModalRecheck(t *testing.T) {
 					return tc.first
 				}
 				return tc.after
-			}, func(path string) processStatus {
-				if path != "selected osu" {
-					t.Fatal("wrong osu selection")
-				}
+			}, func() processStatus {
 				return tc.osu
 			}, func(title, body string) bool {
 				prompts++
-				if !strings.Contains(body, "先打开 osu!Tourney") || (tc.osu == processUnknown && !strings.Contains(body, "无法确认")) {
+				if !strings.Contains(body, "Showcase 用 Stable") || (tc.osu == processUnknown && !strings.Contains(body, "无法确认")) {
 					t.Fatal("missing advice", body)
 				}
 				return tc.accept
@@ -194,5 +191,41 @@ func TestChoosingOsuDoesNotPersistDetectedBundledTosu(t *testing.T) {
 	saved, err := loadLauncherSettings(path)
 	if err != nil || saved.TosuPath != "" || saved.OsuPath != exe {
 		t.Fatal("portable default was persisted", saved, err)
+	}
+}
+
+func TestStableAndTourneySelectionsStaySeparate(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	a := newLauncher(&diagnostics{})
+	tourney := filepath.Join(t.TempDir(), "osu!.exe")
+	stable := filepath.Join(t.TempDir(), "osu!.exe")
+	for _, path := range []string{tourney, stable} {
+		if err := os.WriteFile(path, []byte("synthetic, never launched"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := a.saveTool("osu", tourney); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.saveTool("osu-stable", tourney); err == nil {
+		t.Fatal("an existing Tourney install was accepted as Stable")
+	}
+	if err := a.saveTool("osu-stable", stable); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.saveTool("osu", stable); err == nil {
+		t.Fatal("an existing Stable install was accepted as Tourney")
+	}
+	path, _ := launcherSettingsPath()
+	saved, err := loadLauncherSettings(path)
+	if err != nil || saved.OsuPath != tourney || saved.OsuStablePath != stable {
+		t.Fatalf("paths were not saved independently: %+v, %v", saved, err)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(stable), tournamentConfig), []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a.state.Busy = false
+	if err := a.StartOsuStable(); err == nil || !strings.Contains(err.Error(), "tournament.cfg") {
+		t.Fatalf("Stable launch did not reject a newly added tournament config: %v", err)
 	}
 }

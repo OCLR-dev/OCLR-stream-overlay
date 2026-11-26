@@ -1,3 +1,5 @@
+import { hasTourneyClient } from '../../src/tosu.js';
+
 const mapKey = (id, checksum) => Number.isSafeInteger(id) && id > 0 ? String(id) :
   typeof checksum === 'string' && /^[a-f0-9]{32}$/i.test(checksum) ? checksum.toLowerCase() : null;
 
@@ -18,10 +20,7 @@ export function normalizeShowcaseTokens(raw) {
 }
 
 export function ordinaryClient(frame, map) {
-  const room = frame?.tourney;
-  return !!frame && map === mapKey(frame.beatmap?.id, frame.beatmap?.checksum) &&
-    !Object.values(room?.teams || {}).some(name => typeof name === 'string' && name.trim()) &&
-    !room?.players?.some(player => player.osuId > 0 || player.name?.trim());
+  return !!frame && map === mapKey(frame.beatmap?.id, frame.beatmap?.checksum) && !hasTourneyClient(frame);
 }
 
 export class ShowcaseReplay {

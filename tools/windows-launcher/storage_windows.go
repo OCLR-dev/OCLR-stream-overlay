@@ -139,7 +139,7 @@ func (s portableStorage) rebaseCopiedToolPaths(settings string) error {
 	}
 	s.enabled = true
 	changed := false
-	for _, key := range []string{"tosuPath", "osuPath"} {
+	for _, key := range []string{"tosuPath", "osuPath", "osuStablePath"} {
 		var original string
 		if json.Unmarshal(prefs[key], &original) != nil {
 			continue

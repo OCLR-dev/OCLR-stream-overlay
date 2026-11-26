@@ -12,6 +12,14 @@ export function tosuRoomTeams(frame) {
     ? { left: names.left, right: names.right } : null;
 }
 
+// tosu v2 reports state 22 for the tournament manager, even before a
+// room or spectators are present. Ordinary Stable may send empty IPC fields.
+export function hasTourneyClient(frame) {
+  return frame?.state?.number === 22 || frame?.state?.name?.toLowerCase() === 'tourney' ||
+    Object.values(frame?.tourney?.teams || {}).some(name => typeof name === 'string' && name.trim()) ||
+    !!frame?.tourney?.players?.some(player => player.osuId > 0 || player.name?.trim());
+}
+
 function playbackRate(mods) {
   if (!mods || typeof mods !== 'object') return null;
   if (mods.rate !== undefined) return number(mods.rate) > 0 ? mods.rate : null;

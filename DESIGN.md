@@ -33,6 +33,8 @@
 
 `/showcase` 用于配置演示图池、Stage 和 OBS，`/showcase?clean=1` 用作播出源。中央 1600×800 留给普通 osu! 客户端回放，底栏展示 S11 标识、谱面信息和 Stream Chat。按客户端难度 ID 匹配唯一 Slot，未知或有歧义时显示「—」。
 
+创建场景时将普通 osu! 捕获放在背景源上方的 (160,100)、1600×800 区域内等比居中。只有唯一的 `[osu!.exe]: osu!` 窗口才自动绑定；重建保留已调整的捕获。回放启动只使用独立保存的 osu!Stable 路径。
+
 启用自动过场的 OBS 场景会在加载回放时遮住游戏。全屏斜幕和纯色遮挡分层；服务端确认回放开始后揭开。过场底栏将当前 Slot 居中，两侧各留三个位置，右侧弹幕在过场期间持续可见。[Windows 接线与过场操作](docs/windows-portable.md#showcase-回放过场) · [过场视觉验收](docs/verification/showcase-cover/integration/README.md)
 
 ## 查阅设计决策
