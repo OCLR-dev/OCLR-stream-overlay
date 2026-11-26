@@ -106,7 +106,7 @@ const playbackStatus = computed(() => {
   const s = snapshot.value;
   if (!s) return '等待客户端谱面';
   if (s.sourceStatus === 'matched') return `正在演示 ${s.currentMap?.label} · ${s.currentMap?.title || '曲名待补充'}`;
-  return { unavailable: '等待 osu! 普通客户端数据', tourney: '当前数据来自赛事客户端，请让 tosu 读取普通客户端',
+  return { unavailable: '等待 osu! 普通客户端数据', tourney: 'tosu 正在读取 osu!Tourney。请关闭 Tourney，再打开 osu!Stable。',
     'no-map': '客户端尚未提供有效谱面', 'no-pool': '已读取当前谱面，请录入图池以匹配 Slot',
     ambiguous: '当前谱面对应多个 Slot，请核对图池列表；播出 Slot 显示 —', unmatched: '当前谱面不在图池中，播出 Slot 显示 —' }[s.sourceStatus];
 });
@@ -251,7 +251,6 @@ HD1 https://osu.ppy.sh/beatmaps/具体难度ID"
         </label>
         <p id="showcase-pool-feedback" class="showcase-help" role="status">{{ busy && dirty ? '正在同步图池…' : error && dirty ? '列表未应用，请修改上方提示的行' : poolFeedback || (snapshot?.pool.length ? `已录入 ${snapshot.pool.length} 张谱面` : '列表自动同步，无需逐张切换 Slot') }}</p>
       </section>
-      <p class="showcase-help">Showcase 浏览器源保持 1920×1080 铺满画布，位置 (0,0)、缩放 1。osu! 回放采集自行放在它上方，在中央约 800px 高的区域内保持原比例居中显示。使用 tosu 读取普通客户端的当前谱面。</p>
     </aside>
     <main class="canvas-stage" ref="stage" aria-label="Showcase 画面预览">
       <p v-if="!clean" class="showcase-preview-status showcase-status" :data-state="connection === 'synced' ? snapshot?.sourceStatus : 'connecting'" :title="playbackStatus" role="status">{{ playbackStatus }}</p>

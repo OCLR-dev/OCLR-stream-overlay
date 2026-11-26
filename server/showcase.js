@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { tosuRoomTeams } from '../src/tosu.js';
+import { hasTourneyClient } from '../src/tosu.js';
 import { parseShowcasePool, showcasePool, showcasePoolText } from './showcase-pool.js';
 import { restoredWebsitePool } from './showcase-website.js';
 import { replayHttp } from './showcase-replay-list.js';
@@ -64,9 +64,7 @@ export class ShowcaseStore {
     const data = source?.data;
     const age = Date.now() - Date.parse(source?.updatedAt);
     const fresh = source?.status === 'live' && age >= 0 && age < 5000;
-    // v2 may include an empty tourney structure even for a normal client.
-    const tourneyEvidence = tosuRoomTeams(data) || Object.values(data?.tourney?.teams || {}).some(name => typeof name === 'string' && name.trim()) ||
-      data?.tourney?.players?.some(player => player.osuId > 0 || player.name?.trim());
+    const tourneyEvidence = hasTourneyClient(data);
     const map = fresh && data && !tourneyEvidence && Number.isSafeInteger(data.beatmap?.id) && data.beatmap.id > 0 ? data.beatmap : null;
     const candidates = map ? pool.filter(entry => entry.beatmapId === map.id) : [];
     const matched = candidates.length === 1 ? candidates[0] : null;

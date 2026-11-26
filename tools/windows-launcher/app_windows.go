@@ -23,6 +23,7 @@ type launcherState struct {
 	Busy            bool   `json:"busy"`
 	TosuPath        string `json:"tosuPath"`
 	OsuPath         string `json:"osuPath"`
+	OsuStablePath   string `json:"osuStablePath"`
 	TosuStatus      string `json:"tosuStatus"`
 	TosuPort        string `json:"tosuPort"`
 	CanStartTosu    bool   `json:"canStartTosu"`
@@ -60,12 +61,14 @@ func (a *Launcher) startup(ctx context.Context) {
 		prefs, e := loadLauncherSettings(path)
 		prefs.TosuPath = storage.readTool(prefs.TosuPath)
 		prefs.OsuPath = storage.readTool(prefs.OsuPath)
+		prefs.OsuStablePath = storage.readTool(prefs.OsuStablePath)
 		a.selectedTosuPath = prefs.TosuPath
 		a.update(func(s *launcherState) {
 			s.TosuPath = effectiveTosuPath(prefs.TosuPath)
 			s.OsuPath = prefs.OsuPath
+			s.OsuStablePath = prefs.OsuStablePath
 			if err != nil || e != nil {
-				s.Notice = "无法读取保存的路径，请在设置重新选择。"
+				s.Notice = "无法读取保存的路径，请在「服务 → 比赛工具」重新选择。"
 			}
 		})
 		if !a.closing {
@@ -270,20 +273,21 @@ func (a *Launcher) checkTosu() {
 	a.update(func(s *launcherState) { s.TosuStatus = status; s.TosuPort = port; s.CanStartTosu = canStart })
 }
 func (a *Launcher) ChooseTool(kind string) error {
-	if kind != "tosu" && kind != "osu" {
-		return errors.New("未知的应用程序。")
-	}
 	if err := a.begin(); err != nil {
 		return err
 	}
 	defer a.end()
-	title := "选择 tosu.exe"
-	if kind == "osu" {
-		title = "选择 osu!stable 的 osu!.exe"
-	}
-	previous := a.Snapshot().TosuPath
-	if kind == "osu" {
-		previous = a.Snapshot().OsuPath
+	state := a.Snapshot()
+	var title, previous string
+	switch kind {
+	case "tosu":
+		title, previous = "选择 tosu.exe", state.TosuPath
+	case "osu":
+		title, previous = "选择比赛用 osu!Tourney 的 osu!.exe", state.OsuPath
+	case "osu-stable":
+		title, previous = "选择 Showcase 用 osu!Stable 的 osu!.exe", state.OsuStablePath
+	default:
+		return errors.New("未知的应用程序。")
 	}
 	directory := ""
 	if filepath.IsAbs(previous) {
@@ -303,24 +307,39 @@ func (a *Launcher) ChooseTool(kind string) error {
 
 // Native picker result only; deliberately unexported.
 func (a *Launcher) saveTool(kind, path string) error {
-	if kind != "tosu" && kind != "osu" {
-		return errors.New("未知的应用程序。")
-	}
-	if !isExecutable(path) || (kind == "osu" && !isOsuExecutable(path)) {
-		return errors.New("请选择正确的应用程序文件。")
-	}
 	s := a.Snapshot()
-	prefs := launcherSettings{TosuPath: a.selectedTosuPath, OsuPath: s.OsuPath}
-	if kind == "tosu" {
+	prefs := launcherSettings{TosuPath: a.selectedTosuPath, OsuPath: s.OsuPath, OsuStablePath: s.OsuStablePath}
+	switch kind {
+	case "tosu":
+		if !isExecutable(path) {
+			return errors.New("请选择正确的应用程序文件。")
+		}
 		prefs.TosuPath = path
-	} else {
+	case "osu":
+		if _, err := resolveOsuExecutable(path); err != nil {
+			return err
+		}
+		if sameOsuInstallation(path, prefs.OsuStablePath) {
+			return errors.New("请为 osu!Stable 和 osu!Tourney 选择不同文件夹中的 osu!.exe。")
+		}
 		prefs.OsuPath = path
+	case "osu-stable":
+		if _, err := resolveStableOsu(path, prefs.OsuPath); err != nil {
+			return err
+		}
+		prefs.OsuStablePath = path
+	default:
+		return errors.New("未知的应用程序。")
 	}
 	p, err := launcherSettingsPath()
 	if err != nil {
 		return err
 	}
-	stored := launcherSettings{TosuPath: storage.storeTool(prefs.TosuPath), OsuPath: storage.storeTool(prefs.OsuPath)}
+	stored := launcherSettings{
+		TosuPath:      storage.storeTool(prefs.TosuPath),
+		OsuPath:       storage.storeTool(prefs.OsuPath),
+		OsuStablePath: storage.storeTool(prefs.OsuStablePath),
+	}
 	if err = saveLauncherSettings(p, stored); err != nil {
 		return errors.New("无法保存路径，请检查设置目录权限。")
 	}
@@ -331,6 +350,7 @@ func (a *Launcher) saveTool(kind, path string) error {
 	a.update(func(s *launcherState) {
 		s.TosuPath = prefs.TosuPath
 		s.OsuPath = prefs.OsuPath
+		s.OsuStablePath = prefs.OsuStablePath
 		s.Notice = "应用程序路径已保存。"
 	})
 	a.checkTosu()
@@ -344,7 +364,9 @@ func (a *Launcher) StartTosu() error {
 	a.checkTosu()
 	s := a.Snapshot()
 	path := s.TosuPath
-	allowed, err := allowTosuStart(path, s.OsuPath, findExecutableProcess, osuProcessStatus, a.confirm)
+	allowed, err := allowTosuStart(path, findExecutableProcess, func() processStatus {
+		return osuProcessStatus(s.OsuPath, s.OsuStablePath)
+	}, a.confirm)
 	if !allowed || err != nil {
 		a.checkTosu()
 		return err
@@ -376,13 +398,13 @@ func (a *Launcher) StartTosu() error {
 }
 
 // Recheck after the modal: another process may start tosu while it is open.
-func allowTosuStart(path, osuPath string, tosu, osu func(string) processStatus, confirm func(string, string) bool) (bool, error) {
+func allowTosuStart(path string, tosu func(string) processStatus, osu func() processStatus, confirm func(string, string) bool) (bool, error) {
 	check := func() (bool, error) {
 		switch tosu(path) {
 		case processStopped:
 			return true, nil
 		case processMissing:
-			return false, errors.New("找不到 tosu，请在设置中重新选择。")
+			return false, errors.New("找不到 tosu，请在「服务 → 比赛工具」重新选择。")
 		case processRunning:
 			return false, nil
 		default:
@@ -392,18 +414,48 @@ func allowTosuStart(path, osuPath string, tosu, osu func(string) processStatus, 
 	if ok, err := check(); !ok {
 		return false, err
 	}
-	if status := osu(osuPath); status != processRunning {
+	if status := osu(); status != processRunning {
 		detail := "未检测到 osu! 正在运行。"
 		if status == processUnknown {
 			detail = "暂时无法确认 osu! 是否正在运行。"
 		}
-		if !confirm("打开 tosu", detail+"\n建议先打开 osu!Tourney，否则 tosu 可能无法读取游戏数据。\n\n仍要打开 tosu 吗？") {
+		if !confirm("打开 tosu", detail+"\n建议先打开本次使用的 osu! 客户端（比赛用 Tourney，Showcase 用 Stable），再打开 tosu。\n\n仍要打开 tosu 吗？") {
 			return false, nil
 		}
 		return check()
 	}
 	return true, nil
 }
+func (a *Launcher) StartOsuStable() error {
+	if err := a.begin(); err != nil {
+		return err
+	}
+	defer a.end()
+	s := a.Snapshot()
+	path, err := resolveStableOsu(s.OsuStablePath, s.OsuPath)
+	if err != nil {
+		return err
+	}
+	switch findExecutableProcess(path) {
+	case processRunning:
+		a.update(func(s *launcherState) { s.Notice = "osu!Stable 已在运行。" })
+		return nil
+	case processStopped:
+		cmd := exec.Command(path)
+		cmd.Dir = filepath.Dir(path)
+		if err := cmd.Start(); err != nil {
+			return errors.New("无法启动 osu!Stable，请检查所选程序。")
+		}
+		go func() { _ = cmd.Wait() }()
+		a.update(func(s *launcherState) { s.Notice = "已启动 osu!Stable。" })
+		return nil
+	case processMissing:
+		return errors.New("找不到 osu!Stable，请在「服务 → 比赛工具」重新选择。")
+	default:
+		return errors.New("无法确认 osu!Stable 是否已启动，请稍后重试。")
+	}
+}
+
 func (a *Launcher) Tourney(launch bool) error {
 	if err := a.begin(); err != nil {
 		return err
@@ -412,7 +464,11 @@ func (a *Launcher) Tourney(launch bool) error {
 	if a.service == nil || a.service.exited() {
 		return errors.New("请等直播服务就绪后重试。")
 	}
-	notice := prepareTourney(a.Snapshot().OsuPath, a.service.pid, launch)
+	s := a.Snapshot()
+	if sameOsuInstallation(s.OsuPath, s.OsuStablePath) {
+		return errors.New("请为 osu!Stable 和 osu!Tourney 选择不同文件夹中的 osu!.exe。")
+	}
+	notice := prepareTourney(s.OsuPath, a.service.pid, launch)
 	a.update(func(s *launcherState) { s.Notice = notice })
 	return nil
 }

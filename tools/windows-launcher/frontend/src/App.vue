@@ -16,7 +16,7 @@ const pages = [
 ];
 const page = ref('control');
 const showcaseVisited = ref(false);
-const state = ref<LauncherState>({ status: 'starting', notice: '', port: '', address: '', build: '', busy: true, servicePID: 0, tosuPath: '', osuPath: '', tosuStatus: '正在检查', tosuPort: '', canStartTosu: false, portableStorage: false, storagePath: '' });
+const state = ref<LauncherState>({ status: 'starting', notice: '', port: '', address: '', build: '', busy: true, servicePID: 0, tosuPath: '', osuPath: '', osuStablePath: '', tosuStatus: '正在检查', tosuPort: '', canStartTosu: false, portableStorage: false, storagePath: '' });
 const port = ref('');
 const portDirty = ref(false);
 const busy = ref(false);
@@ -127,7 +127,7 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); });
         <div v-if="feedback" class="notice success" role="status">{{ feedback }}</div>
         <section v-if="page === 'overview'" aria-label="服务概览">
           <div class="hero"><div class="status-line"><i :class="state.status" /><span>{{ statusLabel }}</span></div><p>{{ state.notice || '正在准备本机直播服务，请稍候。' }}</p><div class="actions"><button class="primary" :disabled="!running" @click="page = 'control'">返回直播控制台<ChevronRight :size="17" /></button><button :disabled="locked || !state.address" @click="act(() => launcher().CopyAddresses(false), 'OBS 地址已复制。')"><Copy :size="16" />复制 OBS 地址</button></div><code class="address">{{ state.address ? state.address + '/overlay' : '正在准备画面地址…' }}</code><button v-if="['failed', 'stopped'].includes(state.status)" class="retry" :disabled="locked" @click="act(() => launcher().Restart(state.port))"><RefreshCw :size="16" />重新启动服务</button></div>
-          <h3 class="section-heading">比赛工具<span>建议先打开 osu!Tourney，再打开 tosu</span></h3>
+          <h3 class="section-heading">比赛工具<span>先打开本次使用的 osu! 客户端，再打开 tosu</span></h3>
           <div class="tool-grid">
             <article class="card">
               <div class="tool-top"><span class="tool-icon">t</span><h3>tosu</h3></div>
@@ -141,13 +141,21 @@ onUnmounted(() => { disposed = true; clearTimeout(timer); });
             </article>
             <article class="card">
               <div class="tool-top"><span class="tool-icon pink">o!</span><h3>osu!Tourney</h3></div>
-              <p>{{ state.osuPath ? '已选择 osu!stable' : '先选择 osu!stable' }}</p>
               <small>使用控制台当前授权赛季</small>
               <p class="tool-path">{{ state.osuPath || '尚未选择 osu!.exe' }}</p>
               <div class="actions tool-actions">
                 <button :disabled="locked" @click="act(() => launcher().ChooseTool('osu'))"><FolderOpen :size="16" />选择 osu!.exe</button>
                 <button :disabled="locked || !running || !state.osuPath" @click="act(() => launcher().Tourney(false))">生成比赛配置</button>
                 <button :disabled="locked || !running || !state.osuPath" @click="act(() => launcher().Tourney(true))"><Play :size="15" />打开 osu!Tourney</button>
+              </div>
+            </article>
+            <article class="card">
+              <div class="tool-top"><span class="tool-icon pink">o!</span><h3>osu!Stable</h3></div>
+              <small>用于 Showcase 谱面与回放</small>
+              <p class="tool-path">{{ state.osuStablePath || '尚未选择普通客户端的 osu!.exe' }}</p>
+              <div class="actions tool-actions">
+                <button :disabled="locked" @click="act(() => launcher().ChooseTool('osu-stable'))"><FolderOpen :size="16" />选择 osu!.exe</button>
+                <button :disabled="locked || !state.osuStablePath" @click="act(() => launcher().StartOsuStable())"><Play :size="15" />打开 osu!Stable</button>
               </div>
             </article>
           </div>
