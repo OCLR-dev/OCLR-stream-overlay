@@ -1,6 +1,6 @@
 // Run using the *bundled* runtime on Windows. All data is isolated in TEMP.
 import { spawn } from 'node:child_process';
-import { mkdtemp, cp, readFile, writeFile, mkdir, access, rename } from 'node:fs/promises';
+import { mkdtemp, cp, readFile, writeFile, mkdir, access, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer, get } from 'node:http';
@@ -265,8 +265,11 @@ try {
     await writeFile(join(packagePath, 'custom tools', 'tosu.exe'), 'synthetic fixture, never launched');
     await writeFile(join(packagePath, 'custom tools', 'tosu.env'), `SERVER_PORT=${port}\r\n`);
     await writeFile(join(packagePath, 'custom tools', 'osu!.exe'), 'synthetic fixture, never launched');
+    await writeFile(join(packagePath, 'custom tools', 'tournament.cfg'), 'synthetic fixture');
+    await mkdir(join(packagePath, 'stable'));
+    await writeFile(join(packagePath, 'stable', 'osu!.exe'), 'synthetic fixture, never launched');
     await writeFile(join(packagePath, launcherDir, 'settings.json'), JSON.stringify({
-      tosuPath: '.\\custom tools\\tosu.exe', osuPath: '.\\custom tools\\osu!.exe',
+      tosuPath: '.\\custom tools\\tosu.exe', osuPath: '.\\custom tools\\osu!.exe', osuStablePath: '.\\stable\\osu!.exe',
     }));
     await rename(packagePath, movedPackage);
     running = launch(movedPackage, ['--headless'], unusedAppData);
@@ -289,7 +292,19 @@ try {
     process.env.OCLR_LAUNCHER_SETTINGS = join(movedPackage, launcherDir, 'settings.json');
     process.env.OCLR_REPLAY_TEMP = tempReplays;
     try {
-      assert.equal(typeof await prepareStableReplay('unused.osr'), 'function');
+      const launchReplay = await prepareStableReplay('unused.osr');
+      assert.equal(typeof launchReplay, 'function');
+      await writeFile(join(movedPackage, 'stable', 'tournament.cfg'), 'changed after preparation');
+      await assert.rejects(launchReplay(), /含有赛事配置/);
+      await rm(join(movedPackage, 'stable', 'tournament.cfg'));
+      const prefsPath = join(movedPackage, launcherDir, 'settings.json');
+      const prefs = JSON.parse(await readFile(prefsPath, 'utf8'));
+      delete prefs.osuStablePath;
+      await writeFile(prefsPath, JSON.stringify(prefs));
+      await assert.rejects(prepareStableReplay('unused.osr'), /服务 → 比赛工具 → osu!Stable/);
+      prefs.osuStablePath = prefs.osuPath;
+      await writeFile(prefsPath, JSON.stringify(prefs));
+      await assert.rejects(prepareStableReplay('unused.osr'), /分开的安装目录/);
       const replay = await stageReplayFile(Buffer.from('synthetic replay bytes'));
       assert.equal(resolve(replay.path, '../..'), tempReplays);
       await replay.dispose();

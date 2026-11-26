@@ -20,8 +20,9 @@ var errTosuPortMissing = errors.New("SERVER_PORT is missing")
 var errTosuPortInvalid = errors.New("SERVER_PORT must be between 1 and 65535")
 
 type launcherSettings struct {
-	TosuPath string `json:"tosuPath,omitempty"`
-	OsuPath  string `json:"osuPath,omitempty"`
+	TosuPath      string `json:"tosuPath,omitempty"`
+	OsuPath       string `json:"osuPath,omitempty"` // Existing Tourney selection.
+	OsuStablePath string `json:"osuStablePath,omitempty"`
 }
 
 func launcherSettingsPath() (string, error) {

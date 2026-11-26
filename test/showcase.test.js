@@ -183,6 +183,11 @@ test('fresh ordinary-client identity is mandatory; empty tourney placeholders an
     assert.equal(showcase.snapshot().sourceStatus, 'tourney');
     assert.equal(showcase.snapshot().currentMap, null);
   }
+  session.live.tosu.data.tourney = { teams: { left: '', right: '' }, players: [] };
+  session.live.tosu.data.state = { number: 22, name: 'tourney' };
+  assert.equal(showcase.snapshot().sourceStatus, 'tourney');
+  assert.equal(showcase.snapshot().currentMap, null);
+  delete session.live.tosu.data.state;
   session.live.tosu.data.tourney = null;
   session.live.tosu.data.beatmap.id = 0;
   assert.equal(showcase.snapshot().sourceStatus, 'no-map');

@@ -12,6 +12,13 @@ const layouts = [{ key: 'regular', label: '常规 4v4' }, { key: 'ex', label: 'E
 const positions = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'];
 watch(() => props.obs.state?.port, value => { if (value) port.value = value; }, { immediate: true });
 const transition = computed(() => props.obs.state?.showcaseTransition);
+const captureStatus = computed(() => ({
+  bound: '已绑定 osu!Stable 窗口。请在 OBS 预览核对画面后播出。',
+  missing: '未找到 osu!Stable 窗口。启动普通客户端后，点击「更新 Showcase 场景」。',
+  ambiguous: '发现同名 osu! 窗口。请关闭重名窗口后更新场景，或在 OBS 手动绑定。',
+  manual: '保留现有捕获设置。请在 OBS 确认来源是普通 osu!Stable。',
+  unsupported: '当前 OBS 缺少游戏捕获或窗口捕获，请在 OBS 手动添加普通 osu!Stable 捕获。',
+}[props.obs.state?.showcaseCapture ?? 'missing']));
 const transitionStatus = computed(() => {
   const state = transition.value;
   if (!state?.configured) return '将遮罩置于游戏采集上方。';
@@ -49,11 +56,10 @@ function connect() {
     <details v-else class="obs-layout-settings" :open="showcaseOnly"><summary><span class="obs-layout-label"><PanelsTopLeft :size="17" aria-hidden="true" />{{ showcaseOnly ? 'Showcase 场景' : '场景与捕获窗口' }}</span><span>{{ showcaseOnly ? (obs.state?.showcase ? '已配置' : '待配置') : (obs.state?.regular && obs.state?.ex ? '常规 / EX' : '待配置') }}</span></summary>
       <template v-if="showcaseOnly">
         <div class="operator-inline">
-          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在创建 OCLR · Showcase…' : '创建 OCLR · Showcase 场景' }}</button>
+          <button :disabled="!!obs.pending" @click="obs.act('create-showcase')">{{ obs.pending === 'create-showcase' ? '正在配置 OCLR · Showcase…' : obs.state.showcase ? '更新 Showcase 场景' : '创建 OCLR · Showcase 场景' }}</button>
           <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
         </div>
-        <p>创建 1920×1080、位置 (0,0)、缩放 1 的独立 Showcase 浏览器源，铺满整个画布。osu! 回放采集自行放到它上方，在中央约 800px 高的区域等比居中，再在 OBS 切到 Showcase 场景。</p>
-        <p v-if="obs.state.showcase" role="status">OCLR · Showcase 场景已就绪，请在 OBS 中切换到此场景播出。</p>
+        <p v-if="obs.state.showcase" role="status">{{ captureStatus }}</p>
         <div v-if="obs.state.showcase" class="showcase-transition-controls">
           <h3>回放过场</h3>
           <p role="status">{{ transitionStatus }}</p>

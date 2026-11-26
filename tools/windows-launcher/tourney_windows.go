@@ -21,11 +21,62 @@ func isOsuExecutable(path string) bool {
 	return strings.EqualFold(filepath.Base(path), osuExecutableName) && isExecutable(path)
 }
 
-func osuProcessStatus(path string) processStatus {
-	if path == "" {
+func resolveOsuExecutable(path string) (string, error) {
+	if !isOsuExecutable(path) {
+		return "", errors.New("找不到所选 osu!.exe，请在「服务 → 比赛工具」重新选择。")
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil || !isOsuExecutable(resolved) {
+		return "", errors.New("找不到所选 osu!.exe，请在「服务 → 比赛工具」重新选择。")
+	}
+	return resolved, nil
+}
+
+func sameOsuInstallation(first, second string) bool {
+	a, err := resolveOsuExecutable(first)
+	if err != nil {
+		return false
+	}
+	b, err := resolveOsuExecutable(second)
+	if err != nil {
+		return false
+	}
+	left, lerr := os.Stat(filepath.Dir(a))
+	right, rerr := os.Stat(filepath.Dir(b))
+	return lerr == nil && rerr == nil && os.SameFile(left, right)
+}
+
+func resolveStableOsu(path, tourney string) (string, error) {
+	resolved, err := resolveOsuExecutable(path)
+	if err != nil {
+		return "", err
+	}
+	if sameOsuInstallation(resolved, tourney) {
+		return "", errors.New("请为 osu!Stable 和 osu!Tourney 选择不同文件夹中的 osu!.exe。")
+	}
+	if _, err := os.Lstat(filepath.Join(filepath.Dir(resolved), tournamentConfig)); !errors.Is(err, os.ErrNotExist) {
+		return "", errors.New("请在「服务 → 比赛工具 → osu!Stable」选择不含 tournament.cfg 的普通客户端。")
+	}
+	return resolved, nil
+}
+
+func osuProcessStatus(tourney, stable string) processStatus {
+	if tourney == "" && stable == "" {
 		return findProcess(osuExecutableName, "")
 	}
-	return findExecutableProcess(path)
+	status := processStopped
+	for _, path := range []string{tourney, stable} {
+		if path == "" {
+			continue
+		}
+		switch findExecutableProcess(path) {
+		case processRunning:
+			return processRunning
+		case processUnknown:
+			status = processUnknown
+		}
+	}
+	return status
 }
 
 func writeTournamentConfig(dir, edition string) error {
@@ -67,9 +118,9 @@ func writeTournamentConfig(dir, edition string) error {
 }
 
 func prepareTourney(path string, pid int, launch bool) string {
-	resolved, err := filepath.EvalSymlinks(path)
-	if err != nil || !isOsuExecutable(path) || !isOsuExecutable(resolved) {
-		return "找不到所选 osu!.exe，请重新选择。"
+	resolved, err := resolveOsuExecutable(path)
+	if err != nil {
+		return err.Error()
 	}
 	h, err := getHealth()
 	if err != nil || healthProblem(h, pid) != nil {

@@ -12,6 +12,7 @@ interface ObsStatus {
   follow: boolean; target: 'regular' | 'ex' | null; managed: boolean; lineup: string[]; error: string;
   streamChat: 'off' | 'pending' | 'configured';
   showcase: boolean;
+  showcaseCapture?: 'bound' | 'missing' | 'ambiguous' | 'manual' | 'unsupported' | null;
   showcaseTransition?: { configured: boolean; artwork?: boolean; active: boolean; covered: boolean | null;
     phase: 'covered' | 'playing' | 'results' | 'manual'; error: string };
   windows: { value: string; label: string }[];
