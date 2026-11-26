@@ -323,12 +323,26 @@ i.waiting,i.starting,i.stopping {
   color:#e9a4cc;
   background:#dd80b822
 }
+.tool-grid .card {
+  display:flex;
+  flex-direction:column
+}
 .tool-grid .card p {
   margin-bottom:3px
 }
-.tool-grid .card button {
-  margin-top:18px;
-  width:100%
+.tool-actions {
+  margin-top:auto;
+  padding-top:12px
+}
+.tool-actions button {
+  flex:1 1 auto
+}
+.tool-path {
+  font-size:12px;
+  overflow-wrap:anywhere;
+  padding:10px 12px;
+  background:#100d1955;
+  border-radius:7px
 }
 .stack {
   display:grid;
@@ -378,21 +392,6 @@ input {
   color:#998ba9;
   font-size:11px;
   overflow-wrap:anywhere
-}
-.setting-tool {
-  padding:14px 0
-}
-.setting-tool+.setting-tool {
-  border-top:1px solid #ffffff0c;
-  margin-top:8px
-}
-.path {
-  font-size:12px;
-  overflow-wrap:anywhere;
-  padding:10px 12px;
-  background:#100d1955;
-  border-radius:7px;
-  margin-top:0
 }
 .notice {
   padding:12px 15px;
@@ -517,6 +516,11 @@ footer span {
   }
   .brand small {
     display:none
+  }
+}
+@media(max-width:640px) {
+  .tool-grid {
+    grid-template-columns:1fr
   }
 }
 @media(prefers-reduced-motion:reduce) {
