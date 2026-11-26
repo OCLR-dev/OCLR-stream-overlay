@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { lstat, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -104,4 +104,28 @@ export async function prepareStableReplay(path) {
       child.once('spawn', () => { child.unref(); resolve(); });
     });
   };
+}
+
+export async function cachedReplay(path, limit) {
+  if (!path) return null;
+  const info = await lstat(path).catch(() => null);
+  return info?.isFile() && info.size > 0 && info.size <= limit ? { path } : null;
+}
+
+export async function saveCachedReplay(path, bytes, current) {
+  const root = dirname(path);
+  let temporary;
+  try {
+    await mkdir(root, { recursive: true, mode: 0o700 });
+    temporary = await mkdtemp(join(root, '.download-'));
+    const staged = join(temporary, 'Replay.osr');
+    await writeFile(staged, bytes, { mode: 0o600 });
+    if (!current()) return null;
+    await rename(staged, path);
+    return { path };
+  } catch {
+    throw new Error('无法保存本机回放缓存，请检查直播机存储空间和目录权限后重试。');
+  } finally {
+    if (temporary) await rm(temporary, { recursive: true, force: true }).catch(() => {});
+  }
 }

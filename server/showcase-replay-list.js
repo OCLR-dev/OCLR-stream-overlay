@@ -1,7 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import { boundedBody } from './beatmap-metadata.js';
 import { replayLimit } from './showcase-website.js';
-import { localReplayMetadata, prepareStableReplay, stageReplayFile } from './showcase-replay-files.js';
+import { cachedReplay, localReplayMetadata, prepareStableReplay, saveCachedReplay, stageReplayFile } from './showcase-replay-files.js';
 
 const activePhases = ['loading', 'waiting', 'playing'];
 const poolChanged = 'Showcase 图池已更新，请核对当前列表后重试。';
@@ -61,7 +62,7 @@ export class ShowcaseReplayList {
   clearRemote() {
     this.cacheController.abort(new Error(websiteChanged));
     this.cacheController = new AbortController();
-    for (const { file } of this.cached.values()) void file.dispose();
+    for (const file of this.cached.values()) void file.dispose?.();
     this.cached.clear();
     this.downloads.clear();
     this.cacheFailures.clear();
@@ -92,7 +93,7 @@ export class ShowcaseReplayList {
     const rows = this.store.state.pool.map(slot => {
       const options = this.replayOptions(slot.id);
       const selectedId = this.selectedId(slot.id, options);
-      const cached = !!selectedId && this.cached.get(slot.id)?.id === selectedId;
+      const cached = this.cached.has(selectedId);
       const cacheError = this.cacheFailures.get(selectedId);
       return { slotId: slot.id, options, selectedId,
         ...(cached ? { cached } : cacheError ? { cacheError } : {}) };
@@ -131,6 +132,12 @@ export class ShowcaseReplayList {
     return { edition: source.edition, poolId: source.pool.id, version: source.pool.version, connection: this.connection };
   }
 
+  cachePath(source, slotId, id) {
+    if (!this.store.file) return null;
+    const key = createHash('sha256').update(JSON.stringify([source.edition, source.pool.id, source.pool.version, slotId, id])).digest('hex');
+    return join(dirname(this.store.file), 'showcase-replay-cache', key + '.osr');
+  }
+
   async refresh(source) {
     if (!source || this.status === 'stale') return;
     const task = Symbol();
@@ -151,11 +158,24 @@ export class ShowcaseReplayList {
         if (!row || row.slot !== slot.label) throw new Error('网站回放与当前图池不匹配，请重新导入图池。');
         remote.set(slot.id, row.replays);
       }
+      const ids = new Set([...remote.values()].flatMap(options => options.map(option => option.id)));
+      if (this.store.file) {
+        const candidates = [...remote].flatMap(([slotId, options]) =>
+          options.map(({ id }) => [id, this.cachePath(source, slotId, id), this.cached.get(id)]));
+        const restored = await Promise.all(candidates.map(async ([id, path, previous]) => [id, await cachedReplay(path, replayLimit), previous]));
+        this.sync();
+        if (this.closed || this.refreshing !== task || !isCurrent()) return;
+        for (const [id, file, previous] of restored) {
+          if (this.cached.get(id) !== previous || previous?.dispose) continue;
+          if (file) this.cached.set(id, file);
+          else this.cached.delete(id);
+        }
+      }
       this.remote = remote;
-      for (const [slotId, cached] of this.cached) {
-        if (!remote.get(slotId)?.some(option => option.id === cached.id)) {
-          this.cached.delete(slotId);
-          void cached.file.dispose();
+      for (const [id, file] of this.cached) {
+        if (!ids.has(id)) {
+          this.cached.delete(id);
+          void file.dispose?.();
         }
       }
       for (const [slotId, id] of this.selected) {
@@ -182,15 +202,14 @@ export class ShowcaseReplayList {
         return !signal.aborted && isCurrent() && this.selectedId(slotId) === id;
       };
       if (!current()) throw new Error(websiteChanged);
-      const file = await stageReplayFile(data);
-      if (!current()) {
-        void file.dispose();
+      const path = this.cachePath(source, slotId, id);
+      const file = path ? await saveCachedReplay(path, data, current) : await stageReplayFile(data);
+      if (!file || !current()) {
+        void file?.dispose?.();
         throw new Error(websiteChanged);
       }
-      const previous = this.cached.get(slotId);
-      this.cached.set(slotId, { id, file });
+      this.cached.set(id, file);
       this.cacheFailures.delete(id);
-      if (previous) void previous.file.dispose();
       return { file, isCurrent: () => !signal.aborted && isCurrent() };
     })().finally(() => {
       if (this.downloads.get(id) === download) this.downloads.delete(id);
@@ -204,7 +223,7 @@ export class ShowcaseReplayList {
     const next = this.nextSlot();
     const queue = this.store.state.pool.flatMap(({ id: slotId }) => {
       const id = this.selectedId(slotId);
-      return this.remote.get(slotId)?.some(option => option.id === id) && this.cached.get(slotId)?.id !== id ? [{ slotId, id }] : [];
+      return this.remote.get(slotId)?.some(option => option.id === id) && !this.cached.has(id) ? [{ slotId, id }] : [];
     });
     const start = queue.findIndex(row => row.slotId === next);
     if (start > 0) queue.push(...queue.splice(0, start));
@@ -215,7 +234,7 @@ export class ShowcaseReplayList {
     try {
       for (const { slotId, id } of queue) {
         if (this.cacheJob !== job) break;
-        if (this.selectedId(slotId) !== id || this.cached.get(slotId)?.id === id) continue;
+        if (this.selectedId(slotId) !== id || this.cached.has(id)) continue;
         this.cacheFailures.delete(id);
         this.emit();
         try { await this.downloadReplay(source, slotId, id); }
@@ -287,17 +306,21 @@ export class ShowcaseReplayList {
     try {
       let file = local?.file;
       if (local?.option.id !== id) {
-        const cached = this.cached.get(slotId);
+        const cached = this.cached.get(id);
         try {
-          if (cached?.id === id) {
+          const usable = cached?.dispose ? cached : await cachedReplay(cached?.path, replayLimit);
+          if (usable) {
             const { signal } = this.cacheController;
             const read = await this.streaming.readShowcase({ ...this.websiteInput(source), replays: true, signal });
             if (![...read.data.values()].some(row => row.slot === slot.label && row.replays.some(replay => replay.id === id))) {
               throw Object.assign(new Error(websiteChanged), { status: 409 });
             }
             isCurrent = () => !signal.aborted && read.isCurrent();
-            file = cached.file;
-          } else ({ file, isCurrent } = await this.downloadReplay(source, slotId, id));
+            file = usable;
+          } else {
+            this.cached.delete(id);
+            ({ file, isCurrent } = await this.downloadReplay(source, slotId, id));
+          }
         } catch (error) {
           this.sync();
           if (this.playback === playback && source === this.store.state.website && invalidatesReplays(error)) {

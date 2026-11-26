@@ -6,7 +6,7 @@ import { ShowcaseReplayList } from '../server/showcase-replay-list.js';
 import { replayFixture } from './showcase-replay-fixture.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ObsController } from '../server/obs/controller.js';
-import { showcaseArtwork, showcaseBrowser, showcaseCapture, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
+import { showcaseArtwork, showcaseAudio, showcaseBrowser, showcaseCapture, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
 import { ordinaryClient, ShowcaseReplay } from '../server/obs/showcase-replay.js';
 import { TosuClient } from '../src/tosu.js';
 
@@ -33,6 +33,7 @@ test('standalone Showcase creates a full browser and centered Stable capture, le
   const { studio, session, obs } = await setup(t);
   const original = structuredClone(session.state);
   studio.windows.push(stableWindow);
+  studio.kinds.push('wasapi_process_output_capture');
   await obs.command({ action: 'create-showcase' });
   assert.equal(obs.snapshot().showcase, true);
   assert.equal(studio.program, '休息');
@@ -40,15 +41,19 @@ test('standalone Showcase creates a full browser and centered Stable capture, le
   assert.equal(obs.profile.ex, '');
   assert.equal(obs.profile.follow, false);
   assert.deepEqual(session.state, original);
-  assert.deepEqual([...studio.inputs.keys()], [showcaseBrowser, showcaseCapture]);
+  assert.deepEqual([...studio.inputs.keys()], [showcaseBrowser, showcaseCapture, showcaseAudio]);
   const input = studio.inputs.get(showcaseBrowser);
   assert.equal(input.inputKind, 'browser_source');
   assert.deepEqual(input.inputSettings, { url: 'http://127.0.0.1:3010/showcase?clean=1', width: 1920, height: 1080, shutdown: false, restart_when_active: false });
-  const item = studio.scenes.get(showcaseScene)[0];
+  const [audio, item, capture] = studio.scenes.get(showcaseScene);
   assert.equal(item.sceneItemEnabled, true);
   assert.equal(item.sceneItemLocked, true);
   assert.deepEqual(item.transform, { alignment: 5, positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' });
-  const capture = studio.scenes.get(showcaseScene)[1];
+  assert.equal(audio.sceneItemEnabled, true);
+  assert.equal(audio.sceneItemLocked, true);
+  assert.equal(studio.inputs.get(showcaseAudio).inputKind, 'wasapi_process_output_capture');
+  assert.deepEqual(studio.inputs.get(showcaseAudio).inputSettings, { window: stableWindow.itemValue, priority: 1 });
+  assert.equal(obs.snapshot().showcaseAudio, 'bound');
   const game = studio.inputs.get(showcaseCapture);
   assert.equal(game.inputKind, 'game_capture');
   assert.equal(game.inputSettings.window, stableWindow.itemValue);
@@ -56,6 +61,7 @@ test('standalone Showcase creates a full browser and centered Stable capture, le
   assert.equal(game.inputSettings.capture_mode, 'window');
   assert.equal(game.inputSettings.capture_audio, false);
   assert.equal(capture.sceneItemEnabled, true);
+  assert.equal(capture.sceneItemLocked, true);
   assert.deepEqual(capture.transform, { alignment: 5, positionX: 160, positionY: 100, scaleX: 1, scaleY: 1,
     boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: 1600, boundsHeight: 800 });
   assert.equal(obs.snapshot().showcaseCapture, 'bound');
@@ -68,6 +74,48 @@ test('standalone Showcase creates a full browser and centered Stable capture, le
   assert.equal(item.transform.positionX, 23);
   assert.equal(capture.transform.positionX, 222);
   assert.equal(item.sceneItemLocked, false);
+  capture.sceneItemEnabled = capture.sceneItemLocked = false;
+  audio.sceneItemEnabled = false;
+  await obs.command({ action: 'create-showcase' });
+  assert.equal(capture.sceneItemEnabled, true);
+  assert.equal(capture.sceneItemLocked, true);
+  assert.equal(audio.sceneItemEnabled, true);
+  assert.equal(capture.transform.positionX, 222);
+});
+
+test('Showcase keeps its application audio enabled while unbound and recovers after creation is interrupted', async t => {
+  const { studio, obs } = await setup(t);
+  studio.kinds.push('wasapi_process_output_capture');
+  const create = () => obs.command({ action: 'create-showcase' });
+  const request = studio.request.bind(studio);
+  let loseReply = true;
+  studio.request = async (type, data) => {
+    const result = await request(type, data);
+    if (loseReply && type === 'CreateInput' && data.inputName === showcaseAudio) {
+      loseReply = false;
+      throw new Error('response lost');
+    }
+    return result;
+  };
+  await assert.rejects(create());
+  await create();
+  const { inputSettings } = studio.inputs.get(showcaseAudio);
+  const items = studio.scenes.get(showcaseScene).filter(item => item.sourceName === showcaseAudio);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].sceneItemEnabled, true);
+  assert.deepEqual(inputSettings, { window: '', priority: 2 });
+  assert.equal(obs.snapshot().showcaseAudio, 'missing');
+
+  studio.windows.push(stableWindow);
+  await create();
+  assert.deepEqual(inputSettings, { window: stableWindow.itemValue, priority: 1 });
+  assert.equal(obs.snapshot().showcaseAudio, 'bound');
+
+  studio.windows.push({ itemEnabled: true, itemValue: 'osu!:OtherClass:other.exe' });
+  await create();
+  assert.deepEqual(inputSettings, { window: '', priority: 2 });
+  assert.equal(items[0].sceneItemEnabled, true);
+  assert.equal(obs.snapshot().showcaseAudio, 'ambiguous');
 });
 
 test('Showcase only auto-binds a unique ordinary osu! window and keeps an operator binding', async t => {
