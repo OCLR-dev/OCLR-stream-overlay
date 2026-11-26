@@ -19,6 +19,12 @@ const captureStatus = computed(() => ({
   manual: '保留现有捕获设置。请在 OBS 确认来源是普通 osu!Stable。',
   unsupported: '当前 OBS 缺少游戏捕获或窗口捕获，请在 OBS 手动添加普通 osu!Stable 捕获。',
 }[props.obs.state?.showcaseCapture ?? 'missing']));
+const audioStatus = computed(() => ({
+  bound: '已启用 osu!Stable 应用程序音频。',
+  missing: '应用程序音频已启用，等待 osu!Stable 窗口。',
+  ambiguous: '应用程序音频已启用，请关闭重名窗口后更新场景。',
+  unsupported: '当前 OBS 未提供应用程序音频采集。',
+}[props.obs.state?.showcaseAudio ?? 'missing']));
 const transitionStatus = computed(() => {
   const state = transition.value;
   if (!state?.configured) return '将遮罩置于游戏采集上方。';
@@ -60,6 +66,7 @@ function connect() {
           <button :disabled="!!obs.pending" @click="obs.act('disconnect')">断开连接</button>
         </div>
         <p v-if="obs.state.showcase" role="status">{{ captureStatus }}</p>
+        <p v-if="obs.state.showcaseAudio" role="status">{{ audioStatus }}</p>
         <div v-if="obs.state.showcase" class="showcase-transition-controls">
           <h3>回放过场</h3>
           <p role="status">{{ transitionStatus }}</p>
