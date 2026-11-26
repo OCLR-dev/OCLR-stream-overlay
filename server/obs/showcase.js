@@ -1,9 +1,68 @@
 import { ObsError } from './socket.js';
+import { windowOptions } from './presets.js';
 
 export const showcaseScene = 'OCLR · Showcase';
 export const showcaseBrowser = 'OCLR · Showcase 画面';
 
-// Separate from the regular/EX preset: no captures, audio or follow target.
+export const showcaseCapture = 'OCLR · Showcase osu! 捕获';
+const captureKinds = ['game_capture', 'window_capture'];
+const captureTransform = { alignment: 5, positionX: 160, positionY: 100, scaleX: 1, scaleY: 1,
+  boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: 1600, boundsHeight: 800 };
+const captureError = () => new ObsError('Showcase osu! 捕获同名、已改名或已被替换，请在 OBS 核对来源后重试。');
+const captureSettings = kind => ({ ...(kind === 'game_capture' ? { capture_mode: 'window' } : {}),
+  window: '', priority: 1, capture_cursor: false, cursor: false, capture_audio: false });
+
+async function installShowcaseCapture(call, target, previous, input, kind, browserId, save) {
+  if (!kind && !input) {
+    if (previous?.status !== 'unsupported') await save({ status: 'unsupported' });
+    return;
+  }
+  let state = previous || {};
+  const checkpoint = async change => {
+    state = { ...state, ...change };
+    await save(state);
+  };
+  let { sceneItems } = await call('GetSceneItemList', target);
+  let captureItems = sceneItems.filter(item => item.sourceName === showcaseCapture);
+  if (captureItems.length > 1) throw captureError();
+  let itemId = captureItems[0]?.sceneItemId;
+  if (!itemId) {
+    await checkpoint({ ready: false, itemId: null, inputUuid: input?.inputUuid || null });
+    const added = input
+      ? await call('CreateSceneItem', { ...target, ...(input.inputUuid ? { sourceUuid: input.inputUuid } : { sourceName: showcaseCapture }), sceneItemEnabled: false })
+      : await call('CreateInput', { ...target, inputName: showcaseCapture, inputKind: kind, inputSettings: captureSettings(kind), sceneItemEnabled: false });
+    itemId = added.sceneItemId;
+    await checkpoint({ inputUuid: input?.inputUuid || added.inputUuid || null });
+  }
+  if (!state.ready || state.itemId !== itemId) {
+    const item = { ...target, sceneItemId: itemId };
+    await call('SetSceneItemTransform', { ...item, sceneItemTransform: captureTransform });
+    ({ sceneItems } = await call('GetSceneItemList', target));
+    const otherItems = sceneItems.filter(i => i.sceneItemId !== itemId);
+    const browserIndex = otherItems.findIndex(i => i.sceneItemId === browserId);
+    if (browserIndex < 0) throw captureError();
+    await call('SetSceneItemIndex', { ...item, sceneItemIndex: browserIndex + 1 });
+    await call('SetSceneItemEnabled', { ...item, sceneItemEnabled: true });
+    await checkpoint({ ready: true, itemId, inputUuid: state.inputUuid || input?.inputUuid || captureItems[0]?.sourceUuid || null });
+  }
+  const { inputSettings } = await call('GetInputSettings', { inputName: showcaseCapture });
+  const { propertyItems } = await call('GetInputPropertiesListPropertyItems', { inputName: showcaseCapture, propertyName: 'window' });
+  const { choices, windows } = windowOptions(propertyItems || []);
+  const matches = choices.filter(w => w.label.toLowerCase() === 'osu!');
+  const candidate = matches.length === 1 && windows.includes(matches[0]) ? matches[0] : null;
+  let status = matches.length && !candidate ? 'ambiguous' : 'missing';
+  if (!inputSettings.window && candidate) {
+    await call('SetInputSettings', { inputName: showcaseCapture, inputSettings: { window: candidate.value, priority: 1 }, overlay: true });
+    status = 'bound';
+  } else if (inputSettings.window) {
+    if (inputSettings.window === candidate?.value && inputSettings.priority === 1) status = 'bound';
+    else if (!inputSettings.window.toLowerCase().startsWith('osu!:') || inputSettings.priority !== 1) status = 'manual';
+  }
+  if (status !== state.status) await checkpoint({ status });
+}
+
+// The Showcase capture belongs only to its scene. Browser and game stay below
+// the transition layers, and a subsequent create preserves operator adjustments.
 export async function buildShowcase(call, previous, url, save) {
   const { baseWidth, baseHeight } = await call('GetVideoSettings');
   if (baseWidth !== 1920 || baseHeight !== 1080) throw new ObsError('请先将 OBS 基础画布设为 1920×1080，再创建 Showcase 场景。');
@@ -14,7 +73,18 @@ export async function buildShowcase(call, previous, url, save) {
   const { groups } = await call('GetGroupList');
   let state = { ...previous };
   let scene = scenes.find(s => s.sceneName === showcaseScene);
-  let input = inputs.find(i => i.inputName === showcaseBrowser);
+  const input = inputs.find(i => i.inputName === showcaseBrowser);
+  const capture = inputs.find(i => i.inputName === showcaseCapture);
+  const previousCapture = state.capture;
+  const kind = captureKinds.find(name => inputKinds.includes(name));
+  if (groups.includes(showcaseCapture) || scenes.some(s => s.sceneName === showcaseCapture) ||
+      (capture && (!previousCapture || previousCapture.status === 'unsupported' || !captureKinds.includes(capture.inputKind) ||
+        (previousCapture.inputUuid && previousCapture.inputUuid !== capture.inputUuid))) ||
+      (!capture && previousCapture?.inputUuid && inputs.some(i => i.inputUuid === previousCapture.inputUuid))) throw captureError();
+  if (capture && !previousCapture.inputUuid && !previousCapture.ready) {
+    const { inputSettings } = await call('GetInputSettings', { inputName: showcaseCapture });
+    if (!Object.entries(captureSettings(capture.inputKind)).every(([key, value]) => inputSettings[key] === value)) throw captureError();
+  }
   if ((scene && (!previous || (state.sceneUuid && state.sceneUuid !== scene.sceneUuid))) ||
       (!scene && state.sceneUuid && scenes.some(s => s.sceneUuid === state.sceneUuid))) {
     throw new ObsError('Showcase 场景同名或已改名，请在 OBS 核对场景后重试。');
@@ -40,8 +110,8 @@ export async function buildShowcase(call, previous, url, save) {
     await checkpoint({ sceneUuid: scene.sceneUuid || null });
   }
   const target = state.sceneUuid ? { sceneUuid: state.sceneUuid } : { sceneName: showcaseScene };
-  let { sceneItems } = await call('GetSceneItemList', target);
-  let items = sceneItems.filter(item => item.sourceName === showcaseBrowser);
+  const { sceneItems } = await call('GetSceneItemList', target);
+  const items = sceneItems.filter(item => item.sourceName === showcaseBrowser);
   if (items.length > 1) throw new ObsError('Showcase 场景里有多个浏览器源场景项，请在 OBS 保留一项后重试。');
   let itemId = items[0]?.sceneItemId;
   if (!input || !items.length) {
@@ -56,12 +126,12 @@ export async function buildShowcase(call, previous, url, save) {
   if (state.pendingPlacement || !state.ready || state.itemId !== itemId) {
     const item = { ...target, sceneItemId: itemId };
     await call('SetSceneItemTransform', { ...item, sceneItemTransform: { alignment: 5, positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' } });
-    ({ sceneItems } = await call('GetSceneItemList', target));
-    await call('SetSceneItemIndex', { ...item, sceneItemIndex: sceneItems.length - 1 });
+    await call('SetSceneItemIndex', { ...item, sceneItemIndex: 0 });
     await call('SetSceneItemLocked', { ...item, sceneItemLocked: true });
     await call('SetSceneItemEnabled', { ...item, sceneItemEnabled: true });
     await checkpoint({ ready: true, itemId, pendingPlacement: false });
   }
+  await installShowcaseCapture(call, target, state.capture, capture, kind, itemId, value => checkpoint({ capture: value }));
   return state;
 }
 

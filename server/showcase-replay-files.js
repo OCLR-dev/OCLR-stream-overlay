@@ -51,38 +51,57 @@ export async function stageReplayFile(bytes) {
   return { path, dispose };
 }
 
-export async function prepareStableReplay(path) {
-  if (process.platform !== 'win32') throw new Error('请在 Windows 直播机上使用 osu!stable 播放回放。');
-  let executable;
+const stableSelection = '服务 → 比赛工具 → osu!Stable';
+const sameDirectory = (a, b) => dirname(a).toLowerCase() === dirname(b).toLowerCase();
+
+async function configuredOsu(value, launcherSettings) {
+  if (typeof value !== 'string') throw new Error();
+  let selected = value;
+  if (launcherSettings && selected.startsWith('.\\')) {
+    const root = fileURLToPath(new URL('../../', import.meta.url));
+    selected = resolve(root, selected);
+    const inside = relative(root, selected);
+    if (inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error();
+  }
+  if (!isAbsolute(selected) || basename(selected).toLowerCase() !== 'osu!.exe') throw new Error();
+  const executable = await realpath(selected);
+  if (basename(executable).toLowerCase() !== 'osu!.exe' || !(await stat(executable)).isFile()) throw new Error();
+  return executable;
+}
+
+async function stableReplayClient() {
+  const launcherSettings = process.env.OCLR_LAUNCHER_SETTINGS;
+  const settings = launcherSettings || join(process.env.LOCALAPPDATA || '', 'OCLR', 'StreamOverlayLauncher', 'settings.json');
+  let prefs, executable;
   try {
-    const local = process.env.LOCALAPPDATA || '';
-    const portableSettings = process.env.OCLR_LAUNCHER_SETTINGS;
-    const settings = portableSettings || join(local, 'OCLR', 'StreamOverlayLauncher', 'settings.json');
-    const prefs = await readFile(settings, 'utf8').then(JSON.parse, error => {
-      if (error.code !== 'ENOENT') throw error;
-      return {};
-    });
-    let selected = prefs.osuPath || join(local, 'osu!', 'osu!.exe');
-    if (portableSettings && selected.startsWith('.\\')) {
-      const root = fileURLToPath(new URL('../../', import.meta.url));
-      selected = resolve(root, selected);
-      const inside = relative(root, selected);
-      if (inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error();
-    }
-    if (!isAbsolute(selected) || basename(selected).toLowerCase() !== 'osu!.exe') throw new Error();
-    executable = await realpath(selected);
-    if (basename(executable).toLowerCase() !== 'osu!.exe' || !(await stat(executable)).isFile()) throw new Error();
-  } catch { throw new Error('找不到 osu!stable，请在桌面控制台「设置」中选择普通客户端的 osu!.exe。'); }
-  const cwd = dirname(executable);
+    if (!isAbsolute(settings)) throw new Error();
+    prefs = JSON.parse(await readFile(settings, 'utf8'));
+    executable = await configuredOsu(prefs.osuStablePath, launcherSettings);
+  } catch {
+    throw new Error('找不到 osu!Stable，请在「' +  stableSelection  + '」选择普通客户端的 osu!.exe。');
+  }
+  const tourney = await configuredOsu(prefs.osuPath, launcherSettings).catch(() => null);
+  if (tourney && sameDirectory(tourney, executable)) {
+    throw new Error('请在「' +  stableSelection  + '」选择与 osu!Tourney 分开的安装目录。');
+  }
   try {
-    await lstat(join(cwd, 'tournament.cfg'));
+    await lstat(join(dirname(executable), 'tournament.cfg'));
     throw new Error();
   } catch (error) {
-    if (error.code !== 'ENOENT') throw new Error('所选 osu! 含有赛事配置，请在「设置」中选择普通 osu!stable。');
+    if (error.code !== 'ENOENT') throw new Error('所选 osu! 含有赛事配置，请在「' +  stableSelection  + '」选择普通客户端。');
   }
-  return () => new Promise((resolve, reject) => {
-    const child = spawn(executable, [path], { cwd, detached: true, stdio: 'ignore' });
-    child.once('error', () => reject(new Error('未能打开回放，请检查普通 osu!stable 后重试。')));
-    child.once('spawn', () => { child.unref(); resolve(); });
-  });
+  return executable;
+}
+
+export async function prepareStableReplay(path) {
+  if (process.platform !== 'win32') throw new Error('请在 Windows 直播机上使用 osu!Stable 播放回放。');
+  const executable = await stableReplayClient();
+  return async () => {
+    if (await stableReplayClient() !== executable) throw new Error('osu!Stable 路径已变化，请重试播放回放。');
+    await new Promise((resolve, reject) => {
+      const child = spawn(executable, [path], { cwd: dirname(executable), detached: true, stdio: 'ignore' });
+      child.once('error', () => reject(new Error('未能打开回放，请检查普通 osu!Stable 后重试。')));
+      child.once('spawn', () => { child.unref(); resolve(); });
+    });
+  };
 }

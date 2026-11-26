@@ -293,7 +293,7 @@ i.waiting,i.starting,i.stopping {
 }
 .tool-grid {
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));
   gap:13px
 }
 .card {
@@ -516,11 +516,6 @@ footer span {
   }
   .brand small {
     display:none
-  }
-}
-@media(max-width:640px) {
-  .tool-grid {
-    grid-template-columns:1fr
   }
 }
 @media(prefers-reduced-motion:reduce) {

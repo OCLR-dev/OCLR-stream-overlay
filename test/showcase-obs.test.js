@@ -6,8 +6,8 @@ import { ShowcaseReplayList } from '../server/showcase-replay-list.js';
 import { replayFixture } from './showcase-replay-fixture.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ObsController } from '../server/obs/controller.js';
-import { showcaseArtwork, showcaseBrowser, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
-import { ShowcaseReplay } from '../server/obs/showcase-replay.js';
+import { showcaseArtwork, showcaseBrowser, showcaseCapture, showcaseCover, showcaseScene } from '../server/obs/showcase.js';
+import { ordinaryClient, ShowcaseReplay } from '../server/obs/showcase-replay.js';
 import { TosuClient } from '../src/tosu.js';
 
 import { presetScenes } from '../server/obs/presets.js';
@@ -28,9 +28,12 @@ async function setup(t, options = {}) {
 }
 const writes = studio => studio.log.filter(call => /^(?:Create|Set)/.test(call.type));
 
-test('standalone Showcase creates only its own 1080p browser source, leaves Program and competition untouched', async t => {
+const stableWindow = { itemName: '[osu!.exe]: osu!', itemValue: 'osu!:WindowsForms10.Window:osu!.exe', itemEnabled: true };
+
+test('standalone Showcase creates a full browser and centered Stable capture, leaves Program and competition untouched', async t => {
   const { studio, session, obs } = await setup(t);
   const original = structuredClone(session.state);
+  studio.windows.push(stableWindow);
   await obs.command({ action: 'create-showcase' });
   assert.equal(obs.snapshot().showcase, true);
   assert.equal(studio.program, '休息');
@@ -38,7 +41,7 @@ test('standalone Showcase creates only its own 1080p browser source, leaves Prog
   assert.equal(obs.profile.ex, '');
   assert.equal(obs.profile.follow, false);
   assert.deepEqual(session.state, original);
-  assert.deepEqual([...studio.inputs.keys()], [showcaseBrowser]);
+  assert.deepEqual([...studio.inputs.keys()], [showcaseBrowser, showcaseCapture]);
   const input = studio.inputs.get(showcaseBrowser);
   assert.equal(input.inputKind, 'browser_source');
   assert.deepEqual(input.inputSettings, { url: 'http://127.0.0.1:3010/showcase?clean=1', width: 1920, height: 1080, shutdown: false, restart_when_active: false });
@@ -46,16 +49,77 @@ test('standalone Showcase creates only its own 1080p browser source, leaves Prog
   assert.equal(item.sceneItemEnabled, true);
   assert.equal(item.sceneItemLocked, true);
   assert.deepEqual(item.transform, { alignment: 5, positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_NONE' });
+  const capture = studio.scenes.get(showcaseScene)[1];
+  const game = studio.inputs.get(showcaseCapture);
+  assert.equal(game.inputKind, 'game_capture');
+  assert.equal(game.inputSettings.window, stableWindow.itemValue);
+  assert.equal(game.inputSettings.priority, 1);
+  assert.equal(game.inputSettings.capture_mode, 'window');
+  assert.equal(game.inputSettings.capture_audio, false);
+  assert.equal(capture.sceneItemEnabled, true);
+  assert.deepEqual(capture.transform, { alignment: 5, positionX: 160, positionY: 100, scaleX: 1, scaleY: 1,
+    boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: 1600, boundsHeight: 800 });
+  assert.equal(obs.snapshot().showcaseCapture, 'bound');
+  capture.transform.positionX = 222;
   item.transform.positionX = 23;
   item.sceneItemLocked = false;
   const before = writes(studio).length;
   await obs.command({ action: 'create-showcase' });
   assert.equal(writes(studio).length, before);
   assert.equal(item.transform.positionX, 23);
+  assert.equal(capture.transform.positionX, 222);
   assert.equal(item.sceneItemLocked, false);
 });
 
-test('Showcase shares the existing Stream Chat input without adding captures or enabling EX following', async t => {
+test('Showcase only auto-binds a unique ordinary osu! window and keeps an operator binding', async t => {
+  const { studio, obs } = await setup(t);
+  studio.kinds = ['browser_source', 'window_capture'];
+  const create = () => obs.command({ action: 'create-showcase' });
+  await create();
+  const game = studio.inputs.get(showcaseCapture);
+  assert.equal(game.inputKind, 'window_capture');
+  assert.equal(game.inputSettings.window, '');
+  assert.equal(obs.snapshot().showcaseCapture, 'missing');
+
+  studio.windows.push(stableWindow, { ...stableWindow, itemValue: 'osu!:DifferentClass:osu!.exe' });
+  await create();
+  assert.equal(game.inputSettings.window, '');
+  assert.equal(obs.snapshot().showcaseCapture, 'ambiguous');
+  studio.windows.pop();
+  await create();
+  assert.equal(game.inputSettings.window, stableWindow.itemValue);
+  assert.equal(obs.snapshot().showcaseCapture, 'bound');
+
+  game.inputSettings.window = 'Custom title:WindowsForms10.Window:osu!.exe';
+  await create();
+  assert.equal(game.inputSettings.window, 'Custom title:WindowsForms10.Window:osu!.exe');
+  assert.equal(obs.snapshot().showcaseCapture, 'manual');
+});
+
+test('Showcase preserves the existing capture and transition order when adding a managed source to an older scene', async t => {
+  const { studio, obs } = await setup(t);
+  studio.kinds = ['browser_source', 'color_source_v3'];
+  await obs.command({ action: 'create-showcase' });
+  assert.equal(obs.snapshot().showcaseCapture, 'unsupported');
+  studio.inputs.set('manual capture', { inputName: 'manual capture', inputKind: 'game_capture' });
+  studio.addItem(showcaseScene, 'manual capture', true);
+  await obs.command({ action: 'setup-showcase-transition' });
+  const items = studio.scenes.get(showcaseScene);
+  const manual = structuredClone(items.find(item => item.sourceName === 'manual capture'));
+  studio.kinds.push('game_capture');
+  studio.windows.push(stableWindow);
+  await obs.command({ action: 'create-showcase' });
+  assert.deepEqual(items.map(item => item.sourceName), [showcaseBrowser, showcaseCapture, 'manual capture', showcaseCover, showcaseArtwork]);
+  assert.deepEqual(items[2], manual);
+});
+
+test('an idle Tourney manager cannot match the normal-client replay feed', () => {
+  const frame = { state: { number: 22, name: 'tourney' }, beatmap: { id: 371 }, tourney: { teams: {}, players: [] } };
+  assert.equal(ordinaryClient(frame, '371'), false);
+  assert.equal(ordinaryClient({ ...frame, state: { number: 2, name: 'play' } }, '371'), true);
+});
+
+test('Showcase shares the existing Stream Chat input and leaves EX following disabled', async t => {
   const { studio, obs } = await setup(t);
   await obs.command({ action: 'stream-chat', code: '0123456789AB' });
   assert.equal(obs.snapshot().streamChat, 'pending');
@@ -66,7 +130,7 @@ test('Showcase shares the existing Stream Chat input without adding captures or 
   assert.equal(chat.transform.positionX, 1481);
   assert.equal(chat.transform.positionY, 950);
   assert.equal(obs.snapshot().streamChat, 'configured');
-  assert.equal(studio.inputs.size, 2);
+  assert.equal(studio.inputs.size, 3);
   await obs.command({ action: 'create' });
   await obs.tail;
   for (const name of Object.values(presetScenes)) {
@@ -91,7 +155,7 @@ test('existing competition preset and operator capture transforms survive Showca
   assert.deepEqual(studio.scenes.get(presetScenes.ex), ex);
   assert.deepEqual(obs.profile.preset, profile.preset);
   assert.equal(obs.profile.follow, profile.follow);
-  assert.ok(!studio.log.slice(mark).some(call => call.type === 'GetInputPropertiesListPropertyItems' || call.type === 'SetCurrentProgramScene'));
+  assert.ok(!studio.log.slice(mark).some(call => (call.type === 'GetInputPropertiesListPropertyItems' && call.inputName !== showcaseCapture) || call.type === 'SetCurrentProgramScene'));
 });
 
 test('Showcase rejects occupied names and replacement scene IDs before changing OBS', async t => {
@@ -109,19 +173,21 @@ test('Showcase rejects occupied names and replacement scene IDs before changing 
 });
 
 test('interrupted Showcase creation retries without duplicate inputs or scene items', async t => {
-  for (const failAt of ['CreateScene', 'CreateInput', 'SetSceneItemLocked']) {
+  for (const failAt of ['CreateScene', 'CreateInput', showcaseCapture, 'SetSceneItemLocked']) {
     const { studio, obs } = await setup(t);
     const request = studio.request.bind(studio);
     let failed = false;
     studio.request = async (type, args) => {
       const result = await request(type, args);
-      if (!failed && type === failAt) { failed = true; throw new Error('response lost'); }
+      if (!failed && (failAt === showcaseCapture ? type === 'CreateInput' && args.inputName === showcaseCapture : type === failAt)) {
+        failed = true; throw new Error('response lost');
+      }
       return result;
     };
     await assert.rejects(obs.command({ action: 'create-showcase' }));
     await obs.command({ action: 'create-showcase' });
-    assert.equal(studio.scenes.get(showcaseScene).length, 1, failAt);
-    assert.equal(studio.inputs.size, 1, failAt);
+    assert.equal(studio.scenes.get(showcaseScene).length, 2, failAt);
+    assert.equal(studio.inputs.size, 2, failAt);
     assert.equal(studio.scenes.get(showcaseScene)[0].sceneItemEnabled, true, failAt);
     assert.equal(obs.snapshot().showcase, true);
   }

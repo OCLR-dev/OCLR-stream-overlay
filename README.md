@@ -25,7 +25,7 @@ Windows 默认将比赛保存在 `%LOCALAPPDATA%\OCLR\CustomMatchTest`（启动�
 ## 比赛与图池演示
 
 - **正赛**：支持从到场、Roll 和 BP 完整跟进，也支持中途接入正在 Playing 的房间。图池管理 Ban/Pick 与 TB，Playing 管理当局成绩与系列比分，Ranking 沿用 Playing 捕获布局；暂停、撤销与比赛纠错均在控制台完成。[BP 格式与规则](docs/custom-match.md#bp-格式) · [自由操作与中途加入](docs/main-operator-contract.md)
-- **Showcase**：使用普通 osu! 客户端播放回放（`.osr`）。图池可手动录入或复制控制台已加载图池，拖入本地 `.osr` 文件后核对回放清单；开启自动过场后，待状态显示「遮挡已确认」再点「播放下一张」。[Showcase 回放清单](docs/custom-match.md#showcase-回放清单)
+- **Showcase**：在「服务 → 比赛工具 → osu!Stable」选择独立安装的普通客户端，用于播放回放（`.osr`）。创建 OBS Showcase 场景时会同时建立居中的游戏捕获。图池可手动录入或复制控制台已加载图池，拖入本地 `.osr` 文件后核对回放清单；开启自动过场后，待状态显示「遮挡已确认」再点「播放下一张」。[Showcase 回放清单](docs/custom-match.md#showcase-回放清单)
 
 ## 本地开发
 
