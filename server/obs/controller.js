@@ -313,6 +313,7 @@ export class ObsController {
       streamChat: !p.streamChat?.code ? 'off' : p.streamChat.pending ? 'pending' : 'configured',
       showcase: this.showcaseConfigured,
       showcaseCapture: this.showcaseConfigured ? p.showcase?.capture?.status ?? null : null,
+      showcaseAudio: this.showcaseConfigured ? p.showcase?.audio?.status ?? null : null,
       showcaseTransition: { configured: !!p.showcase?.transition?.ready, artwork: !!p.showcase?.transition?.artwork?.ready, active: !!this.showcaseActive,
         covered: this.showcaseConfirmed ?? null, phase: this.replay.phase, error: this.showcaseError || '' },
       error: this.storageError || this.error || this.missing(p) };
